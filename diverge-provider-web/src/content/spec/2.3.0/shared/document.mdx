@@ -9,10 +9,11 @@ Every image ships at most one document, the file `DIVERGE.md` in the
 directory `.diverge` at the root of the image's filesystem: the path
 `/.diverge/DIVERGE.md`. The document states whether the image's
 program is an agent or a tool, what the `arguments` of a container of
-the image may be, and names the icons the image ships. This section defines the file, its size, and the
-JSON object a server sends for it. [Icon](/shared/icon/) defines the
-icons. A server reads no file of that directory but the document and
-the files the document's `icons` names.
+the image may be. This section defines the file, its size, and the
+JSON object a server sends for it. The image's icons are three
+further files of that directory, which the document does not name:
+[Icon](/shared/icon/) defines them. A server reads no file of that
+directory but the document and the three icons.
 
 ## The file
 
@@ -28,12 +29,8 @@ the files the document's `icons` names.
   type, stated below.
 - **The members of both types.** A frontmatter of either type has the
   member `name`, a string, and the member `schema`, a JSON object. It
-  has at most two further members that both types have: `frontend`, a
-  boolean, and `icons`.
-- **`icons`.** The value of `icons` is an object of at most three
-  members, `svg`, `512` and `64`, each a string, and no other member.
-  Each string is an icon name, as [Icon](/shared/icon/#the-name)
-  defines one.
+  has at most one further member that both types have: `frontend`, a
+  boolean.
 - **The members of an agent's.** An agent's frontmatter has at most
   two members further: `chat` and `structured_decisions`.
 - **`chat`.** The value of `chat` is the boolean `false` or an object
@@ -95,9 +92,6 @@ is an agent's document or a tool's document, as the file is.
   program serves a frontend, as the
   [frontend](/container-proxy-endpoints/frontend/) endpoint provides.
   Its absence states that the program serves none.
-- **`icons`.** Present only with the frontmatter's object, when the
-  frontmatter's `icons` has at least one member. It names the icons
-  the image ships. Its absence states that the image ships none.
 - **`chat`.** In an agent's document only. Present only with the
   frontmatter's object, when the frontmatter's `chat` is an object. It
   states how the agent's program chats. Its absence states that the
@@ -112,7 +106,8 @@ is an agent's document or a tool's document, as the file is.
 - **A tool's document has neither.** A tool's document has neither
   `chat` nor `structured_decisions`.
 - **The count.** An agent's document has at least five and at most
-  eight members. A tool's document has at least four and at most six.
+  seven members. A tool's document has at least four and at most
+  five.
 - **No other member.** The server sends no member further.
 
 ## Not a document
@@ -134,8 +129,7 @@ of the channel that asked states, and sends no part of the file.
 7. `schema` is not an object.
 8. The `type` is `agent`, and neither `chat` nor
    `structured_decisions` is an object.
-9. A string of `icons` is not an icon name.
-10. The bytes of the file are not UTF-8.
+9. The bytes of the file are not UTF-8.
 
 A file that is over the limit of [The size](#the-size) is not read,
 and is neither a document nor not a document: it is too large.
@@ -163,11 +157,6 @@ What makes a file not a document is named by `diverge-sdk-rs/src/shared/containe
 The limit is defined by `diverge-sdk-rs/src/shared/containers/info/limit.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/info/limit.rs
-```
-
-`icons` is defined by `diverge-sdk-rs/src/shared/containers/info/icons.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/info/icons.rs
 ```
 
 `chat` and `structured_decisions` are defined by `diverge-sdk-rs/src/shared/containers/info/false_or.rs`:

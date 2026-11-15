@@ -1,13 +1,12 @@
 ---
 title: 'Icon SVG'
-summary: 'Tag 5: the client asks for the SVG icon of the image of the scope, the file that the member svg of the document’s icons names; the server reads the file out of the image without running it and answers with exactly one channel response, the file’s bytes, the word that the image ships no such icon, an error, or the word that the file is larger than 1048576 bytes, and the channel response finish.'
+summary: 'Tag 5: the client asks for the SVG icon of the image of the scope, the file /.diverge/icon.svg; the server reads the file out of the image without running it, checks that it is a valid icon, and answers with exactly one channel response, the file’s bytes, the word that the image ships no such icon, an error, or the word that the file is larger than 1048576 bytes, and the channel response finish.'
 order: 5
 draft: false
 ---
 
 The client opens this channel to read the SVG icon of the image
-of the scope: the file that the member `svg` of the `icons` of
-the image's [document](/shared/document/) names, as
+of the scope: the file `/.diverge/icon.svg` of the image, as
 [Icon](/shared/icon/) defines.
 
 - **The request.** The tag byte `5` and nothing more.
@@ -18,18 +17,19 @@ the image's [document](/shared/document/) names, as
   that the file is too large — and the channel response finish.
   [Response](/endpoints/images-read/client/icon-svg/response/) states
   the sequence.
-- **Nothing runs.** The server reads the document and the file it
-  names from the filesystem of the image. The server starts no
-  container of the image, runs no program of it, and injects no proxy
-  into it.
-- **Only the file named.** The server reads the file whose name the
-  member `svg` gives, and no other. The request carries no name,
-  and the server reads no file of the image that the document does
-  not name.
-- **The limit.** The server measures each file before it reads it.
-  The server reads no byte of a file longer than `1048576` bytes, as
+- **Nothing runs.** The server reads the file from the filesystem of
+  the image. The server starts no container of the image, runs no
+  program of it, and injects no proxy into it.
+- **Only that file.** The server reads the file `/.diverge/icon.svg`
+  and no other. The request carries no name, and the server reads no
+  document to find the file.
+- **The limit.** The server measures the file before it reads it. The
+  server reads no byte of a file longer than `1048576` bytes, as
   [Icon](/shared/icon/#the-size) states.
-- **The image.** The server reads the files from the image as the
+- **Checked.** The server sends the file's bytes only where the file
+  is a valid SVG icon, as [Icon](/shared/icon/#a-valid-svg-icon) states. Otherwise the server sends an error whose `kind` is
+  `icon`, and no byte of the file.
+- **The image.** The server reads the file from the image as the
   scope holds it, as
   [info](/endpoints/images-read/client/info/) states for the
   document.

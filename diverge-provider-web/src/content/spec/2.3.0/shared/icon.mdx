@@ -1,48 +1,33 @@
 ---
 title: 'Icon'
-summary: 'An image ships at most three icons, each one file of its /.diverge that the document names by the members svg, 512 and 64 of icons; each file is at most 1048576 bytes, and a server sends for it exactly one frame: the byte 0 followed by the file’s bytes, the byte 1 alone, the byte 2 followed by an error, or the byte 3 alone.'
+summary: 'An image ships at most three icons, each exactly one file of its /.diverge with a fixed name: icon.svg, icon-512.png and icon-64.png; each file is at most 1048576 bytes and is a valid image of the kind and the size its name states, and a server sends for it exactly one frame: the byte 0 followed by the file’s bytes, the byte 1 alone, the byte 2 followed by an error, or the byte 3 alone.'
 order: 3
 draft: false
 ---
 
 An image ships at most three icons. Each icon is exactly one file in
 the directory `.diverge` at the root of the image's filesystem, beside
-the [document](/shared/document/), and the document's `icons` names
-it. This section defines the three icons, the name of an icon's file,
-the size of the file, and the frame a server sends for it.
+the [document](/shared/document/). This section defines the three
+icons, the size of each one's file, what makes a file a valid icon,
+and the frame a server sends for it.
 
 ## The three icons
 
-| Member of `icons` | The file is |
-|-------------------|-------------|
-| `svg` | an SVG image |
-| `512` | a PNG image, 512 pixels wide and 512 pixels high |
-| `64` | a PNG image, 64 pixels wide and 64 pixels high |
+| Icon | Path | The file is |
+|------|------|-------------|
+| SVG | `/.diverge/icon.svg` | an SVG image |
+| 512 | `/.diverge/icon-512.png` | a PNG image, exactly 512 pixels wide and exactly 512 pixels high |
+| 64 | `/.diverge/icon-64.png` | a PNG image, exactly 64 pixels wide and exactly 64 pixels high |
 
+- **The name is fixed.** The file name of each icon is exactly the
+  name stated above, compared byte for byte. No other name is an
+  icon's. No document names an icon, and a server reads no document to
+  find one.
 - **Each is optional.** An image ships any of the three, all of them,
-  or none. A member that is absent states that the image ships no
-  such icon.
-- **The author's word.** What a file holds is its author's statement.
-  A server does not read an icon's bytes: it does not check that the
-  file is an SVG image or a PNG image, and it does not check the
-  image's width or height. A server sends a file that is not what its
-  member states exactly as it sends one that is.
-
-## The name
-
-The value of each member is the name of the icon's file: the path of
-the file is `/.diverge/` followed by the name.
-
-- **The length.** A name is at least `1` byte and at most `255` bytes
-  long.
-- **The bytes.** Every byte of a name is an ASCII letter, an ASCII
-  digit, `.`, `-` or `_`. A name therefore holds no `/` and no `\`.
-- **The first byte.** The first byte of a name is not `.`. A name is
-  therefore neither `.` nor `..`.
-- **Not the document.** A name is not `DIVERGE.md`, compared byte for
-  byte.
-- **Otherwise.** A document whose `icons` holds a string that is not
-  a name is [not a document](/shared/document/#not-a-document).
+  or none. An image ships an icon when the file of that name is in its
+  `/.diverge`.
+- **No other file.** A server that is asked for an icon reads the one
+  file of that icon's name, and no other file of the image.
 
 ## The size
 
@@ -54,6 +39,51 @@ the file is `/.diverge/` followed by the name.
   is over the limit and sends no part of it. The server sends the
   byte `3`, as [The frame](#the-frame) states.
 
+## A valid SVG icon
+
+A file is a valid SVG icon when every one of the following holds. A
+server checks them in the following order.
+
+1. **UTF-8.** The bytes of the file are UTF-8.
+2. **Well-formed XML.** The text is exactly one well-formed XML
+   document.
+3. **No document type declaration.** The document has no document
+   type declaration. A file that has one is not valid, whatever the
+   declaration states.
+4. **The outermost element.** The outermost element of the document
+   has the local name `svg` and is in the namespace
+   `http://www.w3.org/2000/svg`.
+5. **No script.** No element of the document, in whatever namespace,
+   has the local name `script`, compared without regard to ASCII
+   case.
+6. **No event handler.** No attribute of any element has a name whose
+   first two characters are `on`, compared without regard to ASCII
+   case.
+
+A server checks nothing further: not what the image draws, and not
+what it refers to.
+
+## A valid PNG icon
+
+A file is a valid PNG icon of a stated side, `512` or `64`, when every
+one of the following holds. A server checks them in the following
+order.
+
+1. **A PNG image.** The file begins with the PNG signature, and the
+   first chunk after the signature is the image header.
+2. **The size.** The width the header states is exactly the side, and
+   the height the header states is exactly the side. A server reads
+   the header before it decodes any pixel, and decodes no image whose
+   header states any other size.
+3. **It decodes.** Every chunk of the file up to the end of the data
+   of the image's first frame is well-formed, the checksum of each is
+   correct, and the image data inflates to exactly the pixels the
+   header states.
+
+A server checks nothing further: not what the image shows, not its
+colour type, not its bit depth, and not any byte after the data of
+its first frame.
+
 ## The frame
 
 A server that is asked for one icon sends exactly one frame.
@@ -61,21 +91,25 @@ A server that is asked for one icon sends exactly one frame.
 ```text
 [0][the file's bytes …]   the icon
 [1]                       the image ships no such icon
-[2][error JSON …]         the icon could not be read
+[2][error JSON …]         the file is not a valid icon, or could not be read
 [3]                       the file is larger than 1048576 bytes
 ```
 
 - **The icon.** The byte `0` is followed by the file: every byte of
   it, in order, exactly as the image's filesystem holds it. No length
   precedes the bytes, no encoding is applied to them, and no byte
-  follows them. The bytes after the tag number at least `0` and at
-  most `1048576`.
+  follows them. The file is a valid icon of the kind asked, which the
+  server has checked. The bytes after the tag number at most
+  `1048576`.
 - **Missing.** The byte `1` alone states that the image ships no such
   icon. Nothing follows the byte. That is a fact about the image and
   not a failure.
 - **The error.** The byte `2` is followed by exactly one JSON value
   in the form defined on the
-  [volumes::list response](/endpoints/volumes-list/response/) page.
+  [volumes::list response](/endpoints/volumes-list/response/) page. An
+  error whose `kind` is `icon` states that the file is not a valid
+  icon of the kind asked. Any other error states that the server
+  could not read the image.
 - **Too large.** The byte `3` alone states that the icon's file is
   over the limit. Nothing follows the byte.
 
@@ -84,20 +118,17 @@ A server that is asked for one icon sends exactly one frame.
 A server decides the frame by the following steps, in the following
 order, and stops at the first that applies.
 
-1. **No document.** The image ships no document. The server sends
-   the byte `1`.
-2. **The document cannot be read.** The document is over the limit of
-   its size, or is [not a document](/shared/document/#not-a-document).
-   The server sends the byte `2`, followed by an error whose `kind`
-   is `info`.
-3. **Not named.** The document's `icons` is absent, or has no member
-   for the icon asked. The server sends the byte `1`.
-4. **Not there.** The image's `/.diverge` holds nothing under the
-   name, or what it holds under the name is not a regular file. The
-   server sends the byte `1`.
-5. **Too large.** The file is over the limit. The server sends the
+1. **Not there.** The image's `/.diverge` holds nothing under the
+   icon's name, or what it holds under the name is not a regular
+   file. The server sends the byte `1`.
+2. **Too large.** The file is over the limit. The server sends the
    byte `3`.
-6. **Otherwise.** The server sends the byte `0`, followed by the
+3. **Not valid.** The file is not a valid icon of the kind asked, as
+   [A valid SVG icon](#a-valid-svg-icon) or
+   [A valid PNG icon](#a-valid-png-icon) states. The server sends the
+   byte `2`, followed by an error whose `kind` is `icon`, and sends no
+   byte of the file.
+4. **Otherwise.** The server sends the byte `0`, followed by the
    file's bytes.
 
 A server that cannot obtain or read the image sends the byte `2`,
@@ -106,6 +137,16 @@ followed by an error, at whichever step it fails.
 The frame is defined by `diverge-sdk-rs/src/shared/containers/icon/response/frame.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/icon/response/frame.rs
+```
+
+The three icons and their names are defined by `diverge-sdk-rs/src/shared/containers/icon/which.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/icon/which.rs
+```
+
+What a valid icon is, is defined by `diverge-sdk-rs/src/shared/containers/icon/valid.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/icon/valid.rs
 ```
 
 The exchange is stated by `diverge-sdk-rs/src/shared/containers/icon/mod.rs`:

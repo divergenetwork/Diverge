@@ -8,7 +8,7 @@ draft: false
 ```text
 [0][the file's bytes …]   the SVG icon
 [1]                       the image ships no such icon
-[2][error JSON …]         the icon could not be read
+[2][error JSON …]         the file is not a valid icon, or could not be read
 [3]                       the file is larger than 1048576 bytes
 ```
 
@@ -17,13 +17,13 @@ draft: false
   response precedes states that the server did not serve the
   question.
 - **The frame.** The payload is the frame that
-  [Icon](/shared/icon/#the-frame) defines, for the icon that the
-  member `svg` names, decided in the order that
+  [Icon](/shared/icon/#the-frame) defines, for the file
+  `/.diverge/icon.svg`, decided in the order that
   [Icon](/shared/icon/#the-order) states.
 - **The bytes.** After the byte `0`, every byte of the payload is a
   byte of the file, in order, exactly as the image holds it. No length
   precedes them and no byte follows them. They number at most
-  `1048576`.
+  `1048576`, and they are a valid SVG icon, as [Icon](/shared/icon/#a-valid-svg-icon) states.
 - **One message.** The server sends the whole file in the one channel
   response. The file is not divided across channel responses.
 - **Malformed.** A payload with no byte, a payload whose first byte
