@@ -1,5 +1,5 @@
 //! One file of an image's `/.diverge`, read out of the image and
-//! nothing run: its `DIVERGE.md`, or an icon that document names.
+//! nothing run: its `DIVERGE.md`, or one of its three icons.
 
 use std::path::Path;
 

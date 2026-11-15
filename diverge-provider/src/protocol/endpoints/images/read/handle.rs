@@ -10,8 +10,8 @@ use tokio::task::JoinSet;
 
 use diverge_sdk::CHUNK_SIZE;
 use diverge_sdk::provider::endpoints::images::read::client::{channel_request, request};
-use diverge_sdk::shared::containers::icon;
-use diverge_sdk::shared::containers::info::{self, Document, Icons, MAX_BYTES};
+use diverge_sdk::shared::containers::icon::{self, Which};
+use diverge_sdk::shared::containers::info::{self, Document};
 use diverge_sdk::shared::containers::oci;
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::wire::decode::Decode as _;
@@ -132,13 +132,13 @@ pub async fn handle<O, D>(
                 tasks.spawn(document(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel));
             }
             Ok(channel_request::Frame::IconSvg) => {
-                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, |icons| icons.svg));
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, Which::Svg));
             }
             Ok(channel_request::Frame::Icon512) => {
-                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, |icons| icons.png_512));
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, Which::Png512));
             }
             Ok(channel_request::Frame::Icon64) => {
-                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, |icons| icons.png_64));
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, Which::Png64));
             }
             Ok(channel_request::Frame::Cancel) => break,
             Err(_) => scope.send_channel_response_finish(channel).await,
@@ -220,8 +220,9 @@ async fn prove<I: ServedImage>(scope: Arc<ScopeHandle>, served: Arc<I>, channel:
 ///    image and not a failure.
 /// 2. A file whose bytes are not UTF-8, or whose text breaks a rule of
 ///    [`Document::parse`], is `Error` of kind `info`, naming the rule.
-/// 3. A file larger than [`MAX_BYTES`] is `TooLarge`, and none of it
-///    is read.
+/// 3. A file larger than
+///    [`MAX_BYTES`](diverge_sdk::shared::containers::info::MAX_BYTES)
+///    is `TooLarge`, and none of it is read.
 /// 4. Otherwise `Info`, the document.
 /// 5. An image the deployer could not obtain after all — held when
 ///    the scope opened, and gone since — is `Error` of kind `info`.
@@ -252,66 +253,47 @@ where
 const DOCUMENT: &str = "DIVERGE.md";
 
 /// Exactly one frame — one of the image's icons — then the finish.
-/// `named` takes the icon's file name out of the document's `icons`:
-/// which icon the channel is. The rules, in order, as
-/// [`icon::response::Frame`] states them:
+/// The rules, in order, as [`icon::response::Frame`] states them:
 ///
-/// 1. The document is read as [`document`] reads it. No document is
-///    `Missing`. One larger than [`MAX_BYTES`], not UTF-8, or breaking
-///    a rule of [`Document::parse`], is `Error` of kind `info`.
-/// 2. A document whose `icons` names no file for this icon is
-///    `Missing`.
-/// 3. The file named is read out of the image, by a name
-///    [`Document::parse`] has passed as one name of the directory. No
-///    such file, or not a regular one, is `Missing`; one larger than
-///    [`MAX_BYTES`] is `TooLarge`, and none of it is read.
-/// 4. Otherwise `Icon`, the file's bytes, unread.
+/// 1. The icon's file is read out of the image by its fixed name, and
+///    no other file is: no document is read to find it. No such file,
+///    or not a regular one, is `Missing`.
+/// 2. A file larger than
+///    [`MAX_BYTES`](diverge_sdk::shared::containers::info::MAX_BYTES)
+///    is `TooLarge`, and none of it is read.
+/// 3. A file that is not the icon its name says, as
+///    [`Which::validate`] judges it — no valid SVG image, or no valid
+///    PNG image of its name's size — is `Error` of kind `icon`, saying
+///    why. None of it is answered.
+/// 4. Otherwise `Icon`, the file's bytes.
 /// 5. An image the deployer could not obtain after all is `Error` of
 ///    kind `info`; a deployer that failed is `Error`, its own failure
 ///    rendered.
-async fn icon<D>(scope: Arc<ScopeHandle>, deployer: Arc<D>, client_identity: Identity, image: Image, channel: u32, named: fn(Icons) -> Option<String>)
-where
-    D: ContainerDeployer + Send + Sync + 'static,
-    D::Error: Into<Error>,
-{
-    let frame = read_icon(&*deployer, &client_identity, &image, named).await;
-    respond(&scope, channel, &frame).await;
-    scope.send_channel_response_finish(channel).await;
-}
-
-/// The icon's answer: rules 1 to 5 of [`icon`].
-async fn read_icon<D>(deployer: &D, client_identity: &Identity, image: &Image, named: fn(Icons) -> Option<String>) -> icon::response::Frame
+async fn icon<D>(scope: Arc<ScopeHandle>, deployer: Arc<D>, client_identity: Identity, image: Image, channel: u32, which: Which)
 where
     D: ContainerDeployer + Send + Sync + 'static,
     D::Error: Into<Error>,
 {
     use icon::response::Frame;
-    // Rule 1.
-    let document = match deployer.read_file(client_identity, image, DOCUMENT).await {
-        Ok(ImageInfo::Missing) => return Frame::Missing,
-        Ok(ImageInfo::TooLarge) => return Frame::Error(info_error(format_args!("the image's document is larger than {MAX_BYTES} bytes"))),
-        Ok(ImageInfo::Found(bytes)) => match String::from_utf8(bytes) {
-            Err(reason) => return Frame::Error(info_error(reason)),
-            Ok(text) => match Document::parse(&text) {
-                Ok(document) => document,
-                Err(reason) => return Frame::Error(info_error(reason)),
-            },
-        },
-        Ok(ImageInfo::Unavailable) => return Frame::Error(info_error("the image could not be obtained to be read")),
-        Err(error) => return Frame::Error(error.into()),
-    };
-    // Rule 2.
-    let Some(file) = named(document.icons().clone()) else {
-        return Frame::Missing;
-    };
-    // Rules 3 to 5.
-    match deployer.read_file(client_identity, image, &file).await {
-        Ok(ImageInfo::Found(bytes)) => Frame::Icon(bytes),
+    let frame = match deployer.read_file(&client_identity, &image, which.file()).await {
+        // Rule 1.
         Ok(ImageInfo::Missing) => Frame::Missing,
+        // Rule 2.
         Ok(ImageInfo::TooLarge) => Frame::TooLarge,
+        // Rules 3 and 4.
+        Ok(ImageInfo::Found(bytes)) => match which.validate(&bytes) {
+            Ok(()) => Frame::Icon(bytes),
+            Err(reason) => Frame::Error(Error(serde_json::json!({
+                "kind": "icon",
+                "error": reason.to_string(),
+            }))),
+        },
+        // Rule 5.
         Ok(ImageInfo::Unavailable) => Frame::Error(info_error("the image could not be obtained to be read")),
         Err(error) => Frame::Error(error.into()),
-    }
+    };
+    respond(&scope, channel, &frame).await;
+    scope.send_channel_response_finish(channel).await;
 }
 
 /// A failure of the document's own, in the wire's one error shape:

@@ -286,10 +286,8 @@ pub trait ContainerDeployer: Send + Sync {
 
     /// Read the file `file` of the `/.diverge` of the image `image`
     /// names, running nothing: see [`ImageInfo`]. `file` is one name
-    /// of that directory — `DIVERGE.md`, or a name the document gives
-    /// an icon, which
-    /// [`name_ok`](diverge_sdk::shared::containers::info::name_ok)
-    /// has passed — and never a path. A file larger than
+    /// of that directory — `DIVERGE.md`, or one of the three icons'
+    /// fixed names — and never a path. A file larger than
     /// [`MAX_BYTES`](diverge_sdk::shared::containers::info::MAX_BYTES)
     /// is answered as too large, and not read.
     ///
