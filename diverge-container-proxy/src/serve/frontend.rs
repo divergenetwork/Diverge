@@ -9,7 +9,7 @@ use diverge_sdk::container_proxy::inside::port;
 use diverge_sdk::container_proxy::outside::endpoints::frontend::client::{channel_request, request};
 use diverge_sdk::container_proxy::outside::endpoints::frontend::server::response::Frame;
 use diverge_sdk::shared::containers::frontend::output::Head;
-use diverge_sdk::shared::containers::info::Document;
+use diverge_sdk::shared::containers::info::{Document, MAX_BYTES};
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::wire::decode::Decode as _;
 use diverge_sdk::wire::frame::client::ClientFrame;
@@ -220,9 +220,14 @@ async fn take_input(scope: Arc<ScopeHandle>, pieces: mpsc::Sender<Piece>, stoppe
     stopped.notify_one();
 }
 
-/// Whether the image's document declares a frontend. No document, or
-/// one that does not parse, declares none.
+/// Whether the image's document declares a frontend. No document, one
+/// larger than [`MAX_BYTES`] — measured, and not read — or one that
+/// does not parse, declares none.
 async fn declared() -> bool {
+    match tokio::fs::metadata(PATH).await {
+        Ok(metadata) if metadata.is_file() && metadata.len() <= MAX_BYTES => {}
+        _ => return false,
+    }
     match tokio::fs::read_to_string(PATH).await {
         Ok(text) => Document::parse(&text).is_ok_and(|document| document.frontend),
         Err(_) => false,

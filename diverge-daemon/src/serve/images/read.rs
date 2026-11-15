@@ -108,6 +108,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
                 tasks.spawn(info(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone()));
             }
             Ok(channel_request::Frame::Cancel) => break,
+            // The icons' asks are not carried yet: each is finished with
+            // no answer, as an ask the daemon cannot read is.
+            Ok(channel_request::Frame::IconSvg | channel_request::Frame::Icon512 | channel_request::Frame::Icon64) => scope.send_channel_response_finish(channel).await,
             Err(_) => scope.send_channel_response_finish(channel).await,
         }
     }

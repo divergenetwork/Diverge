@@ -284,8 +284,14 @@ pub trait ContainerDeployer: Send + Sync {
         caller: &Caller,
     ) -> impl Future<Output = Result<Deployed<Self::Container>, Refused<Self::Error>>> + Send;
 
-    /// Read the `/.diverge/DIVERGE.md` of the image `image` names, running
-    /// nothing: see [`ImageInfo`].
+    /// Read the file `file` of the `/.diverge` of the image `image`
+    /// names, running nothing: see [`ImageInfo`]. `file` is one name
+    /// of that directory — `DIVERGE.md`, or a name the document gives
+    /// an icon, which
+    /// [`name_ok`](diverge_sdk::shared::containers::info::name_ok)
+    /// has passed — and never a path. A file larger than
+    /// [`MAX_BYTES`](diverge_sdk::shared::containers::info::MAX_BYTES)
+    /// is answered as too large, and not read.
     ///
     /// The image is found where [`deploy`](Self::deploy) would find it,
     /// less the caller, whom a request with no channel to ask on cannot
@@ -293,5 +299,5 @@ pub trait ContainerDeployer: Send + Sync {
     /// policy lists. The image a deploy of the same image would run is
     /// the image whose file is read. How the file comes out of the image
     /// is the implementation's own; nothing of the image is started.
-    fn read_info(&self, client_identity: &Identity, image: &Image) -> impl Future<Output = Result<ImageInfo, Self::Error>> + Send;
+    fn read_file(&self, client_identity: &Identity, image: &Image, file: &str) -> impl Future<Output = Result<ImageInfo, Self::Error>> + Send;
 }
