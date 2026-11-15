@@ -26,7 +26,8 @@ scope by the response finish.
    as [Container Proxy Endpoints](/container-proxy-endpoints/) provides.
 2. **The server checks the declaration.** The server reads
    `/.diverge/DIVERGE.md` from the container's filesystem. A file
-   that is absent, that is [not a document](/shared/document/#not-a-document),
+   that is absent, that is longer than `1048576` bytes, which the
+   server does not read, that is [not a document](/shared/document/#not-a-document),
    or whose frontmatter does not carry the member `frontend` with the
    value `true`, is answered by exactly one error response and the
    response finish.

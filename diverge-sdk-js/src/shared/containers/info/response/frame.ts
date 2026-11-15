@@ -6,8 +6,8 @@ import { Error } from "../../../error.js";
 import { Document } from "../document.js";
 
 /**
- * The image's document, that it ships none, or why it could not be
- * read. Exactly one is sent on an `info` channel of an `images.read`
+ * The image's document, that it ships none, why it could not be
+ * read, or that it is too large to be. Exactly one is sent on an `info` channel of an `images.read`
  * scope, and the finish follows it.
  */
 export const Frame = z.union([
@@ -17,12 +17,15 @@ export const Frame = z.union([
   z.literal("missing"),
   /** A failure: the file is not a document, or the image could not be read. Tag `2`. */
   z.strictObject({ error: Error }),
+  /** The file is larger than `MAX_BYTES`, 1048576 bytes: measured, and none of it read or answered. Tag `3`. */
+  z.literal("too_large"),
 ]);
 export type Frame = z.infer<typeof Frame>;
 
 const INFO = 0;
 const MISSING = 1;
 const ERROR = 2;
+const TOO_LARGE = 3;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -38,6 +41,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "missing";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
+    case TOO_LARGE:
+      return "too_large";
     default:
       throw new DecodeError("unexpected_tag", tag);
   }

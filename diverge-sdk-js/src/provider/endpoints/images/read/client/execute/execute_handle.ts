@@ -7,6 +7,8 @@ import { OpenError, UnaryError } from "../../../../containers/client/error.js";
 import { unary } from "../../../../containers/client/unary.js";
 import type { Document } from "../../../../../../shared/containers/info/document.js";
 import type { Error as Refusal } from "../../../../../../shared/error.js";
+import * as icon from "../../../../../../shared/containers/icon/response/frame.js";
+import { MAX_BYTES } from "../../../../../../shared/containers/info/limit.js";
 import * as info from "../../../../../../shared/containers/info/response/frame.js";
 import * as blob from "../../../../../../shared/containers/oci/blob/response/frame.js";
 import * as manifest from "../../../../../../shared/containers/oci/manifest/response/frame.js";
@@ -84,7 +86,8 @@ export class ExecuteHandle {
    * The image's `/.diverge/DIVERGE.md`, parsed; `undefined` for an image that
    * ships none. The source reads the file out of the image without
    * running it; a file it cannot read, or that is no document, is the
-   * `refused` error carrying the source's own words.
+   * `refused` error carrying the source's own words, and one larger
+   * than `MAX_BYTES` the `refused` error in this side's, of kind `info`.
    */
   async info(): Promise<Document | undefined> {
     return await unary<Document | undefined, Refusal>(this.#handle, this.scope, channel_request.encode("info"), (payload) => {
@@ -92,10 +95,52 @@ export class ExecuteHandle {
       if (answer === "missing") {
         return { item: undefined };
       }
+      if (answer === "too_large") {
+        return { refusal: { kind: "info", error: `the image's document is larger than ${MAX_BYTES} bytes` } };
+      }
       if ("error" in answer) {
         return { refusal: answer.error };
       }
       return { item: answer.info };
+    });
+  }
+
+  /**
+   * The image's SVG icon, the file its document's `icons.svg` names, as
+   * its bytes; `undefined` for an image that ships none. The source
+   * reads the file out of the image without running it; a document it
+   * cannot read is the `refused` error carrying the source's own
+   * words, and a file larger than `MAX_BYTES` the `refused` error in
+   * this side's, of kind `icon`.
+   */
+  iconSvg(): Promise<Uint8Array | undefined> {
+    return this.#icon("icon_svg");
+  }
+
+  /** The image's 512 by 512 PNG icon, the file its document's `icons.512` names: as `iconSvg`. */
+  icon512(): Promise<Uint8Array | undefined> {
+    return this.#icon("icon_512");
+  }
+
+  /** The image's 64 by 64 PNG icon, the file its document's `icons.64` names: as `iconSvg`. */
+  icon64(): Promise<Uint8Array | undefined> {
+    return this.#icon("icon_64");
+  }
+
+  /** One icon's channel, opened and read. */
+  async #icon(ask: "icon_svg" | "icon_512" | "icon_64"): Promise<Uint8Array | undefined> {
+    return await unary<Uint8Array | undefined, Refusal>(this.#handle, this.scope, channel_request.encode(ask), (payload) => {
+      const answer = icon.decode(payload);
+      if (answer === "missing") {
+        return { item: undefined };
+      }
+      if (answer === "too_large") {
+        return { refusal: { kind: "icon", error: `the icon is larger than ${MAX_BYTES} bytes` } };
+      }
+      if ("error" in answer) {
+        return { refusal: answer.error };
+      }
+      return { item: answer.icon };
     });
   }
 

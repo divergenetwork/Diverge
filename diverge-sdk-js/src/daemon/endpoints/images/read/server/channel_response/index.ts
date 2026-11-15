@@ -4,6 +4,7 @@
 // says this scope's answers live here, and they do. The cancel has no
 // answer.
 
+export * as icon from "./icon.js";
 export * as info from "./info.js";
 export * as oci_blob from "./oci_blob.js";
 export * as oci_manifest from "./oci_manifest.js";

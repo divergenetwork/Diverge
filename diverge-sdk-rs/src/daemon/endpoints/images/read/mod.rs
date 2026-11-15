@@ -10,8 +10,9 @@
 //! daemons the daemon must not ask for it. The first response answers
 //! it. Where the answer is held, the scope stays open, and the caller
 //! asks on channels what a provider's read scope answers: a manifest by
-//! digest, a blob by digest, in pieces, the proof over the image, and
-//! the image's DIVERGE.md, parsed. The channel requests and their
+//! digest, a blob by digest, in pieces, the proof over the image,
+//! the image's DIVERGE.md, parsed, and each of the three icons that
+//! document names. The channel requests and their
 //! answers are those of the provider's scope, byte for byte.
 //!
 //! # The rules

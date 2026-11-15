@@ -18,11 +18,13 @@
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
+mod icon;
 mod info;
 mod locate;
 mod name;
 mod pull;
 
+pub use icon::*;
 pub use info::*;
 pub use locate::*;
 pub use name::*;

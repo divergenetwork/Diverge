@@ -18,6 +18,9 @@ pub enum ParseError {
     Json(serde_json::Error),
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
+    /// A name `icons` gives is not one
+    /// [`name_ok`](super::name_ok) passes.
+    IconName,
 }
 
 impl fmt::Display for ParseError {
@@ -27,6 +30,7 @@ impl fmt::Display for ParseError {
             ParseError::Unterminated => f.write_str("document frontmatter is never closed by a `---` line"),
             ParseError::Json(error) => write!(f, "document frontmatter is not a name and a schema: {error}"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
+            ParseError::IconName => f.write_str("document names an icon by what is no file name beside it"),
         }
     }
 }
@@ -35,7 +39,7 @@ impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ParseError::Json(error) => Some(error),
-            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::NotObject => None,
+            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::NotObject | ParseError::IconName => None,
         }
     }
 }

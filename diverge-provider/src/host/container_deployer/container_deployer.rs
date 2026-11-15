@@ -13,7 +13,7 @@ use futures_util::future;
 use serde_json::json;
 
 use super::deploy::deploy;
-use super::info::read_info;
+use super::info::read_file;
 use crate::protocol::image_info::ImageInfo;
 use super::mounts::tool_path;
 use super::{Container, Error, Images, Shared, name_ok};
@@ -226,8 +226,8 @@ impl container_deployer::ContainerDeployer for ContainerDeployer {
 
     /// The image obtained as a deploy obtains it, less the caller, and
     /// the file copied out of a container made of it and never started.
-    async fn read_info(&self, client_identity: &Identity, image: &Image) -> Result<ImageInfo, Error> {
-        read_info(self, client_identity, image).await
+    async fn read_file(&self, client_identity: &Identity, image: &Image, file: &str) -> Result<ImageInfo, Error> {
+        read_file(self, client_identity, image, file).await
     }
 }
 
