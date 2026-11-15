@@ -101,8 +101,8 @@ through the filter: every value it yields is a line, and `null` or nothing print
 | other | `exec` and `terminal` requests exit with the code of the command they ran. |
 
 **Root resolution.** The CLI finds its root in this order: `--config <dir>`; else the `DIVERGE_CONFIG`
-environment variable; else a `.diverge` directory in the current working directory, if one exists; else
-`~/.diverge`. The daemon, provider and viewer do the same without the working-directory step.
+environment variable; else `~/.diverge`. The daemon, provider and viewer do the same. A `.diverge` folder in
+the working directory is not a root: it is where an image's source keeps its `DIVERGE.md`.
 
 ## Rules that keep you from hurting yourself
 
@@ -113,8 +113,8 @@ environment variable; else a `.diverge` directory in the current working directo
    container it ran; a daemon stop ends every agent's run.
 3. **`--config` goes first**, before the command: `diverge --config <root> daemon start`. It is not accepted
    after the command. `--daemon`, `--account`, `--jq`, `--timeout` belong to `run` and go after it.
-4. **Check which root you are on.** A stray `.diverge/` directory in the working directory silently becomes the
-   root. `diverge cli config get` shows the daemons and accounts the root you are on knows.
+4. **Check which root you are on.** `DIVERGE_CONFIG`, where it is set, silently names the root.
+   `diverge cli config get` shows the daemons and accounts the root you are on knows.
 5. **A `run` needs an account.** With no `--account` and no default account for the daemon in `cli.yaml`, every
    `run` command fails — even `request-schema` — with `no account was named, and the daemon … has no default`.
    Fix `cli.yaml` (skill `diverge-config`).

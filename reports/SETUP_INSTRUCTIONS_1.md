@@ -56,9 +56,8 @@ Read sections 1 and 2 before running anything.
    - `--config <dir>` must come first: `diverge --config "$B" daemon start`. It is not a global flag.
    - `--daemon`, `--account`, `--jq` and `--timeout` belong to `run`: `diverge run --daemon b agents list`.
 3. **Root resolution.**
-   - Servers and diverge-world: `--config`, else `DIVERGE_CONFIG`, else `~/.diverge`.
-   - The CLI checks one more place between those last two: a `./.diverge` directory in the current working
-     directory, if one exists. Don't run the CLI from a directory that contains a stray `.diverge/`.
+   - Every program, the CLI included: `--config`, else `DIVERGE_CONFIG`, else `~/.diverge`. A `.diverge`
+     folder in the working directory is not a root.
 4. **The CLI starts servers from its own directory.** `diverge daemon|provider start` launches the binary in
    the same directory as the running `diverge` executable and passes it `--config <root>`. Root B therefore needs no
    `bin/`: use root A's `diverge` with `--config "$B"`.

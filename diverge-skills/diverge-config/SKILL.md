@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `./.diverge`, `~/.diverge`); to read or change `daemon.yaml`, `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml`, `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -30,8 +30,7 @@ Which directory is the root:
 
 | Program | Order |
 |---|---|
-| The CLI (`diverge`) | `--config <dir>`, else `DIVERGE_CONFIG`, else `./.diverge` **if that directory exists**, else `~/.diverge` |
-| Daemon, provider, viewer | `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge` |
+| The CLI, daemon, provider, viewer | `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge` |
 
 - The root is created if it does not exist. A mistyped `--config` path silently makes an empty root with default
   documents.
@@ -423,7 +422,7 @@ then restart the provider. (Volumes themselves: skill `diverge-storage`.)
 | `the jq program: …` | The filter does not parse, or failed on a missing member | Default absent members with `//` |
 | `` `…yaml` could not be read: … `` | The file on disk does not parse as its type (hand edit) | Fix the file by hand; `config set` cannot run on it |
 | A provider record stays `disconnected` | Daemon's identity missing from `provider.yaml` `incoming`; no `identity` in `daemon.yaml` or `provider.yaml`, or it is not signed in; the provider's `identity` is not the one the record names; provider down | Fix, restart the provider; the daemon redials by itself |
-| Wrong documents are being read | A `./.diverge` in the working directory, or `DIVERGE_CONFIG` set | `--config <root>` explicitly |
+| Wrong documents are being read | `DIVERGE_CONFIG` set | `--config <root>` explicitly |
 
 ## Not verified
 
