@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use clap::{ArgGroup, Args};
 use diverge_sdk::daemon::endpoints::images::read::{client::execute, client::request, server::response};
 use diverge_sdk::provider::endpoints::containers::client::UnaryError;
+use diverge_sdk::shared::containers::icon;
 use diverge_sdk::shared::containers::info::Document;
 use diverge_sdk::shared::containers::oci;
 use futures_util::StreamExt as _;
@@ -20,7 +21,7 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 /// can.
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 #[command(subcommand_negates_reqs = true, args_conflicts_with_subcommands = true)]
-#[command(group(ArgGroup::new("ask").args(["info", "manifest", "blob", "prove_nonce"]).multiple(false)))]
+#[command(group(ArgGroup::new("ask").args(["info", "icon", "manifest", "blob", "prove_nonce"]).multiple(false)))]
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the image, and the remote daemons not to
@@ -31,6 +32,11 @@ pub struct Arguments {
     /// schema of its arguments, what it says of itself, and its body.
     #[arg(long)]
     pub info: bool,
+    /// Once held, one of the image's icons, written to `--out`: `svg`,
+    /// `512` or `64`, the member of its DIVERGE.md's `icons` that names
+    /// the file.
+    #[arg(long, value_name = "ICON", value_enum, requires = "out")]
+    pub icon: Option<Icon>,
     /// Once held, the manifest under this digest the image reaches,
     /// printed with its media type.
     #[arg(long, value_name = "DIGEST")]
@@ -39,8 +45,9 @@ pub struct Arguments {
     /// to `--out`.
     #[arg(long, value_name = "DIGEST", requires = "out")]
     pub blob: Option<String>,
-    /// The file `--blob`'s bytes are written to, truncated first.
-    #[arg(long, value_name = "PATH", requires = "blob")]
+    /// The file `--blob`'s or `--icon`'s bytes are written to, truncated
+    /// first.
+    #[arg(long, value_name = "PATH")]
     pub out: Option<PathBuf>,
     /// Once held, the proof over the image under this nonce — 64
     /// hexadecimal characters — printed as 64 lowercase hexadecimal
@@ -59,10 +66,25 @@ pub struct Arguments {
     pub below: Option<Below>,
 }
 
+/// Which of an image's three icons: the member of its document's
+/// `icons` that names the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Icon {
+    /// The SVG icon.
+    #[value(name = "svg")]
+    Svg,
+    /// The 512 by 512 PNG icon.
+    #[value(name = "512")]
+    Png512,
+    /// The 64 by 64 PNG icon.
+    #[value(name = "64")]
+    Png64,
+}
+
 /// What the leaf prints, one line each: the daemon's answer first, and
 /// — when it is `held` and an ask was given — the ask's answer.
 /// Untagged, so the line is the one or the other as it is: `"held"`,
-/// `{"error":…}`, `{"info":…}`, `"missing"`, `{"media_type":…,"body":…}`,
+/// `{"error":…}`, `{"info":…}`, `"missing"`, `"too_large"`, `{"media_type":…,"body":…}`,
 /// `{"path":…,"bytes":N}`, `{"proof":…}`, `"not_held"`.
 #[derive(Debug, Clone, PartialEq, Serialize, schemars::JsonSchema)]
 #[serde(untagged)]
@@ -74,7 +96,8 @@ pub enum Line {
         /// The document.
         info: Document,
     },
-    /// The image ships no DIVERGE.md: see [`Shipped`].
+    /// The image ships no DIVERGE.md, or no such icon, or the icon is
+    /// too large: see [`Shipped`].
     Shipped(Shipped),
     /// The manifest asked for.
     Manifest {
@@ -84,7 +107,7 @@ pub enum Line {
         /// not UTF-8 is replaced.
         body: String,
     },
-    /// The blob asked for, written.
+    /// The blob or the icon asked for, written.
     Written {
         /// The file it was written to.
         path: PathBuf,
@@ -100,13 +123,17 @@ pub enum Line {
     Missing(Missing),
 }
 
-/// What an image that ships no DIVERGE.md is answered with: a fact
-/// about the image, and not a failure.
+/// What an image that ships no DIVERGE.md, or not the icon asked for,
+/// is answered with — a fact about the image, and not a failure — and
+/// what an icon over the limit is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Shipped {
     /// The image ships none.
     Missing,
+    /// The icon's file is larger than 1048576 bytes; none of it was
+    /// sent.
+    TooLarge,
 }
 
 /// An ask the source did not answer: a digest the image does not reach,
@@ -162,6 +189,28 @@ async fn ask(held: &execute::ExecuteHandle, arguments: Arguments) -> Result<Opti
             Ok(None) => Line::Shipped(Shipped::Missing),
             Err(UnaryError::Refused(error)) => Line::Answer(response::Frame::Error(error)),
             Err(error) => return Err(Error::Exchange(error.to_string())),
+        }));
+    }
+    if let (Some(icon), Some(path)) = (arguments.icon, arguments.out.clone()) {
+        let answered = match icon {
+            Icon::Svg => held.icon_svg().await,
+            Icon::Png512 => held.icon_512().await,
+            Icon::Png64 => held.icon_64().await,
+        };
+        return Ok(Some(match answered.map_err(|error| Error::Exchange(error.to_string()))? {
+            icon::response::Frame::Icon(bytes) => {
+                tokio::fs::write(&path, &bytes).await.map_err(|source| Error::Io {
+                    path: path.clone(),
+                    source,
+                })?;
+                Line::Written {
+                    path,
+                    bytes: bytes.len() as u64,
+                }
+            }
+            icon::response::Frame::Missing => Line::Shipped(Shipped::Missing),
+            icon::response::Frame::TooLarge => Line::Shipped(Shipped::TooLarge),
+            icon::response::Frame::Error(error) => Line::Answer(response::Frame::Error(error)),
         }));
     }
     if let Some(digest) = arguments.manifest {

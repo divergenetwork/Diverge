@@ -28,7 +28,8 @@ pub enum Images {
     Push(push::Arguments),
     /// Whether the daemon can supply an image, through a provider or a
     /// remote daemon its grants reach, and, where it can, one ask of
-    /// it: its DIVERGE.md, a manifest, a blob, or the proof.
+    /// it: its DIVERGE.md, one of its icons, a manifest, a blob, or the
+    /// proof.
     Read(read::Arguments),
 }
 
