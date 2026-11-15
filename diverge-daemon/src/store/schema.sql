@@ -363,9 +363,9 @@ CREATE TABLE IF NOT EXISTS diverge.image_info (
 );
 
 -- The icons the daemon has read of an image, by digest and by which of
--- the three: `icon` is the member of the document's `icons` that names
--- it, 'svg', '512' or '64', and `bytes` the file, at most 1048576
--- bytes. Only an icon is recorded: an image that ships none, one too
+-- the three: `icon` is 'svg', '512' or '64', for the image's icon.svg,
+-- icon-512.png or icon-64.png, and `bytes` the file, at most 1048576
+-- bytes and a valid image of its kind. Only an icon is recorded: an image that ships none, one too
 -- large, and a failure have no row.
 CREATE TABLE IF NOT EXISTS diverge.image_icons (
     digest TEXT NOT NULL,

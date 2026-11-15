@@ -33,8 +33,8 @@ pub struct Arguments {
     #[arg(long)]
     pub info: bool,
     /// Once held, one of the image's icons, written to `--out`: `svg`,
-    /// `512` or `64`, the member of its DIVERGE.md's `icons` that names
-    /// the file.
+    /// `512` or `64`, for its `/.diverge/icon.svg`, `icon-512.png` or
+    /// `icon-64.png`.
     #[arg(long, value_name = "ICON", value_enum, requires = "out")]
     pub icon: Option<Icon>,
     /// Once held, the manifest under this digest the image reaches,
@@ -66,8 +66,7 @@ pub struct Arguments {
     pub below: Option<Below>,
 }
 
-/// Which of an image's three icons: the member of its document's
-/// `icons` that names the file.
+/// Which of an image's three icons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Icon {
     /// The SVG icon.
