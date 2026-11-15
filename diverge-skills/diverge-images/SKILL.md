@@ -224,8 +224,7 @@ what `arguments` an image accepts without knowing the image.
   "type": "tool",
   "name": "chat",
   "schema": { "type": "object", "additionalProperties": false, "description": "…" },
-  "frontend": true,
-  "icons": { "svg": "icon.svg", "512": "icon-512.png", "64": "icon-64.png" }
+  "frontend": true
 }
 ---
 # Chat
@@ -243,7 +242,7 @@ The parse rules, in the order they are checked:
 4. It has **`type`, required: `"agent"` or `"tool"`**. Missing, or anything else, is an error. The type
    decides which members are allowed.
 5. Both types: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false`
-   when absent), `icons` (object, optional). An agent's also: `chat` and `structured_decisions` (each
+   when absent). An agent's also: `chat` and `structured_decisions` (each
    `false` or an object, never `true`; optional, `false` when absent). **A tool's must not have `chat`
    or `structured_decisions` at all, not even as `false`.** A missing member, **any member that is not
    one of its type's**, or a wrong type is an error.
@@ -251,9 +250,9 @@ The parse rules, in the order they are checked:
    whole template.
 7. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
    `false`, both absent, or one `false` and one absent, is an error.
-8. Every name in `icons` is a plain file name: 1 to 255 bytes of ASCII letters, digits, `.`, `-`, `_`,
-   not starting with `.`, and not `DIVERGE.md`. Anything else is an error.
-9. The body is everything after the closing fence, verbatim.
+8. The body is everything after the closing fence, verbatim.
+
+There is no `icons` member: an `icons` in the frontmatter is an unknown member, and an error.
 
 An image whose document breaks a rule has no document as far as a provider is concerned: `--info`
 answers `{"error":…}`, and the daemon refuses to create an agent or a tool from it. The daemon also
@@ -274,12 +273,17 @@ What each member means:
   `templates create`.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
   commands in `diverge-agents` / `diverge-tools`).
-- `icons` — the icons the image ships, each the name of a file in the same `.diverge` folder. Members,
-  all optional and no others: `svg` (an SVG), `512` (a 512×512 PNG), `64` (a 64×64 PNG). Nothing checks
-  that a file is what its member says. A provider answers each on its own channel of an `images::read`
-  scope (`icon_svg`, `icon_512`, `icon_64`), and so does the daemon, which keeps each icon it has read
-  by digest as it keeps the document. `diverge run images read '<body>' --icon svg|512|64 --out <path>`
-  writes one to a file and prints `{"path":…,"bytes":N}`, or `"missing"`, `"too_large"` or `{"error":…}`.
+- **Icons are files, not members.** An image ships up to three, each optional, each by a fixed name in the
+  same `.diverge` folder: `icon.svg` (an SVG), `icon-512.png` (a PNG of exactly 512×512), `icon-64.png`
+  (a PNG of exactly 64×64). The file being there is the whole declaration. A provider answers each on
+  its own channel of an `images::read` scope (`icon_svg`, `icon_512`, `icon_64`), and so does the daemon,
+  which keeps each icon it has read by digest as it keeps the document.
+  `diverge run images read '<body>' --icon svg|512|64 --out <path>` writes one to a file and prints
+  `{"path":…,"bytes":N}`, or `"missing"`, `"too_large"` or `{"error":…}`.
+- **An icon is checked before it is answered.** A PNG must decode and be exactly its name's size. An
+  SVG must be UTF-8, well-formed XML with no `<!DOCTYPE`, with `svg` in the SVG namespace as its
+  outermost element, no `script` element, and no attribute whose name begins with `on`. A file that
+  fails is answered `{"error":{"kind":"icon",…}}`, never its bytes.
 - `chat` — an agent's image only. `false`, or `{"prompt_modalities": {"image": …, "audio": …, "file": …}}`:
   what a message to the agent may carry beside text, all three booleans required. Text is always
   taken and is not listed. `file` is an embedded resource that is neither an image nor audio.
