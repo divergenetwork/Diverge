@@ -1,7 +1,7 @@
 //! What the SVG icon's channel answers.
 
-/// The scope's image's SVG icon — the file its document's
-/// `icons.svg` names — as its bytes; that the image ships none;
+/// The scope's image's SVG icon — its `/.diverge/icon.svg` —
+/// as its bytes; that the image ships none;
 /// an error; or that the file is too large. See
 /// [`icon::response::Frame`](crate::shared::containers::icon::response::Frame).
 ///

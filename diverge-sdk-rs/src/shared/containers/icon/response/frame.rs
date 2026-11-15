@@ -17,28 +17,25 @@ use crate::wire::encode::{Encode, Writer};
 /// ```text
 /// [0][the file's bytes …]   the icon: every byte of the file, and no other
 /// [1]                       the image ships no such icon
-/// [2][error JSON …]         the icon could not be read, and why
+/// [2][error JSON …]         the file is not a valid icon, or could not be read, and why
 /// [3]                       the file is larger than 1048576 bytes
 /// ```
 ///
 /// # How it is decided
 ///
-/// The provider reads the image's document first, as an info channel
-/// does, and then the file the document names. In order:
+/// The provider reads the icon's file, `/.diverge/` followed by its
+/// fixed name ([`Which::file`](crate::shared::containers::icon::Which::file)),
+/// out of the image, and no other file. In order:
 ///
-/// 1. The image ships no document: [`Missing`](Self::Missing).
-/// 2. The document is larger than
-///    [`MAX_BYTES`](crate::shared::containers::info::MAX_BYTES), is
-///    not UTF-8, or breaks a rule of
-///    [`Document::parse`](crate::shared::containers::info::Document::parse):
-///    [`Error`](Self::Error).
-/// 3. The document's `icons` has no member for this channel's icon:
-///    `Missing`.
-/// 4. The file the member names is not in the image's `/.diverge`, or
-///    is not a regular file: `Missing`.
-/// 5. The file is larger than `MAX_BYTES`:
+/// 1. The image's `/.diverge` holds no file of that name, or what is
+///    there is not a regular file: [`Missing`](Self::Missing).
+/// 2. The file is larger than
+///    [`MAX_BYTES`](crate::shared::containers::info::MAX_BYTES):
 ///    [`TooLarge`](Self::TooLarge).
-/// 6. Otherwise [`Icon`](Self::Icon), the file's bytes.
+/// 3. The file is not the icon its name says, as
+///    [`Which::validate`](crate::shared::containers::icon::Which::validate)
+///    judges it: [`Error`](Self::Error), of kind `icon`, saying why.
+/// 4. Otherwise [`Icon`](Self::Icon), the file's bytes.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
     /// The icon. Tag `0`.
@@ -46,20 +43,18 @@ pub enum Frame {
     /// Everything after the tag is the file, byte for byte as the
     /// image holds it: no length before it, no encoding over it, and
     /// nothing after it. It is at most `1048576` bytes, and may be
-    /// none at all, for a file that is empty. The provider has not
-    /// read it: whether it is the kind of image its member says is
-    /// the reader's to find out.
+    /// a valid image of the kind and the size its name says, which
+    /// the provider has checked.
     Icon(Vec<u8>),
     /// The image ships no such icon. Tag `1`.
     ///
     /// Bare: there is nothing to carry. A fact about the image and
-    /// not a failure: it ships no document, its document names no
-    /// such icon, or the file named is not there.
+    /// not a failure: the file is not there.
     Missing,
     /// A failure. Tag `2`.
     ///
-    /// The document is there and is not one, or is too large to be
-    /// read, or the image could not be read. See
+    /// The file is there and is not the icon its name says — the
+    /// error's `kind` is `icon` — or the image could not be read. See
     /// [`shared::error::Error`](crate::shared::error::Error) for why
     /// it says so little.
     Error(Error),

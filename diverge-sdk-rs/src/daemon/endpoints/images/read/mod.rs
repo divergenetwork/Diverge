@@ -11,8 +11,7 @@
 //! it. Where the answer is held, the scope stays open, and the caller
 //! asks on channels what a provider's read scope answers: a manifest by
 //! digest, a blob by digest, in pieces, the proof over the image,
-//! the image's DIVERGE.md, parsed, and each of the three icons that
-//! document names. The channel requests and their
+//! the image's DIVERGE.md, parsed, and each of its three icons. The channel requests and their
 //! answers are those of the provider's scope, byte for byte.
 //!
 //! # The rules

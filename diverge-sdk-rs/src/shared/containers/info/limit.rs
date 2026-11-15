@@ -4,8 +4,7 @@
 /// `1048576`, which is 2 to the power 20. It bounds the file as the
 /// image holds it — its length in bytes, before anything is parsed,
 /// decoded or decompressed — and it bounds each file by itself: the
-/// document, `/.diverge/DIVERGE.md`, and each icon the document
-/// names.
+/// document, `/.diverge/DIVERGE.md`, and each of the three icons.
 ///
 /// The rules:
 ///

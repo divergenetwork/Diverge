@@ -10,8 +10,8 @@ use crate::wire::encode::{Encode, Writer};
 /// answered held: three of the asks of
 /// [`oci`](crate::shared::containers::oci) — the same request bodies
 /// and the same answers as on a run, each over the scope's image —
-/// the cancel that ends the scope, the image's own document, and the
-/// three icons the document may name.
+/// the cancel that ends the scope, the image's own document, and its
+/// three icons.
 ///
 /// | tag | asks for |
 /// |-----|----------|
@@ -63,22 +63,23 @@ pub enum Frame {
     /// image without running it. See
     /// [`info`](crate::shared::containers::info).
     Info,
-    /// The scope's image's SVG icon: the file its document's
-    /// `icons.svg` names. Tag `5`.
+    /// The scope's image's SVG icon: its `/.diverge/icon.svg`. Tag
+    /// `5`.
     ///
     /// Carries nothing — the variant is bare. Answered with exactly
     /// one frame, then the finish: the file's bytes, that the image
-    /// ships no such icon, an error, or that the file is too large.
+    /// ships no such icon, an error — the file is no valid SVG image
+    /// among them — or that the file is too large.
     /// See [`icon`](crate::shared::containers::icon).
     IconSvg,
-    /// The scope's image's 512 by 512 PNG icon: the file its
-    /// document's `icons.512` names. Tag `6`.
+    /// The scope's image's 512 by 512 PNG icon: its
+    /// `/.diverge/icon-512.png`. Tag `6`.
     ///
     /// Carries nothing, and is answered as [`IconSvg`](Self::IconSvg)
     /// is.
     Icon512,
-    /// The scope's image's 64 by 64 PNG icon: the file its document's
-    /// `icons.64` names. Tag `7`.
+    /// The scope's image's 64 by 64 PNG icon: its
+    /// `/.diverge/icon-64.png`. Tag `7`.
     ///
     /// Carries nothing, and is answered as [`IconSvg`](Self::IconSvg)
     /// is.

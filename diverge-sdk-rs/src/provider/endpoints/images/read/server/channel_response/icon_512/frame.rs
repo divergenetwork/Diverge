@@ -1,7 +1,7 @@
 //! What the 512 by 512 PNG icon's channel answers.
 
-/// The scope's image's 512 by 512 PNG icon — the file its document's
-/// `icons.512` names — as its bytes; that the image ships none;
+/// The scope's image's 512 by 512 PNG icon — its `/.diverge/icon-512.png` —
+/// as its bytes; that the image ships none;
 /// an error; or that the file is too large. See
 /// [`icon::response::Frame`](crate::shared::containers::icon::response::Frame).
 ///

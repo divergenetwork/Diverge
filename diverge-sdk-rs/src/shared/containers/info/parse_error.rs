@@ -25,9 +25,6 @@ pub enum ParseError {
     Neither,
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
-    /// A name `icons` gives is not one
-    /// [`name_ok`](super::name_ok) passes.
-    IconName,
 }
 
 impl fmt::Display for ParseError {
@@ -39,7 +36,6 @@ impl fmt::Display for ParseError {
             ParseError::Type => f.write_str("document frontmatter does not say its type, `agent` or `tool`"),
             ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
-            ParseError::IconName => f.write_str("document names an icon by what is no file name beside it"),
         }
     }
 }
@@ -48,7 +44,7 @@ impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ParseError::Json(error) => Some(error),
-            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Neither | ParseError::NotObject | ParseError::IconName => None,
+            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Neither | ParseError::NotObject => None,
         }
     }
 }

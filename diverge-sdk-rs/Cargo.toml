@@ -26,6 +26,11 @@ identities = ["dep:percent-encoding", "dep:dashmap", "dep:jsonwebtoken"]
 tauri-proxy = ["dep:tauri", "identities"]
 
 [dependencies]
+# An icon's PNG decoded, to know it is one and of the size its name
+# says.
+png = "0.17"
+# An icon's SVG parsed, to know it is one.
+roxmltree = "0.20"
 # The incoming socket: axum's WebSocket, `ws` alone — enough to name
 # the type a provider hands over after its own upgrade, not to serve.
 axum = { version = "0.8.9", default-features = false, features = ["ws"] }

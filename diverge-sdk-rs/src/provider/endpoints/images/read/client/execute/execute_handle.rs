@@ -118,8 +118,8 @@ impl ExecuteHandle {
         unary::<InfoFrame>(&self.handle, self.scope, &payload).await
     }
 
-    /// The scope's image's SVG icon, the file its document's
-    /// `icons.svg` names: the answer whole — the file's bytes, that the
+    /// The scope's image's SVG icon, its `/.diverge/icon.svg`: the
+    /// answer whole — the file's bytes, that the
     /// image ships none, an error, or that the file is larger than
     /// [`MAX_BYTES`](info::MAX_BYTES). The provider reads the file out
     /// of the image without running it.
@@ -127,14 +127,14 @@ impl ExecuteHandle {
         self.icon(channel_request::Frame::IconSvg).await
     }
 
-    /// The scope's image's 512 by 512 PNG icon, the file its
-    /// document's `icons.512` names: as [`icon_svg`](Self::icon_svg).
+    /// The scope's image's 512 by 512 PNG icon, its
+    /// `/.diverge/icon-512.png`: as [`icon_svg`](Self::icon_svg).
     pub async fn icon_512(&self) -> Result<icon::response::Frame, UnaryError<Icon>> {
         self.icon(channel_request::Frame::Icon512).await
     }
 
-    /// The scope's image's 64 by 64 PNG icon, the file its document's
-    /// `icons.64` names: as [`icon_svg`](Self::icon_svg).
+    /// The scope's image's 64 by 64 PNG icon, its
+    /// `/.diverge/icon-64.png`: as [`icon_svg`](Self::icon_svg).
     pub async fn icon_64(&self) -> Result<icon::response::Frame, UnaryError<Icon>> {
         self.icon(channel_request::Frame::Icon64).await
     }

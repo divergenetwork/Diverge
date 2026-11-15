@@ -3,8 +3,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::Icons;
-
 /// The document of an image whose program is a tool: its `type` is
 /// `tool`. It has no `chat` and no `structured_decisions`: those are
 /// an agent's, and a tool's frontmatter that states either, whatever
@@ -30,10 +28,6 @@ pub struct Tool {
     /// where the frontmatter says so. Absent, `false`.
     #[serde(default, skip_serializing_if = "is_false")]
     pub frontend: bool,
-    /// The icons the image ships, each the name of a file beside the
-    /// document: see [`Icons`]. Absent, none.
-    #[serde(default, skip_serializing_if = "Icons::is_empty")]
-    pub icons: Icons,
     /// Everything after the closing `---` line, verbatim: leading
     /// blank lines, trailing newline and all.
     pub body: String,

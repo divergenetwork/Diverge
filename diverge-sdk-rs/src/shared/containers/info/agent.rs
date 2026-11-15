@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Chat, FalseOr, Icons, StructuredDecisions};
+use super::{Chat, FalseOr, StructuredDecisions};
 
 /// The document of an image whose program is an agent: its `type` is
 /// `agent`. What a tool's has, and how the agent's program chats and
@@ -33,10 +33,6 @@ pub struct Agent {
     /// where the frontmatter says so. Absent, `false`.
     #[serde(default, skip_serializing_if = "is_false")]
     pub frontend: bool,
-    /// The icons the image ships, each the name of a file beside the
-    /// document: see [`Icons`]. Absent, none.
-    #[serde(default, skip_serializing_if = "Icons::is_empty")]
-    pub icons: Icons,
     /// Whether the program chats — takes a message and answers it —
     /// and how: `false`, or a [`Chat`]. Never `true`. Absent, `false`.
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]

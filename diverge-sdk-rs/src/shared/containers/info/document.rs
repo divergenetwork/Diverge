@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::{Agent, Chat, FalseOr, Icons, ParseError, StructuredDecisions, Tool, name_ok};
+use super::{Agent, Chat, FalseOr, ParseError, StructuredDecisions, Tool};
 
 /// `/.diverge/DIVERGE.md`, parsed: an agent's image's document or a
 /// tool's, told apart by the member `type`, which is `agent` or
@@ -12,9 +12,8 @@ use super::{Agent, Chat, FalseOr, Icons, ParseError, StructuredDecisions, Tool, 
 /// The frontmatter is one JSON object — raw JSON, which is YAML's flow
 /// style and so reads as a frontmatter anywhere one is expected. Its
 /// member `type` says which of the two it is, and what else it may
-/// hold follows from that: both have `name` and `schema`, `frontend`
-/// where the program serves one and `icons` where the image ships
-/// any; an agent's has `chat` and `structured_decisions` besides, at
+/// hold follows from that: both have `name` and `schema`, and
+/// `frontend` where the program serves one; an agent's has `chat` and `structured_decisions` besides, at
 /// least one of them an object; a tool's has neither. No frontmatter
 /// has a member that is none of its type's. The body is the image's
 /// prose: what it runs and the secrets it declares, kept as the author
@@ -49,8 +48,6 @@ struct AgentFrontmatter {
     schema: Value,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
-    #[serde(default, skip_serializing_if = "Icons::is_empty")]
-    icons: Icons,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
     chat: FalseOr<Chat>,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -66,8 +63,6 @@ struct ToolFrontmatter {
     schema: Value,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
-    #[serde(default, skip_serializing_if = "Icons::is_empty")]
-    icons: Icons,
 }
 
 /// A frontmatter as it is written out: `type` first, then its
@@ -110,9 +105,7 @@ impl Document {
     ///    [`ParseError::Type`].
     /// 5. The object's other members are exactly its type's. Both
     ///    types have `name`, a string, and `schema`, each required;
-    ///    and perhaps `frontend`, a boolean, `false` when absent; and
-    ///    perhaps `icons`, an object of the members `svg`, `512` and
-    ///    `64`, each a string and each optional, and no other. An
+    ///    and perhaps `frontend`, a boolean, `false` when absent. An
     ///    agent's has, besides, perhaps `chat` and perhaps
     ///    `structured_decisions`, each `false` or an object as
     ///    [`FalseOr`] reads one, `false` when absent. A tool's has
@@ -127,9 +120,7 @@ impl Document {
     ///    `structured_decisions` is an object. Both `false`, both
     ///    absent, or one `false` and the other absent, is
     ///    [`ParseError::Neither`].
-    /// 8. Every name `icons` gives is one [`name_ok`] passes; any other
-    ///    is [`ParseError::IconName`].
-    /// 9. The body is everything after the closing line, as the author
+    /// 8. The body is everything after the closing line, as the author
     ///    left it: nothing is trimmed, and a document whose closing
     ///    line is its last has an empty body.
     ///
@@ -154,7 +145,7 @@ impl Document {
         }
     }
 
-    /// Rules 3 to 8 of [`parse`](Self::parse), over the frontmatter's
+    /// Rules 3 to 7 of [`parse`](Self::parse), over the frontmatter's
     /// text, with the body it closes over.
     fn of(frontmatter: &str, body: String) -> Result<Document, ParseError> {
         // Rule 3.
@@ -164,10 +155,10 @@ impl Document {
             Some(Value::String(kind)) => kind,
             _ => return Err(ParseError::Type),
         };
-        // Rules 5 to 8.
-        let document = match kind.as_str() {
+        // Rules 5 to 7.
+        Ok(match kind.as_str() {
             "agent" => {
-                let AgentFrontmatter { name, schema, frontend, icons, chat, structured_decisions } =
+                let AgentFrontmatter { name, schema, frontend, chat, structured_decisions } =
                     serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
                 if !schema.is_object() {
                     return Err(ParseError::NotObject);
@@ -175,26 +166,22 @@ impl Document {
                 if chat.is_false() && structured_decisions.is_false() {
                     return Err(ParseError::Neither);
                 }
-                Document::Agent(Agent { name, schema, frontend, icons, chat, structured_decisions, body })
+                Document::Agent(Agent { name, schema, frontend, chat, structured_decisions, body })
             }
             "tool" => {
-                let ToolFrontmatter { name, schema, frontend, icons } = serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
+                let ToolFrontmatter { name, schema, frontend } = serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
                 if !schema.is_object() {
                     return Err(ParseError::NotObject);
                 }
-                Document::Tool(Tool { name, schema, frontend, icons, body })
+                Document::Tool(Tool { name, schema, frontend, body })
             }
             _ => return Err(ParseError::Type),
-        };
-        if !document.icons().names().all(name_ok) {
-            return Err(ParseError::IconName);
-        }
-        Ok(document)
+        })
     }
 
     /// Write the document back as its text: `---`, the frontmatter —
     /// `type` first, then the name, the schema, `frontend` when it is
-    /// `true`, `icons` when it names any, and, in an agent's, `chat`
+    /// `true`, and, in an agent's, `chat`
     /// and `structured_decisions` when they are not `false` —
     /// pretty-printed, `---`, and the body, each fence on a line of its
     /// own. One shape is written and read: the assembler that makes an
@@ -213,7 +200,6 @@ impl Document {
                 name: agent.name.clone(),
                 schema: agent.schema.clone(),
                 frontend: agent.frontend,
-                icons: agent.icons.clone(),
                 chat: agent.chat,
                 structured_decisions: agent.structured_decisions,
             }),
@@ -221,7 +207,6 @@ impl Document {
                 name: tool.name.clone(),
                 schema: tool.schema.clone(),
                 frontend: tool.frontend,
-                icons: tool.icons.clone(),
             }),
         };
         let frontmatter = serde_json::to_string_pretty(&frontmatter)?;
@@ -249,14 +234,6 @@ impl Document {
         match self {
             Document::Agent(agent) => agent.frontend,
             Document::Tool(tool) => tool.frontend,
-        }
-    }
-
-    /// The icons the image ships, whichever type it is.
-    pub fn icons(&self) -> &Icons {
-        match self {
-            Document::Agent(agent) => &agent.icons,
-            Document::Tool(tool) => &tool.icons,
         }
     }
 

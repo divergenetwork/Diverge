@@ -1,7 +1,7 @@
 //! What a server's response frame carries on the 64 by 64 PNG icon's channel.
 
-/// The scope's image's 64 by 64 PNG icon — the file its document's
-/// `icons.64` names — as its bytes; that the image ships none;
+/// The scope's image's 64 by 64 PNG icon — its `/.diverge/icon-64.png` —
+/// as its bytes; that the image ships none;
 /// an error; or that the file is too large. See
 /// [`icon::response::Frame`](crate::shared::containers::icon::response::Frame).
 ///

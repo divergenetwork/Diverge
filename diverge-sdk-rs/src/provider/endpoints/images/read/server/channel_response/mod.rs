@@ -4,7 +4,7 @@
 //! [`oci_manifest`] and [`oci_blob`] hand over the manifests and
 //! blobs the scope's image reaches; [`oci_prove`] the proof over it;
 //! [`info`] the image's `/.diverge/DIVERGE.md`; [`icon_svg`],
-//! [`icon_512`] and [`icon_64`] the icons that document names. The
+//! [`icon_512`] and [`icon_64`] the image's three icons. The
 //! cancel has no answer:
 //! nothing is sent on its channel.
 
