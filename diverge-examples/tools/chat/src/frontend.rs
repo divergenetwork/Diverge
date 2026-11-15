@@ -9,7 +9,7 @@
 //!    daemon stamped it on the `diverge.network` header: the account and
 //!    the scope.
 //! 3. `GET /frontend/api/agents` is every agent attached to the chat,
-//!    with its image's name and `/DIVERGE.md`.
+//!    with its image's name and `/.diverge/DIVERGE.md`.
 //! 4. `GET /frontend/ws?template=…&index=…` is the conversation with that
 //!    agent, live: on opening, the whole history, oldest first; then
 //!    every message written to it, the person's and the agent's, as it

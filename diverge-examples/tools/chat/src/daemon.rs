@@ -24,7 +24,7 @@ use crate::failure::Failure;
 pub const NOTIFICATION: &str = "<chat>\nYou have a new message\n</chat>";
 
 /// An attached agent, as the page shows it: who it is, and its image —
-/// the image's name and its `/DIVERGE.md`, where the image ships one.
+/// the image's name and its `/.diverge/DIVERGE.md`, where the image ships one.
 #[derive(Debug, Clone, Serialize)]
 pub struct Shown {
     /// The agent's template, by id.
@@ -36,7 +36,7 @@ pub struct Shown {
     pub name: Option<String>,
     /// The image's digest.
     pub digest: String,
-    /// The image's `/DIVERGE.md`, or `None` for an image that ships
+    /// The image's `/.diverge/DIVERGE.md`, or `None` for an image that ships
     /// none, or one that could not be read.
     pub document: Option<Document>,
 }
@@ -121,7 +121,7 @@ impl Daemon {
         }
     }
 
-    /// An image's `/DIVERGE.md`, asked once per digest and kept; `None`
+    /// An image's `/.diverge/DIVERGE.md`, asked once per digest and kept; `None`
     /// for an image that ships none or could not be read, which is kept
     /// only when the image ships none.
     async fn document(&self, handle: &Handle, image: &Image) -> Option<Document> {

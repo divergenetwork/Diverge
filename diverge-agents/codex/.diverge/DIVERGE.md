@@ -1,169 +1,48 @@
 ---
 {
-  "name": "openrouter",
+  "name": "codex",
   "chat": {
     "prompt_modalities": {
       "image": true,
-      "audio": true,
-      "file": true
+      "audio": false,
+      "file": false
     }
   },
   "structured_decisions": false,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Agent",
-    "description": "An agent running against OpenRouter.\n\nThe widest parameter set of any upstream, because OpenRouter fronts\nmany providers and exposes what each of them accepts.\n\n# Secrets\n\nOne, whatever the arguments: [`API_KEY`], `fixed` â€” read at every\nactivation and never changed by the loop. The template this\nagent is made from must declare that name, or the registration\nis refused by the provider; the value reaches the loop through\nthe proxy's feed, never through the arguments.",
+    "description": "An agent running against Codex.\n\nFew knobs, and not because anything is missing: Codex decides its\nown sampling, its own tools and its own loop, and what it exposes\nto a caller is the model, how hard it reasons and how it speaks,\nwhether it may search the web, where it sends its requests, and\nhow it logs in â€” the method only, never the credential, which is\nthe one secret the method declares (see [`Auth`]). Each field is\none config key or flag, named in its doc; every `Option` absent\nleaves that key unset, so Codex applies its own default for the\nmodel â€” except [`web_search`](Self::web_search), where absent is\noff, because nothing is on by omission.",
     "type": "object",
     "properties": {
       "model": {
-        "description": "The model to route to, in OpenRouter's `vendor/name` form.",
+        "description": "The model to run: `model` (`--model`), in the endpoint's own\nnaming.",
         "type": "string"
       },
-      "system_prompt": {
-        "description": "The system prompt's text, sent as the conversation's leading\nmessage.",
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "top_logprobs": {
-        "description": "How many alternatives to report per token. Absent means report\nno log probabilities at all.",
-        "type": [
-          "integer",
-          "null"
-        ],
-        "format": "uint64",
-        "minimum": 0
-      },
-      "frequency_penalty": {
-        "description": "Penalise tokens by how often they have appeared.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "logit_bias": {
-        "description": "Per-token additive bias on the logits, keyed by token id.\n\nAn `IndexMap` rather than a `HashMap`: insertion order is\npreserved, so the same bias set serializes identically every\ntime instead of shuffling between runs.",
-        "type": [
-          "object",
-          "null"
-        ],
-        "additionalProperties": {
-          "type": "integer",
-          "format": "int64"
-        }
-      },
-      "max_completion_tokens": {
-        "description": "Cap on generated tokens, counting reasoning tokens.",
-        "type": [
-          "integer",
-          "null"
-        ],
-        "format": "uint64",
-        "minimum": 0
-      },
-      "presence_penalty": {
-        "description": "Penalise tokens for having appeared at all, regardless of count.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "stop": {
-        "description": "Sequences that end generation.",
+      "effort": {
+        "description": "How much effort the model spends reasoning:\n`model_reasoning_effort`. See [`Effort`].",
         "anyOf": [
           {
-            "$ref": "#/$defs/Stop"
+            "$ref": "#/$defs/Effort"
           },
           {
             "type": "null"
           }
         ]
       },
-      "temperature": {
-        "description": "Sampling temperature.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "top_p": {
-        "description": "Nucleus sampling threshold.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "max_tokens": {
-        "description": "Cap on generated tokens, excluding reasoning tokens.",
-        "type": [
-          "integer",
-          "null"
-        ],
-        "format": "uint64",
-        "minimum": 0
-      },
-      "min_p": {
-        "description": "Minimum probability, relative to the most likely token, for a\ntoken to be considered.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "provider": {
-        "description": "Which backing providers to route to.",
+      "reasoning_summary": {
+        "description": "How much of its reasoning the model says out loud:\n`model_reasoning_summary`. What the stream's reasoning chunks\ncarry. See [`Summary`].",
         "anyOf": [
           {
-            "$ref": "#/$defs/Provider"
+            "$ref": "#/$defs/Summary"
           },
           {
             "type": "null"
           }
         ]
-      },
-      "reasoning": {
-        "description": "Reasoning configuration.",
-        "anyOf": [
-          {
-            "$ref": "#/$defs/Reasoning"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "repetition_penalty": {
-        "description": "Multiplicative penalty on tokens already produced.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "top_a": {
-        "description": "Sample only from tokens above a threshold scaled by the most\nlikely token's probability.",
-        "type": [
-          "number",
-          "null"
-        ],
-        "format": "double"
-      },
-      "top_k": {
-        "description": "Sample only from the k most likely tokens.",
-        "type": [
-          "integer",
-          "null"
-        ],
-        "format": "uint64",
-        "minimum": 0
       },
       "verbosity": {
-        "description": "How detailed responses should be.",
+        "description": "How long the model's answers run: `model_verbosity`. See\n[`Verbosity`].",
         "anyOf": [
           {
             "$ref": "#/$defs/Verbosity"
@@ -173,19 +52,34 @@
           }
         ]
       },
-      "context_compression": {
-        "description": "What to do when the request exceeds the context window.",
+      "web_search": {
+        "description": "Whether, and how, the model may search the web: `web_search`.\nA capability of Codex itself rather than a tool of the\ncaller's â€” Codex performs the search and never calls out.\nABSENT IS `disabled`. See [`WebSearch`].",
         "anyOf": [
           {
-            "$ref": "#/$defs/ContextCompression"
+            "$ref": "#/$defs/WebSearch"
           },
           {
             "type": "null"
           }
         ]
       },
+      "provider": {
+        "description": "Where requests go instead of OpenAI: a `model_providers` entry\nthe harness writes and selects, keyed by `CODEX_API_KEY` â€” so\nit requires the `api_key` login, and the registration refuses\nit beside another. Absent is OpenAI's own endpoint. See\n[`Provider`].",
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Provider"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "auth": {
+        "description": "How Codex logs in: one of its own methods, tagged `method`,\neach declaring the one secret the proxy feeds. REQUIRED â€” no\nmethod is the default, because every one bills someone. See\n[`Auth`].",
+        "$ref": "#/$defs/Auth"
+      },
       "dependencies": {
-        "description": "The tool containers this agent depends on, each a dependency\ntool template the caller deploys and serves to it as an MCP\nserver, exactly as the SDK's [`Template`] states one: that\ntype's JSON Schema is what `--schema` prints for this member,\nin `/DIVERGE.md`, and this list, unchanged, is what the\nregistration answers â€” one schema, from the one type, at both.\nAbsent is none.",
+        "description": "The tool containers this agent depends on, each a dependency\ntool template the caller deploys and serves to it as an MCP\nserver, exactly as the SDK's [`Template`] states one: that\ntype's JSON Schema is what `--schema` prints for this member,\nin `/.diverge/DIVERGE.md`, and this list, unchanged, is what the\nregistration answers â€” one schema, from the one type, at both.\nAbsent is none.",
         "type": "array",
         "items": {
           "$ref": "#/$defs/Template"
@@ -193,224 +87,20 @@
       }
     },
     "required": [
-      "model"
+      "model",
+      "auth"
     ],
     "$defs": {
-      "Stop": {
-        "description": "Sequences that end generation when produced.\n\nUntagged: one sequence goes on the wire as a bare string and\nseveral as an array, matching what providers accept without a\ncaller having to wrap a single sequence in a list.",
-        "anyOf": [
-          {
-            "description": "One sequence.",
-            "type": "string"
-          },
-          {
-            "description": "Several. Providers typically cap this around four.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        ]
-      },
-      "Provider": {
-        "description": "Which backing providers OpenRouter may route to, and in what order.\n\nOpenRouter fronts many providers for one model, and they differ in\nprice, throughput and quantization â€” so \"which model\" does not\nfully determine what answers.",
-        "type": "object",
-        "properties": {
-          "allow_fallbacks": {
-            "description": "Whether to fall back to a provider outside the preferences when\nnone of them can serve the request.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "require_parameters": {
-            "description": "Only route to providers supporting every parameter sent.\nWithout this, unsupported parameters are silently dropped.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "order": {
-            "description": "Preferred providers, most preferred first.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "only": {
-            "description": "Route to these and no others.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "ignore": {
-            "description": "Never route to these.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "quantizations": {
-            "description": "Acceptable weight quantizations. A more aggressively quantized\nmodel is cheaper and measurably different.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/$defs/ProviderQuantization"
-            }
-          }
-        }
-      },
-      "ProviderQuantization": {
-        "description": "A weight quantization level.",
+      "Effort": {
+        "description": "How much effort the model spends before answering: Codex's\n`model_reasoning_effort`, its five rungs as Codex spells them.\nThere is no `max`: `xhigh` is the top, and a model that has fewer\nrungs takes the nearest it has.",
         "oneOf": [
           {
-            "description": "4-bit integer.",
+            "description": "Least.",
             "type": "string",
-            "const": "int4"
+            "const": "minimal"
           },
           {
-            "description": "8-bit integer.",
-            "type": "string",
-            "const": "int8"
-          },
-          {
-            "description": "4-bit float.",
-            "type": "string",
-            "const": "fp4"
-          },
-          {
-            "description": "6-bit float.",
-            "type": "string",
-            "const": "fp6"
-          },
-          {
-            "description": "8-bit float.",
-            "type": "string",
-            "const": "fp8"
-          },
-          {
-            "description": "16-bit float (half).",
-            "type": "string",
-            "const": "fp16"
-          },
-          {
-            "description": "16-bit brain float.",
-            "type": "string",
-            "const": "bf16"
-          },
-          {
-            "description": "32-bit float (full).",
-            "type": "string",
-            "const": "fp32"
-          },
-          {
-            "description": "Not reported.",
-            "type": "string",
-            "const": "unknown"
-          }
-        ]
-      },
-      "Reasoning": {
-        "description": "How much the model should reason before answering, and how much of\nthat reasoning to report.",
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "description": "Whether to reason at all.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "max_tokens": {
-            "description": "A token budget for reasoning. Mutually exclusive with\n[`effort`](Self::effort) on most models â€” a budget and a level\nare two ways of saying the same thing.",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0
-          },
-          "effort": {
-            "description": "How hard to reason, as a level rather than a budget.",
-            "anyOf": [
-              {
-                "$ref": "#/$defs/ReasoningEffort"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "summary_verbosity": {
-            "description": "How much of the reasoning to summarise back.",
-            "anyOf": [
-              {
-                "$ref": "#/$defs/ReasoningSummaryVerbosity"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ReasoningEffort": {
-        "description": "How hard the model should reason.",
-        "oneOf": [
-          {
-            "type": "string",
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh"
-            ]
-          },
-          {
-            "description": "Do not reason.",
-            "type": "string",
-            "const": "none"
-          }
-        ]
-      },
-      "ReasoningSummaryVerbosity": {
-        "description": "How much of the reasoning to summarise in the response.",
-        "oneOf": [
-          {
-            "description": "Let the model decide.",
-            "type": "string",
-            "const": "auto"
-          },
-          {
-            "description": "Brief.",
-            "type": "string",
-            "const": "concise"
-          },
-          {
-            "description": "Thorough.",
-            "type": "string",
-            "const": "detailed"
-          }
-        ]
-      },
-      "Verbosity": {
-        "description": "How detailed the model's responses should be. A hint â€” not every\nmodel honours it.",
-        "oneOf": [
-          {
-            "description": "Concise.",
+            "description": "Little.",
             "type": "string",
             "const": "low"
           },
@@ -420,24 +110,166 @@
             "const": "medium"
           },
           {
-            "description": "Thorough.",
+            "description": "More.",
             "type": "string",
             "const": "high"
           },
           {
-            "description": "As detailed as the model will go.",
+            "description": "As much as the model will spend.",
             "type": "string",
-            "const": "max"
+            "const": "xhigh"
           }
         ]
       },
-      "ContextCompression": {
-        "description": "Which compression engine to enable when a request would otherwise\nexceed the model's context window. Maps onto OpenRouter's\nrequest-body `plugins` array.",
+      "Summary": {
+        "description": "How much of its reasoning the model says out loud: Codex's\n`model_reasoning_summary`. What the run's reasoning chunks carry â€”\nCodex streams the summary, never the raw reasoning, so this is\nthe whole of what a caller can see of the model thinking.",
         "oneOf": [
           {
-            "description": "Drops content from the middle of the conversation. The only\nengine documented today.",
+            "description": "The model decides.",
             "type": "string",
-            "const": "middle_out"
+            "const": "auto"
+          },
+          {
+            "description": "Short.",
+            "type": "string",
+            "const": "concise"
+          },
+          {
+            "description": "Long.",
+            "type": "string",
+            "const": "detailed"
+          },
+          {
+            "description": "No summary: the reasoning chunks stay empty.",
+            "type": "string",
+            "const": "none"
+          }
+        ]
+      },
+      "Verbosity": {
+        "description": "How long the model's answers run: Codex's `model_verbosity`,\nhonored by the models that take it (the reference names the GPT-5\nfamily on the Responses API) and unset otherwise.",
+        "oneOf": [
+          {
+            "description": "Terse.",
+            "type": "string",
+            "const": "low"
+          },
+          {
+            "description": "Balanced.",
+            "type": "string",
+            "const": "medium"
+          },
+          {
+            "description": "Expansive.",
+            "type": "string",
+            "const": "high"
+          }
+        ]
+      },
+      "WebSearch": {
+        "description": "Whether, and how, the model may search the web: Codex's\n`web_search`, its four values as Codex spells them. Codex performs\nthe search itself â€” it is a capability of the upstream, not a tool\nthe caller serves â€” so a search never appears on the stream as\none of the caller's tool calls. The harness writes `disabled` when\nthe agent says nothing.",
+        "oneOf": [
+          {
+            "description": "No search at all.",
+            "type": "string",
+            "const": "disabled"
+          },
+          {
+            "description": "Search over a cached index.",
+            "type": "string",
+            "const": "cached"
+          },
+          {
+            "description": "Search over the live index.",
+            "type": "string",
+            "const": "indexed"
+          },
+          {
+            "description": "Live fetches of the pages themselves.",
+            "type": "string",
+            "const": "live"
+          }
+        ]
+      },
+      "Provider": {
+        "description": "An endpoint other than OpenAI's: one `model_providers` entry the\nharness writes as `model_providers.diverge` and selects with\n`model_provider = \"diverge\"`. The entry's `env_key` is\n`CODEX_API_KEY` â€” the variable the `api_key` login method hands\nthe fed `OPENAI_API_KEY` to Codex under â€” and its `wire_api` is\n`responses`, the one value the configuration reference names, so\nthe endpoint must speak the Responses API, which the Diverge relay\nand every upstream this protocol routes do.\n\nAbsent, Codex's own `openai` provider is used, with whatever\nlogin the agent's [`auth`](super::Agent::auth) names. Present, the\nentry REQUIRES the `api_key` method: a ChatGPT login speaks only\nto OpenAI's own backend, and no other method fills an `env_key`,\nso the registration refuses a provider beside any other method\n(`400`, `{\"kind\":\"auth\"}`).",
+        "type": "object",
+        "properties": {
+          "base_url": {
+            "description": "The base URL, `/v1` included: `model_providers.diverge.base_url`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "base_url"
+        ]
+      },
+      "Auth": {
+        "description": "The login method, and through it the ONE secret the agent takes.\n\nThe agent names the method and never a credential: each method\ndeclares one secret, by a fixed name the template must declare,\nand the value the caller binds to that name is what Codex logs in\nwith. The four are Codex's own ways in, as its source has them\n(`rust-v0.163.0`, against the pinned `0.153.4`), and nothing the\nrun does with them is invented: a variable Codex reads, or a file\nat the path Codex reads.\n\n`OPENAI_API_KEY` in the environment is NOT one of them. Codex's\nbuilt-in `openai` provider has no `env_key` â€” the variable only\nprefills the interactive login â€” so a key in the environment under\nthat name logs nothing in. `CODEX_API_KEY` is the variable the\ncredential store reads first, and `codex exec` honours it; the\n`api_key` method is the fed `OPENAI_API_KEY` handed to Codex under\nthat name.\n\nA ChatGPT login â€” the `auth_file` method with ChatGPT tokens in\nit â€” speaks only to OpenAI's own backend, and a\n[`provider`](super::Agent::provider) beside one fails as itself,\nin Codex's words; a provider's entry is keyed by `CODEX_API_KEY`,\nso a provider REQUIRES `api_key`, and the registration refuses\nthe pair otherwise. Tagged `method`, snake case on the wire.",
+        "oneOf": [
+          {
+            "description": "An OpenAI API key. Declares `OPENAI_API_KEY`, `fixed`: a JSON\nstring, put in the process environment as `CODEX_API_KEY`,\nthe top-precedence credential â€” above `auth.json`, which is\nnever written under this method. Bills the platform at API\nrates. The one method a [`provider`](super::Agent::provider)\ncomposes with.",
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "api_key"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          },
+          {
+            "description": "A personal access token (`at-â€¦`) or an Agent Identity JWT.\nDeclares `CODEX_ACCESS_TOKEN`, `fixed`: a JSON string, put in\nthe process environment under the same name, where Codex's\ncredential store reads it after `CODEX_API_KEY`.",
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "access_token"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          },
+          {
+            "description": "Codex's own `auth.json`, whole. Declares `CODEX_AUTH`,\n`rotating`: a JSON object of any kind the file takes â€” ChatGPT\ntokens (`auth_mode`, `tokens {id_token, access_token,\nrefresh_token, account_id}`, `last_refresh`), an `OPENAI_API_KEY`\nmember, a `personal_access_token`, an `agent_identity`, Bedrock\ncredentials â€” written to `$CODEX_HOME/auth.json` before every\nloop and read back after the loop's last turn. Codex rewrites\nthe file in place when a ChatGPT login refreshes â€” the three\ntokens and `last_refresh` rotate, five minutes before the\naccess token's expiry, eight days after `last_refresh`, or on a\n`401` â€” and what it leaves is what the collect answers, so the\nnext activation finds the refreshed login. Bills whatever the\nlogin is.",
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "auth_file"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          },
+          {
+            "description": "Workload identity federation: an identity token exchanged\nagainst a federation rule. Declares `OPENAI_IDENTITY_TOKEN`,\n`fixed`: a JSON string, written to `$CODEX_HOME/identity-token`\nand named to Codex by `OPENAI_IDENTITY_TOKEN_FILE`, with\n`OPENAI_FEDERATION_RULE_ID` and, when given,\n`OPENAI_WORKLOAD_IDENTITY_CONTEXT` from the two members here.",
+            "type": "object",
+            "properties": {
+              "federation_rule_id": {
+                "description": "The federation rule the token is exchanged against:\n`OPENAI_FEDERATION_RULE_ID`.",
+                "type": "string"
+              },
+              "context": {
+                "description": "The workload's context, when the rule wants one:\n`OPENAI_WORKLOAD_IDENTITY_CONTEXT`. Absent leaves the\nvariable unset.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "const": "workload_identity"
+              }
+            },
+            "required": [
+              "method",
+              "federation_rule_id"
+            ]
           }
         ]
       },
@@ -2195,10 +2027,13 @@
   }
 }
 ---
-# OpenRouter
+# Codex
 
-An agent container running an OpenRouter chat-completions loop, its
-tools the caller's MCP servers.
+An agent container running an OpenAI Codex CLI agent, pre-installed
+in the image, one `codex exec` per turn on a resumed thread.
 
-Secrets: `OPENROUTER_API_KEY` (fixed), the bearer token of every
-request.
+Secrets: one, chosen by `auth.method` — `api_key` declares
+`OPENAI_API_KEY` (fixed); `access_token` declares `CODEX_ACCESS_TOKEN`
+(fixed); `auth_file` declares `CODEX_AUTH` (rotating, the whole
+`auth.json`); `workload_identity` declares `OPENAI_IDENTITY_TOKEN`
+(fixed).

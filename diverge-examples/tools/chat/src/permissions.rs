@@ -10,7 +10,7 @@ use diverge_sdk::shared::permission::{Grant, Within, agents, agents_templates, d
 /// 2. `get` over every agent template: an agent's image is its
 ///    template's, which the page names and describes.
 /// 3. `read` over every provider and `relay` over every remote daemon: an image's
-///    `/DIVERGE.md`, its name and its document, which the page shows,
+///    `/.diverge/DIVERGE.md`, its name and its document, which the page shows,
 ///    is read through whichever of them holds the image.
 pub fn permissions() -> Vec<Grant> {
     vec![

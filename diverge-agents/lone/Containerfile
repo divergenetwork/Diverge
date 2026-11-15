@@ -65,7 +65,7 @@ COPY --from=build \
 
 # The image's arguments schema and its description, read by the proxy;
 # the settled decisions beside it, for whoever reads the image.
-COPY diverge-agents/lone/DIVERGE.md /DIVERGE.md
+COPY diverge-agents/lone/.diverge /.diverge
 COPY diverge-agents/lone/HARNESS.md /HARNESS.md
 
 # The loop's own server, on the loopback: 8080, or whatever `PORT`

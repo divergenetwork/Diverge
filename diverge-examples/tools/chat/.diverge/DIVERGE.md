@@ -49,4 +49,4 @@ to the agents that chat (`standalone-tools attach-agent-instance` or
 `attach-agent-template`). The tool asks the daemon for `get`, `list` and
 `message` over the agents attached to it, `get` over agent templates,
 and `read` over providers and `relay` over remote daemons, through which it reads
-each image's `/DIVERGE.md`.
+each image's `/.diverge/DIVERGE.md`.

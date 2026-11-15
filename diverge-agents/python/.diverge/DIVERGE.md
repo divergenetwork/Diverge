@@ -1,49 +1,33 @@
 ---
 {
-  "name": "cc",
+  "name": "python",
   "chat": {
     "prompt_modalities": {
       "image": true,
-      "audio": false,
-      "file": false
+      "audio": true,
+      "file": true
     }
   },
   "structured_decisions": false,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Agent",
-    "description": "An agent running against Claude Code.\n\nFar fewer knobs than OpenRouter's, and not because anything is\nmissing: Claude Code is an agent harness in its own right, so\nthe sampling decisions OpenRouter exposes are made inside it.\nWhat it does expose is its tools: [`tools`](Self::tools) is the\nexact set of built-ins the model is given, every switch stated,\npassed to Claude Code as `--tools`;\n[`dependencies`](Self::dependencies) is the other kind, the tool\ncontainers the agent asks the caller to run for it.\n\n# Secrets\n\nNone: Claude Code logs in by itself, and no argument names a\ncredential. The template this agent is made from need declare no\nname, and a name it does declare is one the program never asks\nfor.",
+    "description": "An agent that runs Python instead of calling a model.\n\nNo `model` field, which is the point: nothing is sampled, so there\nis nothing to name â€” and no sampling parameters either. A Python\nagent occupies the same slot as a model-backed one and answers\ndeterministically, or as deterministically as its source does.\n\n# Secrets\n\nNone: there is no model, so no credential, and the script is\nhanded nothing but the conversation and the caller's lists. The\ntemplate this agent is made from need declare no name, and a name\nit does declare is one the program never asks for.",
     "type": "object",
     "properties": {
-      "model": {
-        "description": "The model to run.",
+      "python": {
+        "description": "The source, verbatim.\n\nNever normalized â€” whitespace is significant in Python, so the\ntrimming applied to most string fields would change what the\ncode means. Written to disk as it is at registration, and run\nas it is every turn.",
         "type": "string"
       },
-      "tools": {
-        "description": "The switchable built-in tools â€” each absent or `false` is\noff, and the whole structure absent is every tool off. The\nMCP tools and `Skill` are on regardless; see [`Tools`].",
-        "$ref": "#/$defs/Tools",
-        "default": {}
-      },
-      "thinking": {
-        "description": "Whether to think before answering.",
-        "type": [
-          "boolean",
-          "null"
-        ]
-      },
-      "effort": {
-        "description": "How much effort to spend thinking. Meaningful only with\n[`thinking`](Self::thinking) on.",
-        "anyOf": [
-          {
-            "$ref": "#/$defs/Effort"
-          },
-          {
-            "type": "null"
-          }
-        ]
+      "requirements": {
+        "description": "Third-party packages the source needs: distribution name to\nversion constraint. Installed at registration, once.\n\nPrecision is the author's statement of intent: a loose\nspecifier says \"track updates\", an exact one says \"freeze\nthis\". A map rather than a list of requirement lines, so one\npackage cannot appear twice with constraints that contradict\neach other. Ordered, so the same set always serializes â€” and\ninstalls â€” identically instead of shuffling between runs.\n\nOne constraint per package, which is what the shape costs. A\ncompound range (`>= 2, < 3`) and an environment marker\n(`; python_version < \"3.11\"`) are both unrepresentable â€” the\nfirst needs two constraints for one name, the second needs a\nplace to put the marker. Both are legal in a\n`requirements.txt` and neither survives here.",
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/$defs/Version"
+        }
       },
       "dependencies": {
-        "description": "The tool containers this agent depends on, each a dependency\ntool template the caller deploys and serves to it as an MCP\nserver, exactly as the SDK's [`Template`] states one: that\ntype's JSON Schema is what `--schema` prints for this member,\nin `/DIVERGE.md`, and this list, unchanged, is what the\nregistration answers â€” one schema, from the one type, at both.\nAbsent is none.",
+        "description": "The tool containers this agent depends on, each a dependency\ntool template the caller deploys and serves to it as an MCP\nserver, exactly as the SDK's [`Template`] states one: that\ntype's JSON Schema is what `--schema` prints for this member,\nin `/.diverge/DIVERGE.md`, and this list, unchanged, is what the\nregistration answers â€” one schema, from the one type, at both.\nAbsent is none.",
         "type": "array",
         "items": {
           "$ref": "#/$defs/Template"
@@ -51,224 +35,64 @@
       }
     },
     "required": [
-      "model"
+      "python"
     ],
     "$defs": {
-      "Tools": {
-        "description": "The built-in tools Claude Code is given, every one stated.\n\nClaude Code's `--tools` flag takes the exact set of built-ins the\nmodel may call, and this is that set: a switch per tool, each an\n`Option<bool>` where ABSENT IS OFF â€” the same as `false` â€” so\nnothing is on by omission and a request names only what it\nturns on. The harness renders the `true` switches as the flag's\nlist, in this order, after the always-on names.\n\nAlways on, no switch: the `mcp__*` tools â€” the caller's own\ntools, served through the proxy â€” are not built-ins and are\npresent whatever `--tools` says: the tool channel is what the\nprotocol is built around. Beside them the harness always lists\nthe four MCP resource built-ins (`ListMcpResources`,\n`ReadMcpResource`, `ReadMcpResourceDir`, `RefreshMcpTools` â€” the\ncaller's resources, through the same proxy), `Skill` (skills are\nthe directories mounted under `~/.claude/skills`; the tool is\noffered whether or not any are, and a call names a skill that is\nnot there fails as \"unknown skill\"), and `ToolSearch`, by which\nthe model loads deferred tools' schemas.\n\nAlways off, no switch: `LSP` (nothing in the image installs a\nlanguage server). Nor does a switch exist for what cannot work\nin the container, which the harness never lists:\n`AskUserQuestion`, `EnterPlanMode`,\n`ExitPlanMode`, `ProposeGoal` and `ProposeSkills` (a call waits\non a user who is not there); `CronCreate`, `CronDelete`,\n`CronList` and `ScheduleWakeup` (the container does not outlive\nthe run); `Artifact`, `Projects`, `ClaudeDesign`, `RemoteTrigger`,\n`PushNotification`, `SendFeedback`, `ReadNotifications`,\n`ShowOnboardingRolePicker` and `EndConversation` (claude.ai\naccount and host features). Nor for the legacy names the binary\nstill answers to (`MultiEdit`, `BashOutput`, `KillShell`): they\nare the old spellings of switches here.\n\nWhether the pinned build honors every name here under `-p` with\nstream-json input is a live-run check, not a promise of this\ntype; the names are as the runtime spells them.",
+      "Version": {
+        "description": "A constraint on which version of a package satisfies a\nrequirement.\n\nSplit into an operator and a version rather than kept as one\nstring, so the operator is a closed set a consumer matches on\ninstead of a prefix it has to parse off the front. `\">==2.0\"` is\nnot representable.\n\nThere is no \"any version\" â€” an operator is always required. Say\n`>= 0` and mean it, rather than leaving a consumer to decide what\nan absent constraint implies.",
         "type": "object",
         "properties": {
-          "bash": {
-            "description": "`Bash`: runs a command, with an optional timeout and\noptionally in the background.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "operator": {
+            "description": "How to compare.",
+            "$ref": "#/$defs/Operator"
           },
-          "read": {
-            "description": "`Read`: reads a file by absolute path, with `offset` and `limit`\nfor large files and `pages` for PDFs.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "write": {
-            "description": "`Write`: writes a whole file, overwriting.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "edit": {
-            "description": "`Edit`: exact-string replacement in a file.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "notebook_edit": {
-            "description": "`NotebookEdit`: replaces, inserts or deletes one Jupyter cell.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "glob": {
-            "description": "`Glob`: file pattern matching.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "grep": {
-            "description": "`Grep`: ripgrep over the workspace (ripgrep ships with the\nbinary).",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task": {
-            "description": "`Task` (also spelled `Agent`): launches a sub-agent. Its chunks\nreach the run's stream attributed by `parent_tool_call_id`.\nLocal sub-agents only: `isolation: remote` needs a cloud\nenvironment the container has no account for.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "send_message": {
-            "description": "`SendMessage`: messages a running named agent.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "list_agents": {
-            "description": "`ListAgents`: lists addressable agents.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_output": {
-            "description": "`TaskOutput`: reads the output of a background task, blocking\nor not.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_stop": {
-            "description": "`TaskStop`: stops a background task by id.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "monitor": {
-            "description": "`Monitor`: watches a command's stdout lines or a WebSocket's\nframes as events.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "workflow": {
-            "description": "`Workflow`: runs a deterministic multi-agent orchestration\nscript.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "todo_write": {
-            "description": "`TodoWrite`: the session's structured todo list.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_create": {
-            "description": "`TaskCreate`: creates an entry on the session's task board.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_get": {
-            "description": "`TaskGet`: reads one task board entry.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_update": {
-            "description": "`TaskUpdate`: updates one task board entry.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "task_list": {
-            "description": "`TaskList`: lists the task board.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "report_findings": {
-            "description": "`ReportFindings`: reports code-review findings as a typed list.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "repl": {
-            "description": "`REPL`: runs JavaScript with persistent state and top-level\nawait.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "web_fetch": {
-            "description": "`WebFetch`: fetches a URL and runs a prompt over the content.\nNeeds outbound network from the container.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "web_search": {
-            "description": "`WebSearch`: searches the web, with domain allow and block\nlists. Needs outbound network from the container.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "enter_worktree": {
-            "description": "`EnterWorktree`: creates or switches into a git worktree. Needs\nthe workspace to be a git repository.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "exit_worktree": {
-            "description": "`ExitWorktree`: leaves the worktree, keeping or removing it.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "sleep": {
-            "description": "`Sleep`: waits.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "version": {
+            "description": "What to compare against â€” a PEP 440 version, without the\noperator. `\"2.31.0\"`, not `\">=2.31.0\"`.\n\nLeft a string rather than parsed into components: PEP 440\nversions carry epochs, pre/post/dev segments and local\nidentifiers (`1!2.0.0rc1.post2+ubuntu.1`), and a structure that\nmodelled all of it would be a version parser in a wire type.",
+            "type": "string"
           }
-        }
+        },
+        "required": [
+          "operator",
+          "version"
+        ]
       },
-      "Effort": {
-        "description": "How much effort the model should spend before answering.",
+      "Operator": {
+        "description": "How a [`Version`](super::Version) compares, as PEP 440 defines\nthem.\n\nA closed set, so it is an enum rather than a string: an operator\npip does not understand fails to deserialize instead of failing\nat install time.\n\nSeven of PEP 440's eight. `===`, arbitrary equality, is omitted â€”\nit exists for versions that are not PEP 440 versions, and PyPI\nenforces PEP 440 on upload, so nothing reachable from the default\nindex can need it.",
         "oneOf": [
           {
-            "description": "Least.",
+            "description": "`==` â€” this version. The default, because freezing is the\nsafer thing to do by accident.",
             "type": "string",
-            "const": "low"
+            "const": "=="
           },
           {
-            "description": "Balanced.",
+            "description": "`!=` â€” anything but this version.",
             "type": "string",
-            "const": "medium"
+            "const": "!="
           },
           {
-            "description": "More.",
+            "description": "`>=` â€” this version or newer. The usual way to say \"track\nupdates\".",
             "type": "string",
-            "const": "high"
+            "const": ">="
           },
           {
-            "description": "Above high, below max.",
+            "description": "`>` â€” strictly newer.",
             "type": "string",
-            "const": "xhigh"
+            "const": ">"
           },
           {
-            "description": "As much as the model will spend.",
+            "description": "`<=` â€” this version or older.",
             "type": "string",
-            "const": "max"
+            "const": "<="
+          },
+          {
+            "description": "`<` â€” strictly older.",
+            "type": "string",
+            "const": "<"
+          },
+          {
+            "description": "`~=` â€” compatible release. Newer, but not past the last\ncomponent: `~= 2.31.0` allows `2.31.4` and refuses `2.32.0`.",
+            "type": "string",
+            "const": "~="
           }
         ]
       },
@@ -2026,9 +1850,10 @@
   }
 }
 ---
-# Claude Code
+# Python
 
-An agent container running a Claude Code agent: the harness installs
-the pinned Claude Code, runs it as a subprocess, and serves the loop.
+An agent container running the arguments' Python source on every
+turn against the conversation and the caller's tool and resource
+lists; no model.
 
-Secrets: none. Claude Code logs in by itself.
+Secrets: none.

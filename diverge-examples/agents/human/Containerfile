@@ -48,7 +48,7 @@ COPY --from=build /build/diverge-examples/agents/human/target/release/human /usr
 
 # The image's arguments schema, its frontend, and its description, read
 # by the proxy.
-COPY diverge-examples/agents/human/DIVERGE.md /DIVERGE.md
+COPY diverge-examples/agents/human/.diverge /.diverge
 
 # The agent's own server, on the loopback: 8080, or whatever `PORT`
 # names. Nothing is exposed: the proxy the host injects is the only

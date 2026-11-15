@@ -3,12 +3,12 @@
 //! This is what the `arguments` on the container's request must
 //! be, and every type here derives its JSON Schema so `--schema`
 //! can print it — [`schemars::schema_for!`] over [`Agent`] is the
-//! whole document, carried by the image's `/DIVERGE.md`, the one
+//! whole document, carried by the image's `/.diverge/DIVERGE.md`, the one
 //! place the proxy reads it from. One member is not this image's to
 //! define: `dependencies`, the tool containers the agent depends on,
 //! each a dependency tool template exactly as the SDK's
 //! `shared::containers::dependencies::Template` states one — its
-//! schema in `/DIVERGE.md`, the list itself as the registration's
+//! schema in `/.diverge/DIVERGE.md`, the list itself as the registration's
 //! answer.
 
 mod agent;

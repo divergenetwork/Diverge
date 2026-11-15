@@ -15,7 +15,7 @@ use diverge_sdk::shared::permission::{Grant, Within};
 ///    on the host is not its to read, and it asks the daemon for
 ///    nothing but the login.
 ///
-/// Both are what `/DIVERGE.md` says the tool needs. A daemon that
+/// Both are what `/.diverge/DIVERGE.md` says the tool needs. A daemon that
 /// grants the tool neither answers every login `forbidden`.
 pub fn permissions() -> Vec<Grant> {
     vec![

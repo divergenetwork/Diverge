@@ -16,7 +16,7 @@
 //! are in [`run`], and the frontend beneath
 //! `/frontend`, in [`frontend`]. `--schema`, the program's one
 //! argument, prints the JSON Schema of the arguments it takes, which is
-//! the `schema` of the image's `/DIVERGE.md` frontmatter.
+//! the `schema` of the image's `/.diverge/DIVERGE.md` frontmatter.
 //!
 //! # Nothing of the proxy's before it is needed
 //!

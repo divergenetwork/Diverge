@@ -46,7 +46,7 @@ FROM docker.io/library/alpine@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db8
 COPY --from=build /build/diverge-examples/tools/taskboard/target/release/taskboard /usr/local/bin/taskboard
 
 # The image's arguments schema and its description, read by the proxy.
-COPY diverge-examples/tools/taskboard/DIVERGE.md /DIVERGE.md
+COPY diverge-examples/tools/taskboard/.diverge /.diverge
 
 # The taskboard's own server, on the loopback: 8080, or whatever `PORT`
 # names. Nothing is exposed: the proxy the host injects is the only

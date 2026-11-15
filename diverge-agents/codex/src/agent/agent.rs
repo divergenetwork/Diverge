@@ -59,7 +59,7 @@ pub struct Agent {
     /// tool template the caller deploys and serves to it as an MCP
     /// server, exactly as the SDK's [`Template`] states one: that
     /// type's JSON Schema is what `--schema` prints for this member,
-    /// in `/DIVERGE.md`, and this list, unchanged, is what the
+    /// in `/.diverge/DIVERGE.md`, and this list, unchanged, is what the
     /// registration answers — one schema, from the one type, at both.
     /// Absent is none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

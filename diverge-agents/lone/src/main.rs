@@ -97,7 +97,7 @@ type Refusal = (StatusCode, Json<Value>);
 /// ([`schema`]); no argument is the server, for the container's
 /// life; anything else — another argument, or more than one — is a
 /// usage line on stderr and exit 2. The image's ENTRYPOINT never
-/// passes the argument. It exists so the image's `/DIVERGE.md`,
+/// passes the argument. It exists so the image's `/.diverge/DIVERGE.md`,
 /// whose frontmatter's `schema` is this schema and which the proxy reads for
 /// what the `arguments` may be, is generated from the type the run
 /// reads — `cargo run -- --schema`, by the assembler — and never
@@ -124,7 +124,7 @@ fn main() {
 ///
 /// This is the one thing the program ever writes to stdout, and
 /// deliberately: stdout IS the answer, read whole by the assembler
-/// that writes `/DIVERGE.md`. Either failure is said on stderr and
+/// that writes `/.diverge/DIVERGE.md`. Either failure is said on stderr and
 /// the exit is 1 — never a partial or empty schema passed off as
 /// the answer: serialising, which cannot fail (a [`schemars::Schema`]
 /// is a JSON value already), and the write, which can, when the

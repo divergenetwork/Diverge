@@ -79,7 +79,7 @@ COPY --from=build \
     /usr/local/bin/diverge-agentic-loop-hermes
 
 # The image's arguments schema and its description, read by the proxy.
-COPY diverge-agents/hermes/DIVERGE.md /DIVERGE.md
+COPY diverge-agents/hermes/.diverge /.diverge
 
 # The harness's own server, on the loopback: 8080, or whatever `PORT`
 # names. Nothing is exposed — the proxy the host injects is the only
