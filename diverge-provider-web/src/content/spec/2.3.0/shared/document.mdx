@@ -1,15 +1,15 @@
 ---
 title: 'Document'
-summary: 'An image’s /.diverge/DIVERGE.md: a frontmatter between two lines that are exactly ---, which is exactly one JSON object of the members name and schema and at most four more, and the markdown body after it; the parsed document is one JSON object of at least three and at most seven members; the file is at most 1048576 bytes.'
+summary: 'An image’s /.diverge/DIVERGE.md: a frontmatter between two lines that are exactly ---, which is exactly one JSON object whose member type is agent or tool and whose other members are exactly those of its type, and the markdown body after it; the parsed document is one JSON object of the same type; the file is at most 1048576 bytes.'
 order: 2
 draft: false
 ---
 
 Every image ships at most one document, the file `DIVERGE.md` in the
 directory `.diverge` at the root of the image's filesystem: the path
-`/.diverge/DIVERGE.md`. The document states what the
-`arguments` of a container of the image may be, and names the icons
-the image ships. This section defines the file, its size, and the
+`/.diverge/DIVERGE.md`. The document states whether the image's
+program is an agent or a tool, what the `arguments` of a container of
+the image may be, and names the icons the image ships. This section defines the file, its size, and the
 JSON object a server sends for it. [Icon](/shared/icon/) defines the
 icons. A server reads no file of that directory but the document and
 the files the document's `icons` names.
@@ -19,15 +19,23 @@ the files the document's `icons` names.
 - **The frontmatter.** The file begins with a line that is exactly
   `---`. The lines after it, up to the next line that is exactly
   `---`, are the frontmatter.
-- **One JSON object.** The frontmatter is exactly one JSON object. It
-  has the member `name`, a string, and the member `schema`, a JSON
-  object, and at most four further members: `frontend`, a boolean;
-  `icons`; `chat`; and `structured_decisions`. The frontmatter has no
-  other member.
+- **One JSON object.** The frontmatter is exactly one JSON object.
+- **`type`.** The object has the member `type`. Its value is exactly
+  the string `agent` or exactly the string `tool`. A document whose
+  `type` is `agent` is an agent's document. A document whose `type` is
+  `tool` is a tool's document. The two are different documents: the
+  members a frontmatter has, besides `type`, are the members of its
+  type, stated below.
+- **The members of both types.** A frontmatter of either type has the
+  member `name`, a string, and the member `schema`, a JSON object. It
+  has at most two further members that both types have: `frontend`, a
+  boolean, and `icons`.
 - **`icons`.** The value of `icons` is an object of at most three
   members, `svg`, `512` and `64`, each a string, and no other member.
   Each string is an icon name, as [Icon](/shared/icon/#the-name)
   defines one.
+- **The members of an agent's.** An agent's frontmatter has at most
+  two members further: `chat` and `structured_decisions`.
 - **`chat`.** The value of `chat` is the boolean `false` or an object
   of exactly one member, `prompt_modalities`.
 - **`structured_decisions`.** The value of `structured_decisions` is
@@ -38,6 +46,17 @@ the files the document's `icons` names.
   exactly three members, `image`, `audio` and `file`, each a boolean.
 - **Never `true`.** A frontmatter in which `chat` or
   `structured_decisions` is `true` is not a document.
+- **At least one.** In an agent's frontmatter, at least one of `chat`
+  and `structured_decisions` is an object. An agent's frontmatter in
+  which both are `false`, in which both are absent, or in which one is
+  `false` and the other is absent, is not a document.
+- **The members of a tool's.** A tool's frontmatter has no member
+  further. A tool's frontmatter that has the member `chat` or the
+  member `structured_decisions`, whatever the member's value, `false`
+  included, is not a document.
+- **No other member.** A frontmatter has no member that is not a
+  member of its type. A frontmatter that has any other member,
+  whatever its name and whatever its value, is not a document.
 - **The body.** Every byte after the closing line is the body.
 - **UTF-8.** The file is read as UTF-8.
 
@@ -60,9 +79,12 @@ the files the document's `icons` names.
 
 ## The document
 
-A server that reads the file sends exactly one JSON object of at
-least three and at most seven members.
+A server that reads the file sends exactly one JSON object. The object
+is an agent's document or a tool's document, as the file is.
 
+- **`type`.** A string: exactly `agent` or exactly `tool`, the
+  frontmatter's `type`. A reader decides by this member which of the
+  two documents the object is.
 - **`name`.** A string: the frontmatter's `name`, the image's own
   name, as the image states it.
 - **`schema`.** A JSON object: the frontmatter's `schema`, the JSON
@@ -76,28 +98,66 @@ least three and at most seven members.
 - **`icons`.** Present only with the frontmatter's object, when the
   frontmatter's `icons` has at least one member. It names the icons
   the image ships. Its absence states that the image ships none.
-- **`chat`.** Present only with the frontmatter's object, when the
-  frontmatter's `chat` is an object. It states how an agent's program
-  chats. Its absence states that the program does not chat.
-- **`structured_decisions`.** Present only with the frontmatter's
-  object, when the frontmatter's `structured_decisions` is an object.
-  It states how an agent's program makes structured decisions. Its
-  absence states that the program makes no structured decision.
-- **No other member.** The server reads no member further.
+- **`chat`.** In an agent's document only. Present only with the
+  frontmatter's object, when the frontmatter's `chat` is an object. It
+  states how the agent's program chats. Its absence states that the
+  program does not chat.
+- **`structured_decisions`.** In an agent's document only. Present
+  only with the frontmatter's object, when the frontmatter's
+  `structured_decisions` is an object. It states how the agent's
+  program makes structured decisions. Its absence states that the
+  program makes no structured decision.
+- **An agent's document has at least one of the two.** At least one of
+  `chat` and `structured_decisions` is present.
+- **A tool's document has neither.** A tool's document has neither
+  `chat` nor `structured_decisions`.
+- **The count.** An agent's document has at least five and at most
+  eight members. A tool's document has at least four and at most six.
+- **No other member.** The server sends no member further.
 
 ## Not a document
 
-A file is not a document when it does not begin with a line that is
-exactly `---`, when no later line is exactly `---`, when the
-frontmatter is not a JSON object with the members stated above, when
-`schema` is not an object, when a string of `icons` is not an icon
-name, or when its bytes are not UTF-8. A file that is over the limit
-of [The size](#the-size) is not read, and is neither a document nor
-not a document: it is too large.
+A file is not a document when any of the following holds. A server
+that reads a file that is not a document answers an error, as the page
+of the channel that asked states, and sends no part of the file.
+
+1. The file does not begin with a line that is exactly `---`.
+2. No later line is exactly `---`.
+3. The frontmatter is not exactly one JSON object.
+4. The object has no member `type`, or the value of `type` is not
+   exactly the string `agent` or exactly the string `tool`.
+5. The object lacks `name` or `schema`, or a member it has is not of
+   the form [The file](#the-file) states for it.
+6. The object has a member that is not a member of its type. In a
+   tool's frontmatter, `chat` and `structured_decisions` are such
+   members.
+7. `schema` is not an object.
+8. The `type` is `agent`, and neither `chat` nor
+   `structured_decisions` is an object.
+9. A string of `icons` is not an icon name.
+10. The bytes of the file are not UTF-8.
+
+A file that is over the limit of [The size](#the-size) is not read,
+and is neither a document nor not a document: it is too large.
 
 The document is defined by `diverge-sdk-rs/src/shared/containers/info/document.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/info/document.rs
+```
+
+An agent's document is defined by `diverge-sdk-rs/src/shared/containers/info/agent.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/info/agent.rs
+```
+
+A tool's document is defined by `diverge-sdk-rs/src/shared/containers/info/tool.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/info/tool.rs
+```
+
+What makes a file not a document is named by `diverge-sdk-rs/src/shared/containers/info/parse_error.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/info/parse_error.rs
 ```
 
 The limit is defined by `diverge-sdk-rs/src/shared/containers/info/limit.rs`:
