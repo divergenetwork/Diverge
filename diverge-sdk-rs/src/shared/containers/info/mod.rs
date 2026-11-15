@@ -5,15 +5,18 @@
 //! the root of its filesystem, `/.diverge/DIVERGE.md` — the folder is
 //! where an image keeps what it says of itself, and this file is the
 //! one thing of it read: a frontmatter between two `---` lines
-//! that is one JSON object — `name`, what the image
+//! that is one JSON object — `type`, which is `agent` or `tool` and
+//! says which of the two documents this is; `name`, what the image
 //! calls itself, and `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
-//! the image's program accepts, both required; `frontend` where the
-//! program serves one; `icons` where the image ships any, each the
-//! name of a file beside this one ([`Icons`]); and, in an agent's image, `chat` and
-//! `structured_decisions`, each `false` or what the agent says of
-//! itself ([`Chat`], [`StructuredDecisions`]) — and then a short markdown body: what
-//! the image runs, and the secrets it declares.
+//! the image's program accepts, all three required; `frontend` where
+//! the program serves one; `icons` where the image ships any, each the
+//! name of a file beside this one ([`Icons`]); and, in an agent's and
+//! in no tool's, `chat` and `structured_decisions`, each `false` or
+//! what the agent says of itself ([`Chat`], [`StructuredDecisions`]),
+//! at least one of them said; and no member besides — and then a
+//! short markdown body: what the image runs, and the secrets it
+//! declares.
 //! [`Document`] is that file parsed, and [`Document::parse`] states
 //! the rules; [`Document::render`] writes one back, so that one shape
 //! is written and read. No file of the folder is read past
@@ -40,6 +43,7 @@
 //! ordered, what a tool server's tools do — is not its job, and this
 //! crate says that in prose as it does everywhere.
 
+mod agent;
 mod chat;
 mod document;
 mod false_or;
@@ -49,9 +53,11 @@ mod modalities;
 mod modality;
 mod parse_error;
 mod structured_decisions;
+mod tool;
 
 pub mod response;
 
+pub use agent::*;
 pub use chat::*;
 pub use document::*;
 pub use false_or::*;
@@ -61,3 +67,4 @@ pub use modalities::*;
 pub use modality::*;
 pub use parse_error::*;
 pub use structured_decisions::*;
+pub use tool::*;
