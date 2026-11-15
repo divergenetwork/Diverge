@@ -1,6 +1,7 @@
 // The channels a caller opens on the daemon's read scope: the
 // provider read scope's own, the same tags and the same bodies — `0` a
-// manifest, `1` a blob, `2` the proof, `3` the cancel — re-exported
+// manifest, `1` a blob, `2` the proof, `3` the cancel, `4` the
+// document, `5` to `7` its three icons — re-exported
 // here since the path says this scope's channel requests live here,
 // and they do.
 
