@@ -221,6 +221,7 @@ what `arguments` an image accepts without knowing the image.
 ```text
 ---
 {
+  "type": "tool",
   "name": "chat",
   "schema": { "type": "object", "additionalProperties": false, "description": "…" },
   "frontend": true,
@@ -238,16 +239,25 @@ The parse rules, in the order they are checked:
    it not a fence). Otherwise there is no frontmatter.
 2. The frontmatter is every line up to the next line that is exactly `---`. No such line is an
    unterminated frontmatter.
-3. The frontmatter is **one JSON object** (JSON is valid YAML flow style) with these members and no
-   other: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false` when
-   absent), `icons` (object, optional), and, for an agent's image, `chat` and `structured_decisions` (each `false` or an object,
-   never `true`; optional, `false` when absent). A missing member, an extra member or a wrong type is
-   an error.
-4. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
+3. The frontmatter is **one JSON object** (JSON is valid YAML flow style).
+4. It has **`type`, required: `"agent"` or `"tool"`**. Missing, or anything else, is an error. The type
+   decides which members are allowed.
+5. Both types: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false`
+   when absent), `icons` (object, optional). An agent's also: `chat` and `structured_decisions` (each
+   `false` or an object, never `true`; optional, `false` when absent). **A tool's must not have `chat`
+   or `structured_decisions` at all, not even as `false`.** A missing member, **any member that is not
+   one of its type's**, or a wrong type is an error.
+6. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
    whole template.
-5. Every name in `icons` is a plain file name: 1 to 255 bytes of ASCII letters, digits, `.`, `-`, `_`,
+7. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
+   `false`, both absent, or one `false` and one absent, is an error.
+8. Every name in `icons` is a plain file name: 1 to 255 bytes of ASCII letters, digits, `.`, `-`, `_`,
    not starting with `.`, and not `DIVERGE.md`. Anything else is an error.
-6. The body is everything after the closing fence, verbatim.
+9. The body is everything after the closing fence, verbatim.
+
+An image whose document breaks a rule has no document as far as a provider is concerned: `--info`
+answers `{"error":…}`, and the daemon refuses to create an agent or a tool from it. The daemon also
+refuses an agent made from a tool's image, and a tool made from an agent's.
 
 **Size limit: 1048576 bytes (2^20) per file.** It applies to `DIVERGE.md` and to each icon, each by
 itself, measured as the file's length in the image. A provider reads none of a larger file and answers
@@ -255,6 +265,8 @@ that it is too large: `"too_large"` for an icon, and for the document, through `
 
 What each member means:
 
+- `type` — `agent` or `tool`: what the image's program is. It comes back in the parsed document, so a
+  caller can tell the two apart without knowing the image.
 - `name` — what the image calls itself. Nothing makes it unique.
 - `schema` — what the template's `arguments` value may be. The daemon and the provider carry
   `arguments` to the program unread; the program validates them at its registration, so arguments
@@ -275,11 +287,12 @@ What each member means:
   `{"prompt_modalities": {…}, "instruction_modalities": {…}, "choice_modalities": {…}}`, each the same
   three booleans: what the decision's `content`, its questions' `instructions`, and its choices (option
   descriptions and score levels) may carry beside text.
-- An agent's image declares at least one of the two; a tool's image states neither.
+- An agent's image declares at least one of the two as an object, or its document is invalid; a
+  tool's image must not state either.
 - **The document is required.** `agents create`, `standalone-tools create` and an agent's dependency
   declaration each read the image's document and refuse an image that ships none, that nobody in
-  reach holds, or whose document does not parse. An agent is also refused when its image declares
-  neither `chat` nor `structured_decisions`. A template is not checked: `templates create` takes any
+  reach holds, or whose document does not parse. An agent is also refused when its image's document
+  is a tool's, and a standalone or dependency tool when it is an agent's. A template is not checked: `templates create` takes any
   image.
 - **Both are enforced** on `agents message`: `chat` for a request of type `chat`, and
   `structured_decisions` for one of type `structured_decisions` (see `diverge-agents`). A request for a mode the image says
@@ -347,7 +360,7 @@ first.
 | `"not_found"` | no source the daemon asked holds the image |
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
 | `{"error":…}` | a failure; after `"held"`, the source could not read the document, or it is not one |
-| `{"info":{"name":…,"schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`frontend`, `chat` and `structured_decisions` each absent when false) |
+| `{"info":{"type":"agent","name":…,"schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent` or `tool`; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
 | `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
