@@ -51,7 +51,7 @@ impl Icons {
 ///
 /// 1. It is 1 to 255 bytes long.
 /// 2. Every byte is an ASCII letter, an ASCII digit, `.`, `-` or `_`.
-///    So it holds no `/` and no `\\`, and names one file of the
+///    So it holds no `/` and no `\`, and names one file of the
 ///    directory and nothing beneath or above it.
 /// 3. Its first byte is not `.`. So it is neither `.` nor `..`.
 /// 4. It is not `DIVERGE.md`, compared byte for byte: that file is the
