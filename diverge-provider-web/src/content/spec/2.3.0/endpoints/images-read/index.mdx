@@ -14,7 +14,8 @@ not, that it has no source, or an error. After any response but the
 held answer, the response finish follows the response. After the held
 answer, the scope stays open: the client opens on the scope, as
 channels, asks for the manifests and the blobs of the image, for
-the proof of Possession over it and for its `/.diverge/DIVERGE.md`, which the
+the proof of Possession over it, for its `/.diverge/DIVERGE.md` and for
+the icons that file names, which the
 server answers, and ends
 the scope by opening the cancel channel or by its connection ending.
 No frame follows the response finish.
@@ -34,7 +35,8 @@ No frame follows the response finish.
   [containers::agents::run](/endpoints/containers-agents-run/server/)
   and [containers::tools::run](/endpoints/containers-tools-run/server/)
   with the client and the server exchanged; the oci-prove ask; the
-  cancel; and the info ask. The server opens no channel on the scope.
+  cancel; the info ask; and the three icon asks. The server opens no
+  channel on the scope.
 - **The sources.** The server supplies the image from exactly the
   following sources, in the following order. The first is the
   client's Store, as [Image sources](/endpoints/#image-sources)
@@ -101,6 +103,17 @@ No frame follows the response finish.
   the image without running it, as
   [info](/endpoints/images-read/client/info/) states. No other scope
   of the server answers an image's document.
+- **The icons.** The server answers each of the three icon asks with
+  one [icon](/shared/icon/) of the image of the scope, read out of the
+  image without running it, as
+  [icon-svg](/endpoints/images-read/client/icon-svg/),
+  [icon-512](/endpoints/images-read/client/icon-512/) and
+  [icon-64](/endpoints/images-read/client/icon-64/) state. No other
+  scope of the server answers an image's icon.
+- **The limit.** The server sends no part of a file of the image's
+  `/.diverge` that is longer than `1048576` bytes: neither the
+  document, as [Document](/shared/document/#the-size) states, nor an
+  icon, as [Icon](/shared/icon/#the-size) states.
 - **The client.** The client is the identity under which the
   connection was authorized, as [Authorization](/authorization/)
   provides. The client's Store is that identity's Store.

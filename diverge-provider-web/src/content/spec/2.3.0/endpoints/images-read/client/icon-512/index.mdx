@@ -1,0 +1,37 @@
+---
+title: 'Icon 512'
+summary: 'Tag 6: the client asks for the 512 by 512 PNG icon of the image of the scope, the file that the member 512 of the document’s icons names; the server reads the file out of the image without running it and answers with exactly one channel response, the file’s bytes, the word that the image ships no such icon, an error, or the word that the file is larger than 1048576 bytes, and the channel response finish.'
+order: 6
+draft: false
+---
+
+The client opens this channel to read the 512 by 512 PNG icon of the image
+of the scope: the file that the member `512` of the `icons` of
+the image's [document](/shared/document/) names, as
+[Icon](/shared/icon/) defines.
+
+- **The request.** The tag byte `6` and nothing more.
+  [Request](/endpoints/images-read/client/icon-512/request/) states its
+  form.
+- **The response.** Exactly one channel response — the file's bytes,
+  the word that the image ships no such icon, an error, or the word
+  that the file is too large — and the channel response finish.
+  [Response](/endpoints/images-read/client/icon-512/response/) states
+  the sequence.
+- **Nothing runs.** The server reads the document and the file it
+  names from the filesystem of the image. The server starts no
+  container of the image, runs no program of it, and injects no proxy
+  into it.
+- **Only the file named.** The server reads the file whose name the
+  member `512` gives, and no other. The request carries no name,
+  and the server reads no file of the image that the document does
+  not name.
+- **The limit.** The server measures each file before it reads it.
+  The server reads no byte of a file longer than `1048576` bytes, as
+  [Icon](/shared/icon/#the-size) states.
+- **The image.** The server reads the files from the image as the
+  scope holds it, as
+  [info](/endpoints/images-read/client/info/) states for the
+  document.
+- **Asked any number of times.** A client may open this channel more
+  than once on one scope. The server answers each on its own channel.

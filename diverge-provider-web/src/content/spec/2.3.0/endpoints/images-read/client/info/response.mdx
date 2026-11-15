@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server answers with exactly one channel response, whose payload begins with the byte 0 followed by the document, is the byte 1 alone when the image ships no /.diverge/DIVERGE.md, or begins with the byte 2 followed by an error, and the channel response finish follows it.'
+summary: 'The server answers with exactly one channel response, whose payload begins with the byte 0 followed by the document, is the byte 1 alone when the image ships no /.diverge/DIVERGE.md, begins with the byte 2 followed by an error, or is the byte 3 alone when the file is larger than 1048576 bytes, and the channel response finish follows it.'
 order: 2
 draft: false
 ---
@@ -9,6 +9,7 @@ draft: false
 [0][document JSON …]    the image's /.diverge/DIVERGE.md, parsed
 [1]                     the image ships no /.diverge/DIVERGE.md
 [2][error JSON …]       the file could not be read, or is not a document
+[3]                     the file is larger than 1048576 bytes
 ```
 
 - **The sequence.** Exactly one channel response, followed by the
@@ -30,11 +31,16 @@ draft: false
   [not a document](/shared/document/#not-a-document), or that the
   server could no longer obtain the image the scope held. Any other
   error states that the server could not read the image.
+- **Too large.** The byte `3` alone states that the file is longer
+  than `1048576` bytes, the limit that
+  [Document](/shared/document/#the-size) states. Nothing follows the
+  byte. The server has read no byte of the file, and sends no part of
+  it on this channel or on any other.
 - **Malformed.** A payload with no byte, a payload whose first byte
-  is none of `0`, `1` and `2`, and a payload whose bytes after `0` or
-  `2` do not parse as the document or as the error are malformed. A
-  payload whose first byte is `1` is read by that byte alone; bytes
-  after it are not read.
+  is none of `0`, `1`, `2` and `3`, and a payload whose bytes after
+  `0` or `2` do not parse as the document or as the error are
+  malformed. A payload whose first byte is `1` or `3` is read by that
+  byte alone; bytes after it are not read.
 
 The channel response is defined by `diverge-sdk-rs/src/provider/endpoints/images/read/server/channel_response/info/frame.rs`:
 

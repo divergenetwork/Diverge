@@ -1,6 +1,6 @@
 ---
 title: 'Info'
-summary: 'Tag 4: the client asks for the /.diverge/DIVERGE.md of the image of the scope; the server reads the file out of the image without running it and answers with exactly one channel response, the document parsed, the word that the image ships none, or an error, and the channel response finish.'
+summary: 'Tag 4: the client asks for the /.diverge/DIVERGE.md of the image of the scope; the server reads the file out of the image without running it and answers with exactly one channel response, the document parsed, the word that the image ships none, an error, or the word that the file is larger than 1048576 bytes, and the channel response finish.'
 order: 4
 draft: false
 ---
@@ -14,13 +14,17 @@ container of the image of the scope may be: the image's
   [Request](/endpoints/images-read/client/info/request/) states its
   form.
 - **The response.** Exactly one channel response — the document, the
-  word that the image ships none, or an error — and the channel
-  response finish.
+  word that the image ships none, an error, or the word that the file
+  is too large — and the channel response finish.
   [Response](/endpoints/images-read/client/info/response/) states the
   sequence.
 - **Nothing runs.** The server reads the file at `/.diverge/DIVERGE.md` in the
   filesystem of the image. The server starts no container of the
   image, runs no program of it, and injects no proxy into it.
+- **The limit.** The server measures the file before it reads it. A
+  file longer than `1048576` bytes is not read, as
+  [Document](/shared/document/#the-size) states, and the server
+  answers that it is too large.
 - **The image.** The server reads the file from the image as the
   scope holds it: from the source that answered the request, the
   client's Store or a registry in the server's
