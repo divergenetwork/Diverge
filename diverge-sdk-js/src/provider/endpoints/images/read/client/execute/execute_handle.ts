@@ -106,23 +106,23 @@ export class ExecuteHandle {
   }
 
   /**
-   * The image's SVG icon, the file its document's `icons.svg` names, as
-   * its bytes; `undefined` for an image that ships none. The source
-   * reads the file out of the image without running it; a document it
-   * cannot read is the `refused` error carrying the source's own
-   * words, and a file larger than `MAX_BYTES` the `refused` error in
-   * this side's, of kind `icon`.
+   * The image's SVG icon, its `/.diverge/icon.svg`, as its bytes;
+   * `undefined` for an image that ships none. The source reads the
+   * file out of the image without running it; a file that is no valid
+   * SVG image is the `refused` error carrying the source's own words,
+   * and a file larger than `MAX_BYTES` the `refused` error in this
+   * side's, of kind `icon`.
    */
   iconSvg(): Promise<Uint8Array | undefined> {
     return this.#icon("icon_svg");
   }
 
-  /** The image's 512 by 512 PNG icon, the file its document's `icons.512` names: as `iconSvg`. */
+  /** The image's 512 by 512 PNG icon, its `/.diverge/icon-512.png`: as `iconSvg`. */
   icon512(): Promise<Uint8Array | undefined> {
     return this.#icon("icon_512");
   }
 
-  /** The image's 64 by 64 PNG icon, the file its document's `icons.64` names: as `iconSvg`. */
+  /** The image's 64 by 64 PNG icon, its `/.diverge/icon-64.png`: as `iconSvg`. */
   icon64(): Promise<Uint8Array | undefined> {
     return this.#icon("icon_64");
   }

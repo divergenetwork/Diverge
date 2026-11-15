@@ -9,11 +9,11 @@ import { Error } from "../../../error.js";
  * icon's channel of an `images.read` scope, and the finish follows it.
  *
  * - `{ icon }`: the file, byte for byte as the image holds it, at most
- *   1048576 bytes, unread by whoever carried it. Tag `0`.
- * - `"missing"`: the image ships no document, its document names no
- *   such icon, or the file named is not there. Tag `1`.
- * - `{ error }`: the document is not one or is too large to be read,
- *   or the image could not be read. Tag `2`.
+ *   1048576 bytes, a valid image of the kind and the size its name
+ *   says, which the provider checked. Tag `0`.
+ * - `"missing"`: the file is not there. Tag `1`.
+ * - `{ error }`: the file is not the icon its name says, of kind
+ *   `icon`, or the image could not be read. Tag `2`.
  * - `"too_large"`: the icon's file is larger than 1048576 bytes, and
  *   none of it is answered. Tag `3`.
  */

@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { Chat } from "./chat.js";
 import { falseOr } from "./false_or.js";
-import { Icons } from "./icons.js";
 import { StructuredDecisions } from "./structured_decisions.js";
 
 /** What an agent's document and a tool's both have. */
@@ -15,8 +14,6 @@ const common = {
   schema: z.json(),
   /** Whether the program serves a frontend beneath `/frontend`. Absent, it serves none. */
   frontend: z.boolean().optional(),
-  /** The icons the image ships, each the name of a file beside the document. Absent, none. */
-  icons: Icons.optional(),
   /** The markdown beneath the frontmatter. */
   body: z.string(),
 };
@@ -55,8 +52,8 @@ export type Tool = z.infer<typeof Tool>;
  * An image's `/.diverge/DIVERGE.md`, parsed: an agent's document or a
  * tool's, told apart by `type`. Each is the JSON frontmatter — the
  * type, the image's name, the JSON Schema of the arguments the image's
- * program accepts, whether the program serves a frontend, the icons
- * the image ships, and, in an agent's alone, how its program chats and
+ * program accepts, whether the program serves a frontend, and, in an
+ * agent's alone, how its program chats and
  * makes structured decisions — and the markdown body beneath it. A
  * member that is none of its type's is not allowed.
  */

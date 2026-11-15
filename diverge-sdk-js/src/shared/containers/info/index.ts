@@ -3,7 +3,6 @@
 export * from "./chat.js";
 export * from "./document.js";
 export * from "./false_or.js";
-export * from "./icons.js";
 export * from "./limit.js";
 export * from "./modalities.js";
 export * from "./modality.js";

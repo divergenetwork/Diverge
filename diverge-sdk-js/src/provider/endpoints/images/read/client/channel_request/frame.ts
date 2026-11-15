@@ -8,8 +8,8 @@ import * as prove from "../../../../../../shared/containers/oci/prove/request/re
 /**
  * What a caller asks for on a read scope answered held: three of the
  * asks of `shared.containers.oci`, each over the scope's image, the
- * cancel that ends the scope, the image's own document, and the three
- * icons the document may name.
+ * cancel that ends the scope, the image's own document, and its three
+ * icons.
  *
  * | tag | asks for |
  * |-----|----------|
@@ -18,9 +18,9 @@ import * as prove from "../../../../../../shared/containers/oci/prove/request/re
  * | `2` | `oci_prove`: the proof over the image; one frame of 32 bytes, or the empty finish |
  * | `3` | `cancel`: carries nothing, and nothing answers on its channel; the scope's finish does |
  * | `4` | `info`: carries nothing; one frame, the image's `/.diverge/DIVERGE.md` parsed, that it ships none, an error, or that it is too large |
- * | `5` | `icon_svg`: carries nothing; one frame, the file `icons.svg` names, that there is none, an error, or that it is too large |
- * | `6` | `icon_512`: the same, of the file `icons.512` names |
- * | `7` | `icon_64`: the same, of the file `icons.64` names |
+ * | `5` | `icon_svg`: carries nothing; one frame, the image's `/.diverge/icon.svg`, that there is none, an error, or that it is too large |
+ * | `6` | `icon_512`: the same, of `/.diverge/icon-512.png` |
+ * | `7` | `icon_64`: the same, of `/.diverge/icon-64.png` |
  */
 export type Frame =
   | { readonly oci_manifest: manifest.Request }
