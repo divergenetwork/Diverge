@@ -8,7 +8,9 @@ import { z } from "zod";
  * the answer, as the provider allots it. Nothing is set aside by
  * answering. Every member is sent; a caller reads what the
  * capabilities allow — `volumes_disk` only where a volume mode is
- * held out, `images_disk` only where `images_store` is. On the
+ * held out, `images_disk` only where `images_store` is,
+ * `container_memory` and `container_disk` only where `containers`
+ * is. On the
  * provider's wire the struct as JSON and nothing in front of it.
  */
 export const Frame = z.looseObject({

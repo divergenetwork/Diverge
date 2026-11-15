@@ -44,8 +44,8 @@ use crate::wire::encode::{Encode, Writer};
 /// [`Capabilities`](crate::provider::endpoints::info::server::response::Capabilities)
 /// do not hold out carries any number, and a caller does not read it:
 /// `volumes_disk` where no volume mode object is held out,
-/// `images_disk` where `images_store` is not. The container members
-/// are always read.
+/// `images_disk` where `images_store` is not, `container_memory` and
+/// `container_disk` where `containers` is not.
 ///
 /// # There is no failure
 ///

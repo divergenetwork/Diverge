@@ -25,9 +25,9 @@
 //! [`Capabilities`](super::info::server::response::Capabilities)
 //! hold out: a member whose resource the provider does not hold out —
 //! `volumes_disk` without a volume mode object, `images_disk` without
-//! `images_store` — carries any number, and a caller does not read
-//! it. The two container members are always meaningful, since every
-//! provider runs containers.
+//! `images_store`, `container_memory` and `container_disk` without
+//! `containers` — carries any number, and a caller does not read
+//! it.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the
 //! question is in [`client`] — and a provider answers, so the answer
