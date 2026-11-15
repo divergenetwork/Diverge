@@ -43,7 +43,7 @@ its own:
   another's document.
 - **A relative path resolves against the root**, the directory that
   holds the file, never the working directory. The provider's `load`
-  resolves every path as it reads — `containers.podman.storage_path`,
+  resolves every path as it reads — `podman.storage_path`,
   each store's and each fixed volume's `path`, `images.path` — so it
   holds every path absolute. The default `storage_path` is
   `provider/podman_data`.
@@ -87,7 +87,7 @@ NEXT TO ITS OWN EXECUTABLE, not under `<root>`:
 │   ├── mounts/                     where stored volumes are loop-mounted
 │   │   └── <uuid>/                 one mount point per attached volume image
 │   └── known_hosts                 macOS/Windows only: the podman machine's ssh key
-└── podman_data/                    provider.containers.podman.storage_path, DEFAULT location
+└── podman_data/                    provider.podman.storage_path, DEFAULT location
     ├── ephemeral/                  scratch of every ephemeral volume serve, swept at start
     │   └── <uuid>                  a sparse file; unlinked at once on Unix
     └── …                           podman's own store (Linux: --root); the machine (macOS/Windows)
@@ -122,14 +122,14 @@ auth:                             # who may dial in; absent = nobody
 clients:                          # whom the provider dials; absent = nobody
   unbrokered:
     - {address: "host:port", key: "…", identity: "…"}
-containers:                       # always present; absent = defaults
-  podman:
-    registries:                   # default: docker.io, ghcr.io, quay.io, anonymous
-      - {host: docker.io, credential: {username: "…", password: "…"}}
-    storage_path: provider/podman_data   # relative → <root>/provider/podman_data
-    image_cache_disk: 34359738368 # 32 GiB
-    container_overlay_disk: 34359738368
-    memory: 8589934592            # 8 GiB
+podman:                           # read only with containers or images; absent = defaults
+  registries:                     # default: docker.io, ghcr.io, quay.io, anonymous
+    - {host: docker.io, credential: {username: "…", password: "…"}}
+  storage_path: provider/podman_data   # relative → <root>/provider/podman_data
+  image_cache_disk: 34359738368   # 32 GiB
+containers:                       # absent = the provider runs no containers
+  container_overlay_disk: 34359738368
+  memory: 8589934592              # 8 GiB
 volumes:                          # absent = no volume can exist
   stores:                         # made at the provider's start; capacity 0 refused
     - {path: /srv/volumes, capacity: 1099511627776}

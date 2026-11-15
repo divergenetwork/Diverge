@@ -81,7 +81,7 @@ Read sections 1 and 2 before running anything.
 | Python 3 | `pip install ziglang`, and the helper snippets below | On Windows the command is `python`; elsewhere `python3`. |
 | Node ≥ 22.18 and pnpm 10.x | diverge-world, diverge-sdk-js | The root `package.json` pins `pnpm@10.25.0`; `diverge-sdk-js` requires node `>=22.18.0`. |
 | Tauri v2 system prerequisites | diverge-world | Windows: MSVC C++ Build Tools and WebView2. Linux: webkit2gtk and the rest of Tauri's list. The Tauri CLI comes from `diverge-world`'s devDependencies (`pnpm tauri`). |
-| **podman** (6.x) | the provider | **Windows:** install the upstream MSI (6.1.4 is known to work). It installs to `%LOCALAPPDATA%\Programs\Podman`, which is **not on Git Bash's PATH**, so add it (step 0). Podman machines run on **WSL2**, so enable WSL2 first (`wsl --install --no-distribution` in an elevated shell, then reboot). **macOS:** podman with its machine support. **Linux:** rootful podman. See §8. |
+| **podman** (6.x) | the provider, when it runs containers or keeps an image Store (this guide's does) | **Windows:** install the upstream MSI (6.1.4 is known to work). It installs to `%LOCALAPPDATA%\Programs\Podman`, which is **not on Git Bash's PATH**, so add it (step 0). Podman machines run on **WSL2**, so enable WSL2 first (`wsl --install --no-distribution` in an elevated shell, then reboot). **macOS:** podman with its machine support. **Linux:** rootful podman. See §8. |
 | `ssh` client on PATH | the provider | The provider opens an `ssh -R` tunnel into the podman machine on Windows and macOS. Windows 10+ ships OpenSSH. |
 | Network access during builds | `diverge-postgres`, images | `diverge-postgres` uses `postgresql_embedded` with the `bundled` feature, which fetches the Postgres archive at **build** time. Image builds pull pinned base images from docker.io. |
 
@@ -113,7 +113,7 @@ On Windows, run everything below in **Git Bash**. The install scripts are bash.
 | `<root>/bin/` | installed binaries: `diverge`, `diverge-daemon`, `diverge-provider`, `diverge-postgres` (each `.exe` on Windows), `diverge-container-proxy` (no extension) |
 | `<root>/identities/` | signed-in identities |
 | `<root>/daemon/postgres/` | the daemon's Postgres (`bin/`, `data/`, `password`) |
-| `<root>/provider/podman_data/` | `containers.podman.storage_path` (default). On Windows and macOS **this directory is the podman machine**: its disk and SSH key live here. |
+| `<root>/provider/podman_data/` | `podman.storage_path` (default). On Windows and macOS **this directory is the podman machine**: its disk and SSH key live here. |
 | `<root>/{provider,daemon}.log` | server output |
 
 The two daemons share **one issuer and one provider**. The code allows this: the provider's `incoming` list holds
@@ -211,15 +211,18 @@ incoming:
     subject: github.12345.daemon-a
   - issuer: $ISS
     subject: github.12345.daemon-b
+containers: {}
 EOF
 ```
 
-`containers` is left out of `provider.yaml`, so its defaults apply:
+`containers: {}` is what makes this provider run containers. Without a `containers` section a provider runs none,
+and with neither `containers` nor `images` it runs no podman at all. The section's fields and the `podman`
+section are left out, so their defaults apply:
 
 - `podman.storage_path: provider/podman_data`
-- `registries`: docker.io, ghcr.io, quay.io
-- `image_cache_disk` and `container_overlay_disk`: 32 GiB each
-- `memory`: 8 GiB (macOS only)
+- `podman.registries`: docker.io, ghcr.io, quay.io
+- `podman.image_cache_disk` and `containers.container_overlay_disk`: 32 GiB each
+- `containers.memory`: 8 GiB (macOS only)
 
 Optional sections:
 
@@ -750,14 +753,14 @@ cleanly at the next start.
 - WSL2 backs the machine. The provider creates the machine `diverge-provider` (rootful, data under
   `<root>\provider\podman_data`) and ignores the default `podman-machine-default`. Two running machines coexist
   fine on podman 6.1.4.
-- Machine memory comes from WSL (`.wslconfig`); `containers.podman.memory` only applies on macOS.
+- Machine memory comes from WSL (`.wslconfig`); `containers.memory` only applies on macOS.
 - The provider sees host paths inside the machine as `/mnt/c/...`.
 - The proxy binary at `<root>/bin/diverge-container-proxy` is mounted read-only into each container.
 
 **macOS (run live on Apple Silicon, podman 6.1.2, the Apple hypervisor)**
 
 - Same as Windows, with the same machine name, connection, XDG variables, `pp` helper and `ssh` tunnel.
-- The provider adds `--memory <containers.podman.memory>` and a `--volume P:P` share for each of: every volume
+- The provider adds `--memory <containers.memory>` and a `--volume P:P` share for each of: every volume
   store, every fixed volume, `<root>/provider`, and the executable's directory.
 - A machine missing a share is removed and re-made, which empties its image cache. Rebuild images after changing
   volume paths. A machine that sees every share is kept across provider restarts, its images with it: a first

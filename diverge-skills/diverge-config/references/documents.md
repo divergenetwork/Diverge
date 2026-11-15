@@ -81,19 +81,18 @@ outgoing:
     identity:
       issuer: https://auth.example.com
       subject: hub
+podman:
+  registries:
+    - host: docker.io
+    - host: ghcr.io
+      credential:
+        username: bolt
+        password: ghp_example
+  storage_path: provider/podman_data
+  image_cache_disk: 34359738368
 containers:
-  enabled: true
-  podman:
-    registries:
-      - host: docker.io
-      - host: ghcr.io
-        credential:
-          username: bolt
-          password: ghp_example
-    storage_path: provider/podman_data
-    image_cache_disk: 34359738368
-    container_overlay_disk: 34359738368
-    memory: 8589934592
+  container_overlay_disk: 34359738368
+  memory: 8589934592
 volumes:
   stores:
     - path: provider/volumes
@@ -120,22 +119,24 @@ messages:
 | `identity` | none | `{issuer, subject}`: who the provider is. The one identity whose token it presents in every handshake, those it answers and those it makes, whatever issuer the peer's is from. It must be signed in under this root. **Absent, the provider has no identity and completes no handshake.** It is not a list of trusted issuers, and there is none: whom the provider serves is `incoming`, from whatever issuer each is. |
 | `incoming` | none | List of `{issuer, subject}`: the identities that may dial the provider. A peer that dials in and whose verified identity is not listed is closed in the handshake. **Absent, nobody dials in.** A daemon that dials this provider must be here. It has no say over the peers in `outgoing`. One connection per identity: two daemons need two subjects. |
 | `outgoing` | none | Peers the provider dials itself (and redials whenever the connection ends), for a provider that cannot be dialled. Each has two members: `address` (`host:port`, dialled as `ws://<address>/`, or a URL with its own scheme) and `identity` (`{issuer, subject}`), the one identity that must answer there; any other answer is closed. The provider presents its `identity` to the peer. `incoming` has no say over it. |
-| `containers` | the defaults below | The container runtime. |
+| `podman` | the defaults below | The podman the provider uses. **Read only when `containers` or `images` is present**: a provider with neither runs no podman command and needs no podman installed. |
+| `containers` | none | That the provider runs containers, and how much of the host they may take. **Absent: the provider runs no containers**, its `info` says `containers: false`, and every agent and tool run is refused as unsupported. `containers: {}` turns containers on with the defaults. |
 | `volumes` | none | Where volumes may be created and which exist already. Absent: no volume can be created and none exists, the provider's `info` keeps no volume mode, and every volume request is refused as unsupported. |
-| `images` | none | The image Store: where images clients build or push on the provider are kept. Absent: a build or push is refused, a listing is empty, and an image comes only from the provider's podman cache, a listed registry, or the caller. |
+| `images` | none | The image Store: where images clients build or push on the provider are kept. Absent: a build or push is refused, a listing is empty, and an image comes only from the provider's podman cache, a listed registry, or the caller. Present, the provider uses podman (for builds and for reading an image's `DIVERGE.md`) even with no `containers` section. |
 | `messages` | none | The rate at which the provider relays direct messages between the daemons connected to it. Absent: it relays none, and `providers daemons listen` / `message` are answered unsupported. |
 
-### containers
+### podman and containers
+
+Any field may be left out and takes its default. With neither `containers` nor `images`, `podman` is ignored,
+the provider holds out no registry, and every image read is refused as unsupported.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `containers.enabled` | `true` | `false`: the provider runs no containers; every agent and tool run is refused as unsupported. Written to the file only when `false`. |
-| `containers.podman` | the defaults below | Required when `containers` is written at all; then **every field of `podman` is required**. |
 | `podman.registries` | `docker.io`, `ghcr.io`, `quay.io`, anonymous | The registries the provider will pull from when an image's references name them. Each: `host` (what a reference names before its first `/`; no scheme, no path; a port is allowed) and optional `credential: {username, password}` (both required; a personal access token is a password). A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
-| `podman.storage_path` | `provider/podman_data` | Where podman's data lives: image cache, container overlays, ephemeral scratch. On Linux it is podman's storage root (`--root`), and its filesystem must support project quotas (XFS `pquota`, or ext4 with project quota) or every run fails. On macOS and Windows it is where the podman machine `diverge-provider` lives. **Changing it gives a fresh, empty store (or machine); the old one is left as it was.** |
+| `podman.storage_path` | `provider/podman_data` | Where podman's data lives: image cache, container overlays, ephemeral scratch. Created only on a provider that uses podman. On Linux it is podman's storage root (`--root`), and its filesystem must support project quotas (XFS `pquota`, or ext4 with project quota) or every run fails. On macOS and Windows it is where the podman machine `diverge-provider` lives. **Changing it gives a fresh, empty store (or machine); the old one is left as it was.** |
 | `podman.image_cache_disk` | `34359738368` (32 GiB) | The most the image cache may hold. The provider evicts images no running container uses, least recently run first, except images labelled `diverge.network/keep`. An image larger than this cannot be pulled. |
-| `podman.container_overlay_disk` | `34359738368` (32 GiB) | The sum of every running container's `disk` never exceeds it; a run that would is refused. |
-| `podman.memory` | `8589934592` (8 GiB) | The sum of every running container's `memory` never exceeds it; a run that would is refused. On macOS the podman machine is given exactly this much; on Windows the machine's memory is WSL's. |
+| `containers.container_overlay_disk` | `34359738368` (32 GiB) | The sum of every running container's `disk` never exceeds it; a run that would is refused. The scratch of an ephemeral volume's FUSE serve counts against it too, so a provider with no `containers` section serves no ephemeral volume over FUSE. |
+| `containers.memory` | `8589934592` (8 GiB) | The sum of every running container's `memory` never exceeds it; a run that would is refused. On macOS the podman machine is given exactly this much; on Windows the machine's memory is WSL's. |
 
 ### volumes
 
@@ -163,8 +164,8 @@ Both are required when the section is present: there is no unlimited provider.
 
 ### The provider's state
 
-Under `<root>/provider/`: `hooks/` (one folder per hook), `run/` (scratch), and `podman_data/` unless
-`storage_path` says otherwise.
+Under `<root>/provider/`: `hooks/` (one folder per hook), `run/` (scratch), and, on a provider that uses
+podman, `podman_data/` unless `podman.storage_path` says otherwise.
 
 ---
 

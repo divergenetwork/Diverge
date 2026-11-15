@@ -145,7 +145,7 @@ serve beside a running container. Since the daemon opens one serve per container
 containers cannot both FUSE-mount one persistent volume; use an ephemeral or read-only volume, or a
 volume mount on the volume's own provider.
 
-Other capabilities that matter here: `containers` (the provider runs containers at all),
+Other capabilities that matter here: `containers` (the provider runs containers at all: its `provider.yaml` has a `containers` section),
 `images_registries` and `images_store` (see `diverge-images`). `volumes create` answers
 `unsupported` for a provider that keeps no volume of the mode asked.
 

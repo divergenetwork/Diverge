@@ -10,7 +10,7 @@ Diverge runs agents and tools in containers, on your own machines.
 | Folder | What it is |
 |---|---|
 | `diverge-daemon` | the daemon: accounts, agents, tools, volumes, the vault |
-| `diverge-provider` | the provider: runs containers with podman, serves volumes and images |
+| `diverge-provider` | the provider: runs containers with podman, serves volumes and images, each when configured |
 | `diverge-container-proxy` | the proxy inside every container |
 | `diverge-postgres` | the supervisor of the daemon's own Postgres |
 | `diverge-cli` | the `diverge` command line |
