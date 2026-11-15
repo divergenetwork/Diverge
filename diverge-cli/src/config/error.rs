@@ -13,8 +13,7 @@ pub enum Error {
     /// No root was named and the host has no home directory to put
     /// one under.
     Home,
-    /// The root could not be made, the working directory could not be
-    /// read for its `.diverge`, or the file could not be read.
+    /// The root could not be made, or the file could not be read.
     Io {
         /// What could not be.
         path: PathBuf,

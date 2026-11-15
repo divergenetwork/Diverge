@@ -1,15 +1,11 @@
 //! The one `cli.yaml` the CLI reads.
 //!
 //! - The ROOT is `--config <dir>`, else `DIVERGE_CONFIG`, else
-//!   `.diverge` in the working directory where that directory exists,
-//!   else `.diverge` under the home directory, made if absent — see
-//!   [`root`]. All but the working directory's turn is what every
-//!   Diverge program does; that turn is the CLI's own, so that a
-//!   project carrying its own `.diverge` is dialled from inside it.
+//!   `.diverge` under the home directory, made if absent — see
+//!   [`root`]. It is what every Diverge program does.
 //!   A `daemon start` or a `provider start` hands this root to the
 //!   program it spawns as `--config <root>`, so the program runs on
-//!   the root the CLI found, the working directory's turn included —
-//!   see [`lifecycle`](crate::lifecycle).
+//!   the root the CLI found — see [`lifecycle`](crate::lifecycle).
 //! - `<root>/cli.yaml` is read if present; absent means the built-in
 //!   default, [`Config::default`]. No other name is looked for — see
 //!   [`load`].

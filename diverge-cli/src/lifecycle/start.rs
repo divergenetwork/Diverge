@@ -23,9 +23,8 @@ use super::{Error, POLL, Program, beside, say};
 ///   where a death is explained.
 /// - The child is the program's binary beside this one — see
 ///   [`beside`] — given `--config <root>`, the CLI's root, so that it
-///   runs on the root this command found; `DIVERGE_CONFIG` and the
-///   working directory, which the program would otherwise consult,
-///   are not what it sees. It is not killed when this command ends,
+///   runs on the root this command found; `DIVERGE_CONFIG`, which
+///   the program would otherwise consult, is not what it sees. It is not killed when this command ends,
 ///   and on Windows it is made with no console window and apart from
 ///   this one's, so that neither a closed terminal nor this process
 ///   ending takes it down.
