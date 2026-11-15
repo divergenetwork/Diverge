@@ -223,7 +223,8 @@ what `arguments` an image accepts without knowing the image.
 {
   "name": "chat",
   "schema": { "type": "object", "additionalProperties": false, "description": "…" },
-  "frontend": true
+  "frontend": true,
+  "icons": { "svg": "icon.svg", "512": "icon-512.png", "64": "icon-64.png" }
 }
 ---
 # Chat
@@ -239,12 +240,18 @@ The parse rules, in the order they are checked:
    unterminated frontmatter.
 3. The frontmatter is **one JSON object** (JSON is valid YAML flow style) with these members and no
    other: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false` when
-   absent), and, for an agent's image, `chat` and `structured_decisions` (each `false` or an object,
+   absent), `icons` (object, optional), and, for an agent's image, `chat` and `structured_decisions` (each `false` or an object,
    never `true`; optional, `false` when absent). A missing member, an extra member or a wrong type is
    an error.
 4. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
    whole template.
-5. The body is everything after the closing fence, verbatim.
+5. Every name in `icons` is a plain file name: 1 to 255 bytes of ASCII letters, digits, `.`, `-`, `_`,
+   not starting with `.`, and not `DIVERGE.md`. Anything else is an error.
+6. The body is everything after the closing fence, verbatim.
+
+**Size limit: 1048576 bytes (2^20) per file.** It applies to `DIVERGE.md` and to each icon, each by
+itself, measured as the file's length in the image. A provider reads none of a larger file and answers
+that it is too large; through the daemon that reads as `{"error":…}`.
 
 What each member means:
 
@@ -255,6 +262,11 @@ What each member means:
   `templates create`.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
   commands in `diverge-agents` / `diverge-tools`).
+- `icons` — the icons the image ships, each the name of a file in the same `.diverge` folder. Members,
+  all optional and no others: `svg` (an SVG), `512` (a 512×512 PNG), `64` (a 64×64 PNG). Nothing checks
+  that a file is what its member says. A provider answers each on its own channel of an `images::read`
+  scope (`icon_svg`, `icon_512`, `icon_64`); **the daemon does not carry those channels yet**, so
+  `diverge run images read` cannot fetch an icon.
 - `chat` — an agent's image only. `false`, or `{"prompt_modalities": {"image": …, "audio": …, "file": …}}`:
   what a message to the agent may carry beside text, all three booleans required. Text is always
   taken and is not listed. `file` is an embedded resource that is neither an image nor audio.
