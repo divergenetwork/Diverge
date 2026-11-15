@@ -1,35 +1,27 @@
 //! An icon's answer, read.
 
+use std::convert::Infallible;
+
 use bytes::Bytes;
 
 use crate::provider::endpoints::containers::client::Answered;
 use crate::shared::containers::icon::response;
-use crate::shared::containers::info::MAX_BYTES;
-use crate::shared::error::Error;
 use crate::wire::decode::Decode as _;
 
-/// The one frame of an icon's channel: the file's bytes — `None` when
-/// the image ships no such icon, which is a fact about the image and
-/// not a refusal — or the provider's refusal: the image's document
-/// could not be read, or the file is larger than [`MAX_BYTES`], which
-/// is refused in this side's own words, of kind `icon`.
+/// The one frame of an icon's channel, whole: the file's bytes, that
+/// the image ships no such icon, an error, or that the file is too
+/// large — see [`response::Frame`]. It has no refusal: each of the
+/// four is an answer, and a caller that carries the answer on, as a
+/// daemon does, carries it as it came.
 #[derive(Debug, Clone, Copy)]
 pub struct Icon;
 
 impl Answered for Icon {
-    type Item = Option<Vec<u8>>;
+    type Item = response::Frame;
     type Error = response::FrameError;
-    type Refusal = Error;
+    type Refusal = Infallible;
 
-    fn decode(payload: Bytes) -> Result<Result<Option<Vec<u8>>, Error>, Self::Error> {
-        Ok(match response::Frame::decode(&payload)? {
-            response::Frame::Icon(bytes) => Ok(Some(bytes)),
-            response::Frame::Missing => Ok(None),
-            response::Frame::Error(error) => Err(error),
-            response::Frame::TooLarge => Err(Error(serde_json::json!({
-                "kind": "icon",
-                "error": format!("the icon is larger than {MAX_BYTES} bytes"),
-            }))),
-        })
+    fn decode(payload: Bytes) -> Result<Result<response::Frame, Infallible>, Self::Error> {
+        Ok(Ok(response::Frame::decode(&payload)?))
     }
 }
