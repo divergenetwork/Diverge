@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Chat, FalseOr, ParseError, StructuredDecisions};
+use super::{Chat, FalseOr, Icons, ParseError, StructuredDecisions, name_ok};
 
 /// `/.diverge/DIVERGE.md`, parsed: the image's name, the arguments' JSON
 /// Schema, whether its program serves a frontend, how an agent's
@@ -11,7 +11,8 @@ use super::{Chat, FalseOr, ParseError, StructuredDecisions};
 /// them.
 ///
 /// The frontmatter is one JSON object with the members `name` and
-/// `schema`, `frontend` where the program serves one, and, in an
+/// `schema`, `frontend` where the program serves one, `icons` where
+/// the image ships any, and, in an
 /// agent's image, `chat` and `structured_decisions` — raw JSON,
 /// which is YAML's flow style and so reads as a frontmatter anywhere
 /// one is expected. An agent's frontmatter and a tool's differ by
@@ -43,6 +44,10 @@ pub struct Document {
     /// where the frontmatter says so. Absent, `false`.
     #[serde(default, skip_serializing_if = "is_false")]
     pub frontend: bool,
+    /// The icons the image ships, each the name of a file beside the
+    /// document: see [`Icons`]. Absent, none.
+    #[serde(default, skip_serializing_if = "Icons::is_empty")]
+    pub icons: Icons,
     /// Whether an agent's program chats — takes a message and answers
     /// it — and how: `false`, or a [`Chat`]. Never `true`. Absent,
     /// `false`.
@@ -71,6 +76,8 @@ struct Frontmatter {
     schema: Value,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
+    #[serde(default, skip_serializing_if = "Icons::is_empty")]
+    icons: Icons,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
     chat: FalseOr<Chat>,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -98,6 +105,8 @@ impl Document {
     /// 3. The frontmatter parses as JSON into one object with the
     ///    members `name`, a string, and `schema`, and perhaps
     ///    `frontend`, a boolean, `false` when absent, and perhaps
+    ///    `icons`, an object of the members `svg`, `512` and `64`, each
+    ///    a string and each optional, and no other, and perhaps
     ///    `chat` and `structured_decisions`, each `false` or an object
     ///    as [`FalseOr`] reads one, `false` when absent; no other
     ///    member.
@@ -105,9 +114,15 @@ impl Document {
     ///    more or a member of the wrong type included.
     /// 4. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
-    /// 5. The body is everything after the closing line, as the author
+    /// 5. Every name `icons` gives is one [`name_ok`] passes; any other
+    ///    is [`ParseError::IconName`].
+    /// 6. The body is everything after the closing line, as the author
     ///    left it: nothing is trimmed, and a document whose closing
     ///    line is its last has an empty body.
+    ///
+    /// The text's size is not among them: whoever reads the file out
+    /// of an image holds it to [`MAX_BYTES`](super::MAX_BYTES) before
+    /// this is called.
     pub fn parse(text: &str) -> Result<Document, ParseError> {
         let mut lines = text.split_inclusive('\n');
         let opening = lines.next().ok_or(ParseError::NoFrontmatter)?;
@@ -119,19 +134,23 @@ impl Document {
         loop {
             let line = lines.next().ok_or(ParseError::Unterminated)?;
             if is_fence(line) {
-                let Frontmatter { name, schema, frontend, chat, structured_decisions } = serde_json::from_str(&text[start..end]).map_err(ParseError::Json)?;
+                let Frontmatter { name, schema, frontend, icons, chat, structured_decisions } = serde_json::from_str(&text[start..end]).map_err(ParseError::Json)?;
                 if !schema.is_object() {
                     return Err(ParseError::NotObject);
                 }
+                if !icons.names().all(name_ok) {
+                    return Err(ParseError::IconName);
+                }
                 let body = text[end + line.len()..].to_owned();
-                return Ok(Document { name, schema, frontend, chat, structured_decisions, body });
+                return Ok(Document { name, schema, frontend, icons, chat, structured_decisions, body });
             }
             end += line.len();
         }
     }
 
     /// Write the document back as its text: `---`, the frontmatter —
-    /// the name, the schema, `frontend` when it is `true`, and `chat`
+    /// the name, the schema, `frontend` when it is `true`, `icons` when
+    /// it names any, and `chat`
     /// and `structured_decisions` when they are not `false` —
     /// pretty-printed, `---`, and the body,
     /// each fence on a line of its own. One shape is written and read:
@@ -150,6 +169,7 @@ impl Document {
             name: self.name.clone(),
             schema: self.schema.clone(),
             frontend: self.frontend,
+            icons: self.icons.clone(),
             chat: self.chat,
             structured_decisions: self.structured_decisions,
         };

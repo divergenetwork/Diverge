@@ -7,8 +7,8 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
 
-/// The image's document, that it has none, or why it could not be
-/// read.
+/// The image's document, that it has none, why it could not be
+/// read, or that it is too large to be.
 ///
 /// One frame is all there is — this is not a stream, and a channel
 /// carrying one of these finishes immediately after.
@@ -19,6 +19,7 @@ use crate::shared::error::Error;
 /// [0][document JSON …]   the image's /.diverge/DIVERGE.md, parsed: its name, its schema and its body
 /// [1]                    the image ships no /.diverge/DIVERGE.md
 /// [2][error JSON …]      the file could not be read, or is not a document, and why
+/// [3]                    the file is larger than 1048576 bytes
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
@@ -45,6 +46,14 @@ pub enum Frame {
     /// [`shared::error::Error`](crate::shared::error::Error) for why
     /// it says so little.
     Error(Error),
+    /// The file is larger than
+    /// [`MAX_BYTES`](crate::shared::containers::info::MAX_BYTES),
+    /// `1048576` bytes. Tag `3`.
+    ///
+    /// Bare: there is nothing to carry. The provider measured the file
+    /// as the image holds it and read none of it; no part of it is
+    /// answered, here or on any other frame.
+    TooLarge,
 }
 
 /// Tag for [`Frame::Info`].
@@ -55,6 +64,8 @@ const MISSING: u8 = 1;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 2;
+/// Tag for [`Frame::TooLarge`].
+const TOO_LARGE: u8 = 3;
 
 impl Encode for Frame {
     /// The ordinary JSON failure, from either half that has one.
@@ -76,6 +87,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
             }
+            Frame::TooLarge => {
+                out.extend_from_slice(&[TOO_LARGE]);
+                Ok(())
+            }
         }
     }
 }
@@ -91,6 +106,7 @@ impl Decode<'_> for Frame {
             INFO => serde_json::from_slice(rest).map(Frame::Info).map_err(FrameError::Info),
             MISSING => Ok(Frame::Missing),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
+            TOO_LARGE => Ok(Frame::TooLarge),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -101,7 +117,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's three.
+    /// A tag that is none of this frame's four.
     UnknownTag(u8),
     /// The document did not parse. The message is the parser's, which
     /// quotes no value.

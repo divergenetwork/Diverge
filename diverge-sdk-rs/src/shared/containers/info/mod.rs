@@ -9,13 +9,15 @@
 //! calls itself, and `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
 //! the image's program accepts, both required; `frontend` where the
-//! program serves one; and, in an agent's image, `chat` and
+//! program serves one; `icons` where the image ships any, each the
+//! name of a file beside this one ([`Icons`]); and, in an agent's image, `chat` and
 //! `structured_decisions`, each `false` or what the agent says of
 //! itself ([`Chat`], [`StructuredDecisions`]) — and then a short markdown body: what
 //! the image runs, and the secrets it declares.
 //! [`Document`] is that file parsed, and [`Document::parse`] states
 //! the rules; [`Document::render`] writes one back, so that one shape
-//! is written and read.
+//! is written and read. No file of the folder is read past
+//! [`MAX_BYTES`]: neither this one nor an icon.
 //!
 //! The exchange that makes an image usable without knowing it: on an
 //! [`images::read`](crate::provider::endpoints::images::read) scope
@@ -41,6 +43,8 @@
 mod chat;
 mod document;
 mod false_or;
+mod icons;
+mod limit;
 mod modalities;
 mod modality;
 mod parse_error;
@@ -51,6 +55,8 @@ pub mod response;
 pub use chat::*;
 pub use document::*;
 pub use false_or::*;
+pub use icons::*;
+pub use limit::*;
 pub use modalities::*;
 pub use modality::*;
 pub use parse_error::*;

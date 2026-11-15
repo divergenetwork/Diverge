@@ -9,8 +9,10 @@ use crate::shared::error::Error;
 
 /// The image's `/.diverge/DIVERGE.md`, parsed, once — `None` when the image
 /// ships none, which is a fact about the image and not a refusal —
-/// or the provider's refusal: the file could not be read, or is not a
-/// document.
+/// or the provider's refusal: the file could not be read, is not a
+/// document, or is larger than
+/// [`MAX_BYTES`](info::MAX_BYTES), which is refused in this side's own
+/// words, of kind `info`.
 #[derive(Debug, Clone, Copy)]
 pub struct Info;
 
@@ -24,6 +26,10 @@ impl Answered for Info {
             info::response::Frame::Info(document) => Ok(Some(document)),
             info::response::Frame::Missing => Ok(None),
             info::response::Frame::Error(error) => Err(error),
+            info::response::Frame::TooLarge => Err(Error(serde_json::json!({
+                "kind": "info",
+                "error": format!("the image's document is larger than {} bytes", info::MAX_BYTES),
+            }))),
         })
     }
 }

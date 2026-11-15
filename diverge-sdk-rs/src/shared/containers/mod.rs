@@ -42,6 +42,7 @@ pub mod filetree;
 pub mod frontend;
 pub mod fuse;
 pub mod fuse_mount;
+pub mod icon;
 pub mod info;
 pub mod oci;
 pub mod postgres;

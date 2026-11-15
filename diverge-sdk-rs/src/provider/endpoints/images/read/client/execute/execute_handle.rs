@@ -5,7 +5,7 @@ use std::fmt;
 use tokio::sync::Mutex;
 
 use super::super::channel_request;
-use super::answered::{OciBlob, OciManifest, OciProve};
+use super::answered::{Icon, OciBlob, OciManifest, OciProve};
 use crate::provider::client::Manifest;
 use crate::provider::endpoints::containers::client::answered::Info;
 use crate::provider::endpoints::containers::client::{ChannelStream, OpenError, UnaryError, unary};
@@ -24,7 +24,7 @@ pub type BlobStream = ChannelStream<OciBlob>;
 /// cancelled.
 ///
 /// Every channel a client may open on a read scope is a method here:
-/// the three asks, the document, and the cancel. Each opens its own channel, so
+/// the three asks, the document, its three icons, and the cancel. Each opens its own channel, so
 /// several may be in flight at once. The readers are the run's: the
 /// same shared frames answer the same three asks there.
 ///
@@ -106,6 +106,34 @@ impl ExecuteHandle {
     pub async fn info(&self) -> Result<Option<Document>, UnaryError<Info>> {
         let payload = payload(&channel_request::Frame::Info).map_err(UnaryError::Request)?;
         unary::<Info>(&self.handle, self.scope, &payload).await
+    }
+
+    /// The scope's image's SVG icon, the file its document's
+    /// `icons.svg` names, as its bytes: `None` for an image that ships
+    /// none. The provider reads the file out of the image without
+    /// running it; a document it cannot read, or a file larger than
+    /// [`MAX_BYTES`](crate::shared::containers::info::MAX_BYTES), is
+    /// the refusal.
+    pub async fn icon_svg(&self) -> Result<Option<Vec<u8>>, UnaryError<Icon>> {
+        self.icon(channel_request::Frame::IconSvg).await
+    }
+
+    /// The scope's image's 512 by 512 PNG icon, the file its
+    /// document's `icons.512` names: as [`icon_svg`](Self::icon_svg).
+    pub async fn icon_512(&self) -> Result<Option<Vec<u8>>, UnaryError<Icon>> {
+        self.icon(channel_request::Frame::Icon512).await
+    }
+
+    /// The scope's image's 64 by 64 PNG icon, the file its document's
+    /// `icons.64` names: as [`icon_svg`](Self::icon_svg).
+    pub async fn icon_64(&self) -> Result<Option<Vec<u8>>, UnaryError<Icon>> {
+        self.icon(channel_request::Frame::Icon64).await
+    }
+
+    /// One icon's channel, opened and read.
+    async fn icon(&self, ask: channel_request::Frame) -> Result<Option<Vec<u8>>, UnaryError<Icon>> {
+        let payload = payload(&ask).map_err(UnaryError::Request)?;
+        unary::<Icon>(&self.handle, self.scope, &payload).await
     }
 
     /// End the scope. Nothing answers on the channel this opens; what

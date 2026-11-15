@@ -10,7 +10,8 @@ use crate::wire::encode::{Encode, Writer};
 /// answered held: three of the asks of
 /// [`oci`](crate::shared::containers::oci) — the same request bodies
 /// and the same answers as on a run, each over the scope's image —
-/// the cancel that ends the scope, and the image's own document.
+/// the cancel that ends the scope, the image's own document, and the
+/// three icons the document may name.
 ///
 /// | tag | asks for |
 /// |-----|----------|
@@ -19,6 +20,9 @@ use crate::wire::encode::{Encode, Writer};
 /// | `2` | [`OciProve`](Self::OciProve) |
 /// | `3` | [`Cancel`](Self::Cancel) |
 /// | `4` | [`Info`](Self::Info) |
+/// | `5` | [`IconSvg`](Self::IconSvg) |
+/// | `6` | [`Icon512`](Self::Icon512) |
+/// | `7` | [`Icon64`](Self::Icon64) |
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Frame {
     /// A manifest the scope's image reaches, by digest. Tag `0`.
@@ -59,6 +63,26 @@ pub enum Frame {
     /// image without running it. See
     /// [`info`](crate::shared::containers::info).
     Info,
+    /// The scope's image's SVG icon: the file its document's
+    /// `icons.svg` names. Tag `5`.
+    ///
+    /// Carries nothing — the variant is bare. Answered with exactly
+    /// one frame, then the finish: the file's bytes, that the image
+    /// ships no such icon, an error, or that the file is too large.
+    /// See [`icon`](crate::shared::containers::icon).
+    IconSvg,
+    /// The scope's image's 512 by 512 PNG icon: the file its
+    /// document's `icons.512` names. Tag `6`.
+    ///
+    /// Carries nothing, and is answered as [`IconSvg`](Self::IconSvg)
+    /// is.
+    Icon512,
+    /// The scope's image's 64 by 64 PNG icon: the file its document's
+    /// `icons.64` names. Tag `7`.
+    ///
+    /// Carries nothing, and is answered as [`IconSvg`](Self::IconSvg)
+    /// is.
+    Icon64,
 }
 
 /// Tag for [`Frame::OciManifest`].
@@ -76,8 +100,17 @@ const CANCEL: u8 = 3;
 /// Tag for [`Frame::Info`].
 const INFO: u8 = 4;
 
-/// A tag, then the ask's own JSON; the cancel and the info are the
-/// tag alone.
+/// Tag for [`Frame::IconSvg`].
+const ICON_SVG: u8 = 5;
+
+/// Tag for [`Frame::Icon512`].
+const ICON_512: u8 = 6;
+
+/// Tag for [`Frame::Icon64`].
+const ICON_64: u8 = 7;
+
+/// A tag, then the ask's own JSON; the cancel, the info and the three
+/// icons are the tag alone.
 impl Encode for Frame {
     /// The ordinary JSON failure, from the three variants that have
     /// one. A lone tag byte cannot fail.
@@ -105,12 +138,24 @@ impl Encode for Frame {
                 out.extend_from_slice(&[INFO]);
                 Ok(())
             }
+            Frame::IconSvg => {
+                out.extend_from_slice(&[ICON_SVG]);
+                Ok(())
+            }
+            Frame::Icon512 => {
+                out.extend_from_slice(&[ICON_512]);
+                Ok(())
+            }
+            Frame::Icon64 => {
+                out.extend_from_slice(&[ICON_64]);
+                Ok(())
+            }
         }
     }
 }
 
 impl Decode<'_> for Frame {
-    /// Three ways to fail: nothing, a tag that is none of the five, or
+    /// Three ways to fail: nothing, a tag that is none of the eight, or
     /// an ask that did not parse.
     type Error = FrameError;
 
@@ -122,6 +167,9 @@ impl Decode<'_> for Frame {
             OCI_PROVE => oci::prove::request::Request::decode(rest).map(Frame::OciProve).map_err(FrameError::Oci),
             CANCEL => Ok(Frame::Cancel),
             INFO => Ok(Frame::Info),
+            ICON_SVG => Ok(Frame::IconSvg),
+            ICON_512 => Ok(Frame::Icon512),
+            ICON_64 => Ok(Frame::Icon64),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -132,7 +180,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's five.
+    /// A tag that is none of this frame's eight.
     UnknownTag(u8),
     /// An ask did not parse.
     Oci(serde_json::Error),
