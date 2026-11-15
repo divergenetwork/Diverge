@@ -1,5 +1,5 @@
 // What each tool's image calls itself — the `name` of its
-// `/DIVERGE.md`, as the daemon's `images read` answers it — and whether
+// `/.diverge/DIVERGE.md`, as the daemon's `images read` answers it — and whether
 // it serves a frontend.
 
 import { daemon, shared } from "@diverge/sdk";

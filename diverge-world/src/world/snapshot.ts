@@ -40,7 +40,7 @@ export type Snapshot = {
   daemons: Daemon[];
   forbidden: string[];
   names: Map<string, string>;
-  /** The digests of the images whose `/DIVERGE.md` declares a frontend. */
+  /** The digests of the images whose `/.diverge/DIVERGE.md` declares a frontend. */
   frontends: Set<string>;
 };
 

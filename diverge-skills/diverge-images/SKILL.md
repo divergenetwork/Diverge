@@ -1,6 +1,6 @@
 ---
 name: diverge-images
-description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/DIVERGE.md` (frontmatter `name`, `schema`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
+description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `name`, `schema`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
 ---
 
 # Diverge images
@@ -12,7 +12,7 @@ may be fetched. The daemon keeps no record of images; it reaches one through a p
 that can supply it.
 
 This skill covers: the image reference, where a provider finds an image, building one into the
-provider's store, `/DIVERGE.md`, the `images read` command, and what each image in the repository
+provider's store, `/.diverge/DIVERGE.md`, the `images read` command, and what each image in the repository
 takes. Templates, agents and tools themselves are in `diverge-agents` and `diverge-tools`; vault keys
 for secrets are in `diverge-storage`.
 
@@ -90,7 +90,7 @@ an image put into it by any other means is not in the Store.
 ```bash
 diverge run images build '{
   "provider": {"issuer": "http://127.0.0.1:14981", "subject": "provider"},
-  "containerfile": "FROM docker.io/library/alpine\nCOPY DIVERGE.md /DIVERGE.md\n",
+  "containerfile": "FROM docker.io/library/alpine\nCOPY .diverge /.diverge\n",
   "description": "my image",
   "context": {"volume": "my-source", "path": ["tool"]}
 }' > build.log
@@ -211,9 +211,11 @@ provider has no Store), `"forbidden"` (no `push` grant reaching the provider), `
 provider), `{"error":…}`. Before it, one `{"blob":{"digest":…,"bytes":…}}` per blob pulled from a client.
 A push cannot be cancelled.
 
-## `/DIVERGE.md`: the image's own word on what it takes
+## `/.diverge/DIVERGE.md`: the image's own word on what it takes
 
-Every image ships one file at the root of its filesystem, `/DIVERGE.md`. It is how a caller learns
+Every image ships one file in the folder `.diverge` at the root of its filesystem, `/.diverge/DIVERGE.md`.
+In a source tree the same folder sits beside the Containerfile (`.diverge/DIVERGE.md`), and the
+Containerfile copies the folder whole: `COPY .diverge /.diverge`. It is how a caller learns
 what `arguments` an image accepts without knowing the image.
 
 ```text
@@ -333,7 +335,7 @@ first.
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
 | `{"error":…}` | a failure; after `"held"`, the source could not read the document, or it is not one |
 | `{"info":{"name":…,"schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`frontend`, `chat` and `structured_decisions` each absent when false) |
-| `"missing"` | the image ships no `/DIVERGE.md` |
+| `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
 | `{"proof":"<64 hex>"}` | the proof asked for |
