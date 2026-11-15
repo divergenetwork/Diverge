@@ -13,7 +13,10 @@ use super::{Fixed, Store};
 pub struct Volumes {
     /// Places the provider may create a volume in, in order of
     /// preference. Absent, or empty, means no client can create a
-    /// volume, and `volumes::create_capacity` answers `0`.
+    /// volume: `volumes::create_capacity` answers `0` while a fixed
+    /// volume keeps some mode, and with no fixed volume either the
+    /// provider keeps no volume mode and every volume endpoint
+    /// answers `Unsupported`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stores: Option<Vec<Store>>,
     /// Volumes that exist before any client asks, offered in a

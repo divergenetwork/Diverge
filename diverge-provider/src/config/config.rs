@@ -60,7 +60,9 @@ pub struct Config {
     #[serde(default)]
     pub containers: Containers,
     /// Where volumes may be created, and which exist already. Absent
-    /// means no volume can be created and none exists.
+    /// means no volume can be created and none exists: the provider
+    /// keeps no volume mode, and every volume endpoint answers
+    /// `Unsupported`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub volumes: Option<Volumes>,
     /// Where the images clients build on the provider are kept, and
