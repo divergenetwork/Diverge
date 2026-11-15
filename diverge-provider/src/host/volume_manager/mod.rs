@@ -36,9 +36,9 @@
 //! read-only volume's image is loop-mounted read-only, so any number
 //! of containers and FUSE serves may hold it.
 //! An ephemeral serve runs on an [`Overlay`]: the image read, a
-//! scratch file under `<containers.podman.storage_path>/ephemeral/`
+//! scratch file under `<podman.storage_path>/ephemeral/`
 //! written, the scratch capped by the FUSE serve's `overlay_disk` and
-//! counted against `container_overlay_disk` beside the containers —
+//! counted against `containers.container_overlay_disk` beside the containers —
 //! see [`Scratch`]. A fixed volume in ephemeral mode is not served,
 //! this provider having no scratch layer over a directory.
 //!

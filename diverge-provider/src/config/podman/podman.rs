@@ -1,4 +1,4 @@
-//! The podman the provider runs containers with.
+//! The podman the provider uses.
 
 use std::path::PathBuf;
 
@@ -6,14 +6,17 @@ use serde::{Deserialize, Serialize};
 
 use super::Registry;
 
-/// Everything the provider hands podman: where it pulls from, where
-/// it keeps its data, and how much of the host it may take.
+/// Everything the provider hands podman, whatever it uses podman for
+/// — running containers, building an image, reading a file out of
+/// one: where it pulls from, where it keeps its data, and how much
+/// the image cache may hold.
 ///
-/// Every field is required when the section is present. Absent, the
-/// section is its [`Default`]: what a provider runs with before it
-/// has written a line of configuration.
+/// Any field may be left out, and is then its default; the section
+/// absent is every field its default. A provider that uses no podman
+/// — one with neither a `containers` section nor an `images` section
+/// — reads none of it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct Podman {
     /// The registries the provider will look in when an image's
     /// references name them, each with the credential the provider
@@ -26,8 +29,7 @@ pub struct Podman {
     pub registries: Vec<Registry>,
     /// The directory podman's data is kept under: the image cache,
     /// what a container writes over its image, and what holds a
-    /// volume's changes apart when its mode is `ephemeral`, and where
-    /// an ephemeral serve keeps its scratch. On Linux it
+    /// volume's changes apart when its mode is `ephemeral`. On Linux it
     /// is podman's storage root, the `graphroot`: every podman
     /// invocation the provider makes is given it as `--root`, so it
     /// is the whole store the provider sees — an image loaded into
@@ -59,27 +61,12 @@ pub struct Podman {
     /// never removed and always counted; an image larger than it
     /// alone cannot be pulled.
     pub image_cache_disk: u64,
-    /// The most the running containers may write between them, in
-    /// BYTES: the sum of every running container's requested `disk`
-    /// never exceeds it, and a run that would take it over is
-    /// refused. What a container writes is its own layer over the
-    /// image; the image is not counted here.
-    pub container_overlay_disk: u64,
-    /// The most memory the running containers may hold between them,
-    /// in BYTES: the sum of every running container's `memory` never
-    /// exceeds it, and a run that would take it over is refused. On
-    /// macOS the podman machine is given exactly this much when the
-    /// provider starts, since a machine there holds its memory from
-    /// the host; on Windows the machine's memory is WSL's to give and
-    /// is not set.
-    pub memory: u64,
 }
 
-/// What a provider runs with before it has written a line of
-/// configuration: the three registries a reference may name, `docker.io`
-/// first, each pulled from anonymously; podman's data under
-/// `provider/podman_data` beside `provider.yaml`; a 32 GiB image cache; 32 GiB
-/// of overlay disk; and 8 GiB of memory.
+/// What a `podman` section that names nothing gives: the three
+/// registries a reference may name, `docker.io` first, each pulled
+/// from anonymously; podman's data under `provider/podman_data` beside
+/// `provider.yaml`; and a 32 GiB image cache.
 impl Default for Podman {
     fn default() -> Self {
         Podman {
@@ -93,10 +80,6 @@ impl Default for Podman {
             storage_path: PathBuf::from("provider/podman_data"),
             // 32 GiB.
             image_cache_disk: 32 * 1024 * 1024 * 1024,
-            // 32 GiB.
-            container_overlay_disk: 32 * 1024 * 1024 * 1024,
-            // 8 GiB.
-            memory: 8 * 1024 * 1024 * 1024,
         }
     }
 }

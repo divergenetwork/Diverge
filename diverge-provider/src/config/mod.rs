@@ -9,8 +9,8 @@
 //!   built-in defaults, [`Config::default`]. No other name or
 //!   extension is looked for — see [`load`].
 //! - [`Config`] is the document: its own `identity`, the `incoming`
-//!   identities, and its sections [`outgoing`], [`containers`],
-//!   [`volumes`] and [`images`]. A
+//!   identities, and its sections [`outgoing`], [`podman`],
+//!   [`containers`], [`volumes`], [`images`] and [`messages`]. A
 //!   section that is absent is its defaults; a key the document does
 //!   not have is refused, so a misspelled setting is refused rather
 //!   than ignored.
@@ -23,8 +23,8 @@
 //!
 //! The provider keeps its state under `<root>/provider/`: `hooks/`,
 //! where every folder is a hook the document names by the folder's
-//! name alone; `run/`, its own scratch; and podman's data under
-//! `containers.podman.storage_path`, which is
+//! name alone; `run/`, its own scratch; and, where it uses podman,
+//! podman's data under `podman.storage_path`, which is
 //! `<root>/provider/podman_data/` unless the document says otherwise.
 //!
 //! ```yaml
@@ -40,18 +40,18 @@
 //!     identity:
 //!       issuer: https://auth.example.com
 //!       subject: hub
+//! podman:
+//!   registries:
+//!     - host: docker.io
+//!     - host: ghcr.io
+//!       credential:
+//!         username: bolt
+//!         password: ghp_example
+//!   storage_path: /mnt/podman
+//!   image_cache_disk: 107374182400
 //! containers:
-//!   podman:
-//!     registries:
-//!       - host: docker.io
-//!       - host: ghcr.io
-//!         credential:
-//!           username: bolt
-//!           password: ghp_example
-//!     storage_path: /mnt/podman
-//!     image_cache_disk: 107374182400
-//!     container_overlay_disk: 214748364800
-//!     memory: 34359738368
+//!   container_overlay_disk: 214748364800
+//!   memory: 34359738368
 //! volumes:
 //!   stores:
 //!     - path: /mnt/volumes-a
@@ -88,6 +88,7 @@ pub mod outgoing;
 pub mod containers;
 pub mod images;
 pub mod messages;
+pub mod podman;
 pub mod volumes;
 
 pub use config::*;

@@ -86,6 +86,10 @@ pub enum Error {
     /// On Linux, the provider is not running as root, and podman run
     /// from its account would not be rootful.
     Root,
+    /// The provider uses no podman — it has neither a `containers`
+    /// section nor an `images` section — or runs no containers, and
+    /// was asked for what needs one.
+    NoPodman,
 }
 
 impl fmt::Display for Error {
@@ -120,6 +124,7 @@ impl fmt::Display for Error {
                 path.display()
             ),
             Error::Root => write!(f, "the provider is not root, and podman on this host is run as the provider"),
+            Error::NoPodman => write!(f, "the provider runs no containers"),
         }
     }
 }
@@ -150,6 +155,7 @@ impl std::error::Error for Error {
             Error::Missing(_) => None,
             Error::Machine(_) => None,
             Error::Root => None,
+            Error::NoPodman => None,
         }
     }
 }
@@ -197,6 +203,7 @@ impl From<Error> for error::Error {
             Error::Missing(_) => "missing",
             Error::Machine(_) => "machine",
             Error::Root => "root",
+            Error::NoPodman => "no_podman",
         };
         error::Error(json!({
             "kind": kind,

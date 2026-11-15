@@ -9,7 +9,7 @@ use reqwest::{RequestBuilder, Response, StatusCode, header};
 use serde_json::Value;
 use tokio::sync::Mutex;
 
-use crate::config::containers::{Credential, Registry};
+use crate::config::podman::{Credential, Registry};
 use crate::host::image_manager::manifest::ACCEPT;
 
 /// A blob's body, piece by piece; it ends short where the transfer

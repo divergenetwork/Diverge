@@ -9,15 +9,16 @@ use super::outgoing::Outgoing;
 use super::containers::Containers;
 use super::images::Images;
 use super::messages::Messages;
+use super::podman::Podman;
 use super::volumes::Volumes;
 
 /// The whole of `provider.yaml`: what the provider is told.
 ///
 /// An absent file is this type's [`Default`], and the provider runs
 /// on it: the proxy's own port, no identity of its own, no peer
-/// admitted, no peer dialled, no volume, no Store, and the
-/// [`Containers`] defaults. Every section may be absent, meaning what
-/// its doc says. An unknown key is an error, so a misspelled
+/// admitted, no peer dialled, no containers, no volume, no Store, no
+/// messages — and so no podman. Every section may be absent, meaning
+/// what its doc says. An unknown key is an error, so a misspelled
 /// setting is refused rather than ignored.
 ///
 /// Every path inside the file resolves relative to the root, the
@@ -54,11 +55,18 @@ pub struct Config {
     /// answer: see [`Outgoing`]. Absent, it dials no one.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub outgoing: Vec<Outgoing>,
-    /// The runtime the provider runs containers with, and what it
-    /// gives it. Absent from the file means its [`Default`]: a
-    /// provider runs containers before it has configured anything.
+    /// The podman the provider uses: its registries, its storage and
+    /// its image cache. Read only where the provider uses podman at
+    /// all — see [`podman_in_use`](Self::podman_in_use). Absent, or
+    /// any field of it absent, means the defaults.
     #[serde(default)]
-    pub containers: Containers,
+    pub podman: Podman,
+    /// That the provider runs containers, and how much of the host
+    /// they may take. Absent means it runs none: the `containers`
+    /// capability is `false`, and every agents run and tools run is
+    /// answered `Unsupported`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub containers: Option<Containers>,
     /// Where volumes may be created, and which exist already. Absent
     /// means no volume can be created and none exists: the provider
     /// keeps no volume mode, and every volume endpoint answers
@@ -81,9 +89,8 @@ pub struct Config {
 
 /// What a provider runs on before it has written a line of
 /// configuration: the proxy's port, no identity, nobody admitted,
-/// nobody dialled,
-/// the [`Containers`] defaults, no volume, no Store, no
-/// messages.
+/// nobody dialled, the [`Podman`] defaults — which nothing reads —
+/// no containers, no volume, no Store, no messages.
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -91,11 +98,27 @@ impl Default for Config {
             identity: None,
             incoming: Vec::new(),
             outgoing: Vec::new(),
-            containers: Containers::default(),
+            podman: Podman::default(),
+            containers: None,
             volumes: None,
             images: None,
             messages: None,
         }
+    }
+}
+
+impl Config {
+    /// Whether the provider uses podman at all, which decides whether
+    /// it runs a single podman command, at its start or after:
+    ///
+    /// - a `containers` section: podman runs the containers;
+    /// - an `images` section: podman builds an image into the Store,
+    ///   and reads a file out of one for an `images::read`;
+    /// - neither: no podman. Nothing the provider then does — its
+    ///   volumes, its messages, its daemons — runs it, the `podman`
+    ///   section is not read, and the host needs no podman installed.
+    pub fn podman_in_use(&self) -> bool {
+        self.containers.is_some() || self.images.is_some()
     }
 }
 

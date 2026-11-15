@@ -213,7 +213,7 @@ async fn run(
     let memory = deployment.memory.to_string();
     let disk = format!("size={}", deployment.disk);
     let publish = format!("127.0.0.1::{OUTSIDE_PORT}");
-    let proxy = format!("{}:{PROXY_INSIDE}:ro", deployer.proxy_path);
+    let proxy = format!("{}:{PROXY_INSIDE}:ro", deployer.proxy_path.as_deref().ok_or(Error::NoPodman)?);
     let mut args: Vec<String> = [
         "run",
         "--detach",

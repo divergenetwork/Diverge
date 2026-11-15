@@ -11,7 +11,7 @@ const FILE: &str = "provider.yaml";
 
 /// The configuration at `root`: `provider.yaml` read and parsed, or
 /// the defaults where there is no such file, with every path in it
-/// resolved against `root` — `containers.podman.storage_path`, each
+/// resolved against `root` — `podman.storage_path`, each
 /// store's and each fixed volume's `path`, and `images.path` — so
 /// that what comes back holds every path absolute. A file that does
 /// not parse, or names a key the document does not have, is
@@ -26,7 +26,7 @@ pub async fn load(root: &Path) -> Result<Config, Error> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Config::default(),
         Err(source) => return Err(Error::Io { path: file, source }),
     };
-    resolve(root, &mut config.containers.podman.storage_path);
+    resolve(root, &mut config.podman.storage_path);
     if let Some(volumes) = &mut config.volumes {
         for store in volumes.stores.iter_mut().flatten() {
             resolve(root, &mut store.path);

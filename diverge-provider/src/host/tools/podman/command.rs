@@ -34,10 +34,28 @@ pub const MACHINE: &str = "diverge-provider";
 const CONNECTION: &str = "diverge-provider-root";
 
 /// Tell every podman invocation to come where podman's data is:
-/// `containers.podman.storage_path`, resolved. Once; a second call
-/// changes nothing.
+/// `podman.storage_path`, resolved. Once; a second call changes
+/// nothing. Called only by a provider that uses podman, so that it
+/// was called is what [`in_use`] answers.
 pub fn configure(storage: PathBuf) {
     let _ = STORAGE.set(storage);
+}
+
+/// Whether the provider uses podman at all: [`configure`] was called.
+/// A provider that uses none starts no podman, and [`podman`] and
+/// what runs a tool inside the machine refuse here, with nothing
+/// started, whoever asked.
+pub fn in_use() -> bool {
+    STORAGE.get().is_some()
+}
+
+/// The refusal of a program that would have needed podman, on a
+/// provider that uses none.
+pub(super) fn unused(program: &str) -> crate::host::tools::Error {
+    crate::host::tools::Error::Spawn {
+        program: program.to_string(),
+        source: std::io::Error::new(std::io::ErrorKind::Unsupported, "the provider uses no podman"),
+    }
 }
 
 /// `podman` with `args`, as a command not yet run: the root every
@@ -84,5 +102,8 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
+    if !in_use() {
+        return Err(unused("podman"));
+    }
     run("podman", command(args)).await
 }

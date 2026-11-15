@@ -25,7 +25,7 @@
 //!    credential, or nothing.
 //! 2. A `401` is read for its `WWW-Authenticate` challenge. `Basic` is
 //!    answered with the registry's configured
-//!    [`Credential`](crate::config::containers::Credential), when it has
+//!    [`Credential`](crate::config::podman::Credential), when it has
 //!    one. `Bearer` is answered by asking the challenge's `realm` for a
 //!    token, with its `service` and `scope` as the query and the
 //!    credential, when there is one, as Basic — anonymous otherwise —

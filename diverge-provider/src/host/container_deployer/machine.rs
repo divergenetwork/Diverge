@@ -29,7 +29,7 @@ use crate::host::tools::podman;
 /// where the environment put it, and the provider cannot run on a
 /// machine it does not control: the refusal names the key, and a
 /// machine the provider itself just made is removed again first.
-pub(super) async fn ensure(memory: u64, storage: &Path, shares: &[PathBuf]) -> Result<(), Error> {
+pub(super) async fn ensure(memory: Option<u64>, storage: &Path, shares: &[PathBuf]) -> Result<(), Error> {
     let Some(machine) = podman::machine().await.map_err(Error::Podman)? else {
         return make(memory, storage, shares).await;
     };
@@ -44,7 +44,7 @@ pub(super) async fn ensure(memory: u64, storage: &Path, shares: &[PathBuf]) -> R
         return make(memory, storage, shares).await;
     }
     let set_rootful = !machine.rootful;
-    let set_memory = cfg!(target_os = "macos") && machine.memory != mib(memory);
+    let set_memory = cfg!(target_os = "macos") && memory.is_some_and(|memory| machine.memory != mib(memory));
     if set_rootful || set_memory {
         if machine.state == "running" {
             machine_command(["stop"]).await?;
@@ -53,7 +53,7 @@ pub(super) async fn ensure(memory: u64, storage: &Path, shares: &[PathBuf]) -> R
             machine_command(["set", "--rootful"]).await?;
         }
         if set_memory {
-            machine_command(["set", "--memory", &mib(memory).to_string()]).await?;
+            machine_command(["set", "--memory", &memory.map(mib).unwrap_or_default().to_string()]).await?;
         }
         return start().await;
     }
@@ -65,7 +65,7 @@ pub(super) async fn ensure(memory: u64, storage: &Path, shares: &[PathBuf]) -> R
 
 /// A machine made, its SSH key checked to be under `storage`, and
 /// started.
-async fn make(memory: u64, storage: &Path, shares: &[PathBuf]) -> Result<(), Error> {
+async fn make(memory: Option<u64>, storage: &Path, shares: &[PathBuf]) -> Result<(), Error> {
     init(memory, shares).await?;
     let made = podman::machine()
         .await
@@ -82,16 +82,18 @@ async fn make(memory: u64, storage: &Path, shares: &[PathBuf]) -> Result<(), Err
 /// memory and every share, as `--volume <path>:<path>` — the same
 /// path inside as on the host, which is what the machine's view of
 /// a host path assumes.
-async fn init(memory: u64, shares: &[PathBuf]) -> Result<(), Error> {
-    let mib = mib(memory).to_string();
+async fn init(memory: Option<u64>, shares: &[PathBuf]) -> Result<(), Error> {
+    let mib = memory.map(|memory| mib(memory).to_string());
     let volumes: Vec<String> = fewest(shares)
         .into_iter()
         .map(|share| format!("{}:{}", share.display(), share.display()))
         .collect();
     let mut args = vec!["init", "--rootful"];
     if cfg!(target_os = "macos") {
-        args.push("--memory");
-        args.push(&mib);
+        if let Some(mib) = &mib {
+            args.push("--memory");
+            args.push(mib);
+        }
         for volume in &volumes {
             args.push("--volume");
             args.push(volume);

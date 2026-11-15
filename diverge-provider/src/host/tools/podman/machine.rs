@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use super::{MACHINE, command};
+use super::{MACHINE, command, in_use, unused};
 use crate::host::tools::{Error, Finished, run};
 
 /// Run `program` with `args` inside the podman machine, as root
@@ -12,6 +12,9 @@ use crate::host::tools::{Error, Finished, run};
 /// The error names `program`, not `podman`, since the program is
 /// what the caller asked for.
 pub async fn sudo(program: &str, args: &[String]) -> Result<Finished, Error> {
+    if !in_use() {
+        return Err(unused(program));
+    }
     let mut command = command(["machine", "ssh", MACHINE, "--", "sudo", program]);
     command.args(args);
     run(program, command).await

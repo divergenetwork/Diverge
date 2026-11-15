@@ -20,20 +20,37 @@ use super::{Container, Error, Images, Shared, name_ok};
 use crate::host::Limit;
 use crate::host::image_manager::Store;
 use crate::host::image_registry::ImageRegistry;
-use crate::config::containers::{Containers, Podman};
+use crate::config::containers::Containers;
+use crate::config::podman::Podman;
 use crate::host::tools::{mount, podman};
 use crate::host::volume_manager::VolumeManager;
 use diverge_sdk::shared::containers::request::Image;
 
 /// The provider's container deployer: podman, with the caps, the
 /// image cache, the volumes, and the way to the registry.
+///
+/// A provider has one exactly where it uses podman — see
+/// [`Config::podman_in_use`](crate::config::Config::podman_in_use) —
+/// and what of it is there follows what the provider uses podman for:
+///
+/// - with a `containers` section or an `images` section: podman's
+///   storage, the machine on the hosts with one, the auth file, the
+///   mounts directory, the image cache, the registry and the tunnel
+///   to it, and the sweep of an earlier life. A build and an
+///   `images::read` need each, as a run does;
+/// - with a `containers` section only: the proxy binary, which a
+///   container is handed, and the `memory` cap. Without the section
+///   there is no proxy path and the cap is `0`, and no run reaches
+///   the deployer, every one having been answered `Unsupported`.
 #[derive(Debug)]
 pub struct ContainerDeployer {
     /// The `podman` section: the registries and their credentials.
     pub(super) podman: Podman,
     /// The proxy binary on this host, as podman is handed it for the
     /// bind: the host path on Linux, the machine's view elsewhere.
-    pub(super) proxy_path: String,
+    /// `None` where the provider runs no containers, and the binary
+    /// was not looked for.
+    pub(super) proxy_path: Option<String>,
     /// The auth file the provider wrote for podman, under `run/`.
     pub(super) auth_file: PathBuf,
     /// Where stored volumes are loop-mounted, `run/mounts/`, on this
@@ -64,7 +81,8 @@ pub struct ContainerDeployer {
 }
 
 impl ContainerDeployer {
-    /// A deployer over the `containers` section, with `dir` the
+    /// A deployer over the `podman` section and the `containers`
+    /// section, absent where the provider runs none, with `dir` the
     /// provider's directory, `volumes` its volumes, `registry` its
     /// image registry, `shares` the directories the
     /// volumes live in, which a podman machine must see beside `dir`
@@ -74,13 +92,15 @@ impl ContainerDeployer {
     /// provider found to be root, and on the hosts with a machine the
     /// machine brought to what the configuration says, first, since
     /// everything after asks podman; the proxy
-    /// binary found beside the executable; `run/` and `run/mounts/`
+    /// binary found beside the executable, where the provider runs
+    /// containers; `run/` and `run/mounts/`
     /// made and the auth file written; every container and every
     /// loop mount of an earlier life of this provider swept away;
     /// and, on the hosts with a machine, the tunnel opened. Each
     /// beside the others where nothing orders them.
     pub async fn new(
-        containers: Containers,
+        podman: Podman,
+        containers: Option<Containers>,
         dir: PathBuf,
         volumes: Arc<VolumeManager>,
         registry: Arc<ImageRegistry>,
@@ -101,7 +121,7 @@ impl ContainerDeployer {
             if let Some(beside) = proxy.parent() {
                 shares.push(beside.to_path_buf());
             }
-            super::machine::ensure(containers.podman.memory, &containers.podman.storage_path, &shares).await?;
+            super::machine::ensure(containers.as_ref().map(|containers| containers.memory), &podman.storage_path, &shares).await?;
         }
         let label = format!("diverge.provider={}", dir.display());
         let run_dir = dir.join("run");
@@ -109,8 +129,13 @@ impl ContainerDeployer {
         tokio::fs::create_dir_all(&mounts_dir).await?;
         let auth_file = run_dir.join("auth.json");
         let (proxy_path, (), ()) = future::try_join3(
-            proxy_present(&proxy),
-            write_auth_file(&auth_file, &containers.podman),
+            async {
+                match &containers {
+                    Some(_) => proxy_present(&proxy).await.map(Some),
+                    None => Ok(None),
+                }
+            },
+            write_auth_file(&auth_file, &podman),
             sweep_all(&label, &mounts_dir),
         )
         .await?;
@@ -123,10 +148,10 @@ impl ContainerDeployer {
         Ok(ContainerDeployer {
             shared: Arc::new(Shared {
                 disk,
-                memory: Limit::new(containers.podman.memory),
-                images: Images::new(containers.podman.image_cache_disk),
+                memory: Limit::new(containers.as_ref().map_or(0, |containers| containers.memory)),
+                images: Images::new(podman.image_cache_disk),
             }),
-            podman: containers.podman,
+            podman,
             proxy_path,
             auth_file,
             mounts_dir,
@@ -196,6 +221,36 @@ impl ContainerDeployer {
     /// they hold is not room either.
     pub fn disk_room(&self) -> u64 {
         self.shared.disk.room()
+    }
+}
+
+/// The deployer a provider that uses no podman has: none. A run is
+/// answered `Unsupported` before it reaches a deployer, and so is an
+/// `images::read` on a provider with neither a Store nor a registry,
+/// which is every provider without podman; either arriving here all
+/// the same is [`Error::NoPodman`].
+impl container_deployer::ContainerDeployer for Option<Arc<ContainerDeployer>> {
+    type Container = Container;
+    type Error = Error;
+
+    async fn deploy(
+        &self,
+        client_identity: &Identity,
+        deployment: &Deployment,
+        image: &Image,
+        caller: &Caller,
+    ) -> Result<Deployed<Container>, Refused<Error>> {
+        match self {
+            Some(deployer) => container_deployer::ContainerDeployer::deploy(&**deployer, client_identity, deployment, image, caller).await,
+            None => Err(Refused::Error(Error::NoPodman)),
+        }
+    }
+
+    async fn read_file(&self, client_identity: &Identity, image: &Image, file: &str) -> Result<ImageInfo, Error> {
+        match self {
+            Some(deployer) => container_deployer::ContainerDeployer::read_file(&**deployer, client_identity, image, file).await,
+            None => Err(Error::NoPodman),
+        }
     }
 }
 

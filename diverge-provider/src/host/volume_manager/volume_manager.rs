@@ -51,6 +51,18 @@ pub struct VolumeManager {
     started: u64,
     /// Every identity that has asked and is still held, by identity.
     identities: Arc<Identities>,
+    /// Whether a stored volume's size can be changed on this host:
+    ///
+    /// - on Linux, always: `e2fsck` and `resize2fs` are the host's own;
+    /// - on macOS and Windows, only where the provider uses podman:
+    ///   the tools run inside its machine, and a provider with
+    ///   neither a `containers` section nor an `images` section has
+    ///   no machine.
+    ///
+    /// `false`, `edit_capacity` answers `0` for every volume, and a
+    /// size edit attempted all the same fails at the tool with nothing
+    /// started.
+    resizable: bool,
 }
 
 /// One identity, as the manager hands it to itself: the entry let go
@@ -80,10 +92,12 @@ impl Drop for Named<'_> {
 
 impl VolumeManager {
     /// A manager over the `volumes` section, absent or present, with
-    /// the provider's `hooks/` directory.
-    pub fn new(volumes: Option<Volumes>, hooks_dir: PathBuf, scratch: Scratch) -> Self {
+    /// the provider's `hooks/` directory, the scratch, and whether a
+    /// stored volume can be resized here.
+    pub fn new(volumes: Option<Volumes>, hooks_dir: PathBuf, scratch: Scratch, resizable: bool) -> Self {
         let volumes = volumes.unwrap_or_default();
         VolumeManager {
+            resizable,
             reservation: Arc::new(Reservation::new(volumes.stores.unwrap_or_default())),
             scratch: Arc::new(scratch),
             fixed: volumes.fixed.unwrap_or_default(),
@@ -281,13 +295,16 @@ impl volume_manager::VolumeManager for VolumeManager {
     }
 
     /// The room left in the volume's own store, as of now; `0` for a
-    /// fixed volume, which is never resized.
+    /// fixed volume, which is never resized, and `0` on a host whose
+    /// resizing tools run in a podman machine the provider does not
+    /// have — see `resizable`.
     async fn edit_capacity(&self, client_identity: &shared::Identity, name: &str) -> Result<u64, Error> {
         let Some(volume) = self.get(client_identity, name).await? else {
             return Err(Error::Unknown(name.to_string()));
         };
         match volume.place() {
-            Place::Stored { store, reservation, .. } => Ok(reservation.room(*store).await),
+            Place::Stored { store, reservation, .. } if self.resizable => Ok(reservation.room(*store).await),
+            Place::Stored { .. } => Ok(0),
             Place::Fixed { .. } => Ok(0),
         }
     }

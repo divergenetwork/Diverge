@@ -43,7 +43,9 @@ pub struct ImageManager {
     volumes: Arc<VolumeManager>,
     /// The deployer: its mounts directory, auth file and registry
     /// port for a build, its cache for a delete's in-use answer.
-    deployer: Arc<ContainerDeployer>,
+    /// `None` where the provider uses no podman, which is a provider
+    /// with no Store: nothing here that needs it is reached.
+    deployer: Option<Arc<ContainerDeployer>>,
     /// The client of the registries the configuration lists.
     registries: Arc<RegistryClient>,
 }
@@ -55,7 +57,7 @@ impl ImageManager {
         store: Option<Arc<Store>>,
         blobs: Arc<Store>,
         volumes: Arc<VolumeManager>,
-        deployer: Arc<ContainerDeployer>,
+        deployer: Option<Arc<ContainerDeployer>>,
         registries: Arc<RegistryClient>,
     ) -> Self {
         ImageManager {
@@ -103,17 +105,17 @@ impl image_manager::ImageManager for ImageManager {
 
     /// The build, on a task of its own; with no Store, the one error.
     async fn build(&self, client_identity: &Identity, description: Option<&Description>, containerfile: &str, context: Option<&Context>) -> Self::Build {
-        match &self.store {
-            Some(store) => build(
+        match (&self.store, &self.deployer) {
+            (Some(store), Some(deployer)) => build(
                 Arc::clone(store),
                 Arc::clone(&self.volumes),
-                Arc::clone(&self.deployer),
+                Arc::clone(deployer),
                 client_identity,
                 description,
                 containerfile,
                 context,
             ),
-            None => Box::pin(stream::once(future::ready(Err::<Progress, Error>(Error::Absent)))),
+            _ => Box::pin(stream::once(future::ready(Err::<Progress, Error>(Error::Absent)))),
         }
     }
 
@@ -143,7 +145,7 @@ impl image_manager::ImageManager for ImageManager {
     /// is removed too. `None` for a digest the identity owns no image
     /// by.
     async fn delete(&self, client_identity: &Identity, digest: &str) -> Result<Option<Deletion>, Error> {
-        let (Some(store), Some(parsed)) = (&self.store, Digest::parse(digest)) else {
+        let (Some(store), Some(deployer), Some(parsed)) = (&self.store, &self.deployer, Digest::parse(digest)) else {
             return Ok(None);
         };
         if store.owned(client_identity, &parsed).await?.is_none() {
@@ -151,7 +153,7 @@ impl image_manager::ImageManager for ImageManager {
         }
         let copy = podman::image_by_digest_any(digest).await.ok().flatten();
         if let Some((id, _)) = &copy {
-            if self.deployer.running_image(id).await {
+            if deployer.running_image(id).await {
                 return Ok(Some(Deletion::InUse));
             }
         }
@@ -162,7 +164,7 @@ impl image_manager::ImageManager for ImageManager {
             if !own && !store.owned_by_anyone(&parsed).await? {
                 let removed = podman::podman(["rmi", &id]).await.is_ok_and(|finished| finished.status.success());
                 if removed {
-                    self.deployer.forget_image(&id).await;
+                    deployer.forget_image(&id).await;
                 }
             }
         }

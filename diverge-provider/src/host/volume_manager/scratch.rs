@@ -13,11 +13,14 @@ use crate::host::{Held, Limit};
 /// The scratch directory and the cap the scratch counts against,
 /// shared by every stored volume.
 ///
-/// The directory is `<containers.podman.storage_path>/ephemeral/`:
-/// the filesystem the containers' overlays are on, so that
-/// `container_overlay_disk`, which [`Limit`] enforces over the
-/// running containers' `disk`, is an honest cap over the FUSE serves'
-/// `overlay_disk` beside them.
+/// The directory is `<podman.storage_path>/ephemeral/`: the
+/// filesystem the containers' overlays are on, so that
+/// `containers.container_overlay_disk`, which [`Limit`] enforces over
+/// the running containers' `disk`, is an honest cap over the FUSE
+/// serves' `overlay_disk` beside them. A provider that runs no
+/// containers has no such cap: its [`Limit`] is `0`, no lease is
+/// ever given, nothing is written, and the directory is one under
+/// the provider's own `run/`.
 #[derive(Debug)]
 pub struct Scratch {
     dir: PathBuf,

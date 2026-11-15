@@ -23,14 +23,15 @@ pub struct CapacityReporter {
     /// The Store; `None` where the configuration has
     /// none, and then its room is `0`.
     store: Option<Arc<Store>>,
-    /// The deployer, whose caps hold the memory and the overlay room.
-    deployer: Arc<ContainerDeployer>,
+    /// The deployer, whose caps hold the memory and the overlay room;
+    /// `None` where the provider uses no podman, and then each is `0`.
+    deployer: Option<Arc<ContainerDeployer>>,
 }
 
 impl CapacityReporter {
     /// A reporter over the volumes, the Store if there
     /// is one, and the deployer.
-    pub fn new(volumes: Arc<VolumeManager>, store: Option<Arc<Store>>, deployer: Arc<ContainerDeployer>) -> Self {
+    pub fn new(volumes: Arc<VolumeManager>, store: Option<Arc<Store>>, deployer: Option<Arc<ContainerDeployer>>) -> Self {
         CapacityReporter { volumes, store, deployer }
     }
 }
@@ -42,7 +43,8 @@ impl capacity_reporter::CapacityReporter for CapacityReporter {
     /// `volumes_disk` is what `volumes::create_capacity` answers, the
     /// most room any one store has; `images_disk` is the store's
     /// capacity less what its ownerships hold, or `0` with no Store; the
-    /// container numbers are what remains of the two caps. The
+    /// container numbers are what remains of the two caps, each `0`
+    /// on a provider that runs no containers. The
     /// identity narrows nothing: this host allots every caller the
     /// whole of the room.
     async fn capacity(&self, client_identity: &Identity) -> Result<Frame, Error> {
@@ -59,8 +61,8 @@ impl capacity_reporter::CapacityReporter for CapacityReporter {
         Ok(Frame {
             volumes_disk: volumes_disk.map_err(Error::Volumes)?,
             images_disk: images_disk.map_err(Error::Images)?,
-            container_memory: self.deployer.memory_room(),
-            container_disk: self.deployer.disk_room(),
+            container_memory: self.deployer.as_ref().map_or(0, |deployer| deployer.memory_room()),
+            container_disk: self.deployer.as_ref().map_or(0, |deployer| deployer.disk_room()),
         })
     }
 }

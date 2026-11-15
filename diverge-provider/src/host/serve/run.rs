@@ -72,7 +72,9 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
         }
     };
     dials.shutdown().await;
-    provider.deployer.sweep().await;
+    if let Some(deployer) = &*provider.deployer {
+        deployer.sweep().await;
+    }
     drop(held);
     outcome
 }

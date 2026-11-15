@@ -19,7 +19,7 @@ use crate::protocol::mailboxes::Mailboxes;
 use crate::protocol::changes::Changes;
 use crate::protocol::handle::handle;
 use diverge_sdk::provider::endpoints::info::server::response::Capabilities;
-use super::capabilities::capabilities;
+use super::capabilities::{capabilities, registries};
 use diverge_sdk::wire::server::session::Session;
 
 use crate::config::Config;
@@ -48,8 +48,9 @@ pub struct Provider {
     /// The provider's side of every handshake: its own tokens, and the
     /// identities it serves.
     pub(super) authenticator: Arc<ProviderAuthenticator>,
-    /// The deployer, held to the end so its tunnel lives as long.
-    pub(super) deployer: Arc<ContainerDeployer>,
+    /// The deployer, held to the end so its tunnel lives as long:
+    /// `None` on a provider that uses no podman.
+    pub(super) deployer: Arc<Option<Arc<ContainerDeployer>>>,
     /// The volumes.
     volumes: Arc<VolumeManager>,
     /// The Store's manager, which is the OCI store too: the image
@@ -90,14 +91,14 @@ impl Provider {
     /// the provider's disk readied — `dir`, `<root>/provider/`, with
     /// `hooks/` and `run/`, podman's `storage_path` and every store
     /// made, every fixed volume found to be a directory, every store's
-    /// capacity and every fixed name checked; podman told where its
-    /// data is; the Store, where the configuration names one — else
+    /// capacity and every fixed name checked; the Store, where the configuration names one — else
     /// the deployer's own under `run/`, with no room — made and its
     /// `tmp/` swept first of all, since the registry serves it; the
-    /// registry started, since the deployer mints its tokens and holds
-    /// it for its life; the container overlay cap and
-    /// the scratch directory under podman's storage, swept; the
-    /// volumes; the deployer, which
+    /// container overlay cap and the scratch directory, swept; the
+    /// volumes; then, on a provider that uses podman and on no other
+    /// — see [`Config::podman_in_use`] — podman told where its data
+    /// is, the registry started, since the deployer mints its tokens
+    /// and holds it for its life, and the deployer, which
     /// brings the machine up, sweeps an earlier life away, writes the
     /// auth file and opens the tunnel; the capacity reporter, given the
     /// volumes, the store and the deployer; the registry client, ONE
@@ -113,7 +114,8 @@ impl Provider {
     pub async fn start(config: Config, dir: PathBuf, stop: watch::Sender<bool>, authenticator: Arc<ProviderAuthenticator>) -> Result<Self, Error> {
         ready(&config, &dir).await?;
         let capabilities = Arc::new(capabilities(&config));
-        podman::configure(config.containers.podman.storage_path.clone());
+        let podman_in_use = config.podman_in_use();
+        let registries = registries(&config).to_vec();
         let hooks_dir = dir.join("hooks");
         let mut shares = config.volumes.as_ref().map(Volumes::paths).unwrap_or_default();
         let store = config.images.as_ref().map(|images| {
@@ -133,20 +135,38 @@ impl Provider {
             })),
         };
         blobs.sweep().await.map_err(Error::Store)?;
-        let registry = Arc::new(ImageRegistry::start(Arc::clone(&blobs)).await.map_err(Error::Registry)?);
-        let disk = Arc::new(Limit::new(config.containers.podman.container_overlay_disk));
-        let scratch = Scratch::new(config.containers.podman.storage_path.join("ephemeral"), Arc::clone(&disk));
+        let disk = Arc::new(Limit::new(config.containers.as_ref().map_or(0, |containers| containers.container_overlay_disk)));
+        // The scratch is beside the containers' overlays where there
+        // are containers, and under `run/` — never written, the cap
+        // being `0` — where there are none, so that a provider with
+        // no podman makes nothing under podman's storage path.
+        let scratch_dir = match &config.containers {
+            Some(_) => config.podman.storage_path.join("ephemeral"),
+            None => dir.join("run").join("ephemeral"),
+        };
+        let scratch = Scratch::new(scratch_dir, Arc::clone(&disk));
         scratch.sweep().await.map_err(Error::Scratch)?;
-        let volumes = Arc::new(VolumeManager::new(config.volumes, hooks_dir.clone(), scratch));
-        let registries = config.containers.podman.registries.clone();
-        let deployer = Arc::new(
-            ContainerDeployer::new(config.containers, dir, Arc::clone(&volumes), registry, shares, disk, Arc::clone(&blobs))
-                .await
-                .map_err(Error::Deployer)?,
-        );
-        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), Arc::clone(&deployer)));
+        let resizable = cfg!(target_os = "linux") || podman_in_use;
+        let volumes = Arc::new(VolumeManager::new(config.volumes, hooks_dir.clone(), scratch, resizable));
+        // Podman, and everything that is there for it — the registry
+        // it pulls a caller's image from, and the deployer — only on
+        // a provider that uses it: see `Config::podman_in_use`. One
+        // that does not starts no podman here or after.
+        let deployer = if podman_in_use {
+            podman::configure(config.podman.storage_path.clone());
+            let registry = Arc::new(ImageRegistry::start(Arc::clone(&blobs)).await.map_err(Error::Registry)?);
+            Some(Arc::new(
+                ContainerDeployer::new(config.podman, config.containers, dir, Arc::clone(&volumes), registry, shares, disk, Arc::clone(&blobs))
+                    .await
+                    .map_err(Error::Deployer)?,
+            ))
+        } else {
+            None
+        };
+        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), deployer.clone()));
         let client = Arc::new(RegistryClient::new(&registries).map_err(Error::RegistryClient)?);
-        let images = Arc::new(ImageManager::new(store, blobs, Arc::clone(&volumes), Arc::clone(&deployer), client));
+        let images = Arc::new(ImageManager::new(store, blobs, Arc::clone(&volumes), deployer.clone(), client));
+        let deployer = Arc::new(deployer);
         let listables = Arc::new(Listables::new());
         Ok(Provider {
             authenticator,
@@ -244,7 +264,8 @@ impl Provider {
 }
 
 /// The provider's disk, as its block names it: `dir` with `hooks/`
-/// and `run/` inside it, `storage_path` and every store made if
+/// and `run/` inside it, podman's `storage_path` — on a provider
+/// that uses podman, and on no other — and every store made if
 /// absent, the Store's directory made if absent and
 /// `run/builds/` swept; a fixed
 /// volume whose path is not an existing directory refused, since a
@@ -254,7 +275,11 @@ impl Provider {
 /// fixed volume's, refused. What the file said is the SDK's to read; what it names
 /// here is the provider's to check.
 async fn ready(config: &Config, dir: &Path) -> Result<(), Error> {
-    for made in [dir.join("hooks"), dir.join("run"), config.containers.podman.storage_path.clone()] {
+    let mut made = vec![dir.join("hooks"), dir.join("run")];
+    if config.podman_in_use() {
+        made.push(config.podman.storage_path.clone());
+    }
+    for made in made {
         tokio::fs::create_dir_all(&made).await.map_err(|source| Error::Directory(made, source))?;
     }
     let builds = dir.join("run").join("builds");
