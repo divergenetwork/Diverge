@@ -43,7 +43,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// 2. The image's document is found as [`images::document`] finds it —
 ///    the record, else whoever holds the image, the document then
 ///    left on record. An image with none is the `image` error.
-/// 3. Then the create, as stated above, its checks made again in its
+/// 3. A document that is an agent's is the `image` error too: a tool
+///    is made of a tool's image.
+/// 4. Then the create, as stated above, its checks made again in its
 ///    own transaction.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     // Rule 1.
@@ -60,9 +62,14 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         };
         containers::image(&template.template.image)
     };
-    // Rule 2.
-    if let Err(why) = images::document(daemon, &image).await? {
-        return Ok(Frame::Error(reply::image(&why)));
+    // Rules 2 and 3.
+    match images::document(daemon, &image).await? {
+        Err(why) => return Ok(Frame::Error(reply::image(&why))),
+        Ok(document) => {
+            if document.agent().is_some() {
+                return Ok(Frame::Error(reply::image("the image's document is an agent's, and a tool is made of a tool's image")));
+            }
+        }
     }
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {

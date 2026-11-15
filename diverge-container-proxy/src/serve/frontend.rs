@@ -229,7 +229,7 @@ async fn declared() -> bool {
         _ => return false,
     }
     match tokio::fs::read_to_string(PATH).await {
-        Ok(text) => Document::parse(&text).is_ok_and(|document| document.frontend),
+        Ok(text) => Document::parse(&text).is_ok_and(|document| document.frontend()),
         Err(_) => false,
     }
 }

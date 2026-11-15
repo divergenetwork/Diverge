@@ -301,7 +301,7 @@ where
         Err(error) => return Frame::Error(error.into()),
     };
     // Rule 2.
-    let Some(file) = named(document.icons) else {
+    let Some(file) = named(document.icons().clone()) else {
         return Frame::Missing;
     };
     // Rules 3 to 5.

@@ -96,6 +96,9 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
     let documents = future::join_all(declared.iter().map(|(_, template)| images::document(daemon, &template.image))).await;
     for ((template_id, _), document) in declared.iter().zip(documents) {
         match document {
+            Ok(Ok(document)) if document.agent().is_some() => {
+                return Err(error(template_id, "the image's document is an agent's, and a tool is made of a tool's image"));
+            }
             Ok(Ok(_)) => {}
             Ok(Err(reason)) => return Err(error(template_id, &reason)),
             Err(failure) => return Err(error(template_id, &failure.to_string())),

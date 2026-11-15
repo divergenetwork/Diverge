@@ -27,7 +27,7 @@ pub fn held(agent: &agents::Agent, document: Option<&Document>, content: &[Conte
     let Some(document) = document else {
         return Err(Frame::Error(undocumented(agent)));
     };
-    let FalseOr::Is(chat) = &document.chat else {
+    let Some(FalseOr::Is(chat)) = document.agent().map(|agent| &agent.chat) else {
         return Err(Frame::NoChat);
     };
     let prompt = chat.prompt_modalities.lacking(content);

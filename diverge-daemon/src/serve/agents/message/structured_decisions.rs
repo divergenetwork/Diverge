@@ -37,7 +37,7 @@ pub fn held(agent: &agents::Agent, document: Option<&Document>, content: &[Conte
         return Err(Frame::Error(undocumented(agent)));
     };
     // Rule 2.
-    let FalseOr::Is(decisions) = &document.structured_decisions else {
+    let Some(FalseOr::Is(decisions)) = document.agent().map(|agent| &agent.structured_decisions) else {
         return Err(Frame::NoStructuredDecisions);
     };
     // Rule 3.

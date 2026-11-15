@@ -41,9 +41,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// 2. The image's document is found as [`images::document`] finds it —
 ///    the record, else whoever holds the image, the document then
 ///    left on record. An image with none is the `image` error.
-/// 3. A document that declares neither `chat` nor
-///    `structured_decisions` is the `image` error too: an agent's
-///    image does at least one.
+/// 3. A document that is a tool's is the `image` error too: an agent
+///    is made of an agent's image. An agent's document says at least
+///    one of `chat` and `structured_decisions`, by its own rules.
 /// 4. Then the create, as stated above, its checks made again in its
 ///    own transaction.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
@@ -65,8 +65,8 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     match images::document(daemon, &image).await? {
         Err(why) => return Ok(Frame::Error(reply::image(&why))),
         Ok(document) => {
-            if document.chat.is_false() && document.structured_decisions.is_false() {
-                return Ok(Frame::Error(reply::image("the image's document declares neither chat nor structured decisions")));
+            if document.agent().is_none() {
+                return Ok(Frame::Error(reply::image("the image's document is a tool's, and an agent is made of an agent's image")));
             }
         }
     }
