@@ -251,7 +251,7 @@ The parse rules, in the order they are checked:
 
 **Size limit: 1048576 bytes (2^20) per file.** It applies to `DIVERGE.md` and to each icon, each by
 itself, measured as the file's length in the image. A provider reads none of a larger file and answers
-that it is too large; through the daemon that reads as `{"error":…}`.
+that it is too large: `"too_large"` for an icon, and for the document, through `--info`, `{"error":…}`.
 
 What each member means:
 
@@ -265,8 +265,9 @@ What each member means:
 - `icons` — the icons the image ships, each the name of a file in the same `.diverge` folder. Members,
   all optional and no others: `svg` (an SVG), `512` (a 512×512 PNG), `64` (a 64×64 PNG). Nothing checks
   that a file is what its member says. A provider answers each on its own channel of an `images::read`
-  scope (`icon_svg`, `icon_512`, `icon_64`); **the daemon does not carry those channels yet**, so
-  `diverge run images read` cannot fetch an icon.
+  scope (`icon_svg`, `icon_512`, `icon_64`), and so does the daemon, which keeps each icon it has read
+  by digest as it keeps the document. `diverge run images read '<body>' --icon svg|512|64 --out <path>`
+  writes one to a file and prints `{"path":…,"bytes":N}`, or `"missing"`, `"too_large"` or `{"error":…}`.
 - `chat` — an agent's image only. `false`, or `{"prompt_modalities": {"image": …, "audio": …, "file": …}}`:
   what a message to the agent may carry beside text, all three booleans required. Text is always
   taken and is not listed. `file` is an embedded resource that is neither an image nor audio.
