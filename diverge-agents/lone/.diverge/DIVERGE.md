@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "lone",
   "chat": {
     "prompt_modalities": {

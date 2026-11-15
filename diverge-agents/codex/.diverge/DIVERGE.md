@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "codex",
   "chat": {
     "prompt_modalities": {

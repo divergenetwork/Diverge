@@ -1,5 +1,6 @@
 ---
 {
+  "type": "tool",
   "name": "identity-diverge-network",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

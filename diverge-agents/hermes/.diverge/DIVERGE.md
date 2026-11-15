@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "hermes",
   "chat": {
     "prompt_modalities": {

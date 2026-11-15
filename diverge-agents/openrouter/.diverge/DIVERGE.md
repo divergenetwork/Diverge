@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "openrouter",
   "chat": {
     "prompt_modalities": {

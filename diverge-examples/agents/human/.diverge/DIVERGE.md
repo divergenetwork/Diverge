@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "human",
   "chat": {
     "prompt_modalities": {

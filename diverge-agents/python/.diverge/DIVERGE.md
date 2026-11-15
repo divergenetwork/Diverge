@@ -1,5 +1,6 @@
 ---
 {
+  "type": "agent",
   "name": "python",
   "chat": {
     "prompt_modalities": {
