@@ -1,12 +1,13 @@
 ---
 title: 'Document'
-summary: 'An image’s /DIVERGE.md: a frontmatter between two lines that are exactly ---, which is exactly one JSON object of the members name and schema and at most three more, and the markdown body after it; the parsed document is one JSON object of at least three and at most six members.'
+summary: 'An image’s /.diverge/DIVERGE.md: a frontmatter between two lines that are exactly ---, which is exactly one JSON object of the members name and schema and at most three more, and the markdown body after it; the parsed document is one JSON object of at least three and at most six members.'
 order: 2
 draft: false
 ---
 
-Every image ships at most one document, the file `/DIVERGE.md` at the
-root of the image's filesystem. The document states what the
+Every image ships at most one document, the file `DIVERGE.md` in the
+directory `.diverge` at the root of the image's filesystem: the path
+`/.diverge/DIVERGE.md`. No other file of that directory is read. The document states what the
 `arguments` of a container of the image may be. This section defines
 the file and the JSON object a server sends for it.
 

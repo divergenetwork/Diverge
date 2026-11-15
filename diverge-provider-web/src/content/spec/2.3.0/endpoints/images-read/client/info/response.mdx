@@ -1,13 +1,13 @@
 ---
 title: 'Response'
-summary: 'The server answers with exactly one channel response, whose payload begins with the byte 0 followed by the document, is the byte 1 alone when the image ships no /DIVERGE.md, or begins with the byte 2 followed by an error, and the channel response finish follows it.'
+summary: 'The server answers with exactly one channel response, whose payload begins with the byte 0 followed by the document, is the byte 1 alone when the image ships no /.diverge/DIVERGE.md, or begins with the byte 2 followed by an error, and the channel response finish follows it.'
 order: 2
 draft: false
 ---
 
 ```text
-[0][document JSON …]    the image's /DIVERGE.md, parsed
-[1]                     the image ships no /DIVERGE.md
+[0][document JSON …]    the image's /.diverge/DIVERGE.md, parsed
+[1]                     the image ships no /.diverge/DIVERGE.md
 [2][error JSON …]       the file could not be read, or is not a document
 ```
 
@@ -20,7 +20,7 @@ draft: false
   defines, read from the file that
   [Document](/shared/document/#the-file) defines.
 - **Missing.** The byte `1` alone states that the image ships no
-  `/DIVERGE.md`, or that what the image holds at that path is not a
+  `/.diverge/DIVERGE.md`, or that what the image holds at that path is not a
   regular file. Nothing follows the byte. That is a fact about the
   image and not a failure.
 - **The error.** The byte `2` is followed by exactly one JSON value
