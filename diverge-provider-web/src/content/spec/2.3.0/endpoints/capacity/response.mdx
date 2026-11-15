@@ -33,10 +33,12 @@ finish follows the response, and no frame follows the finish.
   [`images_store`](/capabilities/#images_store).
 - **`container_memory`.** An integer: the number of bytes of memory a
   container run of the client could still reserve, as of the instant
-  of the response.
+  of the response. A client reads it only where the server holds out
+  [`containers`](/capabilities/#containers).
 - **`container_disk`.** An integer: the number of bytes of overlay
   disk a container run of the client could still reserve, as of the
-  instant of the response.
+  instant of the response. A client reads it only where the server
+  holds out [`containers`](/capabilities/#containers).
 - **Each integer.** Each member is an integer no less than `0` and no
   greater than `18446744073709551615`. `0` is an answer: no room.
 - **The sequence.** Exactly one response precedes the response

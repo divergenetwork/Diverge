@@ -46,6 +46,9 @@ follows the finish.
   mode object, `volumes_disk` carries any value, and a client does
   not read it. Where the server does not hold out `images_store`,
   `images_disk` carries any value, and a client does not read it.
+  Where the server does not hold out `containers`, `container_memory`
+  and `container_disk` each carry any value, and a client reads
+  neither.
   [Capabilities](/capabilities/) states what the server holds out.
 - **Reckoned by reservation.** `container_memory` is what remains of
   the memory the server lets its running containers reserve, after

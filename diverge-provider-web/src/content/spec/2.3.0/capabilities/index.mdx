@@ -94,6 +94,10 @@ pages of those endpoints define.
   channel on the scope, and answers no channel the client opens on
   the scope.
 
+  The server sends `container_memory` and `container_disk` in every
+  [capacity](/endpoints/capacity/) response. Each carries any value,
+  and a client reads neither.
+
 ## `images_store`
 
 The server keeps the Store: for each client, the images the client
