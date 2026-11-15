@@ -4,8 +4,8 @@
 use std::sync::Arc;
 
 use diverge_sdk::provider::endpoints::containers::client::UnaryError;
-use diverge_sdk::provider::endpoints::containers::client::answered::Info;
-use diverge_sdk::shared::containers::info::{Document, response};
+use diverge_sdk::provider::endpoints::images::read::client::execute::answered::InfoFrame;
+use diverge_sdk::shared::containers::info::{Document, MAX_BYTES, response};
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::error::Error;
 
@@ -21,6 +21,9 @@ pub enum Read {
     Info(Document),
     /// The image ships none.
     Missing,
+    /// The image's document is larger than [`MAX_BYTES`]: measured by
+    /// the source, and not read.
+    TooLarge,
     /// No source in reach holds the image, so nothing was read.
     NoSource,
     /// The source that holds the image could not read the document,
@@ -55,7 +58,7 @@ pub async fn info(daemon: &Arc<Daemon>, image: &Image) -> Result<Read, store::Er
     let Some(source) = locate(daemon, image, &Reach::Full { except: None }, &[]).await else {
         return Ok(Read::NoSource);
     };
-    let read = asked(source.scope.info().await);
+    let read = asked(source.scope.info_frame().await);
     let _ = source.scope.cancel().await;
     // Rule 3.
     if let Read::Info(found) = &read {
@@ -79,7 +82,7 @@ pub async fn through(daemon: &Arc<Daemon>, pulls: &Pulls, digest: &str) -> respo
     let Some(source) = pulls.held().await else {
         return response::Frame::Error(reply::failure(&"no source holds the image any more"));
     };
-    match asked(source.scope.info().await) {
+    match asked(source.scope.info_frame().await) {
         Read::Info(found) => {
             if let Err(error) = record(daemon, digest, &found).await {
                 return response::Frame::Error(reply::failure(&error));
@@ -87,6 +90,7 @@ pub async fn through(daemon: &Arc<Daemon>, pulls: &Pulls, digest: &str) -> respo
             response::Frame::Info(found)
         }
         Read::Missing => response::Frame::Missing,
+        Read::TooLarge => response::Frame::TooLarge,
         Read::NoSource => response::Frame::Error(reply::failure(&"no source holds the image any more")),
         Read::Error(error) => response::Frame::Error(error),
     }
@@ -98,6 +102,7 @@ pub async fn document(daemon: &Arc<Daemon>, image: &Image) -> Result<Result<Docu
     Ok(match info(daemon, image).await? {
         Read::Info(document) => Ok(document),
         Read::Missing => Err("the image ships no /.diverge/DIVERGE.md".to_string()),
+        Read::TooLarge => Err(format!("the image's /.diverge/DIVERGE.md is larger than {MAX_BYTES} bytes")),
         Read::NoSource => Err("the image's document could not be read: no source holds the image".to_string()),
         Read::Error(error) => Err(format!("the image's document could not be read: {}", error.0)),
     })
@@ -118,11 +123,12 @@ async fn record(daemon: &Daemon, digest: &str, document: &Document) -> Result<()
 /// A source's answer on its `info` channel, as a [`Read`]: the
 /// source's refusal in its own words, and a channel that broke in the
 /// daemon's.
-fn asked(read: Result<Option<Document>, UnaryError<Info>>) -> Read {
+fn asked(read: Result<response::Frame, UnaryError<InfoFrame>>) -> Read {
     match read {
-        Ok(Some(document)) => Read::Info(document),
-        Ok(None) => Read::Missing,
-        Err(UnaryError::Refused(error)) => Read::Error(error),
+        Ok(response::Frame::Info(document)) => Read::Info(document),
+        Ok(response::Frame::Missing) => Read::Missing,
+        Ok(response::Frame::TooLarge) => Read::TooLarge,
+        Ok(response::Frame::Error(error)) => Read::Error(error),
         Err(error) => Read::Error(reply::failure(&error)),
     }
 }

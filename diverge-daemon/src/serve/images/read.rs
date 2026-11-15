@@ -20,6 +20,7 @@ use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::serve::reply;
 use crate::store;
+use crate::store::image_icons::Which;
 
 /// Say whether the image is held, and serve it, every ask the caller
 /// opens on it, until the caller cancels.
@@ -46,8 +47,11 @@ use crate::store;
 ///    and every later ask is answered empty. The image's document is
 ///    answered with exactly one frame then the finish, as
 ///    [`images::through`] reads it: from the daemon's record of the
-///    digest, else through the source. A channel request that
-///    will not decode is finished with nothing.
+///    digest, else through the source. Each of the image's three
+///    icons is answered the same way, as [`images::icon`] reads it:
+///    from the daemon's record of the digest and the icon, else
+///    through the source, whose answer is carried as it came. A
+///    channel request that will not decode is finished with nothing.
 /// 5. **The end.** The caller's `Cancel`, the caller gone, the caller
 ///    reading no more of the scope, or the source's scope ending ends
 ///    the loop; every answer still in flight is finished, save that a
@@ -108,9 +112,15 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
                 tasks.spawn(info(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone()));
             }
             Ok(channel_request::Frame::Cancel) => break,
-            // The icons' asks are not carried yet: each is finished with
-            // no answer, as an ask the daemon cannot read is.
-            Ok(channel_request::Frame::IconSvg | channel_request::Frame::Icon512 | channel_request::Frame::Icon64) => scope.send_channel_response_finish(channel).await,
+            Ok(channel_request::Frame::IconSvg) => {
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone(), Which::Svg));
+            }
+            Ok(channel_request::Frame::Icon512) => {
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone(), Which::Png512));
+            }
+            Ok(channel_request::Frame::Icon64) => {
+                tasks.spawn(icon(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone(), Which::Png64));
+            }
             Err(_) => scope.send_channel_response_finish(channel).await,
         }
     }
@@ -192,10 +202,17 @@ async fn prove(scope: Arc<ScopeHandle>, pulls: Arc<images::Pulls>, channel: u32,
     scope.send_channel_response_finish(channel).await;
 }
 
-/// Exactly one frame — the document, that the image ships none, or an
-/// error — then the finish.
+/// Exactly one frame — the document, that the image ships none, an
+/// error, or that the file is too large — then the finish.
 async fn info(scope: Arc<ScopeHandle>, daemon: Arc<Daemon>, pulls: Arc<images::Pulls>, channel: u32, digest: String) {
     respond(&scope, channel, &images::through(&daemon, &pulls, &digest).await).await;
+    scope.send_channel_response_finish(channel).await;
+}
+
+/// Exactly one frame — the icon's bytes, that the image ships none, an
+/// error, or that the file is too large — then the finish.
+async fn icon(scope: Arc<ScopeHandle>, daemon: Arc<Daemon>, pulls: Arc<images::Pulls>, channel: u32, digest: String, which: Which) {
+    respond(&scope, channel, &images::icon(&daemon, &pulls, &digest, which).await).await;
     scope.send_channel_response_finish(channel).await;
 }
 

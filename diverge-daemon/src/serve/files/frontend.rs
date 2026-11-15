@@ -31,6 +31,7 @@ pub async fn declares(daemon: &Arc<Daemon>, image: &Image) -> Result<Result<bool
     Ok(match images::info(daemon, image).await? {
         images::Read::Info(document) => Ok(document.frontend),
         images::Read::Missing => Ok(false),
+        images::Read::TooLarge => Err("the image's document could not be read: it is larger than the limit".to_string()),
         images::Read::NoSource => Err("the image's document could not be read: no source holds the image".to_string()),
         images::Read::Error(error) => Err(format!("the image's document could not be read: {}", error.0)),
     })

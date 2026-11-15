@@ -362,6 +362,18 @@ CREATE TABLE IF NOT EXISTS diverge.image_info (
     document JSONB NOT NULL
 );
 
+-- The icons the daemon has read of an image, by digest and by which of
+-- the three: `icon` is the member of the document's `icons` that names
+-- it, 'svg', '512' or '64', and `bytes` the file, at most 1048576
+-- bytes. Only an icon is recorded: an image that ships none, one too
+-- large, and a failure have no row.
+CREATE TABLE IF NOT EXISTS diverge.image_icons (
+    digest TEXT NOT NULL,
+    icon   TEXT NOT NULL,
+    bytes  BYTEA NOT NULL,
+    PRIMARY KEY (digest, icon)
+);
+
 -- A dependency template, by the hash of its own JSON: the body every
 -- dependency tool of it shares. Made by the first registration that
 -- declares it, gone with the template's delete.
