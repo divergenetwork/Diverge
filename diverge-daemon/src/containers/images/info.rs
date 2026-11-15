@@ -1,4 +1,4 @@
-//! An image's `/DIVERGE.md`: the daemon's record of it, and the read
+//! An image's `/.diverge/DIVERGE.md`: the daemon's record of it, and the read
 //! that fills the record.
 
 use std::sync::Arc;
@@ -28,7 +28,7 @@ pub enum Read {
     Error(Error),
 }
 
-/// The image's `/DIVERGE.md`, for the daemon's own use: what a create,
+/// The image's `/.diverge/DIVERGE.md`, for the daemon's own use: what a create,
 /// a deployment or a frontend asks before it goes on. The rules:
 ///
 /// 1. **The record first.** A document the daemon has read before is
@@ -64,7 +64,7 @@ pub async fn info(daemon: &Arc<Daemon>, image: &Image) -> Result<Read, store::Er
     Ok(read)
 }
 
-/// The image's `/DIVERGE.md`, for a client's `info` channel on an
+/// The image's `/.diverge/DIVERGE.md`, for a client's `info` channel on an
 /// `images::read` scope the daemon holds open through `pulls`: the
 /// answer as the channel carries it. The rules of [`info`], save that
 /// the source is the scope's own, already held: the record first, else
@@ -97,7 +97,7 @@ pub async fn through(daemon: &Arc<Daemon>, pulls: &Pulls, digest: &str) -> respo
 pub async fn document(daemon: &Arc<Daemon>, image: &Image) -> Result<Result<Document, String>, store::Error> {
     Ok(match info(daemon, image).await? {
         Read::Info(document) => Ok(document),
-        Read::Missing => Err("the image ships no /DIVERGE.md".to_string()),
+        Read::Missing => Err("the image ships no /.diverge/DIVERGE.md".to_string()),
         Read::NoSource => Err("the image's document could not be read: no source holds the image".to_string()),
         Read::Error(error) => Err(format!("the image's document could not be read: {}", error.0)),
     })

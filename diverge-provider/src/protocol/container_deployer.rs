@@ -284,7 +284,7 @@ pub trait ContainerDeployer: Send + Sync {
         caller: &Caller,
     ) -> impl Future<Output = Result<Deployed<Self::Container>, Refused<Self::Error>>> + Send;
 
-    /// Read the `/DIVERGE.md` of the image `image` names, running
+    /// Read the `/.diverge/DIVERGE.md` of the image `image` names, running
     /// nothing: see [`ImageInfo`].
     ///
     /// The image is found where [`deploy`](Self::deploy) would find it,

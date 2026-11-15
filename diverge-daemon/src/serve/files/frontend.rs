@@ -23,7 +23,7 @@ use crate::daemon::Daemon;
 use crate::serve::reply;
 use crate::store;
 
-/// Whether the image's `/DIVERGE.md` declares a frontend: `Ok(true)`
+/// Whether the image's `/.diverge/DIVERGE.md` declares a frontend: `Ok(true)`
 /// where it says so, `Ok(false)` where it does not or the image ships
 /// none, and `Err` with the reason where the document could not be
 /// read.

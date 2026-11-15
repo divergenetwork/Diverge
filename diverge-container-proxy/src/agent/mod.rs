@@ -10,8 +10,8 @@
 //! the program's own queue, answered at once. The calls every
 //! container answers — `/register`,
 //! `/secrets`, `/secrets/collect` — are [`program`](crate::program)'s;
-//! what the arguments may be is the image's `/DIVERGE.md`, which
-//! [`info`](crate::info) reads from the root and asks of no program.
+//! what the arguments may be is the image's `/.diverge/DIVERGE.md`, which
+//! [`info`](crate::info) reads from the container and asks of no program.
 //! The queue itself is
 //! the proxy's, held by one [`driver()`] task that never
 //! awaits the agent's server directly, so nothing the server asks of

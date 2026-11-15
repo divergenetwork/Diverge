@@ -10,7 +10,7 @@
 //! the first yes and cancels every other; [`manifest`], [`blob`] and
 //! [`prove`] pull through that one source, kept in [`Pulls`], and
 //! answer not held when it fails; [`info`] is the image's
-//! `/DIVERGE.md`, from the daemon's record or read through a source,
+//! `/.diverge/DIVERGE.md`, from the daemon's record or read through a source,
 //! and nowhere else; [`name`] is the repository path the
 //! daemon answers a has with, which the asking provider's own registry
 //! serves the image as and never reads.

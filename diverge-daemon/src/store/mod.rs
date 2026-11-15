@@ -19,7 +19,7 @@
 //! whom through the daemon, and [`volumes`] what
 //! the daemon keeps of a volume, which is its tags alone;
 //! loaded whole and written whole; [`image_info`] what the daemon
-//! has learnt of each image's `/DIVERGE.md`, by digest; [`hash`] is the one id that is a
+//! has learnt of each image's `/.diverge/DIVERGE.md`, by digest; [`hash`] is the one id that is a
 //! hash; [`counters`] is the once-and-for-all
 //! index of a container; [`in_use`] is what containers hold —
 //! templates, accounts, remote daemons, vault keys — as the records

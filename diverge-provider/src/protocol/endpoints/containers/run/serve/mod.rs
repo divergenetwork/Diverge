@@ -9,7 +9,7 @@
 //! container leaving, and the caller going away. A tree, a read and a
 //! write are scopes this end opens on the proxy, and a transfer is a
 //! read on this proxy wired into a write on another container's; a
-//! database half, the image's `/DIVERGE.md`, a feed of the secrets
+//! database half, the image's `/.diverge/DIVERGE.md`, a feed of the secrets
 //! and the family's own exchange are channels on the begin scope; a FUSE
 //! mount asked for while the container runs is one more mount scope
 //! on the proxy, waited for. A terminal is a scope on the proxy the

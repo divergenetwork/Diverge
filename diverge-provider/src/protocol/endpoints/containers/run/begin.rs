@@ -16,7 +16,7 @@ use diverge_sdk::shared::permission::Grant;
 /// One per run, made by [`Runs::begin`](super::family::Runs::begin),
 /// held by the [`Run`](super::run::Run) for the container's life. The
 /// two families' handles answer the proxy the same way, and ask it
-/// the same three things — a database half, the image's `/DIVERGE.md`,
+/// the same three things — a database half, the image's `/.diverge/DIVERGE.md`,
 /// a feed of the secrets — which is what the methods here are for;
 /// what differs — the queue's exchanges, or the MCP five — the
 /// family's own `serve` reaches through the variant.

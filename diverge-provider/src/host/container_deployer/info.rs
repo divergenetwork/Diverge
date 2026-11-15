@@ -1,4 +1,4 @@
-//! An image's `/DIVERGE.md`, read out of the image and nothing run.
+//! An image's `/.diverge/DIVERGE.md`, read out of the image and nothing run.
 
 use std::path::Path;
 
@@ -10,13 +10,14 @@ use super::{ContainerDeployer, Error, name_ok};
 use crate::host::tools::{self, podman};
 use crate::protocol::image_info::ImageInfo;
 
-/// Where every image puts its document: the root of its filesystem.
-const PATH: &str = "/DIVERGE.md";
+/// Where every image puts its document: the folder `.diverge` at the
+/// root of its filesystem.
+const PATH: &str = "/.diverge/DIVERGE.md";
 
 /// The name the file lands under, in the directory it is copied to.
 const FILE: &str = "DIVERGE.md";
 
-/// The image's `/DIVERGE.md`, as a deploy would find the image, with
+/// The image's `/.diverge/DIVERGE.md`, as a deploy would find the image, with
 /// no caller to ask.
 ///
 /// The rules, in order:

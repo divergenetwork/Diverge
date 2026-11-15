@@ -1,4 +1,4 @@
-//! What a deployer read of an image's `/DIVERGE.md`.
+//! What a deployer read of an image's `/.diverge/DIVERGE.md`.
 
 /// The answer to [`read_info`](super::container_deployer::ContainerDeployer::read_info):
 /// three answers, none of them a failure, since a failure is the
@@ -10,9 +10,9 @@
 /// so a deployer never speaks the document's rules.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImageInfo {
-    /// The file, a regular one at the image's root.
+    /// The file, a regular one in the image's `/.diverge`.
     Found(Vec<u8>),
-    /// The image ships no `/DIVERGE.md`, or what is at that path is
+    /// The image ships no `/.diverge/DIVERGE.md`, or what is at that path is
     /// not a regular file.
     Missing,
     /// The image is in none of the places the deployer looks.

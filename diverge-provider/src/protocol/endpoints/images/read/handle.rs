@@ -201,7 +201,7 @@ async fn prove<I: ServedImage>(scope: Arc<ScopeHandle>, served: Arc<I>, channel:
     scope.send_channel_response_finish(channel).await;
 }
 
-/// Exactly one frame — the image's `/DIVERGE.md` — then the finish.
+/// Exactly one frame — the image's `/.diverge/DIVERGE.md` — then the finish.
 /// The deployer reads the file out of the image without running it,
 /// obtaining the image as the scope found it: from the caller's Store
 /// or a registry it uses. The rules:

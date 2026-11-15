@@ -11,8 +11,8 @@
 //! and `/secrets/collect` for the rotating ones at every inactive.
 //! [`Upstream`] is the client all of them are made with, and the
 //! loop's own calls beside them. What the arguments may be is asked
-//! of no program: it is the image's `/DIVERGE.md`, which
-//! [`info`](crate::info) reads from the root.
+//! of no program: it is the image's `/.diverge/DIVERGE.md`, which
+//! [`info`](crate::info) reads from the container.
 
 mod register;
 mod secrets;

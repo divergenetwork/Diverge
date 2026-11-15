@@ -5,8 +5,8 @@
 //! [`port()`](diverge_sdk::container_proxy::inside::port) reads, beside the
 //! `/register`, `/secrets` and `/secrets/collect` that
 //! [`program`](crate::program) makes, what the arguments may be being
-//! the image's `/DIVERGE.md`, which [`info`](crate::info) reads from
-//! the root and asks of no program —
+//! the image's `/.diverge/DIVERGE.md`, which [`info`](crate::info) reads from
+//! the container and asks of no program —
 //! and each channel the server opens on a tool container's begin
 //! scope is one exchange with it, answered in the wire's own frame.
 //! The proxy opens these sessions only for a tool container's begin,

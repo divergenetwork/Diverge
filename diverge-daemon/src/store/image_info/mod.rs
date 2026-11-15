@@ -1,7 +1,7 @@
-//! What the daemon has learnt of each image's `/DIVERGE.md`, by
+//! What the daemon has learnt of each image's `/.diverge/DIVERGE.md`, by
 //! digest.
 //!
-//! A digest is the image, so what an image ships at `/DIVERGE.md` is
+//! A digest is the image, so what an image ships at `/.diverge/DIVERGE.md` is
 //! fixed by it: a document found once is the document for good, and
 //! nothing here is ever updated or removed. Only a document is
 //! recorded: an image that ships none, or one that does not parse,

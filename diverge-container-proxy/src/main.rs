@@ -29,7 +29,7 @@
 //! with the program's own server on the loopback when the server
 //! begins, and hands the server the dependencies the program answered
 //! with and the secrets it takes — by name and mode, never a value.
-//! What the arguments may be is the image's `/DIVERGE.md`, which is
+//! What the arguments may be is the image's `/.diverge/DIVERGE.md`, which is
 //! read of the image and not of the container: the proxy answers it
 //! to nobody, and reads it only to learn whether the image serves a
 //! frontend. The

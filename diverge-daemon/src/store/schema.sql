@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS diverge.identity_tags (
     PRIMARY KEY (issuer, subject)
 );
 
--- What the daemon has learnt of an image's /DIVERGE.md, by digest: a
+-- What the daemon has learnt of an image's /.diverge/DIVERGE.md, by digest: a
 -- digest is the image, so an answer found once is the answer for good.
 -- `document` is the document parsed. Only a document is recorded: an
 -- image that ships none, or one that does not parse, has no row.
