@@ -16,24 +16,24 @@ use crate::shared::error::Error;
 /// # The layout
 ///
 /// ```text
-/// [0][document JSON …]   the image's /DIVERGE.md, parsed: its name, its schema and its body
-/// [1]                    the image ships no /DIVERGE.md
+/// [0][document JSON …]   the image's /.diverge/DIVERGE.md, parsed: its name, its schema and its body
+/// [1]                    the image ships no /.diverge/DIVERGE.md
 /// [2][error JSON …]      the file could not be read, or is not a document, and why
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
-    /// The image's `/DIVERGE.md`, parsed: see [`Document`]. Tag `0`.
+    /// The image's `/.diverge/DIVERGE.md`, parsed: see [`Document`]. Tag `0`.
     ///
     /// Its `schema` is the JSON Schema of the
     /// [`arguments`](crate::shared::containers::request::Container::arguments)
     /// the image's program accepts, as the image states it; its
     /// `body` is the prose beneath.
     Info(Document),
-    /// The image ships no `/DIVERGE.md`. Tag `1`.
+    /// The image ships no `/.diverge/DIVERGE.md`. Tag `1`.
     ///
     /// Bare: there is nothing to carry. This is not a failure of
-    /// anything but a fact about the image — the proxy looked at the
-    /// root and the file was not there — and a caller that asked
+    /// anything but a fact about the image — the file was looked
+    /// for at its path and was not there — and a caller that asked
     /// learns that the image does not say what it takes.
     Missing,
     /// A failure. Tag `2`.

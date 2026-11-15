@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use super::{Chat, FalseOr, ParseError, StructuredDecisions};
 
-/// `/DIVERGE.md`, parsed: the image's name, the arguments' JSON
+/// `/.diverge/DIVERGE.md`, parsed: the image's name, the arguments' JSON
 /// Schema, whether its program serves a frontend, how an agent's
 /// program chats and makes structured decisions, and the text beneath
 /// them.
@@ -84,7 +84,7 @@ fn is_fence(line: &str) -> bool {
 }
 
 impl Document {
-    /// Read a `/DIVERGE.md` from its text.
+    /// Read a `/.diverge/DIVERGE.md` from its text.
     ///
     /// The rules, in the order they are checked:
     ///

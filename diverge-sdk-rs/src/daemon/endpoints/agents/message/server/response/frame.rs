@@ -81,7 +81,7 @@ use crate::shared::error::Error;
 ///
 /// # What the agent's image says
 ///
-/// The daemon holds the request to the agent's image's `/DIVERGE.md`,
+/// The daemon holds the request to the agent's image's `/.diverge/DIVERGE.md`,
 /// as it has it on record, before anything is sent on:
 /// [`NoChat`](Self::NoChat) or
 /// [`NoStructuredDecisions`](Self::NoStructuredDecisions) where the

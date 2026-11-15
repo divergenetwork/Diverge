@@ -2,7 +2,7 @@
 //! decision.
 //!
 //! One request, whose `type` says which of the two things an agent's
-//! image may say it does in its `/DIVERGE.md`:
+//! image may say it does in its `/.diverge/DIVERGE.md`:
 //!
 //! - `chat` hands the agent a message — MCP content blocks — which
 //!   joins its conversation.

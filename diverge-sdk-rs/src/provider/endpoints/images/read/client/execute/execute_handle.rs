@@ -99,7 +99,7 @@ impl ExecuteHandle {
         }
     }
 
-    /// The scope's image's `/DIVERGE.md`, parsed: `None` for an image
+    /// The scope's image's `/.diverge/DIVERGE.md`, parsed: `None` for an image
     /// that ships none. The provider reads the file out of the image
     /// without running it; a file it cannot read, or that is no
     /// document, is the refusal.

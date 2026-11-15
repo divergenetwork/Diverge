@@ -15,7 +15,7 @@
 //! digest, a blob by digest, in pieces, and the proof over the image.
 //! The request bodies and the answers are those of
 //! [`oci`](crate::shared::containers::oci); only who asks has changed.
-//! One ask more is the scope's own: the image's `/DIVERGE.md`, which
+//! One ask more is the scope's own: the image's `/.diverge/DIVERGE.md`, which
 //! the provider reads out of the held image without running it and
 //! answers parsed, as [`info`](crate::shared::containers::info) states
 //! it — the document, that the image ships none, or an error. It is

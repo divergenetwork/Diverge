@@ -16,7 +16,7 @@ import * as prove from "../../../../../../shared/containers/oci/prove/request/re
  * | `1` | `oci_blob`: a blob by digest; pieces, each appending, then the finish |
  * | `2` | `oci_prove`: the proof over the image; one frame of 32 bytes, or the empty finish |
  * | `3` | `cancel`: carries nothing, and nothing answers on its channel; the scope's finish does |
- * | `4` | `info`: carries nothing; one frame, the image's `/DIVERGE.md` parsed, that it ships none, or an error |
+ * | `4` | `info`: carries nothing; one frame, the image's `/.diverge/DIVERGE.md` parsed, that it ships none, or an error |
  */
 export type Frame =
   | { readonly oci_manifest: manifest.Request }

@@ -62,7 +62,7 @@
 //! caller opens a scope on the provider naming one image, is answered
 //! held or not, and asks, on channels, for that image's manifests,
 //! blobs and proof — the run's asks the other way round — and for its
-//! `/DIVERGE.md`, read out of the image without running it. All of it
+//! `/.diverge/DIVERGE.md`, read out of the image without running it. All of it
 //! comes from the caller's Store, or from a registry the provider is
 //! configured with that one of the image's references names; never
 //! another identity's Store, nor what the provider merely pulled. It

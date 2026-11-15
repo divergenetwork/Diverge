@@ -11,9 +11,9 @@ import { Document } from "../document.js";
  * scope, and the finish follows it.
  */
 export const Frame = z.union([
-  /** The image's `/DIVERGE.md`, parsed. Tag `0`. */
+  /** The image's `/.diverge/DIVERGE.md`, parsed. Tag `0`. */
   z.strictObject({ info: Document }),
-  /** The image ships no `/DIVERGE.md`, or it is not a regular file. Tag `1`. */
+  /** The image ships no `/.diverge/DIVERGE.md`, or it is not a regular file. Tag `1`. */
   z.literal("missing"),
   /** A failure: the file is not a document, or the image could not be read. Tag `2`. */
   z.strictObject({ error: Error }),

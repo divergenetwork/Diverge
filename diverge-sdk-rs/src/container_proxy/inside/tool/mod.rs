@@ -6,7 +6,7 @@
 //! calls every container answers, and the MCP server beside them —
 //! stated once, for the program that answers them and the proxy that
 //! makes them. What the arguments may be is not among them: that is
-//! the image's `/DIVERGE.md`, which the proxy reads from the root and
+//! the image's `/.diverge/DIVERGE.md`, which the proxy reads from the container and
 //! the program is never asked for.
 //!
 //! | the proxy calls | with | the program answers |

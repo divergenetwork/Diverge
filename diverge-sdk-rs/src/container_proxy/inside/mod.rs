@@ -37,8 +37,8 @@
 //! [`agent`] states; for a tool container, the MCP server at
 //! `/mcp` that [`tool`] states. Each surface is stated there, once,
 //! and nothing here stands between the two. What the arguments may
-//! be is asked of no program: it is the image's `/DIVERGE.md`, which
-//! the proxy reads from the root.
+//! be is asked of no program: it is the image's `/.diverge/DIVERGE.md`, which
+//! the proxy reads from the container.
 
 pub mod agent;
 mod client;

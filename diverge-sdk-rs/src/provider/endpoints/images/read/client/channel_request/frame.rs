@@ -51,7 +51,7 @@ pub enum Frame {
     /// channel response finish on it. What comes back is the scope's
     /// finish, after every ask still being answered has been.
     Cancel,
-    /// The scope's image's `/DIVERGE.md`. Tag `4`.
+    /// The scope's image's `/.diverge/DIVERGE.md`. Tag `4`.
     ///
     /// Carries nothing — the variant is bare. Answered with exactly
     /// one frame, then the finish: the document parsed, that the image

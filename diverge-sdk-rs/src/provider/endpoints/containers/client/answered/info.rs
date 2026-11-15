@@ -7,7 +7,7 @@ use crate::wire::decode::Decode as _;
 use crate::shared::containers::info;
 use crate::shared::error::Error;
 
-/// The image's `/DIVERGE.md`, parsed, once — `None` when the image
+/// The image's `/.diverge/DIVERGE.md`, parsed, once — `None` when the image
 /// ships none, which is a fact about the image and not a refusal —
 /// or the provider's refusal: the file could not be read, or is not a
 /// document.

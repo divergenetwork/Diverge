@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-/// A `/DIVERGE.md` that is not one. Each names the rule of
+/// A `/.diverge/DIVERGE.md` that is not one. Each names the rule of
 /// [`Document::parse`](super::Document::parse) the text broke, in the
 /// order the rules are checked.
 #[derive(Debug)]

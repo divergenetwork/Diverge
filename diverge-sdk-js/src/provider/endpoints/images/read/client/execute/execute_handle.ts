@@ -81,7 +81,7 @@ export class ExecuteHandle {
   }
 
   /**
-   * The image's `/DIVERGE.md`, parsed; `undefined` for an image that
+   * The image's `/.diverge/DIVERGE.md`, parsed; `undefined` for an image that
    * ships none. The source reads the file out of the image without
    * running it; a file it cannot read, or that is no document, is the
    * `refused` error carrying the source's own words.

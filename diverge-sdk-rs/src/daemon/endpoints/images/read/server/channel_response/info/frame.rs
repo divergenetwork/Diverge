@@ -1,6 +1,6 @@
 //! What a server's response frame carries on an info channel.
 
-/// The scope's image's `/DIVERGE.md`, parsed; that the image ships
+/// The scope's image's `/.diverge/DIVERGE.md`, parsed; that the image ships
 /// none; or an error. See
 /// [`info::response::Frame`](crate::shared::containers::info::response::Frame).
 ///

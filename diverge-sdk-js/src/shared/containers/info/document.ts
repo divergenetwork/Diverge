@@ -7,7 +7,7 @@ import { falseOr } from "./false_or.js";
 import { StructuredDecisions } from "./structured_decisions.js";
 
 /**
- * An image's `/DIVERGE.md`, parsed: the JSON frontmatter — the image's
+ * An image's `/.diverge/DIVERGE.md`, parsed: the JSON frontmatter — the image's
  * name, the JSON Schema of the arguments the image's program accepts,
  * whether the program serves a frontend, and how an agent's program
  * chats and makes structured decisions — and the markdown body

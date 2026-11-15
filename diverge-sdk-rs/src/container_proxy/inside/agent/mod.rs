@@ -9,7 +9,7 @@
 //! [`register`](crate::container_proxy::inside::register) and the
 //! two over its [`secrets`](crate::container_proxy::inside::secrets).
 //! What the arguments may be is not among them: that is the image's
-//! `/DIVERGE.md`, which the proxy reads from the root and the program
+//! `/.diverge/DIVERGE.md`, which the proxy reads from the container and the program
 //! is never asked for.
 //!
 //! | the proxy calls | with | the program answers |

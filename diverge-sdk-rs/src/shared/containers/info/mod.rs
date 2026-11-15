@@ -1,8 +1,10 @@
-//! The image's own word on what its arguments may be: `/DIVERGE.md`,
+//! The image's own word on what its arguments may be: `/.diverge/DIVERGE.md`,
 //! read of the image and answered on the image's own scope.
 //!
-//! Every container image ships one file at the root of its
-//! filesystem, `/DIVERGE.md`: a frontmatter between two `---` lines
+//! Every container image ships one file in the folder `.diverge` at
+//! the root of its filesystem, `/.diverge/DIVERGE.md` — the folder is
+//! where an image keeps what it says of itself, and this file is the
+//! one thing of it read: a frontmatter between two `---` lines
 //! that is one JSON object — `name`, what the image
 //! calls itself, and `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
