@@ -6,8 +6,10 @@
 //! `response-schema` beneath each of
 //! its requests — is [`run`](crate::run)'s. Every program's document
 //! is worked on beneath the program, `diverge <program> config`, by an
-//! [`Action`]: the daemon and the provider are each a [`Server`] —
-//! started or stopped by a [`Lifecycle`], or configured — the viewer
+//! [`Action`]: the provider is a [`Server`] — started or stopped by a
+//! [`Lifecycle`], or configured — the daemon a [`Daemon`], which is
+//! that and its `port` and `idle_seconds` each read or written by
+//! itself, the viewer
 //! and the CLI each a [`Document`], configured alone. The host's
 //! OpenID Connect identities are [`Identities`], and its accounts at
 //! Diverge's own provider are [`IdentityDivergeNetwork`].
@@ -18,6 +20,7 @@
 mod arguments;
 mod command;
 mod config;
+mod daemon;
 mod document;
 mod identities;
 mod identity_diverge_network;
@@ -27,6 +30,7 @@ mod server;
 pub use arguments::*;
 pub use command::*;
 pub use config::*;
+pub use daemon::*;
 pub use document::*;
 pub use identities::*;
 pub use identity_diverge_network::*;

@@ -137,6 +137,24 @@ diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://12
 - The running program is not told. See "What needs a restart".
 - Editing the YAML file by hand is equally valid, and is the only way to keep comments.
 
+### One daemon setting by itself: `diverge daemon port` and `diverge daemon idle_seconds`
+
+```bash
+diverge daemon port get                 # 14980 — the value the daemon runs with, the default where the file has none
+diverge daemon port set 15000           # prints nothing
+diverge daemon idle_seconds get         # 10
+diverge daemon idle_seconds set 300
+```
+
+- `get` works whether the daemon is running or not.
+- **`set` is refused while the daemon is running** on the root, and nothing is written:
+  `Error: the daemon is running on this root, as process <pid>, and nothing was written: stop it first, with`
+  `` `diverge daemon stop` ``. Stop the daemon, set, then start it.
+- A `set` rewrites the file as `config set` does: comments are lost.
+- `config set` and `config patch` are not refused while the daemon runs; they write, and the daemon reads the
+  document at its next start.
+- Only the daemon has these, and only for `port` and `idle_seconds`.
+
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
 `https://identity.diverge.network` is Diverge's hosted issuer. Every subject there is `<issuer>.<id>.<name>`:

@@ -26,7 +26,11 @@
 //! `response-schema` states; see [`run`]. Each program's document in
 //! the root is read, rewritten and edited beneath the program —
 //! `daemon config`, `provider config`, `viewer config`, `cli config` —
-//! through jq, as JSON on this side; see [`document`]. The commands
+//! through jq, as JSON on this side; see [`document`]. Two settings
+//! of the daemon's are also read and written by themselves —
+//! `daemon port get|set`, `daemon idle_seconds get|set` — and a
+//! `set` is refused while the daemon runs on the root; see
+//! [`cli::setting`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it

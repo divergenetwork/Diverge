@@ -2,7 +2,7 @@
 
 use clap::Subcommand;
 
-use super::{Document, Identities, IdentityDivergeNetwork, Server};
+use super::{Daemon, Document, Identities, IdentityDivergeNetwork, Server};
 use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
@@ -28,11 +28,12 @@ pub enum Command {
     /// [`identity_diverge_network`](crate::cli::identity_diverge_network).
     #[command(name = "identity.diverge.network", subcommand)]
     IdentityDivergeNetwork(IdentityDivergeNetwork),
-    /// Start or stop the daemon on the root, or work on its
-    /// `daemon.yaml`: see [`lifecycle`](crate::lifecycle) and
-    /// [`config`](crate::cli::config).
+    /// Start or stop the daemon on the root, work on its
+    /// `daemon.yaml`, or read or write one setting of it: see
+    /// [`lifecycle`](crate::lifecycle), [`config`](crate::cli::config)
+    /// and [`setting`](crate::cli::setting).
     #[command(subcommand)]
-    Daemon(Server),
+    Daemon(Daemon),
     /// Start or stop the provider on the root, or work on its
     /// `provider.yaml`: see [`lifecycle`](crate::lifecycle) and
     /// [`config`](crate::cli::config).

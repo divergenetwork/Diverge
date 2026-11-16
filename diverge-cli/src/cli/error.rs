@@ -10,6 +10,7 @@ use crate::config;
 use crate::detach;
 use crate::document;
 use crate::lifecycle;
+use crate::lifecycle::Program;
 use crate::ours;
 use crate::run;
 
@@ -43,6 +44,15 @@ pub enum Error {
     Accounts(identity_diverge_network::Error),
     /// A login at `identity.diverge.network` could not be made here.
     Ours(ours::Error),
+    /// A setting was not written, because the program whose document
+    /// it is in is running on the root: the program, and the process
+    /// id it left in the lock file, where it left one.
+    Stop {
+        /// Which program.
+        program: Program,
+        /// What its holder wrote in the lock file.
+        holder: Option<String>,
+    },
 }
 
 impl fmt::Display for Error {
@@ -58,6 +68,14 @@ impl fmt::Display for Error {
             Error::Detach(error) => write!(f, "{error}"),
             Error::Accounts(error) => write!(f, "{error}"),
             Error::Ours(error) => write!(f, "{error}"),
+            Error::Stop { program, holder } => {
+                let word = program.word();
+                write!(f, "the {word} is running on this root")?;
+                if let Some(holder) = holder {
+                    write!(f, ", as process {holder}")?;
+                }
+                write!(f, ", and nothing was written: stop it first, with `diverge {word} stop`")
+            }
         }
     }
 }
@@ -81,6 +99,7 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
+            Error::Stop { .. } => None,
         }
     }
 }

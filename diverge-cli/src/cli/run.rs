@@ -1,7 +1,7 @@
 //! One run of the program.
 
 use super::Error;
-use crate::arguments::{Arguments, Command, Document, Server};
+use crate::arguments::{Arguments, Command, Daemon, Document, Server};
 use crate::config;
 use crate::document::Which;
 use crate::lifecycle::{self, Program};
@@ -13,7 +13,9 @@ use crate::lifecycle::{self, Program};
 /// [`config`](super::config); for `identities`, the root's identities
 /// signed in, listed or removed — see [`identities`](super::identities);
 /// for `daemon` and `provider`, the program started on the root or
-/// stopped — see [`lifecycle`].
+/// stopped — see [`lifecycle`]; for `daemon port` and
+/// `daemon idle_seconds`, the one setting read or written — see
+/// [`setting`](super::setting).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
     let root = config::root(arguments.config).await?;
@@ -28,8 +30,15 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         }
         Some(Command::Identities(command)) => super::identities::run(&root, command).await,
         Some(Command::IdentityDivergeNetwork(command)) => super::identity_diverge_network::run(&root, command).await,
-        Some(Command::Daemon(command)) => {
-            server(&root, Program::Daemon, Which::Daemon, command).await
+        Some(Command::Daemon(Daemon::Lifecycle(action))) => {
+            Ok(lifecycle::run(&root, Program::Daemon, action).await?)
+        }
+        Some(Command::Daemon(Daemon::Config(action))) => {
+            super::config::run(&root, Which::Daemon, action).await
+        }
+        Some(Command::Daemon(Daemon::Port(action))) => super::setting::port(&root, action).await,
+        Some(Command::Daemon(Daemon::IdleSeconds(action))) => {
+            super::setting::idle_seconds(&root, action).await
         }
         Some(Command::Provider(command)) => {
             server(&root, Program::Provider, Which::Provider, command).await

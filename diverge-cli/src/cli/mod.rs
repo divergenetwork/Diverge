@@ -2,7 +2,8 @@
 //! done.
 //!
 //! [`run`] is the whole of it — [`config`] the `config` beneath every
-//! program, [`identities`] the `identities` command,
+//! program, [`setting`] the daemon's `port` and `idle_seconds`,
+//! [`identities`] the `identities` command,
 //! [`lifecycle`](crate::lifecycle) the `daemon` and `provider`
 //! commands' — and [`Error`] why it could not be. A
 //! run prints nothing of its own but the one line a start or a stop
@@ -20,6 +21,7 @@ mod print;
 pub mod config;
 pub mod identities;
 pub mod identity_diverge_network;
+pub mod setting;
 
 pub use error::*;
 pub use run::*;
