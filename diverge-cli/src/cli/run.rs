@@ -13,8 +13,8 @@ use crate::lifecycle::{self, Program};
 /// [`config`](super::config); for `identities`, the root's identities
 /// signed in, listed or removed — see [`identities`](super::identities);
 /// for `daemon` and `provider`, the program started on the root or
-/// stopped — see [`lifecycle`]; for `daemon port` and
-/// `daemon idle_seconds`, the one setting read or written — see
+/// stopped — see [`lifecycle`]; for `daemon port`,
+/// `daemon idle_seconds` and `daemon admins`, the one setting read or written — see
 /// [`setting`](super::setting).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
@@ -40,6 +40,7 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Daemon(Daemon::IdleSeconds(action))) => {
             super::setting::idle_seconds(&root, action).await
         }
+        Some(Command::Daemon(Daemon::Admins(action))) => super::setting::admins(&root, action).await,
         Some(Command::Provider(command)) => {
             server(&root, Program::Provider, Which::Provider, command).await
         }

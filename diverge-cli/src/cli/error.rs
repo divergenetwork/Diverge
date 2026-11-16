@@ -5,6 +5,7 @@ use std::io;
 
 use diverge_sdk::identities;
 use diverge_sdk::identity_diverge_network;
+use diverge_sdk::shared::Identity;
 
 use crate::config;
 use crate::detach;
@@ -53,6 +54,22 @@ pub enum Error {
         /// What its holder wrote in the lock file.
         holder: Option<String>,
     },
+    /// The daemon has no administrator at the index a delete named.
+    /// Nothing was written.
+    NoAdmin {
+        /// The index named.
+        index: usize,
+        /// How many administrators the daemon has.
+        count: usize,
+    },
+    /// The identity an add named is an administrator already. Nothing
+    /// was written.
+    AdminListed {
+        /// The identity.
+        admin: Identity,
+        /// Where in the list it is.
+        index: usize,
+    },
 }
 
 impl fmt::Display for Error {
@@ -75,6 +92,17 @@ impl fmt::Display for Error {
                     write!(f, ", as process {holder}")?;
                 }
                 write!(f, ", and nothing was written: stop it first, with `diverge {word} stop`")
+            }
+            Error::NoAdmin { index, count: 0 } => {
+                write!(f, "the daemon has no administrator at index {index}: it has none")
+            }
+            Error::NoAdmin { index, count } => write!(
+                f,
+                "the daemon has no administrator at index {index}: it has {count}, the last at index {}",
+                count - 1
+            ),
+            Error::AdminListed { admin, index } => {
+                write!(f, "{admin} is an administrator already, at index {index}")
             }
         }
     }
@@ -99,7 +127,7 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
-            Error::Stop { .. } => None,
+            Error::Stop { .. } | Error::NoAdmin { .. } | Error::AdminListed { .. } => None,
         }
     }
 }

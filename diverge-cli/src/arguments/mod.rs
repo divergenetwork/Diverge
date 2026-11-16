@@ -8,8 +8,8 @@
 //! is worked on beneath the program, `diverge <program> config`, by an
 //! [`Action`]: the provider is a [`Server`] — started or stopped by a
 //! [`Lifecycle`], or configured — the daemon a [`Daemon`], which is
-//! that and its `port` and `idle_seconds` each read or written by
-//! itself, the viewer
+//! that and its `port`, `idle_seconds` and `admins` each read or
+//! written by itself, the viewer
 //! and the CLI each a [`Document`], configured alone. The host's
 //! OpenID Connect identities are [`Identities`], and its accounts at
 //! Diverge's own provider are [`IdentityDivergeNetwork`].

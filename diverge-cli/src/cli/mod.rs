@@ -2,7 +2,7 @@
 //! done.
 //!
 //! [`run`] is the whole of it — [`config`] the `config` beneath every
-//! program, [`setting`] the daemon's `port` and `idle_seconds`,
+//! program, [`setting`] the daemon's `port`, `idle_seconds` and `admins`,
 //! [`identities`] the `identities` command,
 //! [`lifecycle`](crate::lifecycle) the `daemon` and `provider`
 //! commands' — and [`Error`] why it could not be. A

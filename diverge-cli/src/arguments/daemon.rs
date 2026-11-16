@@ -5,8 +5,9 @@ use clap::Subcommand;
 use super::{Action, Lifecycle};
 
 /// The daemon on this host: started, stopped, its document in the
-/// root worked on whole, or one setting of that document read or
-/// written by itself.
+/// root worked on whole, or one setting of that document — its
+/// port, its idle seconds, its administrators — read or written by
+/// itself.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Daemon {
     /// Start or stop the daemon: see [`lifecycle`](crate::lifecycle).
@@ -24,6 +25,41 @@ pub enum Daemon {
     /// the daemon ends its run, `idle_seconds` in `daemon.yaml`.
     #[command(name = "idle_seconds", subcommand)]
     IdleSeconds(IdleSeconds),
+    /// List the daemon's administrators, add one, or delete one,
+    /// `admins` in `daemon.yaml`.
+    #[command(subcommand)]
+    Admins(Admins),
+}
+
+/// What is done to the daemon's `admins`: see
+/// [`setting`](crate::cli::setting).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Admins {
+    /// Print the administrators, one line each, in the document's
+    /// order: `{"index":0,"issuer":"…","subject":"…"}`. The index is
+    /// what `delete` takes.
+    Get,
+    /// Add an administrator, after the last. Refused while the daemon
+    /// is running on the root: stop the daemon first. Refused where
+    /// the identity is an administrator already.
+    Add {
+        /// The identity's issuer, exactly as its discovery document
+        /// names it.
+        #[arg(long)]
+        issuer: String,
+        /// The identity's subject: the `sub` of its tokens.
+        #[arg(long)]
+        subject: String,
+    },
+    /// Delete the administrator at an index. Refused while the daemon
+    /// is running on the root: stop the daemon first. Every
+    /// administrator after it moves one index down.
+    Delete {
+        /// The administrator's index, as `get` prints it: `0` is the
+        /// first.
+        #[arg(value_name = "INDEX")]
+        index: usize,
+    },
 }
 
 /// What is done to the daemon's `port`: see

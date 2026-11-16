@@ -1,4 +1,5 @@
-//! One setting of the daemon's document, read or written by itself.
+//! One setting of the daemon's document — its port, its idle
+//! seconds, its administrators — read or written by itself.
 
 use std::path::Path;
 
@@ -6,9 +7,10 @@ use tokio::io::AsyncWriteExt as _;
 
 use diverge_daemon::config::Config;
 use diverge_sdk::file_lock;
+use diverge_sdk::shared::Identity;
 
 use super::Error;
-use crate::arguments::{IdleSeconds, Port};
+use crate::arguments::{Admins, IdleSeconds, Port};
 use crate::document::{self, Which};
 use crate::lifecycle::{self, Program};
 
@@ -16,7 +18,13 @@ use crate::lifecycle::{self, Program};
 pub async fn port(root: &Path, action: Port) -> Result<(), Error> {
     match action {
         Port::Get => get(root, |config| config.port.into()).await,
-        Port::Set { value } => set(root, |config| config.port = value).await,
+        Port::Set { value } => {
+            set(root, |config| {
+                config.port = value;
+                Ok(())
+            })
+            .await
+        }
     }
 }
 
@@ -24,7 +32,68 @@ pub async fn port(root: &Path, action: Port) -> Result<(), Error> {
 pub async fn idle_seconds(root: &Path, action: IdleSeconds) -> Result<(), Error> {
     match action {
         IdleSeconds::Get => get(root, |config| config.idle_seconds).await,
-        IdleSeconds::Set { value } => set(root, |config| config.idle_seconds = value).await,
+        IdleSeconds::Set { value } => {
+            set(root, |config| {
+                config.idle_seconds = value;
+                Ok(())
+            })
+            .await
+        }
+    }
+}
+
+/// `diverge daemon admins get|add|delete`, by these rules:
+///
+/// - A `get` prints every administrator, one JSON line each, in the
+///   document's order, with its index before its issuer and subject:
+///   `{"index":0,"issuer":"…","subject":"…"}`. No administrator, no
+///   line. It is answered whether the daemon is running or not.
+/// - An `add` puts the identity after the last administrator, so no
+///   index already printed changes. An identity that is an
+///   administrator already is refused with [`Error::AdminListed`],
+///   and nothing is written.
+/// - A `delete` removes the administrator at the index, and every one
+///   after it moves one index down. An index the list does not reach
+///   is refused with [`Error::NoAdmin`], and nothing is written.
+/// - An `add` and a `delete` are each a [`set`]: refused while the
+///   daemon runs on the root, and printing nothing.
+pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
+    match action {
+        Admins::Get => {
+            let config = read(root).await?;
+            let mut text = Vec::new();
+            for (index, admin) in config.admins.iter().enumerate() {
+                let line = serde_json::json!({"index": index, "issuer": admin.issuer, "subject": admin.subject});
+                serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
+                text.push(b'\n');
+            }
+            let mut stdout = tokio::io::stdout();
+            stdout.write_all(&text).await.map_err(Error::Stdout)?;
+            stdout.flush().await.map_err(Error::Stdout)
+        }
+        Admins::Add { issuer, subject } => {
+            set(root, |config| {
+                let admin = Identity { issuer, subject };
+                match config.admins.iter().position(|listed| *listed == admin) {
+                    Some(index) => Err(Error::AdminListed { admin, index }),
+                    None => {
+                        config.admins.push(admin);
+                        Ok(())
+                    }
+                }
+            })
+            .await
+        }
+        Admins::Delete { index } => {
+            set(root, |config| {
+                if index >= config.admins.len() {
+                    return Err(Error::NoAdmin { index, count: config.admins.len() });
+                }
+                config.admins.remove(index);
+                Ok(())
+            })
+            .await
+        }
     }
 }
 
@@ -58,9 +127,11 @@ async fn get(root: &Path, of: impl FnOnce(&Config) -> u64) -> Result<(), Error> 
 ///   daemon starts on the root between the two.
 /// - The document is read as the daemon's type, the setting changed,
 ///   and the whole written as that type's YAML: see
-///   [`document`](crate::document) for what a rewrite costs.
+///   [`document`](crate::document) for what a rewrite costs. A change
+///   that refuses — an index the list does not reach, an identity
+///   already listed — writes nothing.
 /// - Nothing is printed.
-async fn set(root: &Path, change: impl FnOnce(&mut Config)) -> Result<(), Error> {
+async fn set(root: &Path, change: impl FnOnce(&mut Config) -> Result<(), Error>) -> Result<(), Error> {
     let program = Program::Daemon;
     let lock = program.lock(root);
     let Some(probe) = file_lock::try_exclusive(&lock).await.map_err(lifecycle::Error::Lock)? else {
@@ -68,7 +139,7 @@ async fn set(root: &Path, change: impl FnOnce(&mut Config)) -> Result<(), Error>
         return Err(Error::Stop { program, holder });
     };
     let mut config = read(root).await?;
-    change(&mut config);
+    change(&mut config)?;
     let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;
     document::write(root, Which::Daemon, &yaml).await?;
     drop(probe);
