@@ -17,6 +17,11 @@ pub enum Reason {
     ProviderEdited,
     /// The daemon stopped.
     DaemonStopped,
+    /// The daemon ended without stopping — killed, or its host gone
+    /// down — so the run's end was never kept; the daemon kept it at
+    /// its next start, before anything else. Its `undeployed` is
+    /// stamped then, not when the run in fact ended.
+    DaemonDied,
     /// The provider ended the run with no word from the daemon: the
     /// container exited on its own.
     Exited,
