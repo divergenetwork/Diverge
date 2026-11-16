@@ -13,7 +13,12 @@
 //!    then stands deployed under the run's `epoch` — a number fresh
 //!    from the daemon for every run. A log still standing deployed
 //!    under another run, whose end was never kept, is closed first as
-//!    rule 4 closes one, with no reason.
+//!    rule 4 closes one, with no reason. Where a log stands is held
+//!    in memory, and a daemon just started holds every log
+//!    undeployed: a run whose daemon ended without stopping is closed
+//!    on disk before that, at the start, by
+//!    [`integrity`](crate::integrity), so the log is undeployed in
+//!    its files as well.
 //! 2. **Active and inactive only while deployed, only on a change.**
 //!    [`active`] keeps `active` or `inactive` only while the log stands
 //!    deployed under the caller's epoch, and only when it changes what

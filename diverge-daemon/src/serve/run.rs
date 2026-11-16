@@ -17,7 +17,7 @@ use crate::daemon::Daemon;
 use crate::database;
 use crate::postgres;
 use crate::providers;
-use crate::store::{self, vault};
+use crate::store;
 
 /// How long an issuer's key set is held where its answer names no
 /// `max-age`.
@@ -35,10 +35,12 @@ const KEY_SETS: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 /// taken like any other, since the kernel let its lock go with it —
 /// the directory is made; the database the configuration names is
 /// started, or named; the daemon's identities are opened; the store
-/// is opened on it, its schema applied; the daemon is built, its stop
-/// made here so the signal and the route send on the one sender;
-/// every vault slot a run of an earlier daemon held is freed, since
-/// no run survives a restart; the port is listened on until the
+/// is opened on it, its schema applied; what a daemon that ended
+/// without stopping left is made whole — its logs' files, the runs
+/// they still hold deployed, the vault slots those runs held: see
+/// [`integrity`](crate::integrity) — before anything is live; the
+/// daemon is built, its stop made here so the signal and the route
+/// send on the one sender; the port is listened on until the
 /// signal or the route sends the stop, every provider the
 /// daemon's enabled, outgoing records name dialled meanwhile; the listener drains; every container run
 /// is stopped; the dials are ended, and their connections with them;
@@ -68,11 +70,18 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
         }
     };
     let logs = dir.clone();
-    for book in ["agents", "tools", "dependency_tools", "accounts", "admins"] {
+    for book in ["agents", "tools", "dependency_tools", "connected_standalone_tools", "accounts", "admins"] {
         if let Err(error) = tokio::fs::create_dir_all(logs.join(book)).await {
             postgres.stop().await;
             return Err(Error::Directory(error));
         }
+    }
+    // Before the daemon is built, and so before any provider is
+    // dialled or the port listened on: nothing is live beside a log
+    // that is not whole.
+    if let Err(error) = crate::integrity::run(&store, &logs).await {
+        postgres.stop().await;
+        return Err(Error::Integrity(error));
     }
     let database = match database::Target::parse(&url, postgres.is_local()) {
         Ok(database) => database,
@@ -99,10 +108,6 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
         database,
         stop,
     ));
-    if let Err(error) = clear_holders(&daemon).await {
-        postgres.stop().await;
-        return Err(Error::Store(error));
-    }
     tokio::spawn(crate::listings::idle(Arc::clone(&daemon)));
     providers::dial_all(&daemon).await;
     if let Err(error) = containers::services::boot(&daemon).await {
@@ -149,11 +154,3 @@ async fn shutdown() {
     }
 }
 
-/// Every vault slot freed of its holder: what a run of an earlier
-/// daemon held, which no run of this one does. A store that refuses
-/// is the boot's failure.
-async fn clear_holders(daemon: &Daemon) -> Result<(), store::Error> {
-    let mut conn = daemon.store.acquire().await?;
-    vault::clear_holders(&mut conn).await?;
-    Ok(())
-}

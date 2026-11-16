@@ -9,6 +9,7 @@ use diverge_sdk::file_lock;
 use crate::config;
 
 use crate::database;
+use crate::integrity;
 use crate::postgres;
 use crate::store;
 
@@ -44,6 +45,9 @@ pub enum Error {
     Database(database::TargetError),
     /// The daemon's directory, or one under it, could not be made.
     Directory(io::Error),
+    /// What a daemon that ended without stopping left could not be
+    /// made whole: see [`integrity`].
+    Integrity(integrity::Error),
     /// The port could not be bound.
     Bind(io::Error),
     /// The listener stopped on its own.
@@ -66,6 +70,7 @@ impl fmt::Display for Error {
             Error::Store(error) => write!(f, "the store could not be opened: {error}"),
             Error::Database(error) => write!(f, "{error}"),
             Error::Directory(error) => write!(f, "the daemon's directory could not be made: {error}"),
+            Error::Integrity(error) => write!(f, "what the last daemon left could not be made whole: {error}"),
             Error::Bind(error) => write!(f, "the port could not be bound: {error}"),
             Error::Serve(error) => write!(f, "the listener stopped: {error}"),
         }
@@ -90,6 +95,7 @@ impl std::error::Error for Error {
             Error::KeySets(error) => Some(error),
             Error::Store(error) => Some(error),
             Error::Database(error) => Some(error),
+            Error::Integrity(error) => Some(error),
         }
     }
 }

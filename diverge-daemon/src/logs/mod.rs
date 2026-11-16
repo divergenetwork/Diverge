@@ -21,6 +21,13 @@
 //! request's filter over one item, the spans aside; [`remove`] is the owner deleted. A log outlives every run
 //! and is removed with its owner.
 //!
+//! An append writes the line and then its index entry, and syncs
+//! neither, so a daemon that ends under one leaves the end of either
+//! file torn. [`repair`] cuts both back to the last whole item, and
+//! [`Tail`] reads a log from its end; both are the
+//! [`integrity`](crate::integrity) pass's, run at the daemon's start
+//! before anything appends.
+//!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
@@ -30,6 +37,7 @@ mod error;
 mod filter;
 mod read;
 mod remove;
+mod tail;
 
 pub use append::*;
 pub use book::*;
@@ -37,6 +45,7 @@ pub use error::*;
 pub use filter::*;
 pub use read::*;
 pub use remove::*;
+pub use tail::*;
 
 /// The bytes one index entry takes: an offset and a length, each a
 /// big-endian `u64`.
