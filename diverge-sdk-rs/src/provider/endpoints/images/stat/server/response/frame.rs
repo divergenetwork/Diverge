@@ -18,7 +18,7 @@ use crate::shared::error::Error;
 pub enum Frame {
     /// The image examined. Tag `0`.
     Stat(Stat),
-    /// The provider has no Store — its `images_store` is `false`,
+    /// The provider has no Store — its `images.store` is `false`,
     /// see [`info`](crate::provider::endpoints::info) — and nothing was
     /// done. Tag `1`.
     ///

@@ -44,7 +44,7 @@ use crate::wire::encode::{Encode, Writer};
 /// [`Capabilities`](crate::provider::endpoints::info::server::response::Capabilities)
 /// do not hold out carries any number, and a caller does not read it:
 /// `volumes_disk` where no volume mode object is held out,
-/// `images_disk` where `images_store` is not, `container_memory` and
+/// `images_disk` where `images.store` is not, `container_memory` and
 /// `container_disk` where `containers` is not.
 ///
 /// # There is no failure
@@ -61,7 +61,7 @@ pub struct Frame {
     /// object is held out.
     pub volumes_disk: u64,
     /// The number of BYTES the caller could still add to the Store by
-    /// a build or a push. Read only where `images_store` is held out.
+    /// a build or a push. Read only where `images.store` is held out.
     pub images_disk: u64,
     /// The number of BYTES of memory a container run of the caller
     /// could still reserve: what remains of the provider's memory cap

@@ -31,7 +31,7 @@
 //!    deleted.
 //! 2. **Then a registry it is configured with.** Failing that, it
 //!    answers `Held` when a registry it is configured with — the
-//!    `images_registries` of its [`info`](crate::provider::endpoints::info)
+//!    `images.registries` of its [`info`](crate::provider::endpoints::info)
 //!    — named by one of the image's references, serves the image's
 //!    digest. A reference naming a registry it is not configured with
 //!    is ignored.
@@ -44,8 +44,8 @@
 //!    nothing about why — "I do not have it" and "I will not serve it
 //!    to you" are the same answer from where the caller stands.
 //! 5. **Unsupported.** A provider with neither a Store — its
-//!    `images_store` is `false` — nor any registry — its
-//!    `images_registries` is empty — answers
+//!    `images.store` is `false` — nor any registry — its
+//!    `images.registries` is empty — answers
 //!    [`Unsupported`](server::response::Frame::Unsupported), and only
 //!    such a provider does.
 //! 6. **Exactly one answer, first.** Exactly one of `Held`,

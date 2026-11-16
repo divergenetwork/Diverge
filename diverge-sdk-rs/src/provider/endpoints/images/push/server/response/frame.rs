@@ -64,7 +64,7 @@ pub enum Frame {
     /// not parse, a media type it does not take, or a size or a digest
     /// that does not match the bytes. Tag `6`.
     Malformed,
-    /// The provider has no Store — its `images_store` is `false`, see
+    /// The provider has no Store — its `images.store` is `false`, see
     /// [`info`](crate::provider::endpoints::info) — and nothing moved.
     /// Tag `7`.
     Unsupported,

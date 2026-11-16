@@ -29,7 +29,7 @@ pub enum Frame {
     /// The caller owns no image by the digest, and nothing was
     /// changed. Tag `1`.
     NotFound,
-    /// The provider has no Store — its `images_store` is `false`, see
+    /// The provider has no Store — its `images.store` is `false`, see
     /// [`info`](crate::provider::endpoints::info) — and there was
     /// nothing to edit. Tag `2`.
     ///

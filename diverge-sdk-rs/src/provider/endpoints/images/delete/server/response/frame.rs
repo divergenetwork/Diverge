@@ -47,7 +47,7 @@ pub enum Frame {
     /// Nothing was changed: the image and the listing are as they
     /// were.
     InUse,
-    /// The provider has no Store — its `images_store` is `false`,
+    /// The provider has no Store — its `images.store` is `false`,
     /// see [`info`](crate::provider::endpoints::info) — and there was
     /// nothing to delete. Tag `2`.
     ///

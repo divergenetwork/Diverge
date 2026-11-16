@@ -43,8 +43,8 @@ pub enum Frame {
     /// configured with, named by one of the image's references, has
     /// it. Tag `1`.
     NotFound,
-    /// The provider has neither a Store — its `images_store` is
-    /// `false` — nor any registry — its `images_registries` is empty;
+    /// The provider has neither a Store — its `images.store` is
+    /// `false` — nor any registry — its `images.registries` is empty;
     /// see [`info`](crate::provider::endpoints::info). Tag `2`.
     ///
     /// Carries nothing. A caller asks another provider; nothing about

@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{MessagesCapabilities, VolumeCapabilities};
+use super::{ImagesCapabilities, MessagesCapabilities, VolumeCapabilities};
 use crate::provider::endpoints::volumes::Mode;
 
 /// Which of the specification's optional parts this provider serves.
@@ -21,11 +21,12 @@ use crate::provider::endpoints::volumes::Mode;
 ///
 /// # Flat, and tolerant
 ///
-/// One object, every member at the top, each a boolean, a list, an
-/// object of booleans, or an object of numbers; no member nests a
-/// capability inside another but the three volume modes, whose object
-/// says what may be done with a volume of the mode, and `messages`,
-/// whose object is its rate. A member absent is the capability
+/// One object, every member at the top, each a boolean, an object of
+/// booleans, or an object of its own: `images`, whose object says
+/// whether there is a Store, what the Store does and which registries
+/// are pulled from; the three volume modes, whose object says what
+/// may be done with a volume of the mode; and `messages`, whose
+/// object is its rate. A member absent is the capability
 /// absent — `false`, the empty list, the object of every member
 /// `false`, no object — so a provider states only what it does. A member a
 /// reader does not know is ignored: see [`Frame`](super::Frame).
@@ -59,33 +60,12 @@ pub struct Capabilities {
     /// is deployed.
     #[serde(default)]
     pub containers: bool,
-    /// The provider keeps the Store for its callers: it answers
-    /// [`images::list`](crate::provider::endpoints::images::list),
-    /// [`stat`](crate::provider::endpoints::images::stat),
-    /// [`build`](crate::provider::endpoints::images::build),
-    /// [`push`](crate::provider::endpoints::images::push),
-    /// [`edit`](crate::provider::endpoints::images::edit) and
-    /// [`delete`](crate::provider::endpoints::images::delete), and
-    /// [`images::read`](crate::provider::endpoints::images::read) looks
-    /// in it first. Absent — `false` — each of the six answers
-    /// `Unsupported`, and `read` answers `Unsupported` when
-    /// [`images_registries`](Self::images_registries) is empty as
-    /// well.
+    /// What the provider does with images: whether it keeps a Store,
+    /// whether its Store builds, and the registries it pulls from. See
+    /// [`ImagesCapabilities`]. Absent — the object of no member — it
+    /// keeps no Store and pulls from no registry.
     #[serde(default)]
-    pub images_store: bool,
-    /// The registries the provider pulls from: each a host as a
-    /// [`Reference`](crate::shared::containers::request::Reference)
-    /// names it — `docker.io`, `ghcr.io`, `registry.example.com:5000`
-    /// — and the whole of them. An
-    /// [`images::read`](crate::provider::endpoints::images::read)
-    /// consults exactly these after the caller's Store, and a reference
-    /// naming any other is ignored; a run's image whose references
-    /// name none of these, and that neither the caller's Store nor the
-    /// caller holds, cannot be supplied. Absent — empty — the provider
-    /// pulls from no registry, and `read` answers `Unsupported` when
-    /// [`images_store`](Self::images_store) is `false` as well.
-    #[serde(default)]
-    pub images_registries: Vec<String>,
+    pub images: ImagesCapabilities,
     /// What may be done with a volume in the
     /// [`Persistent`](Mode::Persistent) mode. Every member `false` —
     /// the object absent — the provider keeps no volume in the mode:

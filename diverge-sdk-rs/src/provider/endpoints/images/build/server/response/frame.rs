@@ -30,7 +30,7 @@ use crate::shared::error::Error;
 /// | [`Exists`](Self::Exists), then a finish | the caller owned the digest already; nothing was added, and the listing is as it was |
 /// | [`InsufficientCapacity`](Self::InsufficientCapacity), then a finish | the Store has no room for it, and nothing exists |
 /// | [`ContextHeld`](Self::ContextHeld), then a finish | something holds the context volume, and nothing exists |
-/// | [`Unsupported`](Self::Unsupported), then a finish | the provider has no Store, and nothing exists |
+/// | [`Unsupported`](Self::Unsupported), then a finish | the provider has no Store, or does not build, and nothing exists |
 /// | an [`Error`](Self::Error), then a finish | it does not exist, for some other reason — a build that failed, a context refused — and the output before it says what the build said |
 ///
 /// # The refusals are answers, not errors
@@ -76,7 +76,7 @@ pub enum Frame {
     /// and a volume that will not take it is this; a caller stops the
     /// holder, or waits for it, and asks again.
     ContextHeld,
-    /// The provider has no Store — its `images_store` is `false`, see
+    /// The provider has no Store — its `images.store` is `false`, see
     /// [`info`](crate::provider::endpoints::info) — and nothing exists.
     /// Tag `5`.
     ///

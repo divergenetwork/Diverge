@@ -59,7 +59,7 @@ pub enum Frame {
     /// Carries nothing — the variant is bare. A caller that wants the
     /// listing once stops here; one that watches reads on.
     Listed,
-    /// The provider has no Store — its `images_store` is `false`,
+    /// The provider has no Store — its `images.store` is `false`,
     /// see [`info`](crate::provider::endpoints::info) — and nothing was
     /// done. Tag `4`.
     ///
