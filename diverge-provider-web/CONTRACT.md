@@ -1,6 +1,6 @@
 # DIVERGE PROVIDER PROTOCOL CONFORMANCE AGREEMENT
 
-**Specification Revision 2.3.0**
+**Specification Revision 1.0.0**
 
 This Diverge Provider Protocol Conformance Agreement (the
 "Agreement") is entered into as of the Effective Date stated in the
@@ -20,7 +20,7 @@ Diverge and the Provider are each a "Party" and together the
 ## RECITALS
 
 A. Diverge publishes the Diverge Provider Protocol Specification at
-`https://protocol.diverge.network`, revision 2.3.0 (the
+`https://protocol.diverge.network`, revision 1.0.0 (the
 "Specification"), which defines the conduct of a party that serves
 containers, volumes and images to clients over the protocol.
 
@@ -45,8 +45,8 @@ Specification gives it. Where this Agreement and the Specification
 each define a term, this Agreement governs.
 
 1.1 **"Specification"** means the Diverge Provider Protocol
-Specification, revision 2.3.0, as published at
-`https://protocol.diverge.network/2.3.0/` on the Effective Date,
+Specification, revision 1.0.0, as published at
+`https://protocol.diverge.network/1.0.0/` on the Effective Date,
 comprising every page of that revision under the layers Overview,
 WebSocket, Frames, Authorization, Container Proxy, Container Proxy
 Endpoints and Endpoints, and
@@ -56,7 +56,7 @@ Date is attached as Exhibit A and is incorporated into this Agreement
 in full.
 
 1.2 **"Reference Crate"** means the Rust crate `diverge-sdk`
-at version 2.3.0, whose source files the Specification includes. The
+at version 1.0.0, whose source files the Specification includes. The
 Reference Crate is incorporated only to the extent the Specification
 includes a file of it; the Reference Crate does not otherwise bind the
 Provider, and the Provider is not required to use it.
@@ -153,7 +153,7 @@ apply — and speaks over it the scopes and channels that layer
 states. The Provider satisfies the requirement to use the
 Container Proxy by placing inside every Container a program that
 conforms to that layer in full; the program published by Diverge under
-the name `diverge-container-proxy` at version 2.3.0 is such a
+the name `diverge-container-proxy` at version 1.0.0 is such a
 program.
 
 1.15 **"Volume"** means a directory of persistent storage the Provider
@@ -281,7 +281,7 @@ conflict exists only where two provisions cannot both be performed; a
 provision that adds a requirement does not conflict with one that is
 silent.
 
-2.7 **Revision.** This Agreement binds the Provider to revision 2.3.0
+2.7 **Revision.** This Agreement binds the Provider to revision 1.0.0
 of the Specification and to no other. A later revision binds the
 Provider only under a written amendment to this Agreement signed by
 both Parties that names the revision.
@@ -295,7 +295,7 @@ Connection, for every Scope, for every Channel, without exception.
 
 3.2 **Holding out.** The Provider shall not represent to any Client
 that a Server conforms to the Specification, or to the Diverge
-Provider Protocol, or to revision 2.3.0, unless that Server is
+Provider Protocol, or to revision 1.0.0, unless that Server is
 Conforming.
 
 3.3 **Every Connection.** The Obligations apply to every Connection on
@@ -508,7 +508,7 @@ treat the request as malformed on their account.
 
 (a) **The answer.** The Provider shall answer every `info` request
 with exactly one Response whose payload is one JSON object with
-exactly two members — `version`, the string `2.3.0`, and
+exactly two members — `version`, the string `1.0.0`, and
 `capabilities`, the object the Specification's Capabilities layer
 defines — with no tag and no length prefix, followed by the Response
 Finish. The Provider shall not send any other `version` string, shall
@@ -1613,11 +1613,11 @@ Effective Date: ___________________
 
 ## EXHIBIT A — THE SPECIFICATION
 
-The Diverge Provider Protocol Specification, revision 2.3.0, as
-published at `https://protocol.diverge.network/2.3.0/` on the
+The Diverge Provider Protocol Specification, revision 1.0.0, as
+published at `https://protocol.diverge.network/1.0.0/` on the
 Effective Date, is attached to this Agreement as the Markdown
 rendering the site publishes beside each page of the revision, the
 pages being those the site's sitemap at
 `https://protocol.diverge.network/sitemap-index.xml` enumerates under
-`/2.3.0/`, with every included Rust source file expanded in place, and
+`/1.0.0/`, with every included Rust source file expanded in place, and
 initialed by both Parties on each page.

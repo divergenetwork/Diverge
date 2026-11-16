@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # version.sh — set the version of every Diverge package to a single value.
-# Touches Rust crates and JS packages. Skips pnpm-lock.yaml, which
-# regenerates on the next pnpm install.
+# Touches Rust crates and JS packages, the specification's latest module
+# (the folder named after the version), and every file that writes the
+# version out as a literal. Skips pnpm-lock.yaml, which regenerates on
+# the next pnpm install.
+#
+# The old version is read from diverge-sdk-rs/Cargo.toml before anything
+# is changed; the literals are that string, replaced by the new one.
 #
 # Usage:
 #   bash version.sh <new-version>
@@ -18,6 +23,14 @@ fi
 
 NEW_VERSION="$1"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# The version being replaced: the SDK crate's, which is the specification's
+# revision. Read before any file is touched.
+OLD_VERSION="$(awk -F'"' '/^version = "[^"]+"/ { print $2; exit }' "$REPO_ROOT/diverge-sdk-rs/Cargo.toml")"
+if [ -z "$OLD_VERSION" ]; then
+  echo "diverge-sdk-rs/Cargo.toml has no version" >&2
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Primitives
@@ -72,6 +85,31 @@ insert_after_first() {
   mv "$tmp" "$file"
 }
 
+# Replace every occurrence of the literal string $old with $new. No
+# pattern is involved, so the dots of a version match only dots. A file
+# without the string is left untouched, byte for byte.
+replace_literal() {
+  local file="$1"
+  local old="$2"
+  local new="$3"
+  if ! grep -qF -- "$old" "$file"; then
+    return
+  fi
+  local tmp
+  tmp=$(mktemp)
+  awk -v old="$old" -v new="$new" '
+    {
+      out = ""
+      while ((i = index($0, old)) > 0) {
+        out = out substr($0, 1, i - 1) new
+        $0 = substr($0, i + length(old))
+      }
+      print out $0
+    }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 # ---------------------------------------------------------------------------
 # Per-file-type updaters
 # ---------------------------------------------------------------------------
@@ -102,7 +140,10 @@ set_package_json_version() {
 
 CARGO_TOMLS=(
   diverge-agents/cc/Cargo.toml
+  diverge-agents/codex/Cargo.toml
   diverge-agents/hermes/Cargo.toml
+  diverge-agents/lone/Cargo.toml
+  diverge-agents/python/Cargo.toml
   diverge-container-proxy/Cargo.toml
   diverge-agents/openrouter/Cargo.toml
   diverge-sdk-rs/Cargo.toml
@@ -115,6 +156,31 @@ CARGO_TOMLS=(
 PACKAGE_JSONS=(
   diverge-provider-web/package.json
   diverge-sdk-js/package.json
+)
+
+# The specification's modules. The latest is the folder named after the
+# SDK crate's version, and the site's build fails when no folder has that
+# name, so the folder is renamed with the version.
+SPEC_DIR=diverge-provider-web/src/content/spec
+
+# Files that write the version out as a literal: the specification's
+# contract and the notes beside it, doc comments that show an `info`
+# answer, reports, skills, and the viewer's stub. Every file of the
+# latest specification module is added to these below.
+LITERALS=(
+  diverge-provider-web/CLAUDE.md
+  diverge-provider-web/CONTRACT.md
+  diverge-provider-web/Containerfile
+  diverge-provider-web/skills/spec-prose/SKILL.md
+  diverge-provider-web/src/content.config.ts
+  diverge-provider-web/src/include.mjs
+  diverge-sdk-js/reports/build-order.md
+  diverge-sdk-rs/reports/5-active-inactive-local-connection.md
+  diverge-sdk-rs/src/daemon/endpoints/info/server/response/frame.rs
+  diverge-sdk-rs/src/daemon/endpoints/info/server/response/info.rs
+  diverge-sdk-rs/src/provider/endpoints/info/server/response/frame.rs
+  diverge-skills/diverge-logs/SKILL.md
+  diverge-viewer/src-tauri/src/daemon/stub/store.rs
 )
 
 # ---------------------------------------------------------------------------
@@ -137,13 +203,37 @@ update() {
     pkg)
       set_package_json_version "$file"
       ;;
+    lit)
+      replace_literal "$file" "$OLD_VERSION" "$NEW_VERSION"
+      ;;
   esac
 }
 
-echo "Setting version to $NEW_VERSION"
+echo "Setting version to $NEW_VERSION (was $OLD_VERSION)"
 
 for rel in "${CARGO_TOMLS[@]}";   do update cargo "$rel"; done
 for rel in "${PACKAGE_JSONS[@]}"; do update pkg   "$rel"; done
+
+if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+  # The specification's latest module takes the new version's name.
+  if [ -d "$REPO_ROOT/$SPEC_DIR/$OLD_VERSION" ]; then
+    if [ -e "$REPO_ROOT/$SPEC_DIR/$NEW_VERSION" ]; then
+      echo "  skip   $SPEC_DIR/$OLD_VERSION ($SPEC_DIR/$NEW_VERSION is already there)"
+    else
+      echo "  move   $SPEC_DIR/$OLD_VERSION -> $SPEC_DIR/$NEW_VERSION"
+      mv "$REPO_ROOT/$SPEC_DIR/$OLD_VERSION" "$REPO_ROOT/$SPEC_DIR/$NEW_VERSION"
+    fi
+  fi
+
+  for rel in "${LITERALS[@]}"; do update lit "$rel"; done
+
+  # Every page of the latest module that states the revision.
+  if [ -d "$REPO_ROOT/$SPEC_DIR/$NEW_VERSION" ]; then
+    while IFS= read -r file; do
+      update lit "${file#"$REPO_ROOT/"}"
+    done < <(grep -rlF -- "$OLD_VERSION" "$REPO_ROOT/$SPEC_DIR/$NEW_VERSION" || true)
+  fi
+fi
 
 # Sync Cargo.lock to the new workspace versions, so that no later cargo
 # invocation rewrites the lockfile mid-build.

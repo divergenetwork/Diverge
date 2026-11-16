@@ -1,6 +1,6 @@
 [package]
 name = "diverge-sdk"
-version = "2.3.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "The Diverge SDK: the wire, the provider protocol, the daemon protocol, and the container proxy inside and out — the normative artifact of the provider specification"

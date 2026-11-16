@@ -1,6 +1,6 @@
 [package]
 name = "diverge-container-proxy"
-version = "2.3.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "The proxy inside a Diverge container — one WebSocket to the provider's server, every scope of the container proxy protocol answered, the program's own surfaces on the loopback"

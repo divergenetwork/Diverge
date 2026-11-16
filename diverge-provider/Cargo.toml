@@ -1,6 +1,6 @@
 [package]
 name = "diverge-provider"
-version = "2.3.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "The reference provider of the Diverge provider protocol — the server half for any provider, and one provider built on it"

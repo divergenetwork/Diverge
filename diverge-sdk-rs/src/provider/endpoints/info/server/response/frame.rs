@@ -14,7 +14,7 @@ use crate::wire::encode::{Encode, Writer};
 /// discriminate; it runs to the end, so it needs no length either.
 ///
 /// ```json
-/// {"version":"2.3.0","capabilities":{"images":{"store":{"build":true},
+/// {"version":"1.0.0","capabilities":{"images":{"store":{"build":true},
 /// "registries":["docker.io"]},"volumes_persistent":{"mount":true,
 /// "fuse_serve":true,"mount_many":true,"fuse_serve_many":false,
 /// "mount_and_fuse_serve":false}}}

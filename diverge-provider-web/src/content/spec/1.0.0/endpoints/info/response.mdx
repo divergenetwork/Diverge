@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is one JSON object with the members version, the string 2.3.0, and capabilities, the object the Capabilities layer defines, with no tag and no length, and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is one JSON object with the members version, the string 1.0.0, and capabilities, the object the Capabilities layer defines, with no tag and no length, and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -13,7 +13,7 @@ finish follows the response, and no frame follows the finish.
 ```
 
 ```json
-{"version":"2.3.0","capabilities":{"containers":true,"images":{"store":{"build":true},"registries":["docker.io"]},"volumes_persistent":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":false,"mount_and_fuse_serve":false},"volumes_ephemeral":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":true,"mount_and_fuse_serve":true},"volumes_read_only":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":true,"mount_and_fuse_serve":true}}}
+{"version":"1.0.0","capabilities":{"containers":true,"images":{"store":{"build":true},"registries":["docker.io"]},"volumes_persistent":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":false,"mount_and_fuse_serve":false},"volumes_ephemeral":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":true,"mount_and_fuse_serve":true},"volumes_read_only":{"mount":true,"fuse_serve":true,"mount_many":true,"fuse_serve_many":true,"mount_and_fuse_serve":true}}}
 ```
 
 - **The payload.** The payload of the response is one JSON object,
@@ -23,7 +23,7 @@ finish follows the response, and no frame follows the finish.
   and the server sends no other member.
 - **`version`.** A string: the revision of this specification, of
   the form `MAJOR.MINOR.PATCH`. A server that implements this
-  revision sends exactly the string `2.3.0`. It sends no other
+  revision sends exactly the string `1.0.0`. It sends no other
   string, and it does not send the empty string. A server that
   implements another revision sends that revision's string, as that
   revision defines it.

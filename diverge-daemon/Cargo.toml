@@ -1,6 +1,6 @@
 [package]
 name = "diverge-daemon"
-version = "2.3.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "The Diverge daemon — the server of the daemon protocol: its records in the Postgres it serves, its accounts and roles, and the judgment of every request"

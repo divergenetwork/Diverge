@@ -5,7 +5,7 @@
 # every `include=` fence from diverge-sdk-rs/src:
 #
 #     podman build -f diverge-provider-web/Containerfile \
-#         -t localhost/diverge-provider-web:2.3.0 .
+#         -t localhost/diverge-provider-web:1.0.0 .
 #
 # Two stages. The first is the same `pnpm build` a developer runs,
 # gate included: zero scripts in the HTML, every include resolved,
@@ -51,4 +51,4 @@ EXPOSE 8080
 
 # The latest revision's root answers, or the container is unhealthy.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
-    CMD wget -q --spider http://127.0.0.1:8080/2.3.0/ || exit 1
+    CMD wget -q --spider http://127.0.0.1:8080/1.0.0/ || exit 1

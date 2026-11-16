@@ -27,7 +27,7 @@ use crate::wire::encode::{Encode, Writer};
 /// # As JSON
 ///
 /// For a client that prints what the daemon answered: the variant,
-/// snake case, over its payload — `{"info":{"version":"2.3.0"}}`,
+/// snake case, over its payload — `{"info":{"version":"1.0.0"}}`,
 /// `{"error":…}` — and a bare variant the string alone —
 /// `"forbidden"`. The wire is the tag byte and the payload, never this.
 #[derive(Debug, Clone, PartialEq, Serialize)]

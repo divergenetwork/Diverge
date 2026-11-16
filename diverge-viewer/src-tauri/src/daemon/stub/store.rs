@@ -301,4 +301,4 @@ const SITE_INDEX: &str = r#"<!doctype html>
 const SITE_CSS: &str = "body { font-family: system-ui; margin: 0 auto; max-width: 42rem; }\nheader h1 { font-size: 2rem; }\n";
 const SITE_README: &str = "# site\n\nA small static site. `index.html` and `styles.css`, nothing else.\n";
 const NOTES_IDEAS: &str = "# ideas\n\n- Fix the Archive link on the site\n- Ask ada about the studio PC on Saturday\n- A darker theme for the site\n- Sort the trip photos\n";
-const NOTES_READING: &str = "# reading list\n\n- The provider protocol, 2.3.0\n- Notes on local-first software\n- Feedback owed on a friend's draft\n";
+const NOTES_READING: &str = "# reading list\n\n- The provider protocol, 1.0.0\n- Notes on local-first software\n- Feedback owed on a friend's draft\n";

@@ -1,6 +1,6 @@
 {
   "name": "@diverge/sdk",
-  "version": "2.3.0",
+  "version": "1.0.0",
   "description": "The Diverge SDK for TypeScript: the daemon protocol as zod schemas, spoken over the wire or through a Tauri proxy.",
   "type": "module",
   "exports": {

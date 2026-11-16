@@ -1349,7 +1349,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-cc"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1367,7 +1367,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-codex"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1385,7 +1385,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-hermes"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1405,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-lone"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-openrouter"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1447,7 +1447,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-agentic-loop-python"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-cli"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "clap",
@@ -1491,7 +1491,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-container-proxy"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "bytes",
@@ -1510,7 +1510,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-daemon"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "arc-swap",
  "axum",
@@ -1637,7 +1637,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-postgres"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "diverge-sdk",
  "flate2",
@@ -1653,7 +1653,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-provider"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1682,7 +1682,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-sdk"
-version = "2.3.0"
+version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "async-stream",

@@ -221,7 +221,7 @@ promises. Then the first publish: the `diverge` npm org made, the
 README read once more as a stranger would, a release dry run.
 
 Depends on: step 7, and the viewer's port to the current SDK, which
-is its own branch. Done when `@diverge/sdk@2.3.0` is on npm and the
+is its own branch. Done when `@diverge/sdk@1.0.0` is on npm and the
 viewer lists accounts through it.
 
 **Prepared 2026-10-20; not published, by ruling, and the viewer

@@ -57,6 +57,6 @@ documented one low on each variant, are documented right now.
 ## The site
 
 `container-proxy-endpoints/agents-begin/response` and
-`endpoints/containers-agents-run/response` under `2.3.0` state the
+`endpoints/containers-agents-run/response` under `1.0.0` state the
 loop — the byte, the chunks, the byte — its two invariants, and the
 two new malformed cases.

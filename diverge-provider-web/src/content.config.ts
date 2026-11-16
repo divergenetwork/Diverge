@@ -9,7 +9,7 @@ import { defineCollection, z } from "astro:content";
 // stay clean.
 const spec = defineCollection({
   // Ids keep the file path as written: the loader's default slugs
-  // each segment and drops the dots out of `2.3.0`, and the version
+  // each segment and drops the dots out of `1.0.0`, and the version
   // is the first segment of every id.
   loader: glob({
     pattern: "**/*.mdx",

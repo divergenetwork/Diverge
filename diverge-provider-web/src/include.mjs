@@ -17,7 +17,7 @@
 //
 // A module's links are written version-relative — `/proxy/fuse/` —
 // so a module is copied whole to begin the next revision; the build
-// prefixes each with the module's version, `/2.3.0/proxy/fuse/`.
+// prefixes each with the module's version, `/1.0.0/proxy/fuse/`.
 // The two site-wide indexes, `/llms.txt` and `/llms-full.txt`, are
 // left as they are.
 //

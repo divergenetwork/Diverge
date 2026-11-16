@@ -327,14 +327,14 @@ the same; only its text differs.
   its includes are replaced by the text they resolved to, so the
   module stands on its own.
 - **Links are version-relative.** A page writes `/container-proxy-endpoints/fuse-mount/`, never
-  `/2.3.0/container-proxy-endpoints/fuse-mount/`; the build prefixes the module's version on the
+  `/1.0.0/container-proxy-endpoints/fuse-mount/`; the build prefixes the module's version on the
   page and in the twin. So a new revision begins as a copy of the
   latest module under the new version's name, edited from there.
 - **The revision is hard-coded where it is a value.** The version
   endpoint's answer is written as the literal string in the module's
   own pages, and the build checks that the latest module states the
   crate's version.
-- **The version is the first path part.** `/2.3.0/websocket/`. The
+- **The version is the first path part.** `/1.0.0/websocket/`. The
   root redirects to the latest revision; a path without a version is
   a 404. The revision menu at the head of every page links the same
   page in every revision that has it, and a revision's root where it

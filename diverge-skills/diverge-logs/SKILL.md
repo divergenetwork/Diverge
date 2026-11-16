@@ -218,7 +218,7 @@ diverge run --timeout 120 agents list --watch '{"names":["echo"]}' \
 ## 4. `diverge run info`
 
 ```bash
-diverge run info                              # {"info":{"version":"2.3.0"}}
+diverge run info                              # {"info":{"version":"1.0.0"}}
 diverge run --daemon b info
 diverge run info '{"relay":["<daemon id>"]}'  # the remote's version: also tests the relay
 ```

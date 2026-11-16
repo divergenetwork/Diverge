@@ -61,7 +61,7 @@ nothing to forgive.
 - **A value is stated as itself.** The literal bytes, the literal
   JSON, the literal string, with width and byte order: "the byte
   `0`", "a `u32`, big-endian", "exactly `{"type":"available"}`",
-  "the string `2.3.0`". Never "the appropriate value", never "as
+  "the string `1.0.0`". Never "the appropriate value", never "as
   above" where the value can be repeated.
 - **A condition precedes its consequence.** "A payload that is not
   valid UTF-8 is malformed." "A close before the request is answered
@@ -93,7 +93,7 @@ nothing to forgive.
 - **Summaries are one sentence, complete, in the same register.** A
   summary is the exchange in miniature: "A client asks what a server
   is; the server answers with exactly one response carrying the
-  string `2.3.0`, and the scope finishes."
+  string `1.0.0`, and the scope finishes."
 - **Diagrams in `text` blocks are annotated with noun phrases**, one
   per line, aligned: `once`, `per event`, `last`. The prose beside
   them states the sequence in sentences; the diagram never carries a
