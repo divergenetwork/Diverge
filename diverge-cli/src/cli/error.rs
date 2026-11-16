@@ -5,7 +5,6 @@ use std::io;
 
 use diverge_sdk::identities;
 use diverge_sdk::identity_diverge_network;
-use diverge_sdk::shared::Identity;
 
 use crate::config;
 use crate::detach;
@@ -54,19 +53,24 @@ pub enum Error {
         /// What its holder wrote in the lock file.
         holder: Option<String>,
     },
-    /// The daemon has no administrator at the index a delete named.
+    /// A list of a document has nothing at the index a delete named.
     /// Nothing was written.
-    NoAdmin {
+    NoItem {
+        /// The list, as the document names it: `admins`, `incoming`,
+        /// `outgoing`.
+        list: &'static str,
         /// The index named.
         index: usize,
-        /// How many administrators the daemon has.
+        /// How many items the list has.
         count: usize,
     },
-    /// The identity an add named is an administrator already. Nothing
-    /// was written.
-    AdminListed {
-        /// The identity.
-        admin: Identity,
+    /// The item an add named is in the list already. Nothing was
+    /// written.
+    Listed {
+        /// The list, as the document names it.
+        list: &'static str,
+        /// The item, as an error says it.
+        item: String,
         /// Where in the list it is.
         index: usize,
     },
@@ -93,16 +97,16 @@ impl fmt::Display for Error {
                 }
                 write!(f, ", and nothing was written: stop it first, with `diverge {word} stop`")
             }
-            Error::NoAdmin { index, count: 0 } => {
-                write!(f, "the daemon has no administrator at index {index}: it has none")
+            Error::NoItem { list, index, count: 0 } => {
+                write!(f, "`{list}` has nothing at index {index}: it is empty")
             }
-            Error::NoAdmin { index, count } => write!(
+            Error::NoItem { list, index, count } => write!(
                 f,
-                "the daemon has no administrator at index {index}: it has {count}, the last at index {}",
+                "`{list}` has nothing at index {index}: it has {count}, the last at index {}",
                 count - 1
             ),
-            Error::AdminListed { admin, index } => {
-                write!(f, "{admin} is an administrator already, at index {index}")
+            Error::Listed { list, item, index } => {
+                write!(f, "{item} is in `{list}` already, at index {index}")
             }
         }
     }
@@ -127,7 +131,7 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
-            Error::Stop { .. } | Error::NoAdmin { .. } | Error::AdminListed { .. } => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } => None,
         }
     }
 }

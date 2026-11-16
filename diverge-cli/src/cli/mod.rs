@@ -3,7 +3,8 @@
 //!
 //! [`run`] is the whole of it — [`config`] the `config` beneath every
 //! program, [`setting`] the daemon's `port`, `idle_seconds`, `admins`,
-//! `identity` and `postgres`,
+//! `identity` and `postgres`, [`provider`] the provider's `port`,
+//! `identity`, `incoming` and `outgoing`,
 //! [`identities`] the `identities` command,
 //! [`lifecycle`](crate::lifecycle) the `daemon` and `provider`
 //! commands' — and [`Error`] why it could not be. A
@@ -22,6 +23,7 @@ mod print;
 pub mod config;
 pub mod identities;
 pub mod identity_diverge_network;
+pub mod provider;
 pub mod setting;
 
 pub use error::*;

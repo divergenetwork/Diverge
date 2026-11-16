@@ -8,7 +8,8 @@
 //! viewer's and the CLI's document is each worked on beneath its
 //! program, `diverge <program> config`, by an
 //! [`Action`]: the provider is a [`Server`] — started or stopped by a
-//! [`Lifecycle`], or configured — the daemon a [`Daemon`], which is
+//! [`Lifecycle`], configured, or its `port`, `identity`, `incoming`
+//! and `outgoing` each read or written by itself — the daemon a [`Daemon`], which is
 //! started or stopped likewise, and configured not whole but by its
 //! `port`, `idle_seconds`, `admins`, `identity` and `postgres`, each
 //! read or written by itself, the viewer

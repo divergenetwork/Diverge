@@ -76,16 +76,16 @@ pub enum PostgresKind {
     },
 }
 
-/// What is done to the daemon's `identity`: see
-/// [`setting`](crate::cli::setting).
+/// What is done to a program's `identity`, the daemon's or the
+/// provider's: see [`setting`](crate::cli::setting).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Identity {
     /// Print the identity, on one line: `{"issuer":"…","subject":"…"}`,
     /// or `null` where the document has none.
     Get,
     /// Write the identity, whole: both its issuer and its subject.
-    /// Refused while the daemon is running on the root: stop the
-    /// daemon first. There is no setting it to none.
+    /// Refused while the program is running on the root: stop it
+    /// first. There is no setting it to none.
     Set {
         /// The identity's issuer, exactly as its discovery document
         /// names it.
@@ -128,15 +128,15 @@ pub enum Admins {
     },
 }
 
-/// What is done to the daemon's `port`: see
-/// [`setting`](crate::cli::setting).
+/// What is done to a program's `port`, the daemon's or the
+/// provider's: see [`setting`](crate::cli::setting).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum Port {
-    /// Print the port, as the daemon reads it: the default where the
-    /// document has none.
+    /// Print the port, as the program reads it: the default where
+    /// the document has none.
     Get,
-    /// Write the port. Refused while the daemon is running on the
-    /// root: stop the daemon first.
+    /// Write the port. Refused while the program is running on the
+    /// root: stop it first.
     Set {
         /// The port.
         #[arg(value_name = "PORT")]

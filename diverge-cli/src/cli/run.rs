@@ -16,7 +16,9 @@ use crate::lifecycle::{self, Program};
 /// stopped — see [`lifecycle`]; for `daemon port`,
 /// `daemon idle_seconds`, `daemon admins`, `daemon identity` and
 /// `daemon postgres`, the one setting read or written — see
-/// [`setting`](super::setting).
+/// [`setting`](super::setting); for `provider port`,
+/// `provider identity`, `provider incoming` and `provider outgoing`,
+/// likewise — see [`provider`](super::provider).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
     let root = config::root(arguments.config).await?;
@@ -45,8 +47,21 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Daemon(Daemon::Postgres(action))) => {
             super::setting::postgres(&root, action).await
         }
-        Some(Command::Provider(command)) => {
-            server(&root, Program::Provider, Which::Provider, command).await
+        Some(Command::Provider(Server::Lifecycle(action))) => {
+            Ok(lifecycle::run(&root, Program::Provider, action).await?)
+        }
+        Some(Command::Provider(Server::Config(action))) => {
+            super::config::run(&root, Which::Provider, action).await
+        }
+        Some(Command::Provider(Server::Port(action))) => super::provider::port(&root, action).await,
+        Some(Command::Provider(Server::Identity(action))) => {
+            super::provider::identity(&root, action).await
+        }
+        Some(Command::Provider(Server::Incoming(action))) => {
+            super::provider::incoming(&root, action).await
+        }
+        Some(Command::Provider(Server::Outgoing(action))) => {
+            super::provider::outgoing(&root, action).await
         }
         Some(Command::Viewer(Document::Config(action))) => {
             super::config::run(&root, Which::Viewer, action).await
@@ -54,19 +69,5 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Cli(Document::Config(action))) => {
             super::config::run(&root, Which::Cli, action).await
         }
-    }
-}
-
-/// A server's command, done: `start` and `stop` — see [`lifecycle`] —
-/// or `config` on its document — see [`config`](super::config).
-async fn server(
-    root: &std::path::Path,
-    program: Program,
-    which: Which,
-    command: Server,
-) -> Result<(), Error> {
-    match command {
-        Server::Lifecycle(action) => Ok(lifecycle::run(root, program, action).await?),
-        Server::Config(action) => super::config::run(root, which, action).await,
     }
 }

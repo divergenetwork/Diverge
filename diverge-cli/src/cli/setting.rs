@@ -1,9 +1,28 @@
-//! One setting of the daemon's document — its port, its idle
-//! seconds, its administrators, its identity, its Postgres — read
-//! or written by itself.
+//! One setting of a program's document, read or written by itself:
+//! what every such command shares, and the daemon's own — its port,
+//! its idle seconds, its administrators, its identity, its Postgres.
+//! The provider's are [`provider`](super::provider)'s.
+//!
+//! # The rules every setting keeps
+//!
+//! - A read — a `get` — is answered whether the program is running
+//!   or not, with the value the program would run with: the default
+//!   where the file leaves the setting out, and the built-in defaults
+//!   where there is no file.
+//! - A write — a `set`, an `add`, a `delete` — is refused while the
+//!   program runs on the root: see [`set`].
+//! - A write prints nothing.
+//! - Nothing is given as JSON: a setting's members are arguments and
+//!   flags.
+//! - A list is printed one JSON line per item, each with its `index`
+//!   first; an `add` puts the item after the last, and refuses one
+//!   the list already has; a `delete` takes the index, and refuses one
+//!   the list does not reach.
 
 use std::path::Path;
 
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tokio::io::AsyncWriteExt as _;
 
 use diverge_daemon::config;
@@ -16,12 +35,12 @@ use crate::arguments::{Admins, Identity, IdleSeconds, Port, Postgres, PostgresKi
 use crate::document::{self, Which};
 use crate::lifecycle::{self, Program};
 
-/// `diverge daemon port get|set`: see [`get`] and [`set`].
+/// `diverge daemon port get|set`: see [`number`] and [`set`].
 pub async fn port(root: &Path, action: Port) -> Result<(), Error> {
     match action {
-        Port::Get => get(root, |config| config.port.into()).await,
+        Port::Get => number(read::<Config>(root, Which::Daemon).await?.port.into()).await,
         Port::Set { value } => {
-            set(root, |config| {
+            daemon(root, |config| {
                 config.port = value;
                 Ok(())
             })
@@ -30,12 +49,12 @@ pub async fn port(root: &Path, action: Port) -> Result<(), Error> {
     }
 }
 
-/// `diverge daemon idle_seconds get|set`: see [`get`] and [`set`].
+/// `diverge daemon idle_seconds get|set`: see [`number`] and [`set`].
 pub async fn idle_seconds(root: &Path, action: IdleSeconds) -> Result<(), Error> {
     match action {
-        IdleSeconds::Get => get(root, |config| config.idle_seconds).await,
+        IdleSeconds::Get => number(read::<Config>(root, Which::Daemon).await?.idle_seconds).await,
         IdleSeconds::Set { value } => {
-            set(root, |config| {
+            daemon(root, |config| {
                 config.idle_seconds = value;
                 Ok(())
             })
@@ -44,58 +63,15 @@ pub async fn idle_seconds(root: &Path, action: IdleSeconds) -> Result<(), Error>
     }
 }
 
-/// `diverge daemon admins get|add|delete`, by these rules:
-///
-/// - A `get` prints every administrator, one JSON line each, in the
-///   document's order, with its index before its issuer and subject:
-///   `{"index":0,"issuer":"…","subject":"…"}`. No administrator, no
-///   line. It is answered whether the daemon is running or not.
-/// - An `add` puts the identity after the last administrator, so no
-///   index already printed changes. An identity that is an
-///   administrator already is refused with [`Error::AdminListed`],
-///   and nothing is written.
-/// - A `delete` removes the administrator at the index, and every one
-///   after it moves one index down. An index the list does not reach
-///   is refused with [`Error::NoAdmin`], and nothing is written.
-/// - An `add` and a `delete` are each a [`set`]: refused while the
-///   daemon runs on the root, and printing nothing.
+/// `diverge daemon admins get|add|delete`: the list of identities
+/// `admins`, by the rules of [`identities`], [`add`] and [`delete`].
 pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
     match action {
-        Admins::Get => {
-            let config = read(root).await?;
-            let mut text = Vec::new();
-            for (index, admin) in config.admins.iter().enumerate() {
-                let line = serde_json::json!({"index": index, "issuer": admin.issuer, "subject": admin.subject});
-                serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
-                text.push(b'\n');
-            }
-            let mut stdout = tokio::io::stdout();
-            stdout.write_all(&text).await.map_err(Error::Stdout)?;
-            stdout.flush().await.map_err(Error::Stdout)
-        }
+        Admins::Get => identities(&read::<Config>(root, Which::Daemon).await?.admins).await,
         Admins::Add { issuer, subject } => {
-            set(root, |config| {
-                let admin = shared::Identity { issuer, subject };
-                match config.admins.iter().position(|listed| *listed == admin) {
-                    Some(index) => Err(Error::AdminListed { admin, index }),
-                    None => {
-                        config.admins.push(admin);
-                        Ok(())
-                    }
-                }
-            })
-            .await
+            daemon(root, |config| add("admins", &mut config.admins, shared::Identity { issuer, subject })).await
         }
-        Admins::Delete { index } => {
-            set(root, |config| {
-                if index >= config.admins.len() {
-                    return Err(Error::NoAdmin { index, count: config.admins.len() });
-                }
-                config.admins.remove(index);
-                Ok(())
-            })
-            .await
-        }
+        Admins::Delete { index } => daemon(root, |config| delete("admins", &mut config.admins, index)).await,
     }
 }
 
@@ -103,26 +79,18 @@ pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
 ///
 /// - A `get` prints the identity as one JSON line,
 ///   `{"issuer":"…","subject":"…"}`, or `null` where the document has
-///   none. It is answered whether the daemon is running or not.
+///   none.
 /// - A `set` takes both the issuer and the subject and writes the
 ///   identity whole, replacing the one there. The document's
 ///   `identity` may be absent, and no `set` makes it so: an identity
 ///   is taken out of the file by hand.
-/// - A `set` is a [`set`]: refused while the daemon runs on the root,
-///   and printing nothing. Whether the identity is signed in on the
-///   root is not asked here; the daemon finds that at its start.
+/// - Whether the identity is signed in on the root is not asked here;
+///   the daemon finds that at its start.
 pub async fn identity(root: &Path, action: Identity) -> Result<(), Error> {
     match action {
-        Identity::Get => {
-            let config = read(root).await?;
-            let mut text = serde_json::to_vec(&config.identity).map_err(document::Error::Json)?;
-            text.push(b'\n');
-            let mut stdout = tokio::io::stdout();
-            stdout.write_all(&text).await.map_err(Error::Stdout)?;
-            stdout.flush().await.map_err(Error::Stdout)
-        }
+        Identity::Get => line(&read::<Config>(root, Which::Daemon).await?.identity).await,
         Identity::Set { issuer, subject } => {
-            set(root, |config| {
+            daemon(root, |config| {
                 config.identity = Some(shared::Identity { issuer, subject });
                 Ok(())
             })
@@ -137,8 +105,7 @@ pub async fn identity(root: &Path, action: Identity) -> Result<(), Error> {
 ///   kind `{"kind":"local","max_connections":…}`; for the remote kind
 ///   `{"kind":"remote","url":"…","has_password":…}`, where
 ///   `has_password` says whether the document holds a password and
-///   the password itself is never printed. It is answered whether the
-///   daemon is running or not.
+///   the password itself is never printed.
 /// - A `set` names the kind as its own command — `set local`,
 ///   `set remote` — and takes that kind's settings as flags, so the
 ///   command line cannot give one kind the other's.
@@ -149,28 +116,22 @@ pub async fn identity(root: &Path, action: Identity) -> Result<(), Error> {
 /// - `set remote` requires `--url`. The URL is written as given, and
 ///   is not dialled or parsed here; the daemon finds a wrong one at
 ///   its start.
-/// - A `set` is a [`set`]: refused while the daemon runs on the root,
-///   and printing nothing.
 pub async fn postgres(root: &Path, action: Postgres) -> Result<(), Error> {
     match action {
         Postgres::Get => {
-            let config = read(root).await?;
-            let line = match &config.postgres {
+            let config = read::<Config>(root, Which::Daemon).await?;
+            line(&match &config.postgres {
                 config::Postgres::Local { max_connections } => {
                     serde_json::json!({"kind": "local", "max_connections": max_connections})
                 }
                 config::Postgres::Remote { url, password } => {
                     serde_json::json!({"kind": "remote", "url": url, "has_password": password.is_some()})
                 }
-            };
-            let mut text = serde_json::to_vec(&line).map_err(document::Error::Json)?;
-            text.push(b'\n');
-            let mut stdout = tokio::io::stdout();
-            stdout.write_all(&text).await.map_err(Error::Stdout)?;
-            stdout.flush().await.map_err(Error::Stdout)
+            })
+            .await
         }
         Postgres::Set(kind) => {
-            set(root, |config| {
+            daemon(root, |config| {
                 config.postgres = match kind {
                     PostgresKind::Local { max_connections: Some(max_connections) } => {
                         config::Postgres::Local { max_connections }
@@ -185,51 +146,106 @@ pub async fn postgres(root: &Path, action: Postgres) -> Result<(), Error> {
     }
 }
 
-/// The daemon's document at `root`, as the daemon's own type takes
-/// it: every setting the file leaves out at its default, and the
-/// built-in defaults where there is no file.
-async fn read(root: &Path) -> Result<Config, Error> {
-    let value = document::read(root, Which::Daemon).await?;
+/// A write to the daemon's document: see [`set`].
+async fn daemon(root: &Path, change: impl FnOnce(&mut Config) -> Result<(), Error>) -> Result<(), Error> {
+    set(root, Program::Daemon, Which::Daemon, change).await
+}
+
+/// The document `which` names at `root`, as its program's own type
+/// `T` takes it: every setting the file leaves out at its default,
+/// and the built-in defaults where there is no file.
+pub(super) async fn read<T: DeserializeOwned>(root: &Path, which: Which) -> Result<T, Error> {
+    let value = document::read(root, which).await?;
     Ok(serde_path_to_error::deserialize(value).map_err(document::Error::Invalid)?)
 }
 
-/// One number of the daemon's document printed, alone on its line:
-/// the value the daemon would run with, whether the file states it or
-/// not. A `get` is answered whether the daemon is running or not.
-async fn get(root: &Path, of: impl FnOnce(&Config) -> u64) -> Result<(), Error> {
-    let config = read(root).await?;
+/// One number printed, alone on its line.
+pub(super) async fn number(value: u64) -> Result<(), Error> {
+    write(format!("{value}\n").into_bytes()).await
+}
+
+/// One value printed as JSON, alone on its line.
+pub(super) async fn line(value: &impl Serialize) -> Result<(), Error> {
+    let mut text = serde_json::to_vec(value).map_err(document::Error::Json)?;
+    text.push(b'\n');
+    write(text).await
+}
+
+/// A list of identities printed, one JSON line each, in the
+/// document's order, with its index before its issuer and subject:
+/// `{"index":0,"issuer":"…","subject":"…"}`. No item, no line.
+pub(super) async fn identities(list: &[shared::Identity]) -> Result<(), Error> {
+    let mut text = Vec::new();
+    for (index, identity) in list.iter().enumerate() {
+        let line = serde_json::json!({"index": index, "issuer": identity.issuer, "subject": identity.subject});
+        serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
+        text.push(b'\n');
+    }
+    write(text).await
+}
+
+/// `text` on stdout, flushed.
+pub(super) async fn write(text: Vec<u8>) -> Result<(), Error> {
     let mut stdout = tokio::io::stdout();
-    stdout.write_all(format!("{}\n", of(&config)).as_bytes()).await.map_err(Error::Stdout)?;
+    stdout.write_all(&text).await.map_err(Error::Stdout)?;
     stdout.flush().await.map_err(Error::Stdout)
 }
 
-/// One setting of the daemon's document written, by these rules:
+/// `item` put after the last of the list named `name`, so that no
+/// index already printed changes. An item the list already has is
+/// refused with [`Error::Listed`], naming where it is.
+pub(super) fn add<T: PartialEq + std::fmt::Display>(name: &'static str, list: &mut Vec<T>, item: T) -> Result<(), Error> {
+    match list.iter().position(|listed| *listed == item) {
+        Some(index) => Err(Error::Listed { list: name, item: item.to_string(), index }),
+        None => {
+            list.push(item);
+            Ok(())
+        }
+    }
+}
+
+/// The item at `index` taken out of the list named `name`; every item
+/// after it moves one index down. An index the list does not reach is
+/// refused with [`Error::NoItem`].
+pub(super) fn delete<T>(name: &'static str, list: &mut Vec<T>, index: usize) -> Result<(), Error> {
+    if index >= list.len() {
+        return Err(Error::NoItem { list: name, index, count: list.len() });
+    }
+    list.remove(index);
+    Ok(())
+}
+
+/// One setting of `program`'s document written, by these rules:
 ///
 /// - The root's lock is probed first — [`file_lock::try_exclusive`],
-///   as a start probes it. A lock that is held is the daemon running
-///   on the root, and the set is refused with [`Error::Stop`], naming
-///   the process the holder left in the lock file: a running daemon
-///   has read its document already, and a setting written under it
-///   would be one it does not run with. Nothing is written.
-/// - The probe is kept until the document is written, so that no
-///   daemon starts on the root between the two.
-/// - The document is read as the daemon's type, the setting changed,
+///   as a start probes it. A lock that is held is the program running
+///   on the root, and the write is refused with [`Error::Stop`],
+///   naming the process the holder left in the lock file: a running
+///   program has read its document already, and a setting written
+///   under it would be one it does not run with. Nothing is written.
+/// - The probe is kept until the document is written, so that the
+///   program does not start on the root between the two.
+/// - The document is read as the program's type, the setting changed,
 ///   and the whole written as that type's YAML: see
 ///   [`document`](crate::document) for what a rewrite costs. A change
-///   that refuses — an index the list does not reach, an identity
-///   already listed — writes nothing.
+///   that refuses — an index the list does not reach, an item already
+///   listed — writes nothing.
 /// - Nothing is printed.
-async fn set(root: &Path, change: impl FnOnce(&mut Config) -> Result<(), Error>) -> Result<(), Error> {
-    let program = Program::Daemon;
+pub(super) async fn set<T: DeserializeOwned + Serialize>(
+    root: &Path,
+    program: Program,
+    which: Which,
+    change: impl FnOnce(&mut T) -> Result<(), Error>,
+) -> Result<(), Error> {
     let lock = program.lock(root);
     let Some(probe) = file_lock::try_exclusive(&lock).await.map_err(lifecycle::Error::Lock)? else {
         let holder = file_lock::holder(&lock).await.map_err(lifecycle::Error::Lock)?;
         return Err(Error::Stop { program, holder });
     };
-    let mut config = read(root).await?;
+    let mut config = read::<T>(root, which).await?;
     change(&mut config)?;
     let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;
-    document::write(root, Which::Daemon, &yaml).await?;
+    document::write(root, which, &yaml).await?;
     drop(probe);
     Ok(())
 }

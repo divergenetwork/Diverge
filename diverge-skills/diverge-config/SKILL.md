@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming` and `outgoing` the same way (`diverge provider port|identity|incoming|outgoing …`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -169,8 +169,35 @@ diverge daemon postgres set remote --url postgres://diverge@db.example.com:5432/
   password. A password given as a flag is in the shell's history.
 - `identity set` takes both flags and replaces the identity whole. It cannot remove the identity; delete the
   `identity` member from `daemon.yaml` by hand for that. It does not check that the identity is signed in.
-- Only the daemon has these. The whole document is printed by reading the file: `cat <root>/daemon.yaml`
-  (absent: every setting is at its default).
+- The whole document is printed by reading the file: `cat <root>/daemon.yaml` (absent: every setting is at
+  its default).
+
+## The provider's settings: `diverge provider port`, `identity`, `incoming`, `outgoing`
+
+Four settings of `provider.yaml` have their own commands, by the daemon's rules: plain arguments and flags,
+`get` always answered, every write refused while the provider is running on the root (`diverge provider stop`
+first), nothing printed by a write, comments lost.
+
+```bash
+diverge provider port get               # 14979
+diverge provider port set 15001
+diverge provider identity get           # {"issuer":"…","subject":"…"}, or null
+diverge provider identity set --issuer https://identity.diverge.network --subject github.12345.provider
+diverge provider incoming get           # {"index":0,"issuer":"…","subject":"…"}   one line per identity accepted
+diverge provider incoming add --issuer https://identity.diverge.network --subject github.12345.daemon-b
+diverge provider incoming delete 0
+diverge provider outgoing get           # {"index":0,"address":"…","issuer":"…","subject":"…"}   one line per peer dialled
+diverge provider outgoing add --address relay.example.com:14979 --issuer https://identity.diverge.network --subject github.12345.relay
+diverge provider outgoing delete 0
+```
+
+- `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
+  `delete` takes the index `get` prints and refuses one the list does not reach.
+- `outgoing add` takes all three flags. It refuses only the same identity at the same address; the same
+  identity at another address is another peer.
+- `identity set` cannot remove the identity; delete the member from the file by hand, or use `provider config`.
+- Everything else in `provider.yaml` (`podman`, `containers`, `volumes`, `images`, `messages`) is still changed
+  with `diverge provider config set|patch`, which is not refused while the provider runs.
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
