@@ -410,6 +410,7 @@ Redirect to a file, as above.
   refuses, a root it cannot use, and for a provider with a `containers` or `images` section podman or `ssh` missing from `PATH` (a provider with neither needs no podman). The same text is in `<root>/<program>.log`.
 - The log file is truncated at every start. A program that starts well prints nothing.
 - The first start on Windows or macOS of a provider with a `containers` or `images` section creates and boots a podman machine and can take minutes.
+- On Windows and macOS that machine (`diverge-provider`) runs only while the provider does: every start of such a provider starts it if it is stopped, and `diverge provider stop` stops it after the provider's containers are removed, which adds some seconds to the stop. A provider that was killed leaves the machine running; the next start finds it running and uses it.
 
 `stop`:
 

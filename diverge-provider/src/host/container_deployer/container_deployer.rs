@@ -168,6 +168,17 @@ impl ContainerDeployer {
         let _ = sweep_all(&self.label, &self.mounts_dir).await;
     }
 
+    /// The podman machine stopped, on the hosts that have one: what a
+    /// shutdown does after its [`sweep`](Self::sweep), so that a
+    /// provider that is not running leaves no machine running. On
+    /// Linux there is no machine, and this does nothing. A refusal is
+    /// not reported, since there is nobody to report it to; the next
+    /// start starts the machine or finds it running, either way.
+    pub async fn stop_machine(&self) {
+        #[cfg(not(target_os = "linux"))]
+        let _ = super::machine::stop().await;
+    }
+
     /// Where stored volumes are loop-mounted, `run/mounts/`: what a
     /// build attaches its context volume under, as a run does.
     pub fn mounts_dir(&self) -> &Path {

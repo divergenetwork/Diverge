@@ -63,6 +63,20 @@ pub(super) async fn ensure(memory: Option<u64>, storage: &Path, shares: &[PathBu
     Ok(())
 }
 
+/// The provider's machine stopped, where it is there and running:
+/// what the provider's stop does last of podman, after every
+/// container of its own is gone. The machine is the provider's own —
+/// made under its storage path, named for it — so nothing else runs
+/// in it, and a provider that is not running holds no machine up.
+/// The next start finds it stopped and starts it: see [`ensure`]. A
+/// machine that is not there, or not running, is nothing to stop.
+pub(super) async fn stop() -> Result<(), Error> {
+    match podman::machine().await.map_err(Error::Podman)? {
+        Some(machine) if machine.state == "running" => machine_command(["stop"]).await,
+        _ => Ok(()),
+    }
+}
+
 /// A machine made, its SSH key checked to be under `storage`, and
 /// started.
 async fn make(memory: Option<u64>, storage: &Path, shares: &[PathBuf]) -> Result<(), Error> {

@@ -36,13 +36,15 @@ const KEY_SETS: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 /// the signal or the route sends the stop, and then, in order: the
 /// listener drains; every session, accepted or dialled, is dropped on
 /// the same stop, so every socket closes; every dial task is ended;
-/// every container and loop mount of this provider is swept away; the
-/// provider is dropped — the registry's server and the machine's
+/// every container and loop mount of this provider is swept away; on
+/// macOS and Windows the podman machine, which is the provider's own,
+/// is stopped, so a provider that is not running leaves none running;
+/// the provider is dropped — the registry's server and the machine's
 /// tunnel with it; and the lock is let go, last. The signal is armed
 /// only once the port is listened on, and the route exists only then
 /// too, so a stop asked during a slow start is refused by the kernel,
 /// not by the provider. A port that could not be bound is the error,
-/// after the same sweep.
+/// after the same sweep and the same stop of the machine.
 pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
     let lock = root.join(diverge_sdk::provider::LOCK_FILE);
     let Some(held) = file_lock::try_exclusive(&lock).await.map_err(Error::Lock)? else {
@@ -74,6 +76,7 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
     dials.shutdown().await;
     if let Some(deployer) = &*provider.deployer {
         deployer.sweep().await;
+        deployer.stop_machine().await;
     }
     drop(held);
     outcome
