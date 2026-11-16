@@ -18,10 +18,19 @@ import { VolumeCapabilities, kept } from "./volume_capabilities.js";
 export const Capabilities = z.looseObject({
   /** The provider runs containers: it answers the agents run and the tools run. Absent, `false`, and each answers `Unsupported`. */
   containers: z.boolean().optional(),
-  /** The provider keeps the Store for its callers: their images, by digest. Absent, `false`. */
-  images_store: z.boolean().optional(),
-  /** The registries the provider pulls from, each a host. Absent, none. */
-  images_registries: z.array(z.string()).optional(),
+  /**
+   * What the provider does with images. `store`: it keeps the Store
+   * for its callers, their images by digest, and the object's `build`
+   * says whether it builds into it; absent, it keeps none, and every
+   * Store endpoint answers `Unsupported`. `registries`: the registries
+   * it pulls from, each a host; absent, none.
+   */
+  images: z
+    .looseObject({
+      store: z.looseObject({ build: z.boolean().optional() }).optional(),
+      registries: z.array(z.string()).optional(),
+    })
+    .optional(),
   /** What may be done with a volume in the `persistent` mode. Absent, the mode is not kept. */
   volumes_persistent: VolumeCapabilities.optional(),
   /** What may be done with a volume in the `ephemeral` mode. */
