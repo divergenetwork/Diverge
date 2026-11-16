@@ -77,6 +77,13 @@ pub enum StoragePath {
         #[arg(long)]
         no_transfer: bool,
     },
+    /// Delete everything podman keeps at the path, so that the
+    /// provider makes it all again at its next start: an empty store,
+    /// or on macOS and Windows a machine made new. Refused while the
+    /// provider is running on the root: stop it first. Every image
+    /// kept there is gone and is not got back; the path itself stays
+    /// as it is written.
+    Delete,
 }
 
 /// What is done to the provider's `podman.registries`: see

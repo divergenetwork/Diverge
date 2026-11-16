@@ -157,7 +157,7 @@ async fn registries(root: &Path, action: Registries) -> Result<(), Error> {
     }
 }
 
-/// `diverge provider podman storage_path get|set`: where podman
+/// `diverge provider podman storage_path get|set|delete`: where podman
 /// keeps its data, `podman.storage_path`, by these rules:
 ///
 /// - A `get` prints the path as the provider takes it: absolute, a
@@ -188,6 +188,14 @@ async fn registries(root: &Path, action: Registries) -> Result<(), Error> {
 /// - With `--no-transfer` nothing is moved or deleted. On Windows it
 ///   is refused while podman still holds the old path's machine: the
 ///   provider would refuse to start beside it.
+/// - A `delete` holds the provider's lock as a `set` does, and then
+///   deletes everything podman keeps at the path and everything
+///   outside it that names it — see [`relocate::wipe`] — so that the
+///   provider starts on the path as on one never used. The path is
+///   not changed, and a provider that uses no podman has its folder
+///   deleted all the same, if it has one. It is how a path is changed
+///   with nothing carried on Windows: the old path's data deleted
+///   first, then a `set --no-transfer`.
 /// - Nothing is printed.
 async fn storage_path(root: &Path, action: StoragePath) -> Result<(), Error> {
     match action {
@@ -225,6 +233,14 @@ async fn storage_path(root: &Path, action: StoragePath) -> Result<(), Error> {
             if let Some(carried) = carried {
                 carried.finish().await.map_err(Error::Leftover)?;
             }
+            drop(held);
+            Ok(())
+        }
+        StoragePath::Delete => {
+            let held = hold(root, Program::Provider).await?;
+            let config = read::<Config>(root, Which::Provider).await?;
+            let path = absolute(&diverge_provider::config::resolve(root, &config.podman.storage_path))?;
+            relocate::wipe(&path).await.map_err(Error::Wipe)?;
             drop(held);
             Ok(())
         }

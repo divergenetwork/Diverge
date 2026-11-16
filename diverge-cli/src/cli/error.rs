@@ -61,6 +61,9 @@ pub enum Error {
     /// written, but what was left at the old path could not be
     /// removed.
     Leftover(relocate::Error),
+    /// Podman's data at the storage path could not be deleted, or
+    /// not all of it.
+    Wipe(relocate::Error),
     /// A path could not be made absolute.
     Path(std::io::Error),
     /// A list of a document has nothing at the index a delete named.
@@ -112,6 +115,7 @@ impl fmt::Display for Error {
                 f,
                 "podman's data is at the new path and the path is written, but the old path could not be cleared: {error}"
             ),
+            Error::Wipe(error) => write!(f, "podman's data was not deleted, or not all of it; asked again, the rest is: {error}"),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")
@@ -147,7 +151,7 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
-            Error::Relocate(error) | Error::Leftover(error) => Some(error),
+            Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
             Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } => None,
         }
