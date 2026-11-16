@@ -7,6 +7,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use clap::Args;
 use diverge_sdk::daemon::endpoints::images::push::client::execute::execute;
+use diverge_sdk::daemon::endpoints::images::push::client::request::Source;
 use diverge_sdk::daemon::endpoints::images::push::{client::request, server::response};
 use diverge_sdk::provider::client::{Manifest, OciStore};
 use diverge_sdk::shared::containers::oci;
@@ -22,9 +23,10 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the provider, the image by its digest and
-    /// the references its bytes may be fetched under, and a
-    /// description; `relay` among its members has another daemon serve
-    /// it.
+    /// the references its bytes may be fetched under, the `source` its
+    /// bytes come from — a provider or a daemon, and never `client` —
+    /// and a description; `relay` among its members has another daemon
+    /// serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,
     /// What is beneath the request: `request-schema`, the JSON Schema
@@ -39,15 +41,13 @@ pub struct Arguments {
 /// that ends it — the image pushed, with where it came from, or why
 /// there is none. The rules:
 ///
-/// 1. **This program holds no image.** Where the provider takes the
-///    image from a registry it uses — one of the image's references
-///    names it — the push succeeds, and nothing is asked of this
-///    program.
-/// 2. **Asked, it holds nothing.** Where the provider asks the client
-///    for the image — its manifest, a blob, the proof — every ask is
-///    answered as not held, by [`Nothing`], and the push ends
-///    `unavailable`. An image only a client could supply is pushed by
-///    a client that has its bytes, through the SDK.
+/// 1. **This program holds no image**, so it is no source of one. A
+///    request whose `source` is `client` is refused here, before any
+///    daemon is dialled: the source is a provider or a daemon, which
+///    the daemon reads the image from itself.
+/// 2. **Nothing is asked of this program.** With any other source the
+///    daemon opens no channel on this scope. Were one opened, it is
+///    answered as not held, by [`Nothing`].
 /// 3. The stream ends by itself, so nothing here cuts it.
 pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitter) -> Result<(), Error> {
     match arguments.below {
@@ -60,6 +60,10 @@ pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitte
         None => {}
     }
     let request: request::Frame = body(arguments.body.as_deref())?;
+    // Rule 1.
+    if request.source == Source::Client {
+        return Err(Error::Unsupported("a push whose `source` is `client`: this program holds no image; name a provider or a daemon as the source"));
+    }
     let handle = target.dial().await?;
     let mut answers = execute(&handle, &request, Arc::new(Nothing)).await.map_err(shape::exchange::open)?;
     while let Some(item) = answers.next().await {
