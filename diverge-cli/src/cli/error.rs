@@ -11,6 +11,7 @@ use crate::detach;
 use crate::document;
 use crate::lifecycle;
 use crate::lifecycle::Program;
+use diverge_provider::host::relocate;
 use crate::ours;
 use crate::run;
 
@@ -53,6 +54,15 @@ pub enum Error {
         /// What its holder wrote in the lock file.
         holder: Option<String>,
     },
+    /// Podman's data could not be moved to the new storage path.
+    /// Nothing was moved, and nothing was written.
+    Relocate(relocate::Error),
+    /// Podman's data is at the new storage path and the path is
+    /// written, but what was left at the old path could not be
+    /// removed.
+    Leftover(relocate::Error),
+    /// A path could not be made absolute.
+    Path(std::io::Error),
     /// A list of a document has nothing at the index a delete named.
     /// Nothing was written.
     NoItem {
@@ -97,6 +107,12 @@ impl fmt::Display for Error {
                 }
                 write!(f, ", and nothing was written: stop it first, with `diverge {word} stop`")
             }
+            Error::Relocate(error) => write!(f, "podman's data was not moved, and the path was not written: {error}"),
+            Error::Leftover(error) => write!(
+                f,
+                "podman's data is at the new path and the path is written, but the old path could not be cleared: {error}"
+            ),
+            Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")
             }
@@ -131,6 +147,8 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
+            Error::Relocate(error) | Error::Leftover(error) => Some(error),
+            Error::Path(error) => Some(error),
             Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } => None,
         }
     }

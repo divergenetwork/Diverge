@@ -47,6 +47,36 @@ pub enum Podman {
     /// delete one, `podman.registries` in `provider.yaml`.
     #[command(subcommand)]
     Registries(Registries),
+    /// Read where podman keeps its data, or move the data and write
+    /// the new place, `podman.storage_path` in `provider.yaml`.
+    #[command(name = "storage_path", subcommand)]
+    StoragePath(StoragePath),
+}
+
+/// What is done to the provider's `podman.storage_path`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum StoragePath {
+    /// Print the path, resolved: absolute, a relative one taken from
+    /// the root, as the provider takes it.
+    Get,
+    /// Move podman's data to the path and write it. Refused while the
+    /// provider is running on the root: stop it first. The data is
+    /// moved whole — on macOS and Windows that is the podman machine,
+    /// stopped first if it runs — by renames where the two paths are
+    /// on one filesystem, and by a checked copy where they are not;
+    /// if it cannot be, nothing is moved and the path is not written.
+    Set {
+        /// The path: absolute, or relative to the root.
+        #[arg(value_name = "PATH")]
+        path: std::path::PathBuf,
+        /// Write the path and move nothing: podman's data is left at
+        /// the old path, and the provider starts with none at the
+        /// new. Refused on Windows while the old path's machine is
+        /// there, beside which the provider would not start.
+        #[arg(long)]
+        no_transfer: bool,
+    },
 }
 
 /// What is done to the provider's `podman.registries`: see

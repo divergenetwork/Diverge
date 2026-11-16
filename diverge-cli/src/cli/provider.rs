@@ -1,17 +1,18 @@
 //! One setting of the provider's document, read or written by itself:
 //! its port, its identity, whom it accepts, whom it dials, the
-//! registries it pulls from. Every one keeps the rules of
-//! [`setting`](super::setting).
+//! registries it pulls from, and where podman keeps its data. Every
+//! one keeps the rules of [`setting`](super::setting).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use diverge_provider::config::Config;
 use diverge_provider::config::outgoing;
+use diverge_provider::host::relocate;
 use diverge_sdk::shared;
 
 use super::Error;
-use super::setting::{add, delete, identities, line, number, read, set, write};
-use crate::arguments::{Identity, Incoming, Outgoing, Podman, Port, Registries};
+use super::setting::{add, delete, hold, identities, line, number, read, set, write};
+use crate::arguments::{Identity, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -114,6 +115,7 @@ pub async fn outgoing(root: &Path, action: Outgoing) -> Result<(), Error> {
 pub async fn podman(root: &Path, action: Podman) -> Result<(), Error> {
     match action {
         Podman::Registries(action) => registries(root, action).await,
+        Podman::StoragePath(action) => storage_path(root, action).await,
     }
 }
 
@@ -153,6 +155,87 @@ async fn registries(root: &Path, action: Registries) -> Result<(), Error> {
             provider(root, |config| delete("podman.registries", &mut config.podman.registries, index)).await
         }
     }
+}
+
+/// `diverge provider podman storage_path get|set`: where podman
+/// keeps its data, `podman.storage_path`, by these rules:
+///
+/// - A `get` prints the path as the provider takes it: absolute, a
+///   relative one joined onto the root. One line, the path as it is
+///   and not as JSON.
+/// - A `set` holds the provider's lock from its first step to its
+///   last — see [`hold`] — so it is refused while the provider runs,
+///   and the provider cannot start while podman's data is between two
+///   places.
+/// - The path is written as it was given where it is relative, and
+///   made absolute and plain where it is absolute. The old path and
+///   the new are compared resolved; the same one is written and
+///   nothing is moved.
+/// - Without `--no-transfer`, podman's data is carried from the old
+///   path to the new before anything is written — see
+///   [`relocate`] for how, on each host. If it cannot be, nothing is
+///   left moved and the path is not written: [`Error::Relocate`].
+///   A provider that uses no podman — neither a `containers` section
+///   nor an `images` section — keeps nothing there, and nothing is
+///   carried.
+/// - Then the path is written. If the write fails, the data is
+///   carried back.
+/// - Then the transfer is let go of: where the two paths are on
+///   different filesystems the data was copied, and the old copy is
+///   deleted only now. A copy that will not be deleted is
+///   [`Error::Leftover`], with the data at the new path and the path
+///   written.
+/// - With `--no-transfer` nothing is moved or deleted. On Windows it
+///   is refused while podman still holds the old path's machine: the
+///   provider would refuse to start beside it.
+/// - Nothing is printed.
+async fn storage_path(root: &Path, action: StoragePath) -> Result<(), Error> {
+    match action {
+        StoragePath::Get => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let path = absolute(&diverge_provider::config::resolve(root, &config.podman.storage_path))?;
+            write(format!("{}\n", path.display()).into_bytes()).await
+        }
+        StoragePath::Set { path, no_transfer } => {
+            let held = hold(root, Program::Provider).await?;
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            let old = absolute(&diverge_provider::config::resolve(root, &config.podman.storage_path))?;
+            let written = if path.is_absolute() { absolute(&path)? } else { path };
+            let new = absolute(&diverge_provider::config::resolve(root, &written))?;
+            let carried = if old == new || !config.podman_in_use() {
+                None
+            } else if no_transfer {
+                #[cfg(windows)]
+                relocate::machine::blocked(&old).await.map_err(Error::Relocate)?;
+                None
+            } else {
+                Some(relocate::transfer(&old, &new).await.map_err(Error::Relocate)?)
+            };
+            config.podman.storage_path = written;
+            let stored = match serde_yaml_ng::to_string(&config) {
+                Ok(yaml) => document::write(root, Which::Provider, &yaml).await,
+                Err(error) => Err(document::Error::Serialize(error)),
+            };
+            if let Err(error) = stored {
+                if let Some(carried) = carried {
+                    carried.undo().await;
+                }
+                return Err(error.into());
+            }
+            if let Some(carried) = carried {
+                carried.finish().await.map_err(Error::Leftover)?;
+            }
+            drop(held);
+            Ok(())
+        }
+    }
+}
+
+/// `path` made absolute and plain, without asking the filesystem:
+/// against the working directory where it is relative, its `.` and
+/// separators put right.
+fn absolute(path: &Path) -> Result<PathBuf, Error> {
+    std::path::absolute(path).map_err(Error::Path)
 }
 
 /// A write to the provider's document: see

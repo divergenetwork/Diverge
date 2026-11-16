@@ -215,15 +215,31 @@ pub(super) fn delete<T>(name: &'static str, list: &mut Vec<T>, index: usize) -> 
     Ok(())
 }
 
+/// `program`'s lock on the root, taken: what every write of its
+/// document holds for its whole length, so that the program neither
+/// runs under the write nor starts in the middle of it. A lock that
+/// is held is the program running, and is [`Error::Stop`], naming the
+/// process the holder left in the lock file. The lock is let go when
+/// what this answers is dropped.
+pub(super) async fn hold(root: &Path, program: Program) -> Result<file_lock::Held, Error> {
+    let lock = program.lock(root);
+    match file_lock::try_exclusive(&lock).await.map_err(lifecycle::Error::Lock)? {
+        Some(held) => Ok(held),
+        None => {
+            let holder = file_lock::holder(&lock).await.map_err(lifecycle::Error::Lock)?;
+            Err(Error::Stop { program, holder })
+        }
+    }
+}
+
 /// One setting of `program`'s document written, by these rules:
 ///
-/// - The root's lock is probed first — [`file_lock::try_exclusive`],
-///   as a start probes it. A lock that is held is the program running
-///   on the root, and the write is refused with [`Error::Stop`],
-///   naming the process the holder left in the lock file: a running
-///   program has read its document already, and a setting written
-///   under it would be one it does not run with. Nothing is written.
-/// - The probe is kept until the document is written, so that the
+/// - The root's lock is taken first — see [`hold`]. A lock that is
+///   held is the program running on the root, and the write is
+///   refused with [`Error::Stop`]: a running program has read its
+///   document already, and a setting written under it would be one
+///   it does not run with. Nothing is written.
+/// - The lock is kept until the document is written, so that the
 ///   program does not start on the root between the two.
 /// - The document is read as the program's type, the setting changed,
 ///   and the whole written as that type's YAML: see
@@ -237,11 +253,7 @@ pub(super) async fn set<T: DeserializeOwned + Serialize>(
     which: Which,
     change: impl FnOnce(&mut T) -> Result<(), Error>,
 ) -> Result<(), Error> {
-    let lock = program.lock(root);
-    let Some(probe) = file_lock::try_exclusive(&lock).await.map_err(lifecycle::Error::Lock)? else {
-        let holder = file_lock::holder(&lock).await.map_err(lifecycle::Error::Lock)?;
-        return Err(Error::Stop { program, holder });
-    };
+    let probe = hold(root, program).await?;
     let mut config = read::<T>(root, which).await?;
     change(&mut config)?;
     let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;

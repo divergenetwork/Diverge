@@ -10,6 +10,7 @@ use super::Error;
 use crate::arguments::Action;
 use crate::document::{self, Which};
 use crate::jq;
+use crate::lifecycle::Program;
 
 /// Do `action` to the document `which` names in the root — the
 /// document of the program the command is beneath: a `get` prints every
@@ -18,7 +19,9 @@ use crate::jq;
 /// the one value it yields as the new document, validates it by the
 /// document's type, and writes it; a `patch` applies the JSON Patch
 /// to the document, whole or not at all, validates the result by the
-/// document's type, and writes it.
+/// document's type, and writes it. A `set` and a `patch` of the
+/// provider's document hold the provider's lock, and are refused
+/// while it runs.
 pub async fn run(root: &Path, which: Which, action: Action) -> Result<(), Error> {
     match action {
         Action::Get { filter } => {
@@ -37,8 +40,12 @@ pub async fn run(root: &Path, which: Which, action: Action) -> Result<(), Error>
             stdout.flush().await.map_err(document::Error::Stdout)?;
             Ok(())
         }
-        Action::Set { filter } => set(root, which, &filter).await,
+        Action::Set { filter } => {
+            let _held = held(root, which).await?;
+            set(root, which, &filter).await
+        }
         Action::Patch { patch: text } => {
+            let _held = held(root, which).await?;
             let patch = document::patch(&text)?;
             let current = document::read(root, which).await?;
             let patched = patch::apply(current, &patch).map_err(document::Error::Apply)?;
@@ -47,6 +54,21 @@ pub async fn run(root: &Path, which: Which, action: Action) -> Result<(), Error>
             Ok(())
         }
     }
+}
+
+/// The lock of the program whose document `which` is, taken for a
+/// write of it and held until the write is done: the provider's for
+/// `provider.yaml`, so that a `config set` or a `config patch` is
+/// refused while the provider runs and the provider cannot start
+/// under one — see [`hold`](super::setting::hold). The viewer and the
+/// CLI hold no root, and their documents take no lock.
+async fn held(root: &Path, which: Which) -> Result<Option<diverge_sdk::file_lock::Held>, Error> {
+    let program = match which {
+        Which::Daemon => Program::Daemon,
+        Which::Provider => Program::Provider,
+        Which::Viewer | Which::Cli => return Ok(None),
+    };
+    super::setting::hold(root, program).await.map(Some)
 }
 
 /// The document rewritten by `program`: exactly one value yielded,

@@ -38,7 +38,9 @@
 //! `provider port get|set`, `provider identity get|set`,
 //! `provider incoming get|add|delete`,
 //! `provider outgoing get|add|delete`,
-//! `provider podman registries get|add|delete` — by the same rules; see
+//! `provider podman registries get|add|delete` — by the same rules,
+//! and `provider podman storage_path get|set`, which moves podman's
+//! data before it writes where it is; see
 //! [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
