@@ -52,7 +52,13 @@ pub async fn execute<O: OciStore + 'static>(
 /// A frame that is not a channel request is dropped. An ask that will
 /// not decode is a channel this end cannot serve, and is answered as
 /// such: the finish with nothing before it.
-async fn serve<O: OciStore + 'static>(
+///
+/// What [`execute`] runs for the scope it opens. It is public for a
+/// caller that opened the push's scope itself, and wants its asks
+/// answered from a store all the same: a daemon, which reads the
+/// provider's answers as they are and answers its asks from another
+/// source.
+pub async fn serve<O: OciStore + 'static>(
     mut requests: crate::wire::credit::Receiver,
     handle: Handle,
     scope: u32,

@@ -64,9 +64,11 @@ pub enum Frame {
     /// The provider has no Store, and nothing moved. Tag `7`.
     Unsupported,
     /// The caller's grants do not allow it: no `push` over images
-    /// reaching the provider. Tag `8`.
+    /// reaching the provider, or no grant reaching the source named.
+    /// Tag `8`.
     Forbidden,
-    /// The provider is none the daemon keeps a record of. Tag `9`.
+    /// The provider pushed to, or the provider named as the source,
+    /// is none the daemon keeps a record of. Tag `9`.
     NotFound,
     /// A failure, in the daemon's words or the provider's. Tag `10`.
     Error(Error),

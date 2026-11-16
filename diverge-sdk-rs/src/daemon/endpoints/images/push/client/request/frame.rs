@@ -9,6 +9,8 @@ use crate::shared::containers::request::Image;
 use crate::shared::description::Description;
 use crate::shared::relay::Relay;
 
+use super::Source;
+
 /// Ask the daemon to push an image into its Store on a provider: the
 /// provider's
 /// [`images::push`](crate::provider::endpoints::images::push), asked
@@ -23,8 +25,11 @@ pub struct Frame {
     /// The image: its digest, which is the image, and the references
     /// under which its bytes may be fetched. A reference naming a
     /// registry the provider uses lets the provider fetch it there;
-    /// with none that does, the client is asked for it.
+    /// with none that does, the source is asked for it.
     pub image: Image,
+    /// Who is asked for the image where the provider asks: the client,
+    /// one provider, or one remote daemon. See [`Source`]. Required.
+    pub source: Source,
     /// What the image is kept as in the Store, beside its digest: one
     /// short line of plain text. Absent, none. Not written over an
     /// image owned already.
