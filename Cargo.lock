@@ -1543,7 +1543,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-alarm"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1559,7 +1559,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-chat"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1575,7 +1575,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-courier"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-human"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -1607,7 +1607,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-memory"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1622,7 +1622,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-example-taskboard"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",
@@ -1720,7 +1720,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-viewer"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -1754,7 +1754,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-viewer-config"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "diverge-sdk",
  "serde",
@@ -1765,7 +1765,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-viewer-room"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chacha20poly1305",
@@ -1789,7 +1789,7 @@ dependencies = [
 
 [[package]]
 name = "diverge-world"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "bytes",
@@ -3158,7 +3158,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "identity-diverge-network"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "diverge-sdk",

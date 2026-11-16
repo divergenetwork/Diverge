@@ -1,6 +1,6 @@
 [package]
 name = "diverge-example-memory"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "An example Diverge tool container: a notebook of notes kept in the tool's database"

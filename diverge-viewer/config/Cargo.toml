@@ -1,6 +1,6 @@
 [package]
 name = "diverge-viewer-config"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "The one viewer.yaml the Diverge viewer reads: the document as Rust, so the viewer and the CLI read it with one type"
 publish = false

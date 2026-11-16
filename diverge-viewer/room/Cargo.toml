@@ -1,6 +1,6 @@
 [package]
 name = "diverge-viewer-room"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "The Diverge viewer's room program: one room's verbs, seals and record. Ours, not the SDK's."
 publish = false

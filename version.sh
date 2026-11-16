@@ -125,7 +125,7 @@ set_toml_package_version() {
     "version = \"$NEW_VERSION\""
 }
 
-# Root "version": "..." in a package.json. Relies on the standard layout
+# Root "version": "..." in a package.json or a tauri.conf.json. Relies on the standard layout
 # where "version" is the first occurrence in the file (right after "name").
 set_package_json_version() {
   local file="$1"
@@ -151,11 +151,26 @@ CARGO_TOMLS=(
   diverge-postgres/Cargo.toml
   diverge-daemon/Cargo.toml
   diverge-cli/Cargo.toml
+  diverge-tools/identity-diverge-network/Cargo.toml
+  diverge-examples/agents/human/Cargo.toml
+  diverge-examples/tools/alarm/Cargo.toml
+  diverge-examples/tools/chat/Cargo.toml
+  diverge-examples/tools/courier/Cargo.toml
+  diverge-examples/tools/memory/Cargo.toml
+  diverge-examples/tools/taskboard/Cargo.toml
+  diverge-viewer/config/Cargo.toml
+  diverge-viewer/room/Cargo.toml
+  diverge-viewer/src-tauri/Cargo.toml
+  diverge-world/src-tauri/Cargo.toml
 )
 
 PACKAGE_JSONS=(
   diverge-provider-web/package.json
   diverge-sdk-js/package.json
+  diverge-viewer/package.json
+  diverge-viewer/src-tauri/tauri.conf.json
+  diverge-world/package.json
+  diverge-world/src-tauri/tauri.conf.json
 )
 
 # The specification's modules. The latest is the folder named after the

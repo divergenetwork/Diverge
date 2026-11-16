@@ -1,6 +1,6 @@
 {
   "productName": "Diverge World",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "network.diverge.world.draft",
   "build": {
     "frontendDist": "../dist",

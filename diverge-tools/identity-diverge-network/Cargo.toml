@@ -1,6 +1,6 @@
 [package]
 name = "identity-diverge-network"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
 description = "A Diverge tool container: accounts at identity.diverge.network, kept, and identities signed in on the daemon as them"
