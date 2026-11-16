@@ -361,7 +361,7 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
 ```
 
 - `undeployed` with a `reason` is an unexpected end: `provider_lost`, `provider_disabled`,
-  `provider_edited`, `daemon_stopped`, `mount_lost` (a FUSE mount lost its serve), `exited` (the container exited by itself) or `failed` (an `error`
+  `provider_edited`, `daemon_stopped`, `daemon_died` (the daemon was killed; the entry was written at its next start, so its time is the restart's), `mount_lost` (a FUSE mount lost its serve), `exited` (the container exited by itself) or `failed` (an `error`
   item just before says how). `interrupted: true` means it was working when it went down.
 - A run that never came up keeps an `error` item and no `deployed`.
 - Each user part carries `sender` (who sent the message) and `key` (which message it belongs to).

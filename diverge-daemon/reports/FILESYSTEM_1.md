@@ -203,6 +203,12 @@ as an argument.
 |---|---|---|---|
 | `agents/<id>/{log,index}` | first append (the `Active` item of the first run) | every chunk, every loop word, every start error, under the agent's live lock | `agents delete` |
 
+At every start, before a provider is dialled or the port listened on, the daemon makes its logs whole
+(`diverge-daemon/src/integrity/`): a log folder whose record is gone is removed; `log` and `index` are cut
+back to the last whole item, where a daemon that was killed tore their end; and a log that still ends in a
+run that was never closed is closed, its `undeployed` carrying the reason `daemon_died`. A file it cannot
+read or cut fails the start, naming the file.
+
 ## 4. The Postgres supervisor: `<root>/daemon/postgres/`
 
 What `diverge-postgres` makes under the root it is given, with the
