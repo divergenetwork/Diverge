@@ -74,7 +74,7 @@ pub async fn handle<M, V>(
     V: VolumeManager,
     V::Error: Into<Error>,
 {
-    if !capabilities.images_store {
+    if !capabilities.images.builds() {
         send(&scope, &response::Frame::Unsupported).await;
         scope.send_response_finish().await;
         return;

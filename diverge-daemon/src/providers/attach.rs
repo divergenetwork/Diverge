@@ -137,7 +137,7 @@ pub async fn attach(connection: Connection, identity: Identity, daemon: &Arc<Dae
             let mirror = daemon.live.mirror_provider(identity.clone()).await;
             tokio::spawn(crate::volumes::watch(Arc::clone(daemon), mirror, handle.clone()));
         }
-        if info.capabilities.images_store {
+        if info.capabilities.images.store.is_some() {
             // The daemon's Store there, mirrored the same way and for
             // the same life.
             let mirror = daemon.live.mirror_store(identity.clone()).await;

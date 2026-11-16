@@ -112,7 +112,7 @@ pub async fn asks(daemon: &Arc<Daemon>, image: &Image, reach: &Reach, ignore: &[
             .live
             .capabilities(&identity)
             .await
-            .is_some_and(|info| info.capabilities.images_store || !info.capabilities.images_registries.is_empty());
+            .is_some_and(|info| info.capabilities.images.store.is_some() || !info.capabilities.images.registries.is_empty());
         if !supplies {
             continue;
         }

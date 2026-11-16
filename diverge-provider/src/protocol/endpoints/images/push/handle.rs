@@ -54,7 +54,7 @@ pub async fn handle<M>(
     M: ImageManager,
     M::Error: Into<Error>,
 {
-    if !capabilities.images_store {
+    if capabilities.images.store.is_none() {
         send(&scope, &response::Frame::Unsupported).await;
         scope.send_response_finish().await;
         return;

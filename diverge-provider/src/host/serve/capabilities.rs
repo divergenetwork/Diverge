@@ -1,6 +1,6 @@
 //! What this provider holds out, read off its configuration.
 
-use diverge_sdk::provider::endpoints::info::server::response::{Capabilities, MessagesCapabilities, VolumeCapabilities};
+use diverge_sdk::provider::endpoints::info::server::response::{Capabilities, ImagesCapabilities, MessagesCapabilities, StoreCapabilities, VolumeCapabilities};
 use diverge_sdk::provider::endpoints::volumes::Mode;
 
 use crate::config::Config;
@@ -12,9 +12,10 @@ use crate::config::podman::Registry;
 ///   configuration's word on whether the host runs containers at all;
 ///   absent, `false`, and every agents run and tools run answered
 ///   `Unsupported`.
-/// - `images_store`: the `images` section names a Store,
-///   which is the only way the host has one.
-/// - `images_registries`: every host of `podman.registries`, the
+/// - `images.store`: the `images` section names a Store,
+///   which is the only way the host has one. Its `build` is `true`:
+///   a host with a Store has podman, which is what builds.
+/// - `images.registries`: every host of `podman.registries`, the
 ///   registries the host pulls from with the credentials it holds,
 ///   on a provider that uses podman; on one that uses none — neither
 ///   a `containers` section nor an `images` section — empty, since
@@ -50,8 +51,10 @@ use crate::config::podman::Registry;
 pub fn capabilities(config: &Config) -> Capabilities {
     Capabilities {
         containers: config.containers.is_some(),
-        images_store: config.images.is_some(),
-        images_registries: registries(config).iter().map(|registry| registry.host.clone()).collect(),
+        images: ImagesCapabilities {
+            store: config.images.is_some().then_some(StoreCapabilities { build: true }),
+            registries: registries(config).iter().map(|registry| registry.host.clone()).collect(),
+        },
         volumes_persistent: if kept(config, Mode::Persistent) { PERSISTENT } else { VolumeCapabilities::default() },
         volumes_ephemeral: match (kept(config, Mode::Ephemeral), config.containers.is_some()) {
             (true, true) => ANY,

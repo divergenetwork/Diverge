@@ -120,7 +120,7 @@ pub fn registry(info: &Info, image: &Image) -> Result<(), String> {
     let listed = image
         .references
         .iter()
-        .any(|reference| info.capabilities.images_registries.contains(&reference.registry));
+        .any(|reference| info.capabilities.images.registries.contains(&reference.registry));
     if listed {
         Ok(())
     } else {

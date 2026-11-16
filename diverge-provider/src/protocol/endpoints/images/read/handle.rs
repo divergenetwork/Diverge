@@ -87,7 +87,7 @@ pub async fn handle<O, D>(
     D: ContainerDeployer + Send + Sync + 'static,
     D::Error: Into<Error>,
 {
-    if !capabilities.images_store && capabilities.images_registries.is_empty() {
+    if capabilities.images.store.is_none() && capabilities.images.registries.is_empty() {
         refuse(scope, &response::Frame::Unsupported).await;
         return;
     }

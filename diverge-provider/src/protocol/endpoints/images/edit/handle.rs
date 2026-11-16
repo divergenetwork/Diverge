@@ -38,7 +38,7 @@ pub async fn handle<M>(
     M: ImageManager,
     M::Error: Into<Error>,
 {
-    let frame = if !capabilities.images_store {
+    let frame = if capabilities.images.store.is_none() {
         response::Frame::Unsupported
     } else {
         match manager.edit(client_identity, &request.digest, request.description.as_ref()).await {
