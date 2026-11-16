@@ -152,7 +152,7 @@ or repeats, each refused with the provider's own error.
 | `hooks/` | `Provider::start`, every start | the operator | never by the provider |
 | `run/mounts/` | deployer start | `Volume::attach` makes `<uuid>/` and loop-mounts an image on it | swept at start (an earlier life's mounts), unmounted when the last container detaches |
 | `run/known_hosts` | tunnel open (macOS/Windows) | emptied every start | — |
-| `<storage_path>/` | `Provider::start` | podman, as `--root` on Linux; the machine's disk elsewhere | a changed path leaves the old store as it was |
+| `<storage_path>/` | `Provider::start` | podman, as `--root` on Linux; the machine's disk elsewhere | a path changed by hand leaves the old store as it was; `diverge provider podman storage_path set` moves it |
 | `<storage_path>/ephemeral/` | `Scratch::sweep` at start | one sparse file per ephemeral serve | every entry removed at start |
 | `<store>/<identity>/` | first `volumes::create` by that identity | `<name>` image + `.<name>` mode | `volumes::delete` removes both |
 
