@@ -6,6 +6,7 @@ import { Identity } from "../../../../../agent_log/identity.js";
 import { Image } from "../../../../../../shared/containers/request/image.js";
 import { Description } from "../../../../../../shared/description.js";
 import { Relay } from "../../../../../../shared/relay.js";
+import { Source } from "./source.js";
 
 /**
  * Ask the daemon to push an image into its Store on a provider: the
@@ -18,9 +19,11 @@ export const Frame = z.object({
    * The image: its digest, which is the image, and the references
    * under which its bytes may be fetched. A reference naming a
    * registry the provider uses lets the provider fetch it there; with
-   * none that does, the client is asked for it.
+   * none that does, the source is asked for it.
    */
   image: Image,
+  /** Who is asked for the image where the provider asks: the client, one provider, or one remote daemon. Required. */
+  source: Source,
   /** What the image is kept as in the Store, beside its digest: one short line. Absent, none. Not written over an image owned already. */
   description: Description.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
