@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::Registry;
 
 /// Everything the provider hands podman, whatever it uses podman for
 /// — running containers, building an image, reading a file out of
@@ -19,14 +18,18 @@ use super::Registry;
 #[serde(deny_unknown_fields, default)]
 pub struct Podman {
     /// The registries the provider will look in when an image's
-    /// references name them, each with the credential the provider
-    /// presents to it, if any: for an image it does not hold, every
+    /// references name them, each by its host — `docker.io`,
+    /// `ghcr.io`, `registry.example.com:5000`: what a reference names
+    /// before its first `/`, with no scheme and no path. The provider
+    /// presents a credential to none of them: it asks each
+    /// anonymously, which is what a public image needs, and holds no
+    /// password. For an image it does not hold, every
     /// referenced registry listed here is asked at once, beside the
     /// caller, and the first to have the image is pulled from; a
     /// reference naming a registry not listed here is ignored. The
     /// provider's own registry, which serves what a caller holds, is
     /// not listed here and needs no entry.
-    pub registries: Vec<Registry>,
+    pub registries: Vec<String>,
     /// The directory podman's data is kept under: the image cache,
     /// what a container writes over its image, and what holds a
     /// volume's changes apart when its mode is `ephemeral`. On Linux it
@@ -70,13 +73,7 @@ pub struct Podman {
 impl Default for Podman {
     fn default() -> Self {
         Podman {
-            registries: ["docker.io", "ghcr.io", "quay.io"]
-                .iter()
-                .map(|host| Registry {
-                    host: host.to_string(),
-                    credential: None,
-                })
-                .collect(),
+            registries: ["docker.io", "ghcr.io", "quay.io"].iter().map(|host| host.to_string()).collect(),
             storage_path: PathBuf::from("provider/podman_data"),
             // 32 GiB.
             image_cache_disk: 32 * 1024 * 1024 * 1024,

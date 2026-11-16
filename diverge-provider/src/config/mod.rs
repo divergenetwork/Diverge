@@ -42,11 +42,8 @@
 //!       subject: hub
 //! podman:
 //!   registries:
-//!     - host: docker.io
-//!     - host: ghcr.io
-//!       credential:
-//!         username: bolt
-//!         password: ghp_example
+//!     - docker.io
+//!     - ghcr.io
 //!   storage_path: /mnt/podman
 //!   image_cache_disk: 107374182400
 //! containers:

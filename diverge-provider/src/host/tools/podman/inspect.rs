@@ -1,7 +1,6 @@
 //! What the provider asks podman, read out of podman's answers.
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use serde::Deserialize;
 
@@ -148,16 +147,15 @@ pub async fn image_id(reference: &str) -> Result<String, Error> {
 }
 
 /// Whether the registry `reference` names serves its manifest:
-/// `podman manifest inspect --authfile <file> docker://<reference>`,
-/// with the credential the auth file holds for that registry. An
+/// `podman manifest inspect docker://<reference>`, with no
+/// credential of the provider's. An
 /// exit of `0` is yes and any other exit is no — a registry that
 /// does not have it, one that will not say, one that cannot be
 /// reached — since podman does not tell them apart. Only a podman
 /// that could not be started is an error.
-pub async fn manifest_exists(auth_file: &Path, reference: &str) -> Result<bool, Error> {
-    let auth_file = auth_file.to_string_lossy().into_owned();
+pub async fn manifest_exists(reference: &str) -> Result<bool, Error> {
     let reference = format!("docker://{reference}");
-    let finished = podman(["manifest", "inspect", "--authfile", &auth_file, &reference]).await?;
+    let finished = podman(["manifest", "inspect", &reference]).await?;
     Ok(finished.status.success())
 }
 

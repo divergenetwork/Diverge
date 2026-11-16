@@ -4,13 +4,10 @@ use diverge_sdk::shared::Identity;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD;
 use crate::protocol::caller::Caller;
 use crate::protocol::container_deployer::{self, Deployed, Refused};
 use crate::protocol::deployment::Deployment;
 use futures_util::future;
-use serde_json::json;
 
 use super::deploy::deploy;
 use super::info::read_file;
@@ -44,15 +41,14 @@ use diverge_sdk::shared::containers::request::Image;
 ///   the deployer, every one having been answered `Unsupported`.
 #[derive(Debug)]
 pub struct ContainerDeployer {
-    /// The `podman` section: the registries and their credentials.
+    /// The `podman` section: the registries, and where podman's data
+    /// is.
     pub(super) podman: Podman,
     /// The proxy binary on this host, as podman is handed it for the
     /// bind: the host path on Linux, the machine's view elsewhere.
     /// `None` where the provider runs no containers, and the binary
     /// was not looked for.
     pub(super) proxy_path: Option<String>,
-    /// The auth file the provider wrote for podman, under `run/`.
-    pub(super) auth_file: PathBuf,
     /// Where stored volumes are loop-mounted, `run/mounts/`, on this
     /// host.
     pub(super) mounts_dir: PathBuf,
@@ -127,15 +123,13 @@ impl ContainerDeployer {
         let run_dir = dir.join("run");
         let mounts_dir = run_dir.join("mounts");
         tokio::fs::create_dir_all(&mounts_dir).await?;
-        let auth_file = run_dir.join("auth.json");
-        let (proxy_path, (), ()) = future::try_join3(
+        let (proxy_path, ()) = future::try_join(
             async {
                 match &containers {
                     Some(_) => proxy_present(&proxy).await.map(Some),
                     None => Ok(None),
                 }
             },
-            write_auth_file(&auth_file, &podman),
             sweep_all(&label, &mounts_dir),
         )
         .await?;
@@ -153,7 +147,6 @@ impl ContainerDeployer {
             }),
             podman,
             proxy_path,
-            auth_file,
             mounts_dir,
             store,
             registry,
@@ -173,12 +166,6 @@ impl ContainerDeployer {
     /// reported, since there is nobody to report it to.
     pub async fn sweep(&self) {
         let _ = sweep_all(&self.label, &self.mounts_dir).await;
-    }
-
-    /// The auth file the provider wrote for podman: what every pull
-    /// and every look into a registry is given.
-    pub fn auth_file(&self) -> &Path {
-        &self.auth_file
     }
 
     /// Where stored volumes are loop-mounted, `run/mounts/`: what a
@@ -302,29 +289,6 @@ async fn proxy_present(proxy: &Path) -> Result<String, Error> {
         return Err(Error::Missing(proxy.to_path_buf()));
     }
     Ok(tool_path(proxy))
-}
-
-/// The auth file, in the form podman reads: every listed registry
-/// with a credential, as `user:password` in base64 under its host,
-/// the password as the document writes it. Readable by the
-/// provider alone where the filesystem has owners. The one file a
-/// password is written to, since it is the one podman reads.
-async fn write_auth_file(path: &std::path::Path, podman: &Podman) -> Result<(), Error> {
-    let mut auths = serde_json::Map::new();
-    for registry in &podman.registries {
-        if let Some(credential) = &registry.credential {
-            let pair = format!("{}:{}", credential.username, credential.password);
-            auths.insert(registry.host.clone(), json!({ "auth": STANDARD.encode(pair) }));
-        }
-    }
-    let document = serde_json::to_vec(&json!({ "auths": auths })).map_err(std::io::Error::other)?;
-    tokio::fs::write(path, document).await?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt as _;
-        tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).await?;
-    }
-    Ok(())
 }
 
 /// Every container carrying `label` removed at once, then every

@@ -171,7 +171,8 @@ async fn after_run(name: &str) -> Result<(String, Child), Error> {
 }
 
 /// `podman pull` of `reference`, quiet, so its one answer is the id
-/// of the image pulled: with the provider's auth file, and, for the
+/// of the image pulled: with no credential of the provider's, which
+/// holds none, and, for the
 /// provider's own registry — `own` — without TLS, since it speaks
 /// plain HTTP on the loopback. The cache is told the pull is in flight before
 /// and what it brought after, so no trim removes the image between
@@ -183,8 +184,7 @@ pub(super) async fn pull(deployer: &ContainerDeployer, reference: &str, own: boo
     if own && !deployer.tunnel.open_still().await {
         return Err(Error::Tunnel);
     }
-    let auth_file = deployer.auth_file.to_string_lossy().into_owned();
-    let mut args = vec!["pull", "--quiet", "--authfile", &auth_file];
+    let mut args = vec!["pull", "--quiet"];
     if own {
         args.push("--tls-verify=false");
     }

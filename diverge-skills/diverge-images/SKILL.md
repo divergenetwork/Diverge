@@ -70,7 +70,7 @@ For a run, the provider looks in this order and takes the first that has the dig
 2. **The provider's podman cache, then a listed registry.** If podman already holds an image with
    that digest under a name that does **not** start with `127.0.0.1:`, it is run as it is with nothing
    pulled. Otherwise every reference that names a registry in the provider's configuration is asked
-   at once (`<registry>/<name>@<digest>`, with the credential the provider holds for it) and the
+   at once (`<registry>/<name>@<digest>`, anonymously: the provider holds no registry credential) and the
    first that serves it is pulled. References naming unlisted registries are ignored. Answered as
    source `{"registry":{"reference":"…"}}`.
 3. **The caller.** The provider asks the daemon whether it holds the image; the daemon may supply it

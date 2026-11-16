@@ -83,11 +83,8 @@ outgoing:
       subject: hub
 podman:
   registries:
-    - host: docker.io
-    - host: ghcr.io
-      credential:
-        username: bolt
-        password: ghp_example
+    - docker.io
+    - ghcr.io
   storage_path: provider/podman_data
   image_cache_disk: 34359738368
 containers:
@@ -132,7 +129,7 @@ the provider holds out no registry, and every image read is refused as unsupport
 
 | Field | Default | Meaning |
 |---|---|---|
-| `podman.registries` | `docker.io`, `ghcr.io`, `quay.io`, anonymous | The registries the provider will pull from when an image's references name them. Each: `host` (what a reference names before its first `/`; no scheme, no path; a port is allowed) and optional `credential: {username, password}` (both required; a personal access token is a password). A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
+| `podman.registries` | `docker.io`, `ghcr.io`, `quay.io`, anonymous | The registries the provider will pull from when an image's references name them. Each is one string, the registry's host: what a reference names before its first `/`; no scheme, no path; a port is allowed. **There is no credential**: the provider asks every registry anonymously, so only public images are pulled from one. A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
 | `podman.storage_path` | `provider/podman_data` | Where podman's data lives: image cache, container overlays, ephemeral scratch. Created only on a provider that uses podman. On Linux it is podman's storage root (`--root`), and its filesystem must support project quotas (XFS `pquota`, or ext4 with project quota) or every run fails. On macOS and Windows it is where the podman machine `diverge-provider` lives. **Changing it gives a fresh, empty store (or machine); the old one is left as it was.** |
 | `podman.image_cache_disk` | `34359738368` (32 GiB) | The most the image cache may hold. The provider evicts images no running container uses, least recently run first, except images labelled `diverge.network/keep`. An image larger than this cannot be pulled. |
 | `containers.container_overlay_disk` | `34359738368` (32 GiB) | The sum of every running container's `disk` never exceeds it; a run that would is refused. The scratch of an ephemeral volume's FUSE serve counts against it too, so a provider with no `containers` section serves no ephemeral volume over FUSE. |

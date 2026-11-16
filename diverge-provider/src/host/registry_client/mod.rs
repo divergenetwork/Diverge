@@ -20,18 +20,18 @@
 //!
 //! # How it authenticates
 //!
+//! The provider holds no credential for any registry, so every
+//! request is an anonymous one.
+//!
 //! 1. Every request is first sent as the last one to the same
-//!    repository was: with the Bearer token it got, or the Basic
-//!    credential, or nothing.
-//! 2. A `401` is read for its `WWW-Authenticate` challenge. `Basic` is
-//!    answered with the registry's configured
-//!    [`Credential`](crate::config::podman::Credential), when it has
-//!    one. `Bearer` is answered by asking the challenge's `realm` for a
-//!    token, with its `service` and `scope` as the query and the
-//!    credential, when there is one, as Basic — anonymous otherwise —
-//!    and the token, `token` or `access_token` of the answer, sent as
+//!    repository was: with the Bearer token it got, or nothing.
+//! 2. A `401` is read for its `WWW-Authenticate` challenge. `Bearer`
+//!    is answered by asking the challenge's `realm` for a token, with
+//!    its `service` and `scope` as the query and no credential, and
+//!    the token, `token` or `access_token` of the answer, sent as
 //!    `Bearer`. The request is sent once more; a second `401` is the
-//!    client's error.
+//!    client's error. `Basic` asks for a credential, and is the
+//!    client's error at once.
 //! 3. A token is kept per repository for the client's life and asked
 //!    for again at the next `401`.
 //!

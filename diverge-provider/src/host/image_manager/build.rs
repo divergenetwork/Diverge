@@ -150,7 +150,6 @@ impl Job {
             uuid::Uuid::new_v4()
         );
         let file = tool_path(containerfile);
-        let auth_file = tool_path(self.deployer.auth_file());
         // Rule of the hosts with a machine: the build runs in the
         // machine, where the paths above are paths. See
         // [`podman::inside`].
@@ -166,8 +165,6 @@ impl Job {
             &file,
             "--layers=false",
             "--pull=missing",
-            "--authfile",
-            &auth_file,
             context,
         ]);
         let (mut lines, pending) = tools::stream("podman", command).map_err(Error::Podman)?;

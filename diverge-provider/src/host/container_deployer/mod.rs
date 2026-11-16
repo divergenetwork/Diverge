@@ -66,8 +66,7 @@
 //!    pulled; one pulled from the provider's own registry, named under
 //!    `127.0.0.1:` and nothing else, is passed over — then every
 //!    referenced registry the configuration lists, asked at once as
-//!    `<registry>/<name>@<digest>` with the credential listed through
-//!    an auth file the provider writes for podman, a reference naming
+//!    `<registry>/<name>@<digest>`, anonymously, a reference naming
 //!    a registry not listed ignored. `Source::Registry`, with no nonce
 //!    check.
 //! 3. **The caller.** Asked on its scope whether it holds the image,

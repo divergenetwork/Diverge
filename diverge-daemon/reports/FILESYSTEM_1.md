@@ -83,7 +83,6 @@ NEXT TO ITS OWN EXECUTABLE, not under `<root>`:
 │       ├── hook.yaml               {windows|macos|linux: [argv…]}, no shell
 │       └── …                       the program argv[0] names, resolved in this folder
 ├── run/                            made at start; the provider's own scratch
-│   ├── auth.json                   podman's auth file, 0600: registries' credentials
 │   ├── mounts/                     where stored volumes are loop-mounted
 │   │   └── <uuid>/                 one mount point per attached volume image
 │   └── known_hosts                 macOS/Windows only: the podman machine's ssh key
@@ -124,7 +123,7 @@ clients:                          # whom the provider dials; absent = nobody
     - {address: "host:port", key: "…", identity: "…"}
 podman:                           # read only with containers or images; absent = defaults
   registries:                     # default: docker.io, ghcr.io, quay.io, anonymous
-    - {host: docker.io, credential: {username: "…", password: "…"}}
+    - docker.io                   # a host, and no credential: every pull is anonymous
   storage_path: provider/podman_data   # relative → <root>/provider/podman_data
   image_cache_disk: 34359738368   # 32 GiB
 containers:                       # absent = the provider runs no containers
@@ -152,7 +151,6 @@ or repeats, each refused with the provider's own error.
 |---|---|---|---|
 | `hooks/` | `Provider::start`, every start | the operator | never by the provider |
 | `run/mounts/` | deployer start | `Volume::attach` makes `<uuid>/` and loop-mounts an image on it | swept at start (an earlier life's mounts), unmounted when the last container detaches |
-| `run/auth.json` | deployer start | rewritten every start from `registries[].credential` | — |
 | `run/known_hosts` | tunnel open (macOS/Windows) | emptied every start | — |
 | `<storage_path>/` | `Provider::start` | podman, as `--root` on Linux; the machine's disk elsewhere | a changed path leaves the old store as it was |
 | `<storage_path>/ephemeral/` | `Scratch::sweep` at start | one sparse file per ephemeral serve | every entry removed at start |
@@ -240,7 +238,7 @@ the last one left, under `init.lock`.
 ├── cli.yaml
 ├── provider/
 │   ├── hooks/<name>/hook.yaml
-│   ├── run/{auth.json, known_hosts, mounts/<uuid>/}
+│   ├── run/{known_hosts, mounts/<uuid>/}
 │   └── podman_data/{ephemeral/<uuid>, …podman's store…}
 └── daemon/
     ├── postgres/{password, data.ready, data/, bin/<version>/, bin/locks/}

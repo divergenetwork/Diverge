@@ -4,7 +4,6 @@ use diverge_sdk::provider::endpoints::info::server::response::{Capabilities, Ima
 use diverge_sdk::provider::endpoints::volumes::Mode;
 
 use crate::config::Config;
-use crate::config::podman::Registry;
 
 /// The host's capabilities, each a fact of the host:
 ///
@@ -16,7 +15,7 @@ use crate::config::podman::Registry;
 ///   which is the only way the host has one. Its `build` is `true`:
 ///   a host with a Store has podman, which is what builds.
 /// - `images.registries`: every host of `podman.registries`, the
-///   registries the host pulls from with the credentials it holds,
+///   registries the host pulls from, anonymously,
 ///   on a provider that uses podman; on one that uses none — neither
 ///   a `containers` section nor an `images` section — empty, since
 ///   what an `images::read` asks of a registry's image is read out of
@@ -53,7 +52,7 @@ pub fn capabilities(config: &Config) -> Capabilities {
         containers: config.containers.is_some(),
         images: ImagesCapabilities {
             store: config.images.is_some().then_some(StoreCapabilities { build: true }),
-            registries: registries(config).iter().map(|registry| registry.host.clone()).collect(),
+            registries: registries(config).to_vec(),
         },
         volumes_persistent: if kept(config, Mode::Persistent) { PERSISTENT } else { VolumeCapabilities::default() },
         volumes_ephemeral: match (kept(config, Mode::Ephemeral), config.containers.is_some()) {
@@ -69,7 +68,7 @@ pub fn capabilities(config: &Config) -> Capabilities {
 /// The registries the provider pulls from: the `podman` section's on
 /// a provider that uses podman, none on one that does not. See
 /// [`capabilities`].
-pub fn registries(config: &Config) -> &[Registry] {
+pub fn registries(config: &Config) -> &[String] {
     if config.podman_in_use() { &config.podman.registries } else { &[] }
 }
 

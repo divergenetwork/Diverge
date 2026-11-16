@@ -64,8 +64,8 @@ Rules common to all four:
 
 - An absent file is the built-in defaults; nothing needs to exist for a `get` to work.
 - **An unknown key is refused**, with the path to it. A typo never passes silently.
-- No document holds a token. The only secrets in any of them are `postgres.password` (daemon, remote kind) and
-  registry `credential`s (provider). Do not print those documents into logs or chat without need.
+- No document holds a token. The only secret in any of them is `postgres.password` (daemon, remote kind). Do
+  not print that document into logs or chat without need.
 - The `issuer` string must be identical everywhere it appears — in logins, in `identity`,
   `admins`, `incoming`, `cli.yaml`, `viewer.yaml`. `https://identity.diverge.network` and
   `https://identity.diverge.network/` are different issuers.

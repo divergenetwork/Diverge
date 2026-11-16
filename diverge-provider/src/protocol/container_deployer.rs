@@ -167,7 +167,7 @@ pub enum Refused<E> {
 /// It is here because deploying is the most consequential thing a
 /// provider does on somebody's behalf, and every question worth asking
 /// about it needs to know whose behalf. What a caller may spend, which
-/// registries its credentials reach, where its containers are placed,
+/// registries it may pull from, where its containers are placed,
 /// what to bill, what to write down afterwards — none of it is
 /// answerable from a [`Deployment`], and all of it is a provider's to
 /// decide rather than this protocol's.

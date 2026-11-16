@@ -2,7 +2,6 @@
 //! or the caller — each step of the order
 //! [`obtain`](super::deploy::obtain) follows.
 
-use std::path::Path;
 
 use diverge_sdk::shared::Identity;
 use futures_util::StreamExt as _;
@@ -41,8 +40,8 @@ pub(super) async fn from_store(deployer: &ContainerDeployer, client_identity: &I
 /// one pulled from the provider's own registry, named under
 /// `127.0.0.1:` alone, is passed over — run as its id with nothing
 /// pulled; else every referenced registry the configuration lists,
-/// asked at once as `<registry>/<name>@<digest>` with the credential
-/// listed — a reference naming a registry not listed is ignored — and
+/// asked at once as `<registry>/<name>@<digest>`, anonymously — a
+/// reference naming a registry not listed is ignored — and
 /// the first to answer that it serves the image pulled from, the rest
 /// not waited for. `None` where no registry serves it.
 pub(super) async fn from_registry(deployer: &ContainerDeployer, image: &Image) -> Result<Option<(Source, String)>, Error> {
@@ -52,8 +51,8 @@ pub(super) async fn from_registry(deployer: &ContainerDeployer, image: &Image) -
     }
     let mut asked = FuturesUnordered::new();
     for reference in &image.references {
-        if deployer.podman.registries.iter().any(|registry| registry.host == reference.registry) {
-            asked.push(in_registry(deployer.auth_file(), &reference.registry, &reference.name, &image.digest));
+        if deployer.podman.registries.iter().any(|registry| *registry == reference.registry) {
+            asked.push(in_registry(&reference.registry, &reference.name, &image.digest));
         }
     }
     let mut found = None;
@@ -73,9 +72,9 @@ pub(super) async fn from_registry(deployer: &ContainerDeployer, image: &Image) -
 
 /// One referenced registry asked whether it serves the image under the
 /// reference's name: the reference when it does.
-async fn in_registry(auth_file: &Path, host: &str, name: &str, digest: &str) -> Result<Option<String>, Error> {
+async fn in_registry(host: &str, name: &str, digest: &str) -> Result<Option<String>, Error> {
     let reference = format!("{host}/{name}@{digest}");
-    let found = podman::manifest_exists(auth_file, &reference).await.map_err(Error::Podman)?;
+    let found = podman::manifest_exists(&reference).await.map_err(Error::Podman)?;
     Ok(found.then_some(reference))
 }
 
