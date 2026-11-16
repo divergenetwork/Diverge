@@ -14,8 +14,8 @@ use crate::lifecycle::{self, Program};
 /// signed in, listed or removed — see [`identities`](super::identities);
 /// for `daemon` and `provider`, the program started on the root or
 /// stopped — see [`lifecycle`]; for `daemon port`,
-/// `daemon idle_seconds`, `daemon admins` and `daemon identity`, the
-/// one setting read or written — see
+/// `daemon idle_seconds`, `daemon admins`, `daemon identity` and
+/// `daemon postgres`, the one setting read or written — see
 /// [`setting`](super::setting).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
@@ -34,9 +34,6 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Daemon(Daemon::Lifecycle(action))) => {
             Ok(lifecycle::run(&root, Program::Daemon, action).await?)
         }
-        Some(Command::Daemon(Daemon::Config(action))) => {
-            super::config::run(&root, Which::Daemon, action).await
-        }
         Some(Command::Daemon(Daemon::Port(action))) => super::setting::port(&root, action).await,
         Some(Command::Daemon(Daemon::IdleSeconds(action))) => {
             super::setting::idle_seconds(&root, action).await
@@ -44,6 +41,9 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Daemon(Daemon::Admins(action))) => super::setting::admins(&root, action).await,
         Some(Command::Daemon(Daemon::Identity(action))) => {
             super::setting::identity(&root, action).await
+        }
+        Some(Command::Daemon(Daemon::Postgres(action))) => {
+            super::setting::postgres(&root, action).await
         }
         Some(Command::Provider(command)) => {
             server(&root, Program::Provider, Which::Provider, command).await

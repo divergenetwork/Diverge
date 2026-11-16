@@ -6,11 +6,13 @@ use super::{Daemon, Document, Identities, IdentityDivergeNetwork, Server};
 use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
-/// [`Run`](Self::Run). Each program is its own command, and its
-/// document in the root is worked on beneath it, as `config`: the
-/// daemon and the provider on this host are also started and stopped
-/// under [`Daemon`](Self::Daemon) and [`Provider`](Self::Provider); the
-/// viewer and the CLI itself are
+/// [`Run`](Self::Run). Each program is its own command. The
+/// provider's, the viewer's and the CLI's document in the root is
+/// worked on beneath its program, as `config`; the daemon's is worked
+/// on one setting at a time, each setting a command beneath
+/// [`Daemon`](Self::Daemon). The daemon and the provider on this host
+/// are also started and stopped under [`Daemon`](Self::Daemon) and
+/// [`Provider`](Self::Provider); the viewer and the CLI itself are
 /// [`Viewer`](Self::Viewer) and [`Cli`](Self::Cli), configured alone. The host's identities are
 /// [`Identities`](Self::Identities).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
@@ -28,10 +30,10 @@ pub enum Command {
     /// [`identity_diverge_network`](crate::cli::identity_diverge_network).
     #[command(name = "identity.diverge.network", subcommand)]
     IdentityDivergeNetwork(IdentityDivergeNetwork),
-    /// Start or stop the daemon on the root, work on its
-    /// `daemon.yaml`, or read or write one setting of it: see
-    /// [`lifecycle`](crate::lifecycle), [`config`](crate::cli::config)
-    /// and [`setting`](crate::cli::setting).
+    /// Start or stop the daemon on the root, or read or write one
+    /// setting of its `daemon.yaml`: see
+    /// [`lifecycle`](crate::lifecycle) and
+    /// [`setting`](crate::cli::setting).
     #[command(subcommand)]
     Daemon(Daemon),
     /// Start or stop the provider on the root, or work on its

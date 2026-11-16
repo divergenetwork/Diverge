@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml`, `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -34,7 +34,7 @@ Which directory is the root:
 
 - The root is created if it does not exist. A mistyped `--config` path silently makes an empty root with default
   documents.
-- `--config` is written before the command: `diverge --config <root> daemon config get`.
+- `--config` is written before the command: `diverge --config <root> daemon port get`.
 - A server started by the CLI is handed the CLI's root as `--config`, so it runs on the root the CLI found.
 - One of each server per root (the lock enforces it). A second daemon on the same host is a second root with
   its own `daemon.yaml`, `cli.yaml` and identities.
@@ -62,7 +62,7 @@ before changing a field you have not changed before.
 
 Rules common to all four:
 
-- An absent file is the built-in defaults; nothing needs to exist for `config get` to work.
+- An absent file is the built-in defaults; nothing needs to exist for a `get` to work.
 - **An unknown key is refused**, with the path to it. A typo never passes silently.
 - No document holds a token. The only secrets in any of them are `postgres.password` (daemon, remote kind) and
   registry `credential`s (provider). Do not print those documents into logs or chat without need.
@@ -72,21 +72,22 @@ Rules common to all four:
 
 ## Reading and changing a document: `config get | set | patch`
 
-The same three subcommands exist beneath each program: `diverge daemon config`, `diverge provider config`,
-`diverge viewer config`, `diverge cli config`. They work on the file in the root and
-never contact a running program.
+The same three subcommands exist beneath three programs: `diverge provider config`, `diverge viewer config`,
+`diverge cli config`. They work on the file in the root and never contact a running program.
+
+**The daemon has no `config` command.** `daemon.yaml` is read and changed one setting at a time: see
+"The daemon's settings" below.
 
 ### get — read, through jq
 
 ```bash
-diverge daemon config get                    # the whole document, one compact JSON line
-diverge daemon config get .idle_seconds      # 10
+diverge provider config get                  # the whole document, one compact JSON line
+diverge provider config get .port            # 14979
 diverge cli config get '.daemons | keys[]'   # one line per value the filter yields
 diverge provider config get '.incoming[]?'
 ```
 
-The document is shown as JSON. Empty optional members are left out (`identity`, `admins`, `incoming`,
-`volumes`, …), so a filter over one may see `null`.
+The document is shown as JSON. Empty optional members are left out (`incoming`, `volumes`, …), so a filter over one may see `null`.
 
 ### set — rewrite the whole document with a jq program
 
@@ -94,28 +95,25 @@ The program runs with the document as input and must yield **exactly one value**
 document.
 
 ```bash
-diverge daemon config set '.idle_seconds = 120'
-diverge daemon config set '.admins = (.admins // []) + [{issuer:"https://identity.diverge.network", subject:"github.12345.admin"}]'
-diverge daemon config set '.identity = {issuer:"https://identity.diverge.network", subject:"github.12345.daemon-a"}'
+diverge provider config set '.port = 15001'
+diverge provider config set '.incoming = (.incoming // []) + [{issuer:"https://identity.diverge.network", subject:"github.12345.daemon-b"}]'
 diverge viewer config set '.daemon = {address:"ws://127.0.0.1:14980/", issuer:"https://identity.diverge.network", subject:"github.12345.admin"}'
 ```
 
 Pitfall: a member left out of the document is `null` to the program. Default a list before adding to it
-(`(.admins // [])`, as above), and set `identity` whole: it is one `{issuer, subject}` object, and one member
-of it alone is not a valid document.
+(`(.incoming // [])`, as above), and set an identity whole: it is one `{issuer, subject}` object, and one
+member of it alone is not a valid document.
 
 ### patch — change places with a JSON Patch (RFC 6902)
 
 The argument is a list of operations written as YAML (JSON is YAML). Operations: `add`, `remove`, `replace`,
-`move`, `copy`, `test`. Paths are JSON Pointers: `/port`, `/admins/0`, `/admins/-` (append; `add` only); inside
+`move`, `copy`, `test`. Paths are JSON Pointers: `/port`, `/incoming/0`, `/incoming/-` (append; `add` only); inside
 a key, `/` is written `~1` and `~` is `~0`. Operations apply in order, **all or none**.
 
 ```bash
-diverge daemon config patch '[{op: replace, path: /idle_seconds, value: 120}]'
 diverge provider config patch '[{op: add, path: /incoming/-, value: {issuer: "https://identity.diverge.network", subject: github.12345.daemon-b}}]'
 diverge provider config patch '[{op: add, path: /messages, value: {messages: 60, seconds: 60}}]'
-diverge daemon config patch '[{op: add, path: /identity, value: {issuer: "https://auth.example.com", subject: daemon-1}}]'
-diverge daemon config patch '[{op: test, path: /port, value: 14980}, {op: remove, path: /admins/0}]'
+diverge provider config patch '[{op: test, path: /port, value: 14979}, {op: remove, path: /incoming/0}]'
 diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://127.0.0.1:14982/", default: admin, accounts: {admin: {issuer: "https://identity.diverge.network", subject: github.12345.admin}}}}]'
 ```
 
@@ -137,7 +135,9 @@ diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://12
 - The running program is not told. See "What needs a restart".
 - Editing the YAML file by hand is equally valid, and is the only way to keep comments.
 
-### One daemon setting by itself: `diverge daemon port`, `idle_seconds`, `admins`, `identity`
+## The daemon's settings: `diverge daemon port`, `idle_seconds`, `admins`, `identity`, `postgres`
+
+The only commands that read or change `daemon.yaml`. Each takes plain arguments and flags, never JSON.
 
 ```bash
 diverge daemon port get                 # 14980 — the value the daemon runs with, the default where the file has none
@@ -149,6 +149,10 @@ diverge daemon admins add --issuer https://identity.diverge.network --subject gi
 diverge daemon admins delete 0          # by the index `admins get` prints; those after it move down one
 diverge daemon identity get             # {"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"}, or null
 diverge daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
+diverge daemon postgres get             # {"kind":"local","max_connections":1024}  or  {"kind":"remote","url":"…","has_password":true}
+diverge daemon postgres set local                             # the daemon's own Postgres, 1024 connections
+diverge daemon postgres set local --max-connections 200
+diverge daemon postgres set remote --url postgres://diverge@db.example.com:5432/diverge --password s3cret
 ```
 
 - `get` works whether the daemon is running or not.
@@ -157,12 +161,16 @@ diverge daemon identity set --issuer https://identity.diverge.network --subject 
   `` `diverge daemon stop` ``. Stop the daemon, set, then start it.
 - `admins add` refuses an identity that is an administrator already; `admins delete` refuses an index the list
   does not reach. Delete from the highest index down when deleting several.
-- Each one that writes rewrites the file as `config set` does: comments are lost, and nothing is printed.
-- `config set` and `config patch` are not refused while the daemon runs; they write, and the daemon reads the
-  document at its next start.
-- `identity set` takes both flags and replaces the identity whole. It cannot remove the identity; use
-  `config set 'del(.identity)'` for that. It does not check that the identity is signed in.
-- Only the daemon has these, and only for `port`, `idle_seconds`, `admins` and `identity`.
+- Each one that writes rewrites the file whole, as the daemon's own YAML: comments are lost, and nothing is
+  printed. Editing `daemon.yaml` by hand is equally valid.
+- `postgres set` writes `postgres` whole and carries nothing over: `set local` without `--max-connections`
+  writes 1024, and `set remote` without `--password` writes no password, whatever the file had. `--url` is
+  required for `remote`, holds no password, and is not dialled or checked. `postgres get` never prints the
+  password. A password given as a flag is in the shell's history.
+- `identity set` takes both flags and replaces the identity whole. It cannot remove the identity; delete the
+  `identity` member from `daemon.yaml` by hand for that. It does not check that the identity is signed in.
+- Only the daemon has these. The whole document is printed by reading the file: `cat <root>/daemon.yaml`
+  (absent: every setting is at its default).
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
@@ -428,8 +436,7 @@ diverge run info        # {"info":{"version":"…"}}
 provider restarts. In the daemon's root nothing changes; the provider record is added with
 `diverge run providers add` (skill `diverge-daemons`).
 
-**Keep containers up longer.** `diverge daemon config patch '[{op: replace, path: /idle_seconds, value: 300}]'`,
-then restart the daemon.
+**Keep containers up longer.** `diverge daemon stop`, `diverge daemon idle_seconds set 300`, `diverge daemon start`.
 
 **Give the provider volumes.**
 `diverge provider config patch '[{op: add, path: /volumes, value: {stores: [{path: provider/volumes, capacity: 107374182400}]}}]'`,

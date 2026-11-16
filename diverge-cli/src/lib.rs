@@ -23,14 +23,16 @@
 //! standalone-tools templates list` — with the daemon and the account
 //! by name, else the defaults, and the body as JSON, whose schema
 //! `request-schema` beneath the request prints, and whose every answer
-//! `response-schema` states; see [`run`]. Each program's document in
-//! the root is read, rewritten and edited beneath the program —
-//! `daemon config`, `provider config`, `viewer config`, `cli config` —
-//! through jq, as JSON on this side; see [`document`]. Four settings
-//! of the daemon's are also read and written by themselves —
+//! `response-schema` states; see [`run`]. The provider's, the
+//! viewer's and the CLI's document in the root is each read,
+//! rewritten and edited beneath its program — `provider config`,
+//! `viewer config`, `cli config` — through jq, as JSON on this side;
+//! see [`document`]. The daemon's is not worked on whole: five
+//! settings of it are each read and written by themselves, with no
+//! JSON given —
 //! `daemon port get|set`, `daemon idle_seconds get|set`,
-//! `daemon admins get|add|delete`, `daemon identity get|set` — and
-//! each one that writes is
+//! `daemon admins get|add|delete`, `daemon identity get|set`,
+//! `daemon postgres get|set` — and each one that writes is
 //! refused while the daemon runs on the root; see
 //! [`cli::setting`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on

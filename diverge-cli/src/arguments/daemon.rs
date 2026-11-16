@@ -2,21 +2,18 @@
 
 use clap::Subcommand;
 
-use super::{Action, Lifecycle};
+use super::Lifecycle;
 
-/// The daemon on this host: started, stopped, its document in the
-/// root worked on whole, or one setting of that document — its
-/// port, its idle seconds, its administrators, its identity — read
-/// or written by itself.
+/// The daemon on this host: started, stopped, or one setting of its
+/// document in the root, `daemon.yaml` — its port, its idle seconds,
+/// its administrators, its identity, its Postgres — read or written
+/// by itself. The document is not worked on whole: there is no
+/// `daemon config`.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Daemon {
     /// Start or stop the daemon: see [`lifecycle`](crate::lifecycle).
     #[command(flatten)]
     Lifecycle(Lifecycle),
-    /// Read, rewrite or edit the daemon's document in the root,
-    /// `daemon.yaml`.
-    #[command(subcommand)]
-    Config(Action),
     /// Read or write the TCP port the daemon accepts the protocol on,
     /// `port` in `daemon.yaml`.
     #[command(subcommand)]
@@ -32,6 +29,51 @@ pub enum Daemon {
     /// Read or write who the daemon is, `identity` in `daemon.yaml`.
     #[command(subcommand)]
     Identity(Identity),
+    /// Read or write which database the daemon runs on, `postgres`
+    /// in `daemon.yaml`.
+    #[command(subcommand)]
+    Postgres(Postgres),
+}
+
+/// What is done to the daemon's `postgres`: see
+/// [`setting`](crate::cli::setting).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Postgres {
+    /// Print which database, on one line:
+    /// `{"kind":"local","max_connections":1024}`, or
+    /// `{"kind":"remote","url":"…","has_password":true}`. The
+    /// password is never printed.
+    Get,
+    /// Write which database, whole: the kind, and what that kind
+    /// takes. Refused while the daemon is running on the root: stop
+    /// the daemon first.
+    #[command(subcommand)]
+    Set(PostgresKind),
+}
+
+/// The kind of database a `postgres set` writes: each kind is its own
+/// command, with that kind's settings as its flags, so that a setting
+/// of one kind cannot be given to the other.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum PostgresKind {
+    /// A Postgres the daemon runs itself, under the root.
+    Local {
+        /// The most connections the cluster accepts at once. Absent,
+        /// the default, 1024 — not what the document had.
+        #[arg(long, value_name = "COUNT")]
+        max_connections: Option<u32>,
+    },
+    /// A Postgres the daemon dials.
+    Remote {
+        /// Where to dial and as whom, as a Postgres URL with no
+        /// password: `postgres://user@host:port/database`.
+        #[arg(long)]
+        url: String,
+        /// The password. Absent, the daemon dials with none — not
+        /// with the one the document had.
+        #[arg(long)]
+        password: Option<String>,
+    },
 }
 
 /// What is done to the daemon's `identity`: see

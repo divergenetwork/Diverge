@@ -1,17 +1,18 @@
 //! One setting of the daemon's document — its port, its idle
-//! seconds, its administrators, its identity — read or written by
-//! itself.
+//! seconds, its administrators, its identity, its Postgres — read
+//! or written by itself.
 
 use std::path::Path;
 
 use tokio::io::AsyncWriteExt as _;
 
+use diverge_daemon::config;
 use diverge_daemon::config::Config;
 use diverge_sdk::file_lock;
 use diverge_sdk::shared;
 
 use super::Error;
-use crate::arguments::{Admins, Identity, IdleSeconds, Port};
+use crate::arguments::{Admins, Identity, IdleSeconds, Port, Postgres, PostgresKind};
 use crate::document::{self, Which};
 use crate::lifecycle::{self, Program};
 
@@ -106,7 +107,7 @@ pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
 /// - A `set` takes both the issuer and the subject and writes the
 ///   identity whole, replacing the one there. The document's
 ///   `identity` may be absent, and no `set` makes it so: an identity
-///   is taken out by `config` or by hand.
+///   is taken out of the file by hand.
 /// - A `set` is a [`set`]: refused while the daemon runs on the root,
 ///   and printing nothing. Whether the identity is signed in on the
 ///   root is not asked here; the daemon finds that at its start.
@@ -123,6 +124,60 @@ pub async fn identity(root: &Path, action: Identity) -> Result<(), Error> {
         Identity::Set { issuer, subject } => {
             set(root, |config| {
                 config.identity = Some(shared::Identity { issuer, subject });
+                Ok(())
+            })
+            .await
+        }
+    }
+}
+
+/// `diverge daemon postgres get|set`, by these rules:
+///
+/// - A `get` prints which database as one JSON line: for the local
+///   kind `{"kind":"local","max_connections":…}`; for the remote kind
+///   `{"kind":"remote","url":"…","has_password":…}`, where
+///   `has_password` says whether the document holds a password and
+///   the password itself is never printed. It is answered whether the
+///   daemon is running or not.
+/// - A `set` names the kind as its own command — `set local`,
+///   `set remote` — and takes that kind's settings as flags, so the
+///   command line cannot give one kind the other's.
+/// - A `set` writes `postgres` whole, and carries nothing over from
+///   the document: `set local` without `--max-connections` writes the
+///   default, whatever the document had; `set remote` without
+///   `--password` writes no password, whatever the document had.
+/// - `set remote` requires `--url`. The URL is written as given, and
+///   is not dialled or parsed here; the daemon finds a wrong one at
+///   its start.
+/// - A `set` is a [`set`]: refused while the daemon runs on the root,
+///   and printing nothing.
+pub async fn postgres(root: &Path, action: Postgres) -> Result<(), Error> {
+    match action {
+        Postgres::Get => {
+            let config = read(root).await?;
+            let line = match &config.postgres {
+                config::Postgres::Local { max_connections } => {
+                    serde_json::json!({"kind": "local", "max_connections": max_connections})
+                }
+                config::Postgres::Remote { url, password } => {
+                    serde_json::json!({"kind": "remote", "url": url, "has_password": password.is_some()})
+                }
+            };
+            let mut text = serde_json::to_vec(&line).map_err(document::Error::Json)?;
+            text.push(b'\n');
+            let mut stdout = tokio::io::stdout();
+            stdout.write_all(&text).await.map_err(Error::Stdout)?;
+            stdout.flush().await.map_err(Error::Stdout)
+        }
+        Postgres::Set(kind) => {
+            set(root, |config| {
+                config.postgres = match kind {
+                    PostgresKind::Local { max_connections: Some(max_connections) } => {
+                        config::Postgres::Local { max_connections }
+                    }
+                    PostgresKind::Local { max_connections: None } => config::Postgres::default(),
+                    PostgresKind::Remote { url, password } => config::Postgres::Remote { url, password },
+                };
                 Ok(())
             })
             .await
