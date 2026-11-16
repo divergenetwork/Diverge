@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -195,6 +195,7 @@ diverge provider podman registries delete 2
 diverge provider podman storage_path get                    # C:\Users\me\.diverge\provider\podman_data   the resolved, absolute path
 diverge provider podman storage_path set D:\diverge\podman  # moves podman's data there, then writes the path
 diverge provider podman storage_path set D:\diverge\podman --no-transfer   # writes the path, moves nothing
+diverge provider podman storage_path delete                 # deletes podman's data at the current path; the next start makes it anew
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -234,10 +235,27 @@ then writes the path; it prints nothing.
 - Windows: it needs a WSL that has `wsl --manage --move` (2.3.11 or later; `wsl --update`). Every WSL
   distribution whose disk is under the old path is moved, including a podman machine someone else made there.
 - `--no-transfer` writes the path and leaves the old data where it is. On Windows it is refused while the old
-  machine exists, because the provider would refuse to start beside it: transfer instead, or remove that
-  machine first.
+  machine exists, because the provider would refuse to start beside it: transfer instead, or run
+  `storage_path delete` first.
 - If the error is `…but the old path could not be cleared`, the move succeeded and the path is written; delete
   what is left at the old path yourself.
+
+### Starting over: `storage_path delete`
+
+`diverge provider podman storage_path delete` deletes everything podman keeps at the current storage path, so
+the next `provider start` sets it all up again: an empty image store on Linux, a brand-new machine on macOS
+and Windows. It prints nothing and does not change the path.
+
+- **Stop the provider first**; it holds the provider's lock like `set`.
+- **Destructive, with no undo and no prompt.** Every image built or pulled into that store or machine is gone
+  and must be built or pulled again. The provider's own Store (`images.path`) and volumes are separate folders
+  and are not touched.
+- On Windows it also removes what points at the folder from outside: the machine's WSL distribution, its
+  description under `~/.config`, and its entries in podman's connections file. Deleting the folder by hand
+  does not do that, and leaves the provider unable to start.
+- Everything in the folder goes, including a podman machine someone else made with its data there.
+- **Changing the path on Windows without carrying the data:** `delete`, then `set <path> --no-transfer`.
+- A failure midway leaves it part deleted; run `delete` again to finish.
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
