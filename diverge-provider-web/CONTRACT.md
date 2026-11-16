@@ -537,7 +537,7 @@ shall serve no Channel on the Scope; and shall look up nothing, hold
 nothing, obtain nothing, deploy nothing and change nothing for the
 request. In particular the Provider shall answer: every
 `images::list`, `images::stat`, `images::build`, `images::delete` and
-`images::read` request, where `images_store` is not held out, by the
+`images::read` request, where `images.store` is not held out, by the
 byte `4`, `1`, `4`, `2` and `0` respectively, alone; every `volumes::create` request
 stating a mode the Provider holds out no mode object for by the byte
 `2` alone, and every `volumes::edit` request naming a Volume in the
@@ -602,7 +602,7 @@ of room after a Response that reported room for it.
 
 (d) **Members not held out.** Where the Provider holds out no mode
 object, `volumes_disk` carries no obligation under (b); where the
-Provider does not hold out `images_store`, `images_disk` carries no
+Provider does not hold out `images.store`, `images_disk` carries no
 obligation under (b). The Provider shall send each member
 nonetheless.
 
@@ -610,8 +610,8 @@ nonetheless.
 
 The Provider shall answer every `images::check` request with exactly
 one Response and the Response Finish. The sources the Provider has
-are `client`, where it holds out the `images_store` Capability, and
-`registries`, where its `images_registries` is not empty; the
+are `client`, where it holds out the `images.store` Capability, and
+`registries`, where its `images.registries` is not empty; the
 Provider shall answer the byte `2` alone when the request asks for no
 source the Provider has — neither source, or only sources it has
 not — and then the Provider shall look nowhere. Otherwise the
@@ -620,7 +620,7 @@ Provider shall answer the byte `0` followed by exactly
 source the request asks for and the Provider has holds the image the
 digest names — `client` being the Client Images of the Identity and
 no other Identity's, and `registries` the registries in the
-Provider's `images_registries` that a reference of the request names,
+Provider's `images.registries` that a reference of the request names,
 asked by each reference's name — for a container request naming it;
 the byte `0` followed by exactly `{"type":"unavailable"}` when no such
 source has it; or the byte `1` followed by an error when it did not
@@ -628,7 +628,7 @@ determine the answer. The Provider shall not answer available on
 account of a source the request did not ask for or the Provider has
 not, shall not answer available on account of a Client Image of
 another Identity, shall not consult a registry its
-`images_registries` does not list, and shall not answer available on
+`images.registries` does not list, and shall not answer available on
 account of an image it holds on its own account, which no request
 can ask for. An available answer reserves nothing.
 
@@ -855,7 +855,11 @@ of another Identity.
 ### 5.9 Client Images
 
 Every covenant of this Section but (f) binds a Provider that holds out
-the `images_store` Capability; a Provider that does not shall answer
+the `images.store` Capability, save that a Provider whose
+`images.store` does not carry `build` with the value `true` does not
+build, and shall answer every `images::build` request as
+Section 5.5(d) provides; a Provider that does not hold out
+`images.store` shall answer
 every `images::list`, `images::stat`, `images::build`, `images::delete`
 and `images::read` request as Section 5.5(d) provides, holds no Client
 Image for any Identity, and is bound by nothing else in this Section.
@@ -935,7 +939,7 @@ a Client Image to any other Identity under either Section, unless
 that Identity has itself built an image of the same digest.
 
 (f) **Pull.** The Provider shall, where it holds out the
-`images_store` Capability, serve every `images::read` request
+`images.store` Capability, serve every `images::read` request
 as a Scope kept open on which it sends no Response, and shall answer
 every Channel the Identity opens on it from what it holds for the
 Identity — the Client Images of the Identity, each byte for byte as
@@ -958,7 +962,7 @@ every Channel still open, when it receives the Identity's
 `disconnect` and when the Identity's Connection ends, and shall send
 the Response Finish with no Response before it, serving no Channel,
 for a pull it will not serve. A Provider that does not hold out the
-`images_store` Capability shall answer every `images::read` request
+`images.store` Capability shall answer every `images::read` request
 with exactly one Response on the main stream, the byte `0` alone, and
 the Response Finish, and shall answer no Channel on the Scope.
 

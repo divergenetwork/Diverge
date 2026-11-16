@@ -115,13 +115,13 @@ owns.
 
 | Source | Where the server obtains the image | Runs | Pushes |
 |--------|------------------------------------|------|--------|
-| `Registry` | a registry in the server's [`images_registries`](/capabilities/#images_registries) | yes | yes |
+| `Registry` | a registry in the server's [`images.registries`](/capabilities/#imagesregistries) | yes | yes |
 | `Client` | the client of the scope, on the scope's OCI channels | yes | yes |
 | `Store` | the client's own Store | yes | no |
 
 1. **Registry.** The source is `Registry` when the server obtains the
    image from a registry that is in its
-   [`images_registries`](/capabilities/#images_registries) and that a
+   [`images.registries`](/capabilities/#imagesregistries) and that a
    reference of the request names, under the digest, or from bytes it
    holds that it obtained from such a registry under the digest. The
    `reference` member of the source is the reference under which the
@@ -145,7 +145,7 @@ owns.
    request, the server consults the sources in the following order,
    and the first that applies is the source: `Store`, where the image
    is in the client's Store; otherwise `Registry`, where a registry
-   that is in its `images_registries` and that a reference of the
+   that is in its `images.registries` and that a reference of the
    request names serves the digest; otherwise `Client`, where the
    client answers the `oci-has` ask that it holds the image. Where none
    applies, the server obtains the image from no source, and the run
@@ -187,10 +187,10 @@ owns.
    it from exactly the following sources, in the following order: the
    client's Store, where the client owns the digest; otherwise a
    registry that is in its
-   [`images_registries`](/capabilities/#images_registries) and that a
+   [`images.registries`](/capabilities/#imagesregistries) and that a
    reference of the request names, as `<registry>/<name>@<digest>`.
    The server ignores a reference that names a registry not in its
-   `images_registries`, and a reference whose `name` is not a
+   `images.registries`, and a reference whose `name` is not a
    repository path by the grammar of the OCI Distribution
    Specification. The server never answers or serves the scope from an
    image in another identity's Store, and never from an image it holds

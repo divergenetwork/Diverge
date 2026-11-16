@@ -29,7 +29,7 @@ finish follows it, and no frame follows the finish.
   that the server can supply the image the digest names from the
   client's Store, where the client owns the digest, or otherwise from
   a registry in its
-  [`images_registries`](/capabilities/#images_registries) that a
+  [`images.registries`](/capabilities/#imagesregistries) that a
   reference of the request names, as
   [images::read](/endpoints/images-read/) states. It states what the
   server determined at the time of the answer, names no source, and
@@ -39,8 +39,8 @@ finish follows it, and no frame follows the finish.
   It states no reason and names no source.
 - **Unsupported.** A payload that is the byte `2` and nothing else
   states that the server holds out no
-  [`images_store`](/capabilities/#images_store) capability and that
-  its [`images_registries`](/capabilities/#images_registries) is
+  [`images.store`](/capabilities/#imagesstore) capability and that
+  its [`images.registries`](/capabilities/#imagesregistries) is
   empty, as [Capabilities](/capabilities/) provides. The server sends
   it before anything is looked up.
 - **No bytes after the answer.** The server sends nothing after the

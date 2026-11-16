@@ -94,9 +94,10 @@ response, and no frame follows the finish.
   context's hold — a build that failed, a context refused: the
   client's listing is as it was before the request. The output sent
   before the error states what the build said.
-- **No Store.** A server that holds out no
-  [`images_store`](/capabilities/#images_store) capability keeps no
-  Store and answers every request of this endpoint with exactly one
+- **No Store, or no build.** A server that holds out no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
+  Store, and a server whose `images.store` has no `build` of the
+  value `true` does not build. Each answers every request of this endpoint with exactly one
   response, the byte `5` alone, and the response finish, before
   anything is looked up; it sends no line of output, holds no volume
   and builds nothing. Every other requirement of this page holds for

@@ -61,8 +61,9 @@ draft: false
   sends it before the build begins, and bytes after it are not read.
 - **Unsupported.** A payload that is the byte `5` and nothing else
   states that the server holds out no
-  [`images_store`](/capabilities/#images_store) capability and keeps
-  no Store, as [Capabilities](/capabilities/) provides. It is the only
+  [`images.store`](/capabilities/#imagesstore) capability and keeps
+  no Store, or holds it out with no `build` of the value `true` and
+  does not build, as [Capabilities](/capabilities/) provides. It is the only
   response of the scope, sent before anything is looked up; bytes
   after it are not read.
 - **The error.** A payload whose first byte is `6` carries an error

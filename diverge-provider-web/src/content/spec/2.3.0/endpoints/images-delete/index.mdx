@@ -56,7 +56,7 @@ the response, and no frame follows the finish.
   image, for a reason other than a running container. The client's
   Store and listing are as they were before the request.
 - **No Store.** A server that holds out no
-  [`images_store`](/capabilities/#images_store) capability keeps no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
   Store and answers every request of this endpoint with exactly one
   response, the byte `2` alone, and the response finish, before
   anything is looked up. Every other requirement of this page holds

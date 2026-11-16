@@ -40,7 +40,7 @@ finish follows the response, and no frame follows the finish.
   description, for a reason other than an image not in the client's
   Store. The image keeps the description it had before the request.
 - **No Store.** A server that holds out no
-  [`images_store`](/capabilities/#images_store) capability keeps no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
   Store and answers every request of this endpoint with exactly one
   response, the byte `2` alone, and the response finish, before
   anything is looked up. Every other requirement of this page holds

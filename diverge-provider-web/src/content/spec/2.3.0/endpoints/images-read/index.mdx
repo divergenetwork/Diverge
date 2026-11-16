@@ -42,12 +42,12 @@ No frame follows the response finish.
   client's Store, as [Image sources](/endpoints/#image-sources)
   defines it: the server holds the image when the client owns the
   digest. The second is the registries the server is configured with,
-  its [`images_registries`](/capabilities/#images_registries): where
+  its [`images.registries`](/capabilities/#imagesregistries): where
   the client's Store does not supply the image, the server holds the
   image when it can obtain it, as `<registry>/<name>@<digest>`, from a
-  registry in its `images_registries` that a reference of the request
+  registry in its `images.registries` that a reference of the request
   names. The server ignores a reference that names a registry not in
-  its `images_registries`, and a reference whose `name` is not a
+  its `images.registries`, and a reference whose `name` is not a
   repository path by the grammar of the OCI Distribution
   Specification. A request with no reference is answered from the
   client's Store alone. Where the source is the client's Store, the
@@ -74,8 +74,8 @@ No frame follows the response finish.
   could obtain and will not serve to this client receive the same
   answer.
 - **Unsupported.** A server that holds out no
-  [`images_store`](/capabilities/#images_store) capability and whose
-  [`images_registries`](/capabilities/#images_registries) is empty has
+  [`images.store`](/capabilities/#imagesstore) capability and whose
+  [`images.registries`](/capabilities/#imagesregistries) is empty has
   no source. It answers every request of this endpoint with exactly
   one response on the main stream, the byte `2` alone, before anything
   is looked up, and the response finish. A server that has exactly

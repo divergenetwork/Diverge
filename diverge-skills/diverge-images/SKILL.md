@@ -43,7 +43,7 @@ Every place that names an image (an agent template, a tool template, a dependenc
 ### The rule that trips everyone: references must name a registry the provider lists
 
 Before the daemon asks a provider to run a container, it checks the provider's capabilities
-(`images_registries`, visible inside a connected record's `status` in `diverge run providers list`,
+(`images.registries`, visible inside a connected record's `status` in `diverge run providers list`,
 under its `info`'s `capabilities`). A provider passes when
 **some reference of the image names a registry that provider lists**. The default provider lists
 `docker.io`, `ghcr.io` and `quay.io`.
@@ -127,7 +127,10 @@ diverge provider config patch '[{"op":"add","path":"/volumes/fixed/-","value":
   {"name":"my-source","path":"C:/path/to/source","bytes":34359738368,"mode":"read_only"}}]'
 ```
 
-The provider needs a Store to build into. If `diverge run providers list` shows `"images_store":false`:
+The provider needs a Store to build into, and one that builds. In `diverge run providers list`, a
+connected provider's `capabilities.images.store` is an object when it keeps a Store, and that object's
+`build` is `true` when it builds: `"images":{"store":{"build":true},"registries":[…]}`. A provider
+with a Store and `build` absent or `false` takes pushes and refuses builds. If there is no `store`:
 
 ```bash
 diverge provider config patch '[{"op":"add","path":"/images","value":

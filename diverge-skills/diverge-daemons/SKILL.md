@@ -90,8 +90,9 @@ does not announce itself there), `accept_daemons`, `messageable`, `enabled`, `de
   only once that answer is cached. **`different_version`** means the socket is held but the provider is
   used for nothing (no container, volume, image, or daemon reached through it) until daemon and provider
   are the same version.
-- `capabilities` says which optional parts the provider serves: `containers`, `images_store`,
-  `images_registries` (the registries it pulls from), `volumes_persistent` / `volumes_ephemeral` /
+- `capabilities` says which optional parts the provider serves: `containers`, `images` (an object:
+  `store`, there when it keeps a Store, with `build` saying whether it builds; and `registries`, the
+  registries it pulls from), `volumes_persistent` / `volumes_ephemeral` /
   `volumes_read_only` (each an object of `mount`, `fuse_serve`, `mount_many`, `fuse_serve_many`,
   `mount_and_fuse_serve`), and `messages` (present only when the provider relays direct messages). A member
   absent is the capability absent. The daemon asks a provider nothing its capabilities exclude.

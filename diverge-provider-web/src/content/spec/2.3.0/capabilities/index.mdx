@@ -54,8 +54,7 @@ define.
 | Member | Type | Absent | Governs |
 |--------|------|--------|---------|
 | `containers` | boolean | `false` | [containers::agents::run](/endpoints/containers-agents-run/) and [containers::tools::run](/endpoints/containers-tools-run/) |
-| `images_store` | boolean | `false` | [images::list](/endpoints/images-list/), [images::stat](/endpoints/images-stat/), [images::build](/endpoints/images-build/), [images::push](/endpoints/images-push/), [images::edit](/endpoints/images-edit/), [images::delete](/endpoints/images-delete/), the client's Store as a source of [images::read](/endpoints/images-read/), and the `Store` source of a run |
-| `images_registries` | array of strings | `[]` | the registries as a source of [images::read](/endpoints/images-read/), and the `Registry` source of a run and of an [images::push](/endpoints/images-push/) |
+| `images` | object, [the images object](#images) | the object of no member: no Store and no registry | the seven image endpoints, and the `Store` and `Registry` sources of a run |
 | `volumes_persistent` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the eleven volume endpoints, and the volume mounts of the two runs, for a volume whose `mode` is `persistent` |
 | `volumes_ephemeral` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the same, for a volume whose `mode` is `ephemeral` |
 | `volumes_read_only` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the same, for a volume whose `mode` is `read_only` |
@@ -98,7 +97,41 @@ pages of those endpoints define.
   [capacity](/endpoints/capacity/) response. Each carries any value,
   and a client reads neither.
 
-## `images_store`
+## `images`
+
+The value of `images` is one JSON object of at most two members. A
+member that is absent has the meaning the table gives its absence.
+The server sends no member of the object this revision does not
+define.
+
+| Member | Type | Absent | Governs |
+|--------|------|--------|---------|
+| `store` | object, [the store object](#imagesstore) | no object: the server keeps no Store | [images::list](/endpoints/images-list/), [images::stat](/endpoints/images-stat/), [images::build](/endpoints/images-build/), [images::push](/endpoints/images-push/), [images::edit](/endpoints/images-edit/), [images::delete](/endpoints/images-delete/), the client's Store as a source of [images::read](/endpoints/images-read/), and the `Store` source of a run |
+| `registries` | array of strings | `[]` | the registries as a source of [images::read](/endpoints/images-read/), and the `Registry` source of a run and of an [images::push](/endpoints/images-push/) |
+
+This page writes `images.store` for the member `store` of the object
+`images`, and `images.registries` for its member `registries`.
+
+## `images.store`
+
+The value of `images.store` is one JSON object of at most one member,
+`build`, a boolean. A server holds out `images.store` when it sends
+the object, whatever the object's members. A server that sends no
+such object does not hold it out.
+
+- **`build`.** A boolean. The value `true` states that the server
+  builds: it serves [images::build](/endpoints/images-build/) as its
+  page states. An absent `build` is `false`.
+- **`build` is `false`.** The server holds out `images.store` and does
+  not build. The server answers an
+  [images::build](/endpoints/images-build/) request with exactly one
+  response, the byte `5` and nothing else, and the response finish; it
+  sends no line of output before it, holds no volume and builds
+  nothing. Every other requirement of this section holds for the
+  server as it does for one whose `build` is `true`: it serves
+  images::list, images::stat, images::push, images::edit and
+  images::delete, and the client's Store is a source of images::read
+  and of a run.
 
 The server keeps the Store: for each client, the images the client
 owns on the server, each named by its digest alone — every image the
@@ -110,7 +143,7 @@ endpoints define.
 
 - **Held out.** The server serves [images::list](/endpoints/images-list/),
   [images::stat](/endpoints/images-stat/),
-  [images::build](/endpoints/images-build/),
+  [images::build](/endpoints/images-build/) where `build` is `true`,
   [images::push](/endpoints/images-push/),
   [images::edit](/endpoints/images-edit/),
   and [images::delete](/endpoints/images-delete/) as their pages
@@ -139,20 +172,20 @@ endpoints define.
   - an [images::delete](/endpoints/images-delete/) request with
     exactly one response, the byte `2` and nothing else, and the
     response finish;
-  - where [`images_registries`](#images_registries) is empty, an
+  - where [`images.registries`](#imagesregistries) is empty, an
     [images::read](/endpoints/images-read/) request with exactly one
     response on the main stream, the byte `2` and nothing else, and
     the response finish, after which it answers no channel the client
-    opens on the scope. Where `images_registries` is not empty, the
+    opens on the scope. Where `images.registries` is not empty, the
     server answers and serves an images::read scope from the
     registries alone.
 - **The `images_disk` member of a capacity response.** The server
   sends the `images_disk` member of every
   [capacity](/endpoints/capacity/) response whether or not it holds
-  out `images_store`. Where it does not, the member carries any
+  out `images.store`. Where it does not, the member carries any
   value, and a client does not read it.
 
-## `images_registries`
+## `images.registries`
 
 The registries the server pulls images from: an array of strings,
 each the host of one registry as a reference's `registry` member
@@ -175,10 +208,10 @@ every registry the server pulls from is in the array.
   array does not list.
 - **Empty.** An empty array, or an absent member, states that the
   server pulls from no registry. The registries are not a source the
-  server has. Where [`images_store`](#images_store) is also `false`,
+  server has. Where [`images.store`](#imagesstore) is also `false`,
   the server answers an [images::read](/endpoints/images-read/)
   request with exactly one response on the main stream, the byte `2`
-  and nothing else, and the response finish. Where `images_store` is
+  and nothing else, and the response finish. Where `images.store` is
   `true`, the server answers and serves an images::read scope from the
   client's Store alone. A run's image is obtained from the
   client's Store or from the client, and a push's image from the

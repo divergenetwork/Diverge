@@ -34,7 +34,7 @@ finish.
    decode is answered by a response finish that no response precedes,
    as [Endpoints](/endpoints/) provides.
 2. **No Store.** A server that holds out no
-   [`images_store`](/capabilities/#images_store) capability answers
+   [`images.store`](/capabilities/#imagesstore) capability answers
    every other request by exactly one response, the byte `7` and
    nothing else, and the response finish, and does nothing of what
    follows.
@@ -44,7 +44,7 @@ finish.
    finish. The server obtains nothing, opens no channel, and leaves
    the description of the image in the Store as it was.
 4. **A registry.** When a registry that is in the server's
-   [`images_registries`](/capabilities/#images_registries) and that a
+   [`images.registries`](/capabilities/#imagesregistries) and that a
    reference of the request names serves the digest, the source is
    `Registry`. The server takes the manifest the digest names first,
    and, where that manifest is an image index, the manifest of one

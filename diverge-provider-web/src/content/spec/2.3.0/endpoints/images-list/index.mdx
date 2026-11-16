@@ -104,7 +104,7 @@ A connection holds at most one images::list scope open at a time, as
   the error were sent as the listing stood. An error is not an empty
   listing.
 - **No Store.** A server that holds out no
-  [`images_store`](/capabilities/#images_store) capability keeps no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
   Store and answers every request of this endpoint with exactly one
   response, the byte `4` alone, and the response finish, before
   anything is looked up; it sends no image, no byte `3` and serves no
