@@ -48,7 +48,7 @@ async fn count<const N: usize>(args: [&str; N]) -> Result<usize, Error> {
 }
 
 /// Every mount point at or under `old`.
-async fn mounted(old: &Path) -> Result<Vec<PathBuf>, Error> {
+pub(super) async fn mounted(old: &Path) -> Result<Vec<PathBuf>, Error> {
     let table = Path::new("/proc/self/mountinfo");
     let text = tokio::fs::read_to_string(table).await.map_err(|source| Error::io(table, source))?;
     Ok(text

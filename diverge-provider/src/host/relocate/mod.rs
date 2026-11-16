@@ -71,6 +71,13 @@
 //!    old path names it still, and on Windows every distribution
 //!    carried is registered at the new place.
 //!
+//! # Deleted, not carried
+//!
+//! [`wipe`] is the other thing done to a storage path with the
+//! provider stopped: everything at it deleted, and everything outside
+//! it that names it, so that the provider starts on it as on a path
+//! never used.
+//!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
@@ -79,6 +86,7 @@ mod moving;
 mod rewrite;
 mod space;
 mod transfer;
+mod wipe;
 
 #[cfg(target_os = "linux")]
 pub mod linux;
@@ -89,3 +97,4 @@ pub mod wsl;
 
 pub use error::*;
 pub use transfer::*;
+pub use wipe::*;

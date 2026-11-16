@@ -115,9 +115,27 @@ pub(super) async fn moved(name: &str, to: &Path) -> Result<(), Error> {
         Ok(()) => Ok(()),
         Err(why) => Err(Error::Wsl {
             distribution: name.to_string(),
-            why: format!("{why} (a WSL older than 2.3.11 cannot move one: `wsl --update`)"),
+            why: format!("it could not be moved: {why} (a WSL older than 2.3.11 cannot move one: `wsl --update`)"),
         }),
     }
+}
+
+/// Every WSL distribution whose disk is under `path` unregistered,
+/// which is WSL forgetting it and deleting its disk: what a storage
+/// path's delete does of WSL — see [`wipe`](super::wipe). Each is
+/// terminated first. One whose disk file is already gone is
+/// unregistered all the same: it is the registration that has to go.
+pub(super) async fn unregister(path: &Path) -> Result<(), Error> {
+    for distribution in distributions().await? {
+        if !under(&distribution.base, path) {
+            continue;
+        }
+        let _ = wsl(&["--terminate", &distribution.name]).await;
+        if let Err(why) = wsl(&["--unregister", &distribution.name]).await {
+            return Err(Error::Wsl { distribution: distribution.name, why });
+        }
+    }
+    Ok(())
 }
 
 /// Every distribution named in `steps` found registered under the
@@ -132,7 +150,7 @@ pub(super) async fn check(steps: &[Step]) -> Result<(), Error> {
         if !there {
             return Err(Error::Wsl {
                 distribution: name.clone(),
-                why: format!("WSL does not hold it registered at `{}`", to.display()),
+                why: format!("it was moved, and WSL does not hold it registered at `{}`", to.display()),
             });
         }
     }

@@ -63,8 +63,8 @@ pub enum Error {
         /// How many volumes.
         volumes: usize,
     },
-    /// On Windows: WSL would not move a distribution's disk, or did
-    /// not register it at the new place.
+    /// On Windows: WSL would not move a distribution's disk, did not
+    /// register it at the new place, or would not unregister it.
     Wsl {
         /// The distribution.
         distribution: String,
@@ -74,6 +74,10 @@ pub enum Error {
     /// On Windows: the registry's list of WSL distributions could not
     /// be read.
     Registry(String),
+    /// On Windows: the connections file is not the JSON podman
+    /// writes, so the connections to a deleted machine could not be
+    /// taken out of it.
+    Connections(PathBuf),
     /// On Windows, asked to leave the data behind: the machine podman
     /// keeps a description of names its SSH key under the old path, and
     /// the provider would refuse to start beside it.
@@ -113,11 +117,12 @@ impl fmt::Display for Error {
                 f,
                 "podman's store holds {containers} containers, {pods} pods and {volumes} volumes, and podman takes a store at another path only when it holds none: remove them first"
             ),
-            Error::Wsl { distribution, why } => write!(f, "the WSL distribution `{distribution}` could not be moved: {why}"),
+            Error::Wsl { distribution, why } => write!(f, "the WSL distribution `{distribution}`: {why}"),
             Error::Registry(why) => write!(f, "the WSL distributions could not be read from the registry: {why}"),
+            Error::Connections(path) => write!(f, "`{}` is not the connections file podman writes", path.display()),
             Error::Blocked(path) => write!(
                 f,
-                "podman still holds the machine whose data is under `{}`, and the provider would refuse to start beside it: transfer the data, or remove that machine first",
+                "podman still holds the machine whose data is under `{}`, and the provider would refuse to start beside it: transfer the data, or delete it first with `diverge provider podman storage_path delete`",
                 path.display()
             ),
         }

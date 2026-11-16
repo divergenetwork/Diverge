@@ -150,3 +150,113 @@ pub async fn blocked(old: &Path) -> Result<(), Error> {
     }
     Ok(())
 }
+
+/// Everything outside the storage path `path` that names it,
+/// removed: what a delete of the path does before the folder goes —
+/// see [`wipe`](super::wipe). On macOS there is nothing outside it,
+/// and this does nothing. On Windows, in this order:
+///
+/// 1. Each machine whose description names the path is one podman
+///    is asked to remove, `podman machine rm --force <name>`: podman
+///    unregisters the machine's WSL distribution, deletes its
+///    description and takes out its connections. What podman does
+///    not do — it is missing, or the machine is half there and it
+///    refuses — is not the error, since the steps after do the same
+///    by hand.
+/// 2. Every WSL distribution whose disk is under the path is
+///    unregistered: see [`unregister`](super::wsl::unregister).
+/// 3. Each description that still names the path is deleted, with
+///    the ignition file and the lock beside it.
+/// 4. Each connection whose SSH key is under the path is taken out
+///    of the connections file, and the default with it where it was
+///    one of them.
+/// 5. No file left names the path, or it is [`Error::Remains`].
+pub(super) async fn forget(path: &Path) -> Result<(), Error> {
+    if !cfg!(windows) {
+        return Ok(());
+    }
+    let olds = [super::rewrite::written(path)?];
+    let (descriptions, connections) = named(path, &olds).await?;
+    if !descriptions.is_empty() {
+        podman::configure(path.to_path_buf());
+        for description in &descriptions {
+            if let Some(name) = description.file_stem().and_then(|name| name.to_str()) {
+                let _ = podman::podman(["machine", "rm", "--force", name]).await;
+            }
+        }
+    }
+    #[cfg(windows)]
+    super::wsl::unregister(path).await?;
+    let (descriptions, connections_left) = named(path, &olds).await?;
+    for description in descriptions {
+        for extension in ["json", "ign", "lock"] {
+            super::moving::remove(&description.with_extension(extension)).await?;
+        }
+    }
+    if let Some(file) = connections_left.or(connections) {
+        disconnect(&file, path).await?;
+    }
+    let (descriptions, connections) = named(path, &olds).await?;
+    match descriptions.into_iter().next().or(connections) {
+        Some(file) => Err(Error::Remains(file)),
+        None => Ok(()),
+    }
+}
+
+/// The files of [`references`] that name `path`: the machines'
+/// descriptions, and the connections file where it does.
+async fn named(path: &Path, olds: &[String]) -> Result<(Vec<PathBuf>, Option<PathBuf>), Error> {
+    let mut descriptions = Vec::new();
+    let mut connections = None;
+    for file in references(path).await? {
+        let Ok(text) = tokio::fs::read_to_string(&file).await else {
+            continue;
+        };
+        if !super::rewrite::names(&text, olds) {
+            continue;
+        }
+        if file.file_name().is_some_and(|name| name == "podman-connections.json") {
+            connections = Some(file);
+        } else {
+            descriptions.push(file);
+        }
+    }
+    Ok((descriptions, connections))
+}
+
+/// The connections file at `file` with every connection whose SSH
+/// key is under `path` taken out: `Connection.Connections` is a map
+/// of name to `{URI, Identity, IsMachine}`, and `Connection.Default`
+/// names one of them, or is empty. A default that was taken out is
+/// made empty, as podman leaves it. A file with no such connection is
+/// not written; one that is not that JSON is [`Error::Connections`].
+async fn disconnect(file: &Path, path: &Path) -> Result<(), Error> {
+    let text = tokio::fs::read_to_string(file).await.map_err(|source| Error::io(file, source))?;
+    let mut document: serde_json::Value = serde_json::from_str(&text).map_err(|_| Error::Connections(file.to_path_buf()))?;
+    let Some(connection) = document.get_mut("Connection").and_then(serde_json::Value::as_object_mut) else {
+        return Err(Error::Connections(file.to_path_buf()));
+    };
+    let mut gone = Vec::new();
+    if let Some(connections) = connection.get_mut("Connections").and_then(serde_json::Value::as_object_mut) {
+        connections.retain(|name, held| {
+            let keep = !held.get("Identity").and_then(serde_json::Value::as_str).is_some_and(|key| under(Path::new(key), path));
+            if !keep {
+                gone.push(name.clone());
+            }
+            keep
+        });
+    }
+    if gone.is_empty() {
+        return Ok(());
+    }
+    let default_gone = connection.get("Default").and_then(serde_json::Value::as_str).is_some_and(|name| gone.iter().any(|gone| gone == name));
+    if default_gone {
+        connection.insert("Default".to_string(), serde_json::Value::String(String::new()));
+    }
+    let written = serde_json::to_string_pretty(&document).map_err(|_| Error::Connections(file.to_path_buf()))?;
+    let mut beside = file.as_os_str().to_owned();
+    beside.push(".diverge-tmp");
+    let beside = PathBuf::from(beside);
+    tokio::fs::write(&beside, written).await.map_err(|source| Error::io(&beside, source))?;
+    tokio::fs::rename(&beside, file).await.map_err(|source| Error::io(file, source))
+}
