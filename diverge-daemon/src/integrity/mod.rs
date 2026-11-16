@@ -39,7 +39,9 @@
 //!
 //! A volume's tags, where the provider that held the volume no longer
 //! has it: which volumes there are is the providers' to say, and none
-//! is dialled yet.
+//! is dialled yet. Those are swept when each provider's listing is
+//! whole, once per connection: see
+//! [`volumes::watch`](crate::volumes::watch).
 //!
 //! # A failure
 //!

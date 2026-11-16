@@ -55,6 +55,18 @@ pub async fn set_tags(conn: &mut PgConnection, volume: &reference::Volume, tags:
     Ok(())
 }
 
+/// The provider's volumes are exactly those named `names`: the tags
+/// of every other volume of the provider's are gone, and how many
+/// volumes' were. No name at all is every tag of the provider's gone.
+pub async fn keep_only(conn: &mut PgConnection, provider: &Identity, names: &[String]) -> Result<u64, Error> {
+    let done = sqlx::query("DELETE FROM diverge.volume_tags WHERE provider = $1 AND NOT (name = ANY($2))")
+        .bind(Json(provider))
+        .bind(names)
+        .execute(&mut *conn)
+        .await?;
+    Ok(done.rows_affected())
+}
+
 /// The volume is gone: its tags with it.
 pub async fn forget(conn: &mut PgConnection, volume: &reference::Volume) -> Result<(), Error> {
     sqlx::query("DELETE FROM diverge.volume_tags WHERE provider = $1 AND name = $2")
