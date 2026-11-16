@@ -17,8 +17,8 @@ use crate::lifecycle::{self, Program};
 /// `daemon idle_seconds`, `daemon admins`, `daemon identity` and
 /// `daemon postgres`, the one setting read or written — see
 /// [`setting`](super::setting); for `provider port`,
-/// `provider identity`, `provider incoming` and `provider outgoing`,
-/// likewise — see [`provider`](super::provider).
+/// `provider identity`, `provider incoming`, `provider outgoing` and
+/// `provider podman registries`, likewise — see [`provider`](super::provider).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
     let root = config::root(arguments.config).await?;
@@ -62,6 +62,9 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         }
         Some(Command::Provider(Server::Outgoing(action))) => {
             super::provider::outgoing(&root, action).await
+        }
+        Some(Command::Provider(Server::Podman(action))) => {
+            super::provider::podman(&root, action).await
         }
         Some(Command::Viewer(Document::Config(action))) => {
             super::config::run(&root, Which::Viewer, action).await

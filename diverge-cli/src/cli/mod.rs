@@ -4,7 +4,7 @@
 //! [`run`] is the whole of it — [`config`] the `config` beneath every
 //! program, [`setting`] the daemon's `port`, `idle_seconds`, `admins`,
 //! `identity` and `postgres`, [`provider`] the provider's `port`,
-//! `identity`, `incoming` and `outgoing`,
+//! `identity`, `incoming`, `outgoing` and `podman registries`,
 //! [`identities`] the `identities` command,
 //! [`lifecycle`](crate::lifecycle) the `daemon` and `provider`
 //! commands' — and [`Error`] why it could not be. A

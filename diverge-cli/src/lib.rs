@@ -34,10 +34,11 @@
 //! `daemon admins get|add|delete`, `daemon identity get|set`,
 //! `daemon postgres get|set` — and each one that writes is
 //! refused while the daemon runs on the root; see
-//! [`cli::setting`]. Four of the provider's are too —
+//! [`cli::setting`]. Five of the provider's are too —
 //! `provider port get|set`, `provider identity get|set`,
 //! `provider incoming get|add|delete`,
-//! `provider outgoing get|add|delete` — by the same rules; see
+//! `provider outgoing get|add|delete`,
+//! `provider podman registries get|add|delete` — by the same rules; see
 //! [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own

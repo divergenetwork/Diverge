@@ -57,7 +57,7 @@ pub enum Error {
     /// Nothing was written.
     NoItem {
         /// The list, as the document names it: `admins`, `incoming`,
-        /// `outgoing`.
+        /// `outgoing`, `podman.registries`.
         list: &'static str,
         /// The index named.
         index: usize,

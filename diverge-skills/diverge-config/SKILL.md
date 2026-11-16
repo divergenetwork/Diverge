@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming` and `outgoing` the same way (`diverge provider port|identity|incoming|outgoing …`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -172,9 +172,9 @@ diverge daemon postgres set remote --url postgres://diverge@db.example.com:5432/
 - The whole document is printed by reading the file: `cat <root>/daemon.yaml` (absent: every setting is at
   its default).
 
-## The provider's settings: `diverge provider port`, `identity`, `incoming`, `outgoing`
+## The provider's settings: `diverge provider port`, `identity`, `incoming`, `outgoing`, `podman registries`
 
-Four settings of `provider.yaml` have their own commands, by the daemon's rules: plain arguments and flags,
+Five settings of `provider.yaml` have their own commands, by the daemon's rules: plain arguments and flags,
 `get` always answered, every write refused while the provider is running on the root (`diverge provider stop`
 first), nothing printed by a write, comments lost.
 
@@ -189,6 +189,9 @@ diverge provider incoming delete 0
 diverge provider outgoing get           # {"index":0,"address":"…","issuer":"…","subject":"…"}   one line per peer dialled
 diverge provider outgoing add --address relay.example.com:14979 --issuer https://identity.diverge.network --subject github.12345.relay
 diverge provider outgoing delete 0
+diverge provider podman registries get  # {"index":0,"host":"docker.io"}   one line per registry; the default three where the file lists none
+diverge provider podman registries add registry.example.com:5000
+diverge provider podman registries delete 2
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -196,7 +199,9 @@ diverge provider outgoing delete 0
 - `outgoing add` takes all three flags. It refuses only the same identity at the same address; the same
   identity at another address is another peer.
 - `identity set` cannot remove the identity; delete the member from the file by hand, or use `provider config`.
-- Everything else in `provider.yaml` (`podman`, `containers`, `volumes`, `images`, `messages`) is still changed
+- `podman registries add` takes the host as its one argument (no scheme, no path) and refuses one listed
+  already. Deleting every registry leaves an empty list, not the default three.
+- Everything else in `provider.yaml` (the rest of `podman`, `containers`, `volumes`, `images`, `messages`) is still changed
   with `diverge provider config set|patch`, which is not refused while the provider runs.
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
