@@ -1,5 +1,6 @@
 //! One setting of the daemon's document — its port, its idle
-//! seconds, its administrators — read or written by itself.
+//! seconds, its administrators, its identity — read or written by
+//! itself.
 
 use std::path::Path;
 
@@ -7,10 +8,10 @@ use tokio::io::AsyncWriteExt as _;
 
 use diverge_daemon::config::Config;
 use diverge_sdk::file_lock;
-use diverge_sdk::shared::Identity;
+use diverge_sdk::shared;
 
 use super::Error;
-use crate::arguments::{Admins, IdleSeconds, Port};
+use crate::arguments::{Admins, Identity, IdleSeconds, Port};
 use crate::document::{self, Which};
 use crate::lifecycle::{self, Program};
 
@@ -73,7 +74,7 @@ pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
         }
         Admins::Add { issuer, subject } => {
             set(root, |config| {
-                let admin = Identity { issuer, subject };
+                let admin = shared::Identity { issuer, subject };
                 match config.admins.iter().position(|listed| *listed == admin) {
                     Some(index) => Err(Error::AdminListed { admin, index }),
                     None => {
@@ -90,6 +91,38 @@ pub async fn admins(root: &Path, action: Admins) -> Result<(), Error> {
                     return Err(Error::NoAdmin { index, count: config.admins.len() });
                 }
                 config.admins.remove(index);
+                Ok(())
+            })
+            .await
+        }
+    }
+}
+
+/// `diverge daemon identity get|set`, by these rules:
+///
+/// - A `get` prints the identity as one JSON line,
+///   `{"issuer":"…","subject":"…"}`, or `null` where the document has
+///   none. It is answered whether the daemon is running or not.
+/// - A `set` takes both the issuer and the subject and writes the
+///   identity whole, replacing the one there. The document's
+///   `identity` may be absent, and no `set` makes it so: an identity
+///   is taken out by `config` or by hand.
+/// - A `set` is a [`set`]: refused while the daemon runs on the root,
+///   and printing nothing. Whether the identity is signed in on the
+///   root is not asked here; the daemon finds that at its start.
+pub async fn identity(root: &Path, action: Identity) -> Result<(), Error> {
+    match action {
+        Identity::Get => {
+            let config = read(root).await?;
+            let mut text = serde_json::to_vec(&config.identity).map_err(document::Error::Json)?;
+            text.push(b'\n');
+            let mut stdout = tokio::io::stdout();
+            stdout.write_all(&text).await.map_err(Error::Stdout)?;
+            stdout.flush().await.map_err(Error::Stdout)
+        }
+        Identity::Set { issuer, subject } => {
+            set(root, |config| {
+                config.identity = Some(shared::Identity { issuer, subject });
                 Ok(())
             })
             .await

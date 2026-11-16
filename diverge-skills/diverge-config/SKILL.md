@@ -137,7 +137,7 @@ diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://12
 - The running program is not told. See "What needs a restart".
 - Editing the YAML file by hand is equally valid, and is the only way to keep comments.
 
-### One daemon setting by itself: `diverge daemon port`, `idle_seconds`, `admins`
+### One daemon setting by itself: `diverge daemon port`, `idle_seconds`, `admins`, `identity`
 
 ```bash
 diverge daemon port get                 # 14980 — the value the daemon runs with, the default where the file has none
@@ -147,10 +147,12 @@ diverge daemon idle_seconds set 300
 diverge daemon admins get               # {"index":0,"issuer":"https://identity.diverge.network","subject":"github.12345.admin"}   one line per administrator
 diverge daemon admins add --issuer https://identity.diverge.network --subject github.12345.other
 diverge daemon admins delete 0          # by the index `admins get` prints; those after it move down one
+diverge daemon identity get             # {"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"}, or null
+diverge daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
 ```
 
 - `get` works whether the daemon is running or not.
-- **`set`, `admins add` and `admins delete` are refused while the daemon is running** on the root, and nothing is written:
+- **Every `set`, `admins add` and `admins delete` is refused while the daemon is running** on the root, and nothing is written:
   `Error: the daemon is running on this root, as process <pid>, and nothing was written: stop it first, with`
   `` `diverge daemon stop` ``. Stop the daemon, set, then start it.
 - `admins add` refuses an identity that is an administrator already; `admins delete` refuses an index the list
@@ -158,7 +160,9 @@ diverge daemon admins delete 0          # by the index `admins get` prints; thos
 - Each one that writes rewrites the file as `config set` does: comments are lost, and nothing is printed.
 - `config set` and `config patch` are not refused while the daemon runs; they write, and the daemon reads the
   document at its next start.
-- Only the daemon has these, and only for `port`, `idle_seconds` and `admins`.
+- `identity set` takes both flags and replaces the identity whole. It cannot remove the identity; use
+  `config set 'del(.identity)'` for that. It does not check that the identity is signed in.
+- Only the daemon has these, and only for `port`, `idle_seconds`, `admins` and `identity`.
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 

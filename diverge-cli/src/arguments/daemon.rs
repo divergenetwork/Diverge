@@ -6,8 +6,8 @@ use super::{Action, Lifecycle};
 
 /// The daemon on this host: started, stopped, its document in the
 /// root worked on whole, or one setting of that document — its
-/// port, its idle seconds, its administrators — read or written by
-/// itself.
+/// port, its idle seconds, its administrators, its identity — read
+/// or written by itself.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Daemon {
     /// Start or stop the daemon: see [`lifecycle`](crate::lifecycle).
@@ -29,6 +29,30 @@ pub enum Daemon {
     /// `admins` in `daemon.yaml`.
     #[command(subcommand)]
     Admins(Admins),
+    /// Read or write who the daemon is, `identity` in `daemon.yaml`.
+    #[command(subcommand)]
+    Identity(Identity),
+}
+
+/// What is done to the daemon's `identity`: see
+/// [`setting`](crate::cli::setting).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Identity {
+    /// Print the identity, on one line: `{"issuer":"…","subject":"…"}`,
+    /// or `null` where the document has none.
+    Get,
+    /// Write the identity, whole: both its issuer and its subject.
+    /// Refused while the daemon is running on the root: stop the
+    /// daemon first. There is no setting it to none.
+    Set {
+        /// The identity's issuer, exactly as its discovery document
+        /// names it.
+        #[arg(long)]
+        issuer: String,
+        /// The identity's subject: the `sub` of its tokens.
+        #[arg(long)]
+        subject: String,
+    },
 }
 
 /// What is done to the daemon's `admins`: see
