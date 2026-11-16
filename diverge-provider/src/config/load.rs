@@ -26,24 +26,27 @@ pub async fn load(root: &Path) -> Result<Config, Error> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Config::default(),
         Err(source) => return Err(Error::Io { path: file, source }),
     };
-    resolve(root, &mut config.podman.storage_path);
+    config.podman.storage_path = resolve(root, &config.podman.storage_path);
     if let Some(volumes) = &mut config.volumes {
         for store in volumes.stores.iter_mut().flatten() {
-            resolve(root, &mut store.path);
+            store.path = resolve(root, &store.path);
         }
         for fixed in volumes.fixed.iter_mut().flatten() {
-            resolve(root, &mut fixed.path);
+            fixed.path = resolve(root, &fixed.path);
         }
     }
     if let Some(images) = &mut config.images {
-        resolve(root, &mut images.path);
+        images.path = resolve(root, &images.path);
     }
     Ok(config)
 }
 
-/// A relative path joined onto the root; an absolute one as written.
-fn resolve(root: &Path, path: &mut PathBuf) {
-    if !path.is_absolute() {
-        *path = root.join(&*path);
-    }
+/// A path of the document as the provider takes it: a relative one
+/// joined onto `root`, the directory that holds `provider.yaml`; an
+/// absolute one as written. What [`load`] does to every path, and
+/// what anything that reads a path out of the document unloaded —
+/// the CLI, before it moves podman's data — does to it, so that both
+/// mean the same directory.
+pub fn resolve(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() { path.to_path_buf() } else { root.join(path) }
 }

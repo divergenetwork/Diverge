@@ -109,3 +109,9 @@ reqwest = { version = "0.12.28", default-features = false, features = ["rustls-t
 # be marked with `FSCTL_SET_SPARSE` first — `Ioctl` for the code,
 # `IO` for `DeviceIoControl`, `Foundation` for the handle.
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Ioctl"] }
+# Where WSL keeps a distribution's disk is in the registry, and a
+# transfer of podman's data reads it there to find the machines whose
+# disks are under the storage path: see `host::relocate::wsl`. The
+# latest that builds with the Rust this workspace is built with; the
+# one after it, 0.100.0, asks for 1.95.
+windows-registry = "0.6.1"

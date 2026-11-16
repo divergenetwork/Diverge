@@ -53,6 +53,7 @@ pub mod hook;
 pub mod image_manager;
 pub mod image_registry;
 pub mod registry_client;
+pub mod relocate;
 pub mod serve;
 pub mod tools;
 pub mod volume_manager;

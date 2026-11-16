@@ -49,7 +49,10 @@
 //! which empties its image cache and drops any image loaded into it
 //! by hand. A changed storage path is a fresh machine under the new
 //! one, and the machine under the old path is left as it was, for
-//! the operator to stop or remove when they choose.
+//! the operator to stop or remove when they choose — where the path
+//! was changed in the file by hand; the CLI's `storage_path set`
+//! carries the machine to the new path instead: see
+//! [`relocate`](crate::host::relocate).
 //!
 //! # The images
 //!

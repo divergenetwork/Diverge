@@ -43,7 +43,11 @@ pub struct Podman {
     /// under this path, a changed path is a fresh machine under the
     /// new one, and the machine under the old path is left as it
     /// was, for the operator to stop or remove when they choose; the
-    /// data lies inside the machine's disk. A path that is not
+    /// data lies inside the machine's disk. That is a path changed in
+    /// the file by hand. The CLI's
+    /// `provider podman storage_path set` changes it and carries the
+    /// data with it, the machine included: see
+    /// [`relocate`](crate::host::relocate). A path that is not
     /// absolute is resolved relative to the directory that contains
     /// `provider.yaml` itself, never to the working directory; an
     /// absolute path stands as written.
