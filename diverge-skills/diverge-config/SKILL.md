@@ -172,9 +172,9 @@ diverge daemon postgres set remote --url postgres://diverge@db.example.com:5432/
 - The whole document is printed by reading the file: `cat <root>/daemon.yaml` (absent: every setting is at
   its default).
 
-## The provider's settings: `diverge provider port`, `identity`, `incoming`, `outgoing`, `podman registries`, `podman storage_path`
+## The provider's settings: `diverge provider port`, `identity`, `incoming`, `outgoing`, `podman registries`, `podman storage_path`, `podman image_cache_disk`
 
-Six settings of `provider.yaml` have their own commands, by the daemon's rules: plain arguments and flags,
+Seven settings of `provider.yaml` have their own commands, by the daemon's rules: plain arguments and flags,
 `get` always answered, every write refused while the provider is running on the root (`diverge provider stop`
 first), nothing printed by a write, comments lost.
 
@@ -196,6 +196,8 @@ diverge provider podman storage_path get                    # C:\Users\me\.diver
 diverge provider podman storage_path set D:\diverge\podman  # moves podman's data there, then writes the path
 diverge provider podman storage_path set D:\diverge\podman --no-transfer   # writes the path, moves nothing
 diverge provider podman storage_path delete                 # deletes podman's data at the current path; the next start makes it anew
+diverge provider podman image_cache_disk get                # 34359738368   bytes; the default (32 GiB) where the file has none
+diverge provider podman image_cache_disk set 68719476736    # 64 GiB, as a plain number of bytes
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -205,7 +207,10 @@ diverge provider podman storage_path delete                 # deletes podman's d
 - `identity set` cannot remove the identity; delete the member from the file by hand, or use `provider config`.
 - `podman registries add` takes the host as its one argument (no scheme, no path) and refuses one listed
   already. Deleting every registry leaves an empty list, not the default three.
-- Everything else in `provider.yaml` (`podman.image_cache_disk`, `containers`, `volumes`, `images`, `messages`) is still changed
+- `podman image_cache_disk set` takes BYTES as a plain integer (no `GiB` suffix). It caps podman's own image
+  storage, not the provider's Store (`images.capacity`). Lowering it deletes nothing at once: the provider
+  trims the cache down at its next container deploy.
+- Everything else in `provider.yaml` (`containers`, `volumes`, `images`, `messages`) is still changed
   with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
   provider runs**: stop it first.
 

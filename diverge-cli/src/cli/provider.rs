@@ -1,7 +1,8 @@
 //! One setting of the provider's document, read or written by itself:
 //! its port, its identity, whom it accepts, whom it dials, the
-//! registries it pulls from, and where podman keeps its data. Every
-//! one keeps the rules of [`setting`](super::setting).
+//! registries it pulls from, where podman keeps its data, and how
+//! much its image cache may hold. Every one keeps the rules of
+//! [`setting`](super::setting).
 
 use std::path::{Path, PathBuf};
 
@@ -12,7 +13,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Identity, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
+use crate::arguments::{Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -116,6 +117,7 @@ pub async fn podman(root: &Path, action: Podman) -> Result<(), Error> {
     match action {
         Podman::Registries(action) => registries(root, action).await,
         Podman::StoragePath(action) => storage_path(root, action).await,
+        Podman::ImageCacheDisk(action) => image_cache_disk(root, action).await,
     }
 }
 
@@ -153,6 +155,27 @@ async fn registries(root: &Path, action: Registries) -> Result<(), Error> {
         }
         Registries::Delete { index } => {
             provider(root, |config| delete("podman.registries", &mut config.podman.registries, index)).await
+        }
+    }
+}
+
+/// `diverge provider podman image_cache_disk get|set`: the most
+/// podman's image cache may hold, `podman.image_cache_disk`, in
+/// bytes. A `get` prints the number the provider runs with, the
+/// default where the document has none. A `set` writes it as given:
+/// nothing in the cache is removed here, and a cache already over a
+/// smaller number is trimmed by the provider at its next deploy, as
+/// it trims at every one. The number is read by a provider that uses
+/// podman, and written here either way.
+async fn image_cache_disk(root: &Path, action: ImageCacheDisk) -> Result<(), Error> {
+    match action {
+        ImageCacheDisk::Get => number(read::<Config>(root, Which::Provider).await?.podman.image_cache_disk).await,
+        ImageCacheDisk::Set { value } => {
+            provider(root, |config| {
+                config.podman.image_cache_disk = value;
+                Ok(())
+            })
+            .await
         }
     }
 }

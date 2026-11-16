@@ -51,6 +51,27 @@ pub enum Podman {
     /// the new place, `podman.storage_path` in `provider.yaml`.
     #[command(name = "storage_path", subcommand)]
     StoragePath(StoragePath),
+    /// Read or write the most podman's image cache may hold,
+    /// `podman.image_cache_disk` in `provider.yaml`.
+    #[command(name = "image_cache_disk", subcommand)]
+    ImageCacheDisk(ImageCacheDisk),
+}
+
+/// What is done to the provider's `podman.image_cache_disk`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum ImageCacheDisk {
+    /// Print the number of bytes, as the provider reads it: the
+    /// default, 32 GiB, where the document has none.
+    Get,
+    /// Write the number of bytes. Refused while the provider is
+    /// running on the root: stop it first.
+    Set {
+        /// The most the image cache may hold, in BYTES: a plain
+        /// integer, `34359738368` for 32 GiB.
+        #[arg(value_name = "BYTES")]
+        value: u64,
+    },
 }
 
 /// What is done to the provider's `podman.storage_path`: see
