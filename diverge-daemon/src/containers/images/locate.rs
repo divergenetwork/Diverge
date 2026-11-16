@@ -157,6 +157,47 @@ pub async fn asks(daemon: &Arc<Daemon>, image: &Image, reach: &Reach, ignore: &[
     asking
 }
 
+/// The one named provider as the source of `image`, its scope held, or
+/// `None`: a provider that is not connected, that keeps no Store and
+/// lists no registry, or that does not answer held. It is asked as
+/// [`locate`] asks a provider, and no other source is.
+pub async fn on_provider(daemon: &Arc<Daemon>, image: &Image, identity: &Identity) -> Option<Source> {
+    let supplies = daemon
+        .live
+        .capabilities(identity)
+        .await
+        .is_some_and(|info| info.capabilities.images.store.is_some() || !info.capabilities.images.registries.is_empty());
+    if !supplies {
+        return None;
+    }
+    let handle = daemon.live.provider(identity).await?;
+    let frame = request::Frame(oci::has::request::Request { image: image.clone() });
+    let scope = execute::execute(&handle, &frame).await.ok()?;
+    Some(Source {
+        holder: Holder::Provider(identity.clone()),
+        scope,
+    })
+}
+
+/// The one remote daemon `record` reaches, or the daemon the route
+/// `rest` leads to from it, as the source of `image`, its scope held,
+/// or `None`. The read is opened on the record's remote as [`locate`]
+/// opens one — this daemon's identity as what it is not to ask — with
+/// `rest` as that request's own `relay`: none where `rest` is empty.
+pub async fn on_daemon(daemon: &Arc<Daemon>, image: &Image, record: &Record, rest: Vec<DaemonId>) -> Option<Source> {
+    let peer = daemons::connect(daemon, record).await.ok()?;
+    let frame = daemon_request::Frame {
+        image: image.clone(),
+        ignore: daemon.authenticator.own().cloned().into_iter().collect(),
+        relay: (!rest.is_empty()).then(|| diverge_sdk::shared::relay::Relay(rest)),
+    };
+    let scope = daemon_execute::execute(&peer.connected.handle, &frame).await.ok()?;
+    Some(Source {
+        holder: Holder::Daemon(record.id),
+        scope,
+    })
+}
+
 /// Rule 3 of [`locate`], for the asks left once an answer is had: they
 /// go on in a task of their own, and each that answers held is
 /// cancelled as it answers, so no scope is left held with nobody to
