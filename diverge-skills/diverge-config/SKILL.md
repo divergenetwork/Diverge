@@ -198,6 +198,13 @@ diverge provider podman storage_path set D:\diverge\podman --no-transfer   # wri
 diverge provider podman storage_path delete                 # deletes podman's data at the current path; the next start makes it anew
 diverge provider podman image_cache_disk get                # 34359738368   bytes; the default (32 GiB) where the file has none
 diverge provider podman image_cache_disk set 68719476736    # 64 GiB, as a plain number of bytes
+diverge provider containers enabled                         # true or false: does this provider run containers
+diverge provider containers enable                          # adds the `containers` section with its defaults
+diverge provider containers disable                         # removes the section, and its settings with it
+diverge provider containers container_overlay_disk get      # 34359738368, or null while containers are disabled
+diverge provider containers container_overlay_disk set 68719476736
+diverge provider containers memory get                      # 8589934592, or null while containers are disabled
+diverge provider containers memory set 17179869184
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -210,7 +217,14 @@ diverge provider podman image_cache_disk set 68719476736    # 64 GiB, as a plain
 - `podman image_cache_disk set` takes BYTES as a plain integer (no `GiB` suffix). It caps podman's own image
   storage, not the provider's Store (`images.capacity`). Lowering it deletes nothing at once: the provider
   trims the cache down at its next container deploy.
-- Everything else in `provider.yaml` (`containers`, `volumes`, `images`, `messages`) is still changed
+- **`containers`** is on when its section is in the file and off when it is not (a fresh provider has it
+  off). `enable` on an already enabled provider changes nothing and keeps its settings. `disable` forgets
+  `container_overlay_disk` and `memory`; a later `enable` starts from the defaults (32 GiB, 8 GiB).
+- A `get` of either containers setting prints `null` while containers are disabled. A `set` is refused then:
+  ``Error: `containers` is disabled, and nothing was written: enable it first, with `diverge provider containers enable` ``.
+- Enabling containers makes the provider need podman and the container proxy binary at its next start.
+  `memory` also sizes the podman machine on macOS; elsewhere it only caps what containers may reserve.
+- Everything else in `provider.yaml` (`volumes`, `images`, `messages`) is still changed
   with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
   provider runs**: stop it first.
 

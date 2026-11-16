@@ -1,19 +1,20 @@
 //! One setting of the provider's document, read or written by itself:
 //! its port, its identity, whom it accepts, whom it dials, the
-//! registries it pulls from, where podman keeps its data, and how
-//! much its image cache may hold. Every one keeps the rules of
-//! [`setting`](super::setting).
+//! registries it pulls from, where podman keeps its data, how much
+//! its image cache may hold, and whether it runs containers. Every
+//! one keeps the rules of [`setting`](super::setting).
 
 use std::path::{Path, PathBuf};
 
 use diverge_provider::config::Config;
+use diverge_provider::config::containers;
 use diverge_provider::config::outgoing;
 use diverge_provider::host::relocate;
 use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
+use crate::arguments::{Bytes, Containers, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -108,6 +109,76 @@ pub async fn outgoing(root: &Path, action: Outgoing) -> Result<(), Error> {
             .await
         }
         Outgoing::Delete { index } => provider(root, |config| delete("outgoing", &mut config.outgoing, index)).await,
+    }
+}
+
+/// `diverge provider containers …`: whether the provider runs
+/// containers, and the settings of that. The `containers` section of
+/// the document is the provider running containers, and the section
+/// absent is it running none; so, by these rules:
+///
+/// - `enabled` prints `true` where the section is there and `false`
+///   where it is not. It is answered whether the provider is running
+///   or not.
+/// - `enable` makes the section, with its defaults, where it is
+///   absent. Where it is there, nothing is changed and nothing is
+///   written: its settings are kept, never put back to their
+///   defaults.
+/// - `disable` removes the section. Its settings go with it, since
+///   they are the section's and the document has nowhere else to
+///   keep them: an `enable` after is the defaults again.
+/// - A setting's `get` prints the number, or `null` where the section
+///   is absent: the default is not printed, since nothing is in
+///   effect.
+/// - A setting's `set` is refused where the section is absent,
+///   [`Error::Disabled`]: it never enables containers by the way,
+///   since a provider that runs containers needs podman and the
+///   container proxy at its next start.
+/// - `enable`, `disable` and a `set` each hold the provider's lock
+///   and are refused while it runs, as every write is.
+pub async fn containers(root: &Path, action: Containers) -> Result<(), Error> {
+    match action {
+        Containers::Enabled => line(&read::<Config>(root, Which::Provider).await?.containers.is_some()).await,
+        Containers::Enable => {
+            provider(root, |config| {
+                config.containers.get_or_insert_with(containers::Containers::default);
+                Ok(())
+            })
+            .await
+        }
+        Containers::Disable => {
+            provider(root, |config| {
+                config.containers = None;
+                Ok(())
+            })
+            .await
+        }
+        Containers::ContainerOverlayDisk(action) => {
+            bytes(root, action, |section| &mut section.container_overlay_disk).await
+        }
+        Containers::Memory(action) => bytes(root, action, |section| &mut section.memory).await,
+    }
+}
+
+/// One setting of the `containers` section that is a number of
+/// bytes, read or written: `of` is the setting in the section. See
+/// [`containers`] for the rules.
+async fn bytes(root: &Path, action: Bytes, of: impl FnOnce(&mut containers::Containers) -> &mut u64) -> Result<(), Error> {
+    match action {
+        Bytes::Get => {
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            line(&config.containers.as_mut().map(|section| *of(section))).await
+        }
+        Bytes::Set { value } => {
+            provider(root, |config| match &mut config.containers {
+                Some(section) => {
+                    *of(section) = value;
+                    Ok(())
+                }
+                None => Err(Error::Disabled { section: "containers", program: Program::Provider }),
+            })
+            .await
+        }
     }
 }
 

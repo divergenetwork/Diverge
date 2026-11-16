@@ -54,6 +54,14 @@ pub enum Error {
         /// What its holder wrote in the lock file.
         holder: Option<String>,
     },
+    /// A setting was not written, because the section it is in is
+    /// absent from the document: the feature is off.
+    Disabled {
+        /// The section, as the document names it: `containers`.
+        section: &'static str,
+        /// The program whose document it is, as the CLI names it.
+        program: Program,
+    },
     /// Podman's data could not be moved to the new storage path.
     /// Nothing was moved, and nothing was written.
     Relocate(relocate::Error),
@@ -110,6 +118,11 @@ impl fmt::Display for Error {
                 }
                 write!(f, ", and nothing was written: stop it first, with `diverge {word} stop`")
             }
+            Error::Disabled { section, program } => write!(
+                f,
+                "`{section}` is disabled, and nothing was written: enable it first, with `diverge {} {section} enable`",
+                program.word()
+            ),
             Error::Relocate(error) => write!(f, "podman's data was not moved, and the path was not written: {error}"),
             Error::Leftover(error) => write!(
                 f,
@@ -153,7 +166,7 @@ impl std::error::Error for Error {
             Error::Ours(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
-            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } => None,
         }
     }
 }

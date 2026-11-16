@@ -6,8 +6,8 @@ use super::{Action, Identity, Lifecycle, Port};
 
 /// The provider on this host: started, stopped, its document in the
 /// root worked on whole, or one setting of that document — its port,
-/// its identity, whom it accepts, whom it dials, the registries it
-/// pulls from — read or written by itself.
+/// its identity, whom it accepts, whom it dials, podman's settings,
+/// whether it runs containers — read or written by itself.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Server {
     /// Start or stop the server: see [`lifecycle`](crate::lifecycle).
@@ -37,6 +37,55 @@ pub enum Server {
     /// `podman` in `provider.yaml`.
     #[command(subcommand)]
     Podman(Podman),
+    /// Turn the running of containers on or off, or read or write one
+    /// setting of it, `containers` in `provider.yaml`.
+    #[command(subcommand)]
+    Containers(Containers),
+}
+
+/// What is done to the provider's `containers` section: see
+/// [`provider`](crate::cli::provider). The section there is the
+/// provider running containers, and the section absent is it running
+/// none.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum Containers {
+    /// Print whether the provider runs containers: `true` or `false`.
+    Enabled,
+    /// Have the provider run containers: the section made, with its
+    /// defaults. Nothing changes where it is there already. Refused
+    /// while the provider is running on the root: stop it first.
+    Enable,
+    /// Have the provider run no containers: the section removed, and
+    /// its settings with it. Refused while the provider is running on
+    /// the root: stop it first.
+    Disable,
+    /// Read or write the most every running container's disk may
+    /// take together, `containers.container_overlay_disk`.
+    #[command(name = "container_overlay_disk", subcommand)]
+    ContainerOverlayDisk(Bytes),
+    /// Read or write the most every running container's memory may
+    /// take together, `containers.memory`; on macOS, also the memory
+    /// the podman machine is given.
+    #[command(subcommand)]
+    Memory(Bytes),
+}
+
+/// What is done to a setting that is a number of bytes, in a section
+/// that may be absent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum Bytes {
+    /// Print the number of bytes, or `null` where the section is
+    /// absent: the feature is off, and no number is in effect.
+    Get,
+    /// Write the number of bytes. Refused where the section is absent
+    /// — enable it first — and while the provider is running on the
+    /// root.
+    Set {
+        /// The number of BYTES: a plain integer, `34359738368` for
+        /// 32 GiB.
+        #[arg(value_name = "BYTES")]
+        value: u64,
+    },
 }
 
 /// The settings of the provider's `podman` section, each a command

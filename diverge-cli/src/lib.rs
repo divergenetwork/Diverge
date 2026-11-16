@@ -41,7 +41,9 @@
 //! `provider podman registries get|add|delete` — by the same rules,
 //! and `provider podman storage_path get|set|delete`, which moves
 //! podman's data before it writes where it is, or deletes it, and
-//! `provider podman image_cache_disk get|set`; see
+//! `provider podman image_cache_disk get|set`, and
+//! `provider containers enabled|enable|disable` with its two
+//! settings; see
 //! [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
