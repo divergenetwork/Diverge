@@ -71,6 +71,16 @@ pub async fn ensure(conn: &mut PgConnection, role: &str, password: &str) -> Resu
 /// another database of the cluster cannot be dropped and is left,
 /// owning nothing here and holding no password anyone knows; the
 /// schema is gone either way.
+///
+/// This runs inside the caller's transaction, beside the delete of
+/// the record the scope is of, so that the two are kept or undone
+/// together. A statement that fails inside a transaction aborts the
+/// whole of it: every statement after it is refused, and a `COMMIT`
+/// then rolls back and answers as though it had not. So the role's
+/// drop, the one statement here that may fail and be let go, is made
+/// in a block that catches its failure: the block is a subtransaction
+/// of its own, its failure undoes the drop alone, and the caller's
+/// transaction goes on to its commit.
 pub async fn drop(conn: &mut PgConnection, role: &str) -> Result<(), store::Error> {
     sqlx::query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = $1 AND pid <> pg_backend_pid()")
         .bind(role)
@@ -79,6 +89,8 @@ pub async fn drop(conn: &mut PgConnection, role: &str) -> Result<(), store::Erro
     sqlx::query(&format!("DROP SCHEMA IF EXISTS {role} CASCADE"))
         .execute(&mut *conn)
         .await?;
-    let _ = sqlx::query(&format!("DROP ROLE IF EXISTS {role}")).execute(&mut *conn).await;
+    sqlx::query(&format!("DO $$ BEGIN DROP ROLE IF EXISTS {role}; EXCEPTION WHEN OTHERS THEN NULL; END $$"))
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }
