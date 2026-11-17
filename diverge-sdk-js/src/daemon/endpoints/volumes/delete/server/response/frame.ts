@@ -6,7 +6,8 @@ import { Error } from "../../../../../../shared/error.js";
 
 /**
  * A delete's answer: the volume is gone, no volume is the one named,
- * the volume is in use, forbidden, or a failure.
+ * the volume is in use, forbidden, the volume is one the provider
+ * provides as it is, or a failure.
  */
 export const Frame = z.union([
   /** The volume is gone, and a list does not show it. Tag `0`. */
@@ -17,6 +18,8 @@ export const Frame = z.union([
   z.literal("in_use"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `3`. */
   z.literal("forbidden"),
+  /** The provider provides the volume as it is — a list shows it `provided` — so it is not the client's to delete; nothing changed, and asking again changes nothing. Tag `5`, the last given out. */
+  z.literal("provided"),
   /** A failure. See `shared.error.Error` for why it says so little. Tag `4`. */
   z.strictObject({ error: Error }),
 ]);
@@ -27,6 +30,7 @@ const NOT_FOUND = 1;
 const IN_USE = 2;
 const FORBIDDEN = 3;
 const ERROR = 4;
+const PROVIDED = 5;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -45,6 +49,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "in_use";
     case FORBIDDEN:
       return "forbidden";
+    case PROVIDED:
+      return "provided";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
     default:

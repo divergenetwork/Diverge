@@ -28,6 +28,14 @@ export const Volume = z.object({
   mode: Mode,
   /** When it came into being, as the provider says: an RFC 3339 timestamp in UTC. */
   created: z.iso.datetime({ offset: true }),
+  /**
+   * Whether the provider provides the volume as it is, as its listing
+   * says: `true`, and its size and its mode cannot be edited and it
+   * cannot be deleted — an edit or a delete of it is answered
+   * `provided`. Its tags are the daemon's, and are put on and taken
+   * off as any volume's. Absent when `false`.
+   */
+  provided: z.boolean().optional(),
   /** The agents that name it in their mounts, running or not. Absent when empty. */
   agents: z.array(Agent).optional(),
   /** The tools that name it in their mounts. Absent when empty. */

@@ -7,7 +7,8 @@ import { Error } from "../../../../../../shared/error.js";
 /**
  * An edit's answer: the volume is as the request states, no volume is
  * the one named, the provider has no room, the volume holds more than
- * that, the volume is held, forbidden, or a failure.
+ * that, the volume is held, forbidden, the volume is one the provider
+ * provides as it is, or a failure.
  */
 export const Frame = z.union([
   /** The volume is as the request states. Tag `0`. */
@@ -22,6 +23,8 @@ export const Frame = z.union([
   z.literal("held"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `5`. */
   z.literal("forbidden"),
+  /** The provider provides the volume as it is — a list shows it `provided` — so it is not the client's to edit; nothing changed, and asking again changes nothing. Tag `7`, the last given out. */
+  z.literal("provided"),
   /** A failure. See `shared.error.Error` for why it says so little. Tag `6`. */
   z.strictObject({ error: Error }),
 ]);
@@ -34,6 +37,7 @@ const CONTENT_TOO_LARGE = 3;
 const HELD = 4;
 const FORBIDDEN = 5;
 const ERROR = 6;
+const PROVIDED = 7;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -56,6 +60,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "held";
     case FORBIDDEN:
       return "forbidden";
+    case PROVIDED:
+      return "provided";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
     default:

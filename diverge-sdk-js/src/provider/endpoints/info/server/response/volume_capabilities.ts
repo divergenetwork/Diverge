@@ -3,15 +3,21 @@
 import { z } from "zod";
 
 /**
- * What a provider does with a volume of one mode: whether a run may
- * mount it, whether a FUSE serve may hold it, and how many of each,
- * and both, at once. Each member a boolean, absent being `false`;
+ * What a provider does with a volume of one mode: whether one may be
+ * created, whether a run may mount it, whether a FUSE serve may hold
+ * it, and how many of each, and both, at once. `create` stands apart
+ * from the rest: they say what may be done with a volume that is
+ * there, and it says whether one may be made — a provider may keep
+ * volumes of a mode and make none, every one it has there being one
+ * it provides. Each member a boolean, absent being `false`;
  * every member `false` — the object absent — is a mode the provider
  * keeps no volume in. The later ones extend the earlier: `mount_many`
  * means nothing without `mount`, `fuse_serve_many` nothing without
  * `fuse_serve`, `mount_and_fuse_serve` nothing without both.
  */
 export const VolumeCapabilities = z.object({
+  /** A volume of the mode may be created. Absent — `false` — a create stating the mode is refused, and nothing exists. */
+  create: z.boolean().optional(),
   /** A run may mount a volume of the mode. */
   mount: z.boolean().optional(),
   /** A FUSE serve may hold a volume of the mode. */
@@ -28,7 +34,8 @@ export type VolumeCapabilities = z.infer<typeof VolumeCapabilities>;
 /** Whether the provider keeps volumes of the mode at all: any member `true`. */
 export function kept(capabilities: VolumeCapabilities): boolean {
   return Boolean(
-    capabilities.mount ||
+    capabilities.create ||
+      capabilities.mount ||
       capabilities.fuse_serve ||
       capabilities.mount_many ||
       capabilities.fuse_serve_many ||
