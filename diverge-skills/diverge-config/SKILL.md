@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to read or change `provider.yaml`, `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to read or change `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -72,22 +72,23 @@ Rules common to all four:
 
 ## Reading and changing a document: `config get | set | patch`
 
-The same three subcommands exist beneath three programs: `diverge provider config`, `diverge viewer config`,
-`diverge cli config`. They work on the file in the root and never contact a running program.
+The same three subcommands exist beneath two programs: `diverge viewer config` and `diverge cli config`. They
+work on the file in the root and never contact a running program.
 
-**The daemon has no `config` command.** `daemon.yaml` is read and changed one setting at a time: see
-"The daemon's settings" below.
+**The daemon and the provider have no `config` command.** `daemon.yaml` and `provider.yaml` are read and
+changed one setting at a time, with plain arguments and no JSON: see "The daemon's settings" and "The
+provider's settings" below.
 
 ### get — read, through jq
 
 ```bash
-diverge provider config get                  # the whole document, one compact JSON line
-diverge provider config get .port            # 14979
+diverge cli config get                       # the whole document, one compact JSON line
+diverge cli config get .default              # "local"
 diverge cli config get '.daemons | keys[]'   # one line per value the filter yields
-diverge provider config get '.incoming[]?'
+diverge viewer config get '.daemon.address'
 ```
 
-The document is shown as JSON. Empty optional members are left out (`incoming`, `volumes`, …), so a filter over one may see `null`.
+The document is shown as JSON. Empty optional members are left out, so a filter over one may see `null`.
 
 ### set — rewrite the whole document with a jq program
 
@@ -95,32 +96,29 @@ The program runs with the document as input and must yield **exactly one value**
 document.
 
 ```bash
-diverge provider config set '.port = 15001'
-diverge provider config set '.incoming = (.incoming // []) + [{issuer:"https://identity.diverge.network", subject:"github.12345.daemon-b"}]'
+diverge cli config set '.default = "b"'
 diverge viewer config set '.daemon = {address:"ws://127.0.0.1:14980/", issuer:"https://identity.diverge.network", subject:"github.12345.admin"}'
 ```
 
-Pitfall: a member left out of the document is `null` to the program. Default a list before adding to it
-(`(.incoming // [])`, as above), and set an identity whole: it is one `{issuer, subject}` object, and one
+Pitfall: a member left out of the document is `null` to the program. Default a list or an object before
+adding to it (`(.daemons // {})`), and set an identity whole: it is one `{issuer, subject}` object, and one
 member of it alone is not a valid document.
 
 ### patch — change places with a JSON Patch (RFC 6902)
 
 The argument is a list of operations written as YAML (JSON is YAML). Operations: `add`, `remove`, `replace`,
-`move`, `copy`, `test`. Paths are JSON Pointers: `/port`, `/incoming/0`, `/incoming/-` (append; `add` only); inside
+`move`, `copy`, `test`. Paths are JSON Pointers: `/default`, `/daemons/b/accounts/admin`; a list's `/-` appends (`add` only); inside
 a key, `/` is written `~1` and `~` is `~0`. Operations apply in order, **all or none**.
 
 ```bash
-diverge provider config patch '[{op: add, path: /incoming/-, value: {issuer: "https://identity.diverge.network", subject: github.12345.daemon-b}}]'
-diverge provider config patch '[{op: add, path: /messages, value: {messages: 60, seconds: 60}}]'
-diverge provider config patch '[{op: test, path: /port, value: 14979}, {op: remove, path: /incoming/0}]'
+diverge cli config patch '[{op: test, path: /default, value: local}, {op: replace, path: /default, value: b}]'
 diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://127.0.0.1:14982/", default: admin, accounts: {admin: {issuer: "https://identity.diverge.network", subject: github.12345.admin}}}}]'
 ```
 
 - `add` to an object makes or replaces the member; `add` to a list inserts at the index. `replace` and `remove`
   need the place to exist already.
-- The parent must exist: `/incoming/-` fails with `nothing is at …` when the document has no `incoming` yet.
-  Add the whole member instead: `[{op: add, path: /incoming, value: [{…}]}]`.
+- The parent must exist: a path beneath a member the document does not have fails with `nothing is at …`.
+  Add the whole member instead.
 - Use `test` first when a patch depends on a list index, so a document that changed underneath fails the patch
   rather than removing the wrong element.
 
@@ -227,13 +225,20 @@ diverge provider images path delete                         # DELETES the Store'
 diverge provider images capacity get                        # 107374182400, or null while disabled
 diverge provider images capacity set 214748364800           # refused if below `used`
 diverge provider images capacity_used                       # {"capacity":…,"used":…,"cached":…,"free":…}, or null while disabled
+diverge provider messages enabled                           # true or false: does this provider relay direct messages
+diverge provider messages enable                            # adds the `messages` section: 30 messages per 60 seconds
+diverge provider messages disable                           # removes the section
+diverge provider messages messages get                      # 30, or null while disabled: sends per identity per window
+diverge provider messages messages set 120
+diverge provider messages seconds get                       # 60, or null while disabled: the window, in seconds
+diverge provider messages seconds set 30
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
   `delete` takes the index `get` prints and refuses one the list does not reach.
 - `outgoing add` takes all three flags. It refuses only the same identity at the same address; the same
   identity at another address is another peer.
-- `identity set` cannot remove the identity; delete the member from the file by hand, or use `provider config`.
+- `identity set` cannot remove the identity; delete the member from the file by hand.
 - `podman registries add` takes the host as its one argument (no scheme, no path) and refuses one listed
   already. Deleting every registry leaves an empty list, not the default three.
 - `podman image_cache_disk set` takes BYTES as a plain integer (no `GiB` suffix). It caps podman's own image
@@ -298,9 +303,14 @@ diverge provider images capacity_used                       # {"capacity":…,"u
     then.
   - Enabling `images` makes the provider need podman at its next start (it builds with it). On macOS a Store
     moved outside the folders the machine sees makes the provider remake its machine at the next start.
-- Everything else in `provider.yaml` (`messages`) is still changed
-  with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
-  provider runs**: stop it first.
+- **`messages`** is the provider relaying direct messages between the daemons connected to it. It is on when
+  its section is in the file. `messages enable` adds it with the default rate, **30 messages per sending
+  identity in every 60 seconds**; `messages disable` removes it. `messages messages` is the count and
+  `messages seconds` the window; each is `1` or more (a `0` is refused), prints `null` on `get` while messages
+  are disabled, and is refused on `set` then.
+- These commands are the only way the CLI changes `provider.yaml`; there is no `diverge provider config`.
+  To see the whole file, read it: `cat <root>/provider.yaml` (absent: every setting is at its default).
+  Editing the file by hand is equally valid, with the provider stopped.
 
 ### Moving podman's data: `storage_path set`
 
@@ -617,9 +627,8 @@ provider restarts. In the daemon's root nothing changes; the provider record is 
 
 **Keep containers up longer.** `diverge daemon stop`, `diverge daemon idle_seconds set 300`, `diverge daemon start`.
 
-**Give the provider volumes.**
-`diverge provider config patch '[{op: add, path: /volumes, value: {stores: [{path: provider/volumes, capacity: 107374182400}]}}]'`,
-then restart the provider. (Volumes themselves: skill `diverge-storage`.)
+**Give the provider volumes.** With the provider stopped: `diverge provider volumes enable`, then
+`diverge provider volumes stores add --path provider/volumes --capacity 107374182400`, then start it. (Volumes themselves: skill `diverge-storage`.)
 
 ## When something refuses
 

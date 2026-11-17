@@ -120,11 +120,13 @@ diverge run images build '{
 ### Getting source in front of a build
 
 A build reads its context from a volume. For source on the provider's own host, list the folder as a
-fixed, read-only volume in `provider.yaml` and restart the provider:
+fixed, read-only volume in `provider.yaml`, with the provider stopped, and start it again:
 
 ```bash
-diverge provider config patch '[{"op":"add","path":"/volumes/fixed/-","value":
-  {"name":"my-source","path":"C:/path/to/source","bytes":34359738368,"mode":"read_only"}}]'
+diverge provider stop
+diverge provider volumes enable          # only if `diverge provider volumes enabled` prints false
+diverge provider volumes fixed add --name my-source --path C:/path/to/source --bytes 34359738368 --mode read_only
+diverge provider start
 ```
 
 The provider needs a Store to build into, and one that builds. In `diverge run providers list`, a
@@ -133,8 +135,9 @@ connected provider's `capabilities.images.store` is an object when it keeps a St
 with a Store and `build` absent or `false` takes pushes and refuses builds. If there is no `store`:
 
 ```bash
-diverge provider config patch '[{"op":"add","path":"/images","value":
-  {"path":"C:/Users/me/.diverge/provider/images-store","capacity":34359738368}}]'
+diverge provider stop
+diverge provider images enable           # a Store under <root>/provider/images, 32 GiB
+diverge provider start
 ```
 
 Otherwise create a volume and upload the source to it (`diverge-files`).

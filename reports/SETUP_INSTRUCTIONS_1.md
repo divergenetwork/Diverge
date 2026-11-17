@@ -227,7 +227,7 @@ section are left out, so their defaults apply:
 Optional sections:
 
 - `volumes: {stores: [{path, capacity}], fixed: [...]}` gives the provider volumes.
-- `messages: {messages: <n>, seconds: <n>}` enables daemon-to-daemon direct messages
+- `messages: {}` (30 messages per 60 seconds; or `{messages: <n>, seconds: <n>}`) enables daemon-to-daemon direct messages
   (`providers daemons listen|message`). Relay and connected tools do not need it.
 
 ```bash
@@ -303,10 +303,10 @@ EOF
 
 `viewer.yaml` also accepts `daemon.redial`: either `never` or a number of seconds (default 5).
 
-Check: each of these prints its document back as JSON, or for a daemon its port, which means each document parses.
+Check: each of these prints its document back as JSON, or for a daemon or a provider its port, which means each document parses.
 
 ```bash
-diverge provider config get
+diverge provider port get
 diverge daemon port get
 diverge --config "$B" daemon port get
 diverge cli config get
