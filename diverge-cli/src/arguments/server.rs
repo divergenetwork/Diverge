@@ -61,20 +61,12 @@ pub enum Server {
 pub enum Images {
     /// Print whether the provider keeps a Store: `true` or `false`.
     Enabled,
-    /// Have the provider keep a Store: the section made, with the
-    /// path and the capacity given, neither of which has a default.
-    /// Refused where the section is there already — change it with
-    /// `path set` and `capacity set` — and while the provider is
-    /// running on the root.
-    Enable {
-        /// The folder the Store is kept in: absolute, or relative to
-        /// the root. Made by the provider at its start.
-        #[arg(long)]
-        path: std::path::PathBuf,
-        /// The most the Store may hold, in BYTES.
-        #[arg(long)]
-        capacity: u64,
-    },
+    /// Have the provider keep a Store: the section made, with its
+    /// defaults — the path `provider/images` under the root, and a
+    /// capacity of 32 GiB. Nothing changes where it is there already.
+    /// Refused while the provider is running on the root: stop it
+    /// first.
+    Enable,
     /// Have the provider keep no Store: the section removed, and its
     /// settings with it. The folder and every image in it are left as
     /// they are. Refused while the provider is running on the root.

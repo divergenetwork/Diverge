@@ -449,11 +449,12 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
 /// is. By these rules:
 ///
 /// - `enabled` prints `true` where the section is there.
-/// - `enable` makes the section with the path and the capacity
-///   given: neither has a default, so both are asked for. Where the
-///   section is there already it is refused, [`Error::Enabled`], and
-///   never changes a setting by the way. Nothing on disk is made: the
-///   provider makes the folder at its start.
+/// - `enable` makes the section, with its defaults — the path
+///   `provider/images`, a capacity of 32 GiB — where it is absent.
+///   Where it is there, nothing is changed and nothing is written:
+///   its settings are kept, never put back to their defaults.
+///   Nothing on disk is made: the provider makes the folder at its
+///   start.
 /// - `disable` removes the section. The folder and what is in it are
 ///   left: a later `enable` with the same path finds the Store as it
 ///   was.
@@ -490,13 +491,9 @@ pub async fn images(root: &Path, action: Images) -> Result<(), Error> {
     let given = |path: PathBuf| if path.is_absolute() { absolute(&path) } else { Ok(path) };
     match action {
         Images::Enabled => line(&read::<Config>(root, Which::Provider).await?.images.is_some()).await,
-        Images::Enable { path, capacity } => {
-            let path = given(path)?;
+        Images::Enable => {
             provider(root, |config| {
-                if config.images.is_some() {
-                    return Err(Error::Enabled { section: "images" });
-                }
-                config.images = Some(images_section::Images { path, capacity });
+                config.images.get_or_insert_with(images_section::Images::default);
                 Ok(())
             })
             .await

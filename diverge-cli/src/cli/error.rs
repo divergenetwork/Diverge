@@ -84,11 +84,6 @@ pub enum Error {
         /// What is held, in bytes.
         used: u64,
     },
-    /// A section was not made, because it is there already.
-    Enabled {
-        /// The section, as the document names it: `images`.
-        section: &'static str,
-    },
     /// What a folder holds could not be measured.
     Measure(String),
     /// A path could not be made absolute.
@@ -153,10 +148,6 @@ impl fmt::Display for Error {
                 f,
                 "{holder} {used} bytes, and the capacity cannot be {capacity}, which is less; nothing was written"
             ),
-            Error::Enabled { section } => write!(
-                f,
-                "`{section}` is enabled already, and nothing was written: change its settings one at a time"
-            ),
             Error::Measure(why) => write!(f, "what is kept there could not be measured: {why}"),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
@@ -195,7 +186,7 @@ impl std::error::Error for Error {
             Error::Ours(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
-            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Enabled { .. } | Error::Measure(_) => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Measure(_) => None,
         }
     }
 }

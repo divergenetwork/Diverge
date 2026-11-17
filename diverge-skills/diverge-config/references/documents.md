@@ -147,8 +147,8 @@ the provider holds out no registry, and every image read is refused as unsupport
 
 | Field | Meaning |
 |---|---|
-| `images.path` | The directory the Store lives under, made at start if absent. |
-| `images.capacity` | The most the Store may hold, in bytes, every blob counted once. A push or build that would pass it is refused as insufficient capacity. `0` is refused at start. Nothing owned is evicted. |
+| `images.path` | The directory the Store lives under, made at start if absent. Default `provider/images`. |
+| `images.capacity` | Default `34359738368` (32 GiB). The most the Store may hold, in bytes, every blob counted once. A push or build that would pass it is refused as insufficient capacity. `0` is refused at start. Nothing owned is evicted. |
 
 ### messages
 

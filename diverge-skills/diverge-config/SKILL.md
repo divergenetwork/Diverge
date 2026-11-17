@@ -218,7 +218,7 @@ diverge provider volumes stores edit 0 --capacity 214748364800   # just the numb
 diverge provider volumes stores edit 0 --path D:\divergeolumes # MOVES the store and every volume in it, then writes the path
 diverge provider volumes stores delete 0                    # DELETES the folder and every volume in it, then the entry
 diverge provider images enabled                             # true or false: does this provider keep an image Store
-diverge provider images enable --path provider/images --capacity 107374182400
+diverge provider images enable                              # adds the `images` section with its defaults
 diverge provider images disable                             # removes the section; the folder and its images are left on disk
 diverge provider images path get                            # the resolved, absolute path, or null while disabled
 diverge provider images path set D:\diverge\images          # MOVES the Store there, then writes the path
@@ -280,8 +280,9 @@ diverge provider images capacity_used                       # {"capacity":…,"u
     volumes are cleaned up the next time the daemon connects to the provider.
 - **`images`** is the provider's Store, where clients build and push images. It is on when its section is
   in the file.
-  - `images enable` needs both `--path` and `--capacity`: neither has a default. It is refused if `images` is
-    already enabled; change one setting at a time instead.
+  - `images enable` adds the section with its defaults: path `provider/images` (under the root) and a
+    capacity of 32 GiB (`34359738368`). On an already enabled provider it changes nothing and keeps the
+    settings. Change them afterwards with `images path set` and `images capacity set`.
   - `images disable` only removes the section. The Store's folder and images stay on disk, and enabling again
     with the same path finds them.
   - `images path set` moves the Store exactly as `podman storage_path set` moves podman's data (rename on one
