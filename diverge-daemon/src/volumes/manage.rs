@@ -81,6 +81,7 @@ pub async fn edit(daemon: &Daemon, volume: &reference::Volume, change: Change) -
         Err(edit_execute::ExecuteError::ModeUnsupported) => Err(Fail::Unsupported("the provider keeps no volume of that mode".to_string())),
         Err(edit_execute::ExecuteError::Unsupported) => Err(Fail::Unsupported("the provider keeps no volume".to_string())),
         Err(edit_execute::ExecuteError::Mounted | edit_execute::ExecuteError::FuseServed | edit_execute::ExecuteError::Held) => Err(Fail::Held),
+        Err(edit_execute::ExecuteError::Provided) => Err(Fail::Provided),
         Err(edit_execute::ExecuteError::Provider(error)) => Err(Fail::refusal(&error)),
         Err(error) => Err(Fail::failed(&error)),
     }
@@ -100,6 +101,7 @@ pub async fn delete(daemon: &Daemon, volume: &reference::Volume) -> Result<Dropp
         }
         Err(delete_execute::ExecuteError::Mounted | delete_execute::ExecuteError::FuseServed | delete_execute::ExecuteError::Held) => Ok(Dropped::Mounted),
         Err(delete_execute::ExecuteError::Unsupported) => Err(Fail::Unsupported("the provider keeps no volume".to_string())),
+        Err(delete_execute::ExecuteError::Provided) => Err(Fail::Provided),
         Err(delete_execute::ExecuteError::Provider(error)) => Err(Fail::refusal(&error)),
         Err(error) => Err(Fail::failed(&error)),
     }

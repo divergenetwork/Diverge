@@ -28,7 +28,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// provider that could not be asked; `Forbidden` for a volume the
 /// grants do not reach; the `patch` error for a patch that could not
 /// be applied or a result that is not a volume's size and mode;
-/// `Edited` with nothing changed; `Held` while a running container
+/// `Edited` with nothing changed; `Provided` for a volume the provider
+/// provides as it is, from its listing and without asking the
+/// provider; `Held` while a running container
 /// has it or an operation is on it, or the provider says it is
 /// mounted; `InsufficientCapacity` and `ContentTooLarge` as the
 /// provider says; else `Edited`.
@@ -66,6 +68,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
             mode: result.mode,
         },
     };
+    // Known from the provider's listing, so the provider is not
+    // asked; and before the hold, since it is so whoever holds it.
+    if listed.volume.provided {
+        return Ok(Frame::Provided);
+    }
     if volumes::held(daemon, &frame.volume).await {
         return Ok(Frame::Held);
     }
@@ -74,6 +81,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         Ok(Edited::InsufficientCapacity) => Frame::InsufficientCapacity,
         Ok(Edited::ContentTooLarge) => Frame::ContentTooLarge,
         Err(volumes::Fail::Held) => Frame::Held,
+        Err(volumes::Fail::Provided) => Frame::Provided,
         Err(volumes::Fail::NotFound) => Frame::NotFound,
         Err(fail) => Frame::Error(fail.error()),
     })

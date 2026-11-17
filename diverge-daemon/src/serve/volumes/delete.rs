@@ -44,6 +44,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
     if !judge::volumes::over(&standing, Over::Delete, &listed) {
         return Ok(Frame::Forbidden);
     }
+    // Known from the provider's listing, so the provider is not
+    // asked; and before the use, since it is so whoever uses it.
+    if listed.volume.provided {
+        return Ok(Frame::Provided);
+    }
     if volumes::in_use(&mut conn, daemon, &frame.volume).await? {
         return Ok(Frame::InUse);
     }
@@ -54,6 +59,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
     Ok(match deleted {
         Ok(Dropped::Deleted) => Frame::Deleted,
         Ok(Dropped::Mounted) | Err(volumes::Fail::Held) => Frame::InUse,
+        Err(volumes::Fail::Provided) => Frame::Provided,
         Err(volumes::Fail::NotFound) => Frame::NotFound,
         Err(fail) => Frame::Error(fail.error()),
     })

@@ -42,7 +42,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         .live
         .capabilities(&frame.provider)
         .await
-        .is_some_and(|info| !info.capabilities.volumes() || info.capabilities.volume(frame.mode).is_none());
+        .is_some_and(|info| !info.capabilities.volume(frame.mode).is_some_and(|mode| mode.create));
     if unsupported {
         return Ok(Frame::Unsupported);
     }

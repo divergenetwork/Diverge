@@ -20,6 +20,9 @@ pub enum Fail {
     /// not do what was asked of this one: the provider's own word,
     /// in a sentence.
     Unsupported(String),
+    /// The provider provides the volume as it is, and it is neither
+    /// edited nor deleted.
+    Provided,
     /// The provider could not be asked, or answered a failure.
     Error(String),
 }
@@ -57,6 +60,7 @@ impl fmt::Display for Fail {
         match self {
             Fail::NotFound => f.write_str("no such volume, or nothing at the path"),
             Fail::Held => f.write_str("the volume is held"),
+            Fail::Provided => f.write_str("the provider provides the volume as it is, and it is neither edited nor deleted"),
             Fail::Unsupported(what) => f.write_str(what),
             Fail::Error(error) => f.write_str(error),
         }

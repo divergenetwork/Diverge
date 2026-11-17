@@ -55,6 +55,9 @@ impl From<volumes::Fail> for Fail {
             volumes::Fail::NotFound => Fail::NotFound,
             volumes::Fail::Held => Fail::Held,
             volumes::Fail::Unsupported(what) => Fail::Unsupported(what),
+            // A transfer neither edits nor deletes a volume, so no
+            // provider answers this of one; said in words if one does.
+            fail @ volumes::Fail::Provided => Fail::Error(fail.to_string()),
             volumes::Fail::Error(error) => Fail::Error(error),
         }
     }

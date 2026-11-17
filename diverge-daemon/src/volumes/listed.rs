@@ -51,6 +51,7 @@ impl Listed {
             bytes: self.volume.bytes,
             mode: self.volume.mode,
             created: self.created(),
+            provided: self.volume.provided,
             agents: self.agents.clone(),
             tools: self.tools.clone(),
             tags: self.tags.clone(),
