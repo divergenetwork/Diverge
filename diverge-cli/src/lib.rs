@@ -23,11 +23,10 @@
 //! standalone-tools templates list` — with the daemon and the account
 //! by name, else the defaults, and the body as JSON, whose schema
 //! `request-schema` beneath the request prints, and whose every answer
-//! `response-schema` states; see [`run`]. The viewer's and the
-//! CLI's document in the root is each read, rewritten and edited
-//! beneath its program — `viewer config`, `cli config` — through jq,
-//! as JSON on this side; see [`document`]. The daemon's and the
-//! provider's are not worked on whole. Five settings of the daemon's
+//! `response-schema` states; see [`run`]. The CLI's own document in
+//! the root is read, rewritten and edited whole — `cli config` —
+//! through jq, as JSON on this side; see [`document`]. The daemon's,
+//! the provider's and the viewer's are not worked on whole. Five settings of the daemon's
 //! are each read and written by themselves, with no JSON given —
 //! `daemon port get|set`, `daemon idle_seconds get|set`,
 //! `daemon admins get|add|delete`, `daemon identity get|set`,
@@ -50,8 +49,7 @@
 //! `provider messages enabled|enable|disable` with its two numbers;
 //! see [`cli::provider`]. The viewer's `daemon` is read and written
 //! a setting at a time too — `viewer daemon address|issuer|subject|
-//! identity|redial get|set` — beside `viewer config`; see
-//! [`cli::viewer`]. The commands
+//! identity|redial get|set`; see [`cli::viewer`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it

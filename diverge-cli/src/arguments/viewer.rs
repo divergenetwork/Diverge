@@ -3,19 +3,16 @@
 use clap::Subcommand;
 use diverge_sdk::wire::proxy::Redial;
 
-use super::{Action, Identity};
+use super::Identity;
 
-/// The viewer's document in the root, `viewer.yaml`: worked on whole,
-/// or one setting of its `daemon` read or written by itself. The
-/// viewer is not started or stopped here, and holds no lock on the
-/// root: a setting is written whether the app is open or not, and
-/// read by the app at its next start.
+/// The viewer's document in the root, `viewer.yaml`: one setting of
+/// its `daemon` read or written by itself. The document is not worked
+/// on whole: there is no `viewer config`. The viewer is not started
+/// or stopped here, and holds no lock on the root: a setting is
+/// written whether the app is open or not, and read by the app at its
+/// next start.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Viewer {
-    /// Read, rewrite or edit the viewer's document in the root,
-    /// `viewer.yaml`.
-    #[command(subcommand)]
-    Config(Action),
     /// Read or write one setting of the daemon the viewer dials, and
     /// as whom, `daemon` in `viewer.yaml`.
     #[command(subcommand)]

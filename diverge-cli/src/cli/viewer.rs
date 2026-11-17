@@ -1,5 +1,6 @@
 //! One setting of the viewer's document, read or written by itself:
-//! the daemon it dials, and as whom.
+//! the daemon it dials, and as whom. The only way the CLI works on
+//! `viewer.yaml`: there is no `viewer config`.
 
 use std::path::Path;
 
@@ -27,7 +28,7 @@ use crate::document::{self, Which};
 /// - `identity get` prints `{"issuer":"…","subject":"…"}`, or `null`
 ///   where none is stated; `identity set` takes both and writes the
 ///   identity whole. No `set` makes it absent: it is taken out of the
-///   file by hand, or by `viewer config`.
+///   file by hand.
 /// - `redial get` prints `never` or the number of seconds; `redial
 ///   set` takes either.
 /// - No lock is taken: the viewer holds none on the root. A setting

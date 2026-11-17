@@ -75,9 +75,6 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Provider(Server::Messages(action))) => {
             super::provider::messages(&root, action).await
         }
-        Some(Command::Viewer(Viewer::Config(action))) => {
-            super::config::run(&root, Which::Viewer, action).await
-        }
         Some(Command::Viewer(Viewer::Daemon(action))) => super::viewer::daemon(&root, action).await,
         Some(Command::Cli(Document::Config(action))) => {
             super::config::run(&root, Which::Cli, action).await

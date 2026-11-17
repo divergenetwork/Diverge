@@ -6,14 +6,13 @@ use super::{Daemon, Document, Identities, IdentityDivergeNetwork, Server, Viewer
 use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
-/// [`Run`](Self::Run). Each program is its own command. The
-/// viewer's and the CLI's document in the root is worked on beneath
-/// its program, as `config`; the daemon's and the provider's are
-/// worked on one setting at a time, each setting a command beneath
-/// [`Daemon`](Self::Daemon) or [`Provider`](Self::Provider). The daemon and the provider on this host
-/// are also started and stopped under [`Daemon`](Self::Daemon) and
-/// [`Provider`](Self::Provider); the viewer and the CLI itself are
-/// [`Viewer`](Self::Viewer) and [`Cli`](Self::Cli), configured alone. The host's identities are
+/// [`Run`](Self::Run). Each program is its own command. The CLI's
+/// own document in the root is worked on whole, as `config`, beneath
+/// [`Cli`](Self::Cli); the daemon's, the provider's and the viewer's
+/// are worked on one setting at a time, each setting a command
+/// beneath [`Daemon`](Self::Daemon), [`Provider`](Self::Provider) or
+/// [`Viewer`](Self::Viewer). The daemon and the provider on this host
+/// are also started and stopped under their commands. The host's identities are
 /// [`Identities`](Self::Identities).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Command {
@@ -41,8 +40,7 @@ pub enum Command {
     /// [`config`](crate::cli::config).
     #[command(subcommand)]
     Provider(Server),
-    /// Work on the viewer's `viewer.yaml`, whole or one setting of
-    /// its `daemon` at a time: see [`config`](crate::cli::config) and
+    /// Read or write one setting of the viewer's `viewer.yaml`: see
     /// [`viewer`](crate::cli::viewer).
     #[command(subcommand)]
     Viewer(Viewer),
