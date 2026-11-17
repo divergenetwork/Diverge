@@ -91,6 +91,13 @@ pub enum Stores {
     /// where there is none, or where the section is absent. The index
     /// is what `edit` and `delete` take.
     Get,
+    /// Print how much of each store is taken, one line each:
+    /// `{"index":0,"capacity":…,"used":…,"free":…}`, in BYTES. `used`
+    /// is what the volumes in the store reserve together, which is
+    /// what counts against `capacity`, and is the least an `edit` may
+    /// set the capacity to. Nothing is printed where there is no
+    /// store.
+    Capacity,
     /// Add a store, after the last. Refused where the section is
     /// absent — enable it first — where the path is a store's
     /// already, and while the provider is running on the root. The
@@ -118,7 +125,8 @@ pub enum Stores {
         /// not be there, or be empty.
         #[arg(long, required_unless_present = "capacity")]
         path: Option<std::path::PathBuf>,
-        /// The new capacity, in BYTES.
+        /// The new capacity, in BYTES. Refused where it is less than
+        /// what the volumes in the store reserve now: see `capacity`.
         #[arg(long)]
         capacity: Option<u64>,
     },

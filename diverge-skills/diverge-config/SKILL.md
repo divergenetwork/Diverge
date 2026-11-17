@@ -213,7 +213,8 @@ diverge provider volumes fixed add --name datasets --path /mnt/datasets --bytes 
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory
 diverge provider volumes stores get                         # {"index":0,"path":"provider/volumes","capacity":107374182400}   one line each; nothing when none
 diverge provider volumes stores add --path provider/volumes --capacity 107374182400
-diverge provider volumes stores edit 0 --capacity 214748364800   # just the number
+diverge provider volumes stores capacity                    # {"index":0,"capacity":107374182400,"used":21474836480,"free":85899345920}   one line per store
+diverge provider volumes stores edit 0 --capacity 214748364800   # just the number; refused if below `used`
 diverge provider volumes stores edit 0 --path D:\divergeolumes # MOVES the store and every volume in it, then writes the path
 diverge provider volumes stores delete 0                    # DELETES the folder and every volume in it, then the entry
 ```
@@ -249,7 +250,12 @@ diverge provider volumes stores delete 0                    # DELETES the folder
   created in it (each a large, mostly empty image file):
   - `stores add` only writes the entry; the provider makes the folder at its next start. It refuses a path
     that is already a store's.
-  - `stores edit <index> --capacity <BYTES>` only writes the number.
+  - `stores capacity` shows, per store, `capacity`, `used` and `free` in bytes. `used` is what the volumes
+    in the store *reserve* (the sum of their sizes), which is what counts against the capacity; it is not
+    how much disk the folder takes, since a volume reserves its whole size however little it holds.
+  - `stores edit <index> --capacity <BYTES>` only writes the number. It is refused when the number is less
+    than `used`: ``the volumes in store 0 reserve … bytes, and its capacity cannot be …, which is less``.
+    Shrink or delete volumes first.
   - `stores edit <index> --path <PATH>` **moves the store**, as `podman storage_path set` moves podman's
     data: a rename on the same drive (instant, no extra space), or a checked copy to another drive with the
     old copy deleted only after the path is written. The new path must not exist or must be empty. If the

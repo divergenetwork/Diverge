@@ -273,7 +273,7 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
     }
 }
 
-/// `diverge provider volumes stores get|add|edit|delete`: the places
+/// `diverge provider volumes stores get|capacity|add|edit|delete`: the places
 /// a volume may be created in, `volumes.stores`. A store is a folder
 /// that holds every volume made in it, each an image file that
 /// reserves far more than it takes; so the list is worked on as the
@@ -286,8 +286,17 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
 /// - `add` puts the store after the last, and nothing on disk is
 ///   made: the provider makes the folder at its start. A path that is
 ///   a store's already is refused, the two compared resolved.
-/// - `edit` changes the capacity, the path, or both. A capacity is
-///   written as given. A path that resolves to another folder MOVES
+/// - `capacity` prints, for each store, its capacity, what the
+///   volumes in it reserve — `used`, the sum of their sizes, read
+///   from the store's folder as the provider reads it — and the
+///   difference, `free`. A volume reserves its whole size however
+///   little it holds, so `used` is not what the folder takes on
+///   disk. It is answered whether the provider is running or not.
+/// - `edit` changes the capacity, the path, or both. A capacity less
+///   than what the store's volumes reserve now is refused,
+///   [`Error::Capacity`], before anything is moved or written: the
+///   provider would otherwise start on a store already over its
+///   capacity. Any other is written as given. A path that resolves to another folder MOVES
 ///   the store before anything is written — see
 ///   [`relocate::folder`]: a rename where one filesystem holds both,
 ///   so that nothing is copied however much is there; a copy, checked,
@@ -321,6 +330,22 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
             }
             write(text).await
         }
+        Stores::Capacity => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let mut text = Vec::new();
+            for (index, store) in config.volumes.iter().flat_map(|section| &section.stores).enumerate() {
+                let used = diverge_provider::host::volume_manager::reserved(&place(&store.path)?).await;
+                let line = serde_json::json!({
+                    "index": index,
+                    "capacity": store.capacity,
+                    "used": used,
+                    "free": store.capacity.saturating_sub(used),
+                });
+                serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
+                text.push(b'\n');
+            }
+            write(text).await
+        }
         Stores::Add { path, capacity } => {
             let path = given(path)?;
             let resolved = place(&path)?;
@@ -349,6 +374,14 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
                 return Err(Error::NoItem { list: "volumes.stores", index, count });
             }
             let old = place(&config.volumes.as_ref().ok_or_else(absent)?.stores[index].path)?;
+            // Before anything is moved: a capacity under what the
+            // store's volumes reserve is refused with nothing done.
+            if let Some(capacity) = capacity {
+                let used = diverge_provider::host::volume_manager::reserved(&old).await;
+                if capacity < used {
+                    return Err(Error::Capacity { index, capacity, used });
+                }
+            }
             let mut carried = None;
             let mut written = None;
             if let Some(path) = path {

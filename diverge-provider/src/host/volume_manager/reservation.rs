@@ -131,6 +131,15 @@ impl Reservation {
     }
 }
 
+/// The bytes the volumes in the store at `store` reserve between
+/// them, read from the store itself: what a provider running on it
+/// would count against the store's `capacity`, and so the least that
+/// capacity can be. For whoever asks with no provider running — the
+/// CLI, before it writes a store's capacity. See [`scan`].
+pub async fn reserved(store: &Path) -> u64 {
+    scan(store).await
+}
+
 /// The bytes every image in the store reserves between them: every
 /// identity's directory — an issuer's directory, and a subject's
 /// within it — read beside every other, every image's length beside

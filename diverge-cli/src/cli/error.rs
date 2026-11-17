@@ -73,6 +73,16 @@ pub enum Error {
     /// Podman's data at the storage path, or a volume store, could
     /// not be deleted, or not all of it.
     Wipe(relocate::Error),
+    /// A store's capacity was not written, because the volumes in
+    /// the store reserve more than it.
+    Capacity {
+        /// The store's index.
+        index: usize,
+        /// The capacity asked for, in bytes.
+        capacity: u64,
+        /// What the volumes in the store reserve, in bytes.
+        used: u64,
+    },
     /// A path could not be made absolute.
     Path(std::io::Error),
     /// A list of a document has nothing at the index a delete named.
@@ -131,6 +141,10 @@ impl fmt::Display for Error {
                 "the data is at the new path and the path is written, but the old path could not be cleared: {error}"
             ),
             Error::Wipe(error) => write!(f, "the data was not deleted, or not all of it, and nothing was written; asked again, the rest is: {error}"),
+            Error::Capacity { index, capacity, used } => write!(
+                f,
+                "the volumes in store {index} reserve {used} bytes, and its capacity cannot be {capacity}, which is less; nothing was written"
+            ),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")
@@ -168,7 +182,7 @@ impl std::error::Error for Error {
             Error::Ours(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
-            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } => None,
         }
     }
 }
