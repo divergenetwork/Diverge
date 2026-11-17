@@ -1,4 +1,4 @@
-//! What `diverge viewer` and `diverge cli` take.
+//! What `diverge cli` takes.
 
 use clap::Subcommand;
 

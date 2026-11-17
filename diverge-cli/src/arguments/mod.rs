@@ -6,8 +6,10 @@
 //! `response-schema` beneath each of
 //! its requests — is [`run`](crate::run)'s. The viewer's and the
 //! CLI's document is each worked on whole beneath its program,
-//! `diverge <program> config`, by an [`Action`]: each is a
-//! [`Document`], configured alone. The daemon is a [`Daemon`] and the
+//! `diverge <program> config`, by an [`Action`]: the CLI's is a
+//! [`Document`], configured alone, and the viewer's a [`Viewer`],
+//! which is that and the settings of its `daemon` each read or
+//! written by itself. The daemon is a [`Daemon`] and the
 //! provider a [`Server`]: each started or stopped by a [`Lifecycle`],
 //! and configured not whole but one setting at a time, each setting a
 //! command of its own that reads it or writes it by itself. The host's
@@ -26,6 +28,7 @@ mod identities;
 mod identity_diverge_network;
 mod lifecycle;
 mod server;
+mod viewer;
 
 pub use arguments::*;
 pub use command::*;
@@ -36,3 +39,4 @@ pub use identities::*;
 pub use identity_diverge_network::*;
 pub use lifecycle::*;
 pub use server::*;
+pub use viewer::*;

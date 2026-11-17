@@ -48,7 +48,10 @@
 //! `provider images enabled|enable|disable` with `path get|set|delete`,
 //! `capacity get|set` and `capacity_used`, and
 //! `provider messages enabled|enable|disable` with its two numbers;
-//! see [`cli::provider`]. The commands
+//! see [`cli::provider`]. The viewer's `daemon` is read and written
+//! a setting at a time too — `viewer daemon address|issuer|subject|
+//! identity|redial get|set` — beside `viewer config`; see
+//! [`cli::viewer`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it

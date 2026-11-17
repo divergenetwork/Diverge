@@ -2,7 +2,7 @@
 
 use clap::Subcommand;
 
-use super::{Daemon, Document, Identities, IdentityDivergeNetwork, Server};
+use super::{Daemon, Document, Identities, IdentityDivergeNetwork, Server, Viewer};
 use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
@@ -41,10 +41,11 @@ pub enum Command {
     /// [`config`](crate::cli::config).
     #[command(subcommand)]
     Provider(Server),
-    /// Work on the viewer's `viewer.yaml`: see
-    /// [`config`](crate::cli::config).
+    /// Work on the viewer's `viewer.yaml`, whole or one setting of
+    /// its `daemon` at a time: see [`config`](crate::cli::config) and
+    /// [`viewer`](crate::cli::viewer).
     #[command(subcommand)]
-    Viewer(Document),
+    Viewer(Viewer),
     /// Work on the CLI's own `cli.yaml`: see
     /// [`config`](crate::cli::config).
     #[command(subcommand)]

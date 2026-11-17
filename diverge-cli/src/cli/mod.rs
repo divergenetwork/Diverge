@@ -25,6 +25,7 @@ pub mod identities;
 pub mod identity_diverge_network;
 pub mod provider;
 pub mod setting;
+pub mod viewer;
 
 pub use error::*;
 pub use run::*;
