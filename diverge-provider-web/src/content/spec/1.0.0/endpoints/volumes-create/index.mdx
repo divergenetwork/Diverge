@@ -8,7 +8,7 @@ draft: false
 A client opens the scope with a request whose payload is the tag byte
 `10` followed by the name, the size and the mode of the volume. The server sends
 exactly one response, which states that the volume exists, that the
-server has insufficient capacity for it, that the server keeps no
+server has insufficient capacity for it, that the server creates no
 volume of the mode stated, that the server keeps no volume, or an
 error. The response
 finish follows the response, and no frame follows the finish.

@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume has what the change stated; exactly the byte 1 when the server has insufficient capacity for it; exactly the byte 2 when the content of the volume exceeds it; exactly the byte 3 when the server keeps no volume of the mode stated; exactly the byte 4, 5 or 6 when a running container, a FUSE serve or an operation holds the volume; exactly the byte 7 when the server keeps no volume; or the byte 8 followed by an error as one JSON value; and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume has what the change stated; exactly the byte 1 when the server has insufficient capacity for it; exactly the byte 2 when the content of the volume exceeds it; exactly the byte 3 when the server keeps no volume of the mode stated; exactly the byte 4, 5 or 6 when a running container, a FUSE serve or an operation holds the volume; exactly the byte 7 when the server keeps no volume; exactly the byte 9 when the volume is a provided volume; or the byte 8 followed by an error as one JSON value; and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -18,6 +18,7 @@ finish follows the response, and no frame follows the finish.
 [6]                  not edited: another operation holds the volume
 [7]                  not edited: the server keeps no volume
 [8][error JSON …]    not edited
+[9]                  not edited: the volume is a provided volume
 ```
 
 - **The sequence.** Exactly one response precedes the response
@@ -58,6 +59,16 @@ finish follows the response, and no frame follows the finish.
   request. The server sends it after it has found the volume in the
   client's listing and before it holds the volume, and does not send
   it for a change that states no mode.
+- **Provided.** A payload that is the byte `9` and nothing else
+  states that the volume named is a provided volume — its `provided`
+  is `true` in the client's listing — and that nothing was changed:
+  the volume has the size and the mode it had before the request.
+  The server sends it after it has found the volume in the client's
+  listing, and before it decides the byte `3`, `4`, `5` or `6`: a
+  request naming a provided volume is answered with the byte `9`
+  whatever its change states and whatever holds the volume. A client
+  that sends the request again receives the byte `9` again. A client
+  ignores every byte that follows it.
 - **The hold refusals, and their order.** The server decides the
   bytes `4`, `5` and `6` in the order
   [Capabilities](/capabilities/#the-hold) states for an operation,
@@ -92,7 +103,7 @@ finish follows the response, and no frame follows the finish.
   states that the volume has the size and the mode it had before the
   request, and that the reason is none of the refusals above.
 - **Malformed.** A payload with no byte, a payload whose first byte
-  is none of `0` to `8`, and a payload whose bytes after `8` are not
+  is none of `0` to `9`, and a payload whose bytes after `8` are not
   one JSON value are malformed.
 
 The response is defined by `diverge-sdk-rs/src/provider/endpoints/volumes/edit/server/response/frame.rs`:

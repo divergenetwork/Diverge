@@ -12,7 +12,7 @@ that the volume has what was stated, that the server has
 insufficient capacity for the size stated, that the content of the
 volume exceeds the size stated, that the server keeps no volume of
 the mode stated, that something holds the volume, that the server
-keeps no volume, or an error. The response finish
+keeps no volume, that the volume is a provided volume, or an error. The response finish
 follows the response, and no frame follows the finish.
 
 - **The request.** The request carries the name of one volume and
@@ -24,10 +24,15 @@ follows the response, and no frame follows the finish.
   server resolves the name against the identity under which the
   connection was authorized, as [Authorization](/authorization/)
   provides. A name that is not in the client's listing is answered
-  with an error. A client cannot name another client's volume. A
-  server may refuse to edit a volume that it offered on its own
-  account and that the client did not create; the refusal is an
-  error.
+  with an error. A client cannot name another client's volume.
+- **A provided volume is not edited.** A volume whose `provided` is
+  `true` in the client's listing, as the
+  [volumes::list response](/endpoints/volumes-list/response/)
+  defines it, has the size and the mode the server provides it with.
+  The server changes neither for any request, and answers a request
+  naming it with the byte `9`, whatever the change states and
+  whatever holds the volume. The server does not send the byte `0`
+  for a provided volume.
 - **The size.** A change that states a size states the size the
   volume has after the edit, not a change to its size: the size is
   absolute. When the server sends the byte `0`, the volume has the

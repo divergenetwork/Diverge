@@ -8,7 +8,8 @@ draft: false
 A client opens the scope with a request whose payload is the tag byte
 `13` followed by the name of a volume. The server sends exactly one
 response, which states that the volume is deleted, that the volume is
-mounted and was not deleted, or an error. The response finish follows
+mounted and was not deleted, that the volume is a provided volume and
+was not deleted, or an error. The response finish follows
 the response, and no frame follows the finish.
 
 - **The request.** The request carries the name of one volume.
@@ -18,10 +19,15 @@ the response, and no frame follows the finish.
   server resolves the name against the identity under which the
   connection was authorized, as [Authorization](/authorization/)
   provides. A name that is not in the client's listing is answered
-  with an error. A client cannot name another client's volume. A
-  server may refuse to delete a volume that it offered on its own
-  account and that the client did not create; the refusal is an
-  error.
+  with an error. A client cannot name another client's volume.
+- **A provided volume is not deleted.** A volume whose `provided` is
+  `true` in the client's listing, as the
+  [volumes::list response](/endpoints/volumes-list/response/)
+  defines it, is the server's to keep. The server does not delete it
+  for any request, and answers a request naming it with the byte
+  `6`, whatever holds the volume. The volume, its content, and the
+  client's listing are as they were before the request. The server
+  does not send the byte `0` for a provided volume.
 - **The deletion.** When the server sends the byte `0`, the volume no
   longer exists, and its content is gone. From that moment, every
   [volumes::list](/endpoints/volumes-list/) scope the client opens

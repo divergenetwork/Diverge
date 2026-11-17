@@ -553,9 +553,13 @@ Capabilities layer tabulates for it, alone — `volumes::list`,
 (e) **The mode objects.** A mode object with at least one member
 `true` is a Volume mode the Provider holds out; a mode object with
 every member `false`, or absent, which is the same statement, is a
-mode it does not hold out. For every Volume mode the Provider holds
-out, the Provider shall send a mode object that holds out no more
-than the mode allows — the `volumes_persistent` object with
+mode it does not hold out. The `create` member of a mode object
+states whether the Provider creates a Volume of the mode, and the
+five other members state what the Provider does with a Volume of the
+mode that exists; a Provider may hold out a mode whose `create` is
+`false`, and then keeps Volumes of the mode and creates none. For
+every Volume mode the Provider holds out, the Provider shall send a
+mode object that holds out no more than the mode allows — the `volumes_persistent` object with
 `fuse_serve_many` and `mount_and_fuse_serve` `false` —
 that sends `mount` `true` wherever it sends `mount_many` `true`,
 `fuse_serve` `true` wherever it sends `fuse_serve_many` `true`, and
@@ -665,9 +669,12 @@ as added exactly once while it is listed, as changed only while it is
 listed and only when its `bytes` or `mode` differ from what the
 Provider last sent for it, and as removed exactly once and only after
 it sent the Volume as added; shall report for each Volume its `name`,
-its `bytes`, its `created` and its `mode` as the Specification
-defines them, and nothing more; and shall not end the Scope because
-the Identity has no Volume.
+its `bytes`, its `created`, its `mode` and its `provided` as the
+Specification defines them, and nothing more; shall report
+`provided` `false` for every Volume the Identity created by
+`volumes::create`; shall not change the `provided` of a Volume while
+it is listed; and shall not end the Scope because the Identity has
+no Volume.
 
 (b) **The hold of an operation.** For every `volumes::stat`,
 `volumes::read`, `volumes::write`, `volumes::filetree`,
@@ -691,8 +698,8 @@ with an error.
 
 (c) **Stat.** The Provider shall answer every `volumes::stat` request
 naming a Volume in the Identity's listing that nothing holds with
-exactly one Response carrying the Volume's `name`, `bytes`, `created`
-and `mode`, its `bytes_used`, and its `dirhash` as the Specification
+exactly one Response carrying the Volume's `name`, `bytes`, `created`,
+`mode` and `provided`, its `bytes_used`, and its `dirhash` as the Specification
 defines each, as of the time of the Response, after the byte `0`; and
 shall answer a name not in the listing with the byte `5` followed by
 an error.
@@ -795,12 +802,15 @@ every `volumes::edit_capacity` request naming a Volume in the
 Identity's listing with the number of bytes by which that Volume's
 size could be increased at the time of the Response, each as a
 postcard varint after the byte `0`, or an error after the byte `2`.
-Neither answer reserves anything.
+Neither answer reserves anything. The Provider shall answer every
+`volumes::edit_capacity` request naming a Volume whose `provided` is
+`true` with the number `0`.
 
 (i) **Creation.** The Provider shall answer every `volumes::create`
-request with exactly one Response: the byte `2` alone when it holds
-out no mode object for the request's `mode`, before anything is
-reserved; the byte `0` only after a Volume of the stated name, size
+request with exactly one Response: the byte `2` alone when the
+`create` member of the mode object for the request's `mode` is
+`false`, whether the Provider holds out the mode or not, before
+anything is reserved; the byte `0` only after a Volume of the stated name, size
 and mode exists for the Identity; the byte `1` when the Provider
 cannot reserve the size stated; or the byte `4` followed by an error
 for any other reason. From the moment the Provider sends the byte
@@ -815,7 +825,9 @@ name is already in the Identity's listing.
 
 (j) **Editing.** The Provider shall answer every `volumes::edit`
 request naming a Volume in the Identity's listing with exactly one
-Response: the byte `3` alone when the request's change states a mode,
+Response: the byte `9` alone when the Volume's `provided` is `true`,
+whatever the change states and whatever holds the Volume, before
+anything else is decided; the byte `3` alone when the request's change states a mode,
 as `Mode` or as `Both`, for which the Provider holds out no mode
 object, before the Volume is held; a hold as Section 5.8(b) provides;
 the byte `0` only after the Volume has what the request's change
@@ -831,14 +843,19 @@ the Identity shall report the new size and the new mode, every
 listing it holds open for the Identity shall tell the Volume as
 changed, and every Container in which the Identity mounts the Volume
 after that moment, and every FUSE serve of it after that moment,
-shall be bound under the new mode.
+shall be bound under the new mode. The Provider shall change neither
+the size nor the mode of a Volume whose `provided` is `true`, and
+shall not send the byte `0` for one.
 
 (k) **Deletion.** The Provider shall answer every `volumes::delete`
 request naming a Volume in the Identity's listing with exactly one
-Response: a hold as Section 5.8(b) provides; the byte `0` only after
+Response: the byte `6` alone when the Volume's `provided` is `true`,
+whatever holds the Volume, before anything else is decided; a hold as
+Section 5.8(b) provides; the byte `0` only after
 the Volume no longer exists; or the byte `5` followed by an error for
 any other reason. The Provider shall not delete a Volume that
-anything holds at the time of the request. From the moment the
+anything holds at the time of the request, and shall not delete a
+Volume whose `provided` is `true`. From the moment the
 Provider sends the byte `0`, every listing the Provider opens for the
 Identity shall omit the Volume, every listing it holds open for the
 Identity that told the Volume as added shall tell it as removed, and

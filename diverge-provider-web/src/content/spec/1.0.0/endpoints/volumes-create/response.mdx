@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume exists, exactly the byte 1 when the server has insufficient capacity for it, exactly the byte 2 when the server keeps no volume of the mode stated, exactly the byte 3 when the server keeps no volume, or the byte 4 followed by an error as one JSON value, and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume exists, exactly the byte 1 when the server has insufficient capacity for it, exactly the byte 2 when the server creates no volume of the mode stated, exactly the byte 3 when the server keeps no volume, or the byte 4 followed by an error as one JSON value, and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -11,7 +11,7 @@ finish follows the response, and no frame follows the finish.
 ```text
 [0]                  created
 [1]                  not created: insufficient capacity
-[2]                  not created: the server keeps no volume of the mode stated
+[2]                  not created: the server creates no volume of the mode stated
 [3]                  not created: the server keeps no volume
 [4][error JSON …]    not created
 ```
@@ -34,9 +34,11 @@ finish follows the response, and no frame follows the finish.
   request. The server sends nothing after the byte `1`, and a client
   ignores every byte that follows it.
 - **Mode unsupported.** A payload that is the byte `2` and nothing
-  else states that the server holds out no
+  else states that the `create` member of the
   [mode object](/capabilities/#the-mode-object) for the `mode` the
-  request states, and did not create the volume. No volume exists by
+  request states is `false` — the server holds out no mode object for
+  the mode, or holds one out and creates no volume of the mode — and
+  that the server did not create the volume. No volume exists by
   that name as a result of the request. The server sends it before it
   reserves anything, and a client ignores every byte that follows
   it.

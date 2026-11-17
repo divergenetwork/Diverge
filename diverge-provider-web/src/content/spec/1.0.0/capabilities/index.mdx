@@ -273,12 +273,20 @@ server does not hold out.
 
 - **Held out.** The server keeps volumes of the mode. A
   [volumes::list](/endpoints/volumes-list/) listing of the server
-  may contain a volume of the mode, a
+  may contain a volume of the mode, and a
+  [volumes::edit](/endpoints/volumes-edit/) request may change a
+  volume into the mode. Whether a
   [volumes::create](/endpoints/volumes-create/) request may state the
-  mode, and a [volumes::edit](/endpoints/volumes-edit/) request may
-  change a volume into the mode. What a running container, a FUSE
-  serve and an operation may do with a volume of the mode is the
-  mode object.
+  mode is the `create` member of the mode object, and is not implied
+  by the mode being held out. What a running container, a FUSE serve
+  and an operation may do with a volume of the mode is the mode
+  object.
+- **Held out without `create`.** A server may hold out a mode whose
+  mode object has `create` `false`. Such a server keeps volumes of
+  the mode and creates none. The server answers a
+  [volumes::create](/endpoints/volumes-create/) request whose `mode`
+  is the mode with exactly one response, the byte `2` and nothing
+  else, and the response finish, and creates nothing.
 - **Not held out.** The server keeps no volume of the mode. No listing of
   the server contains a volume of the mode. The server answers a
   [volumes::create](/endpoints/volumes-create/) request whose `mode`
@@ -326,7 +334,7 @@ server does not hold out.
 ## The mode object
 
 The value of each of `volumes_persistent`, `volumes_ephemeral` and
-`volumes_read_only` is one JSON object of five boolean members, each
+`volumes_read_only` is one JSON object of six boolean members, each
 optional, an absent member being `false`. The object with every
 member `false` is the mode not held out, and is what an absent mode
 member means; every rule below that speaks of a mode object absent
@@ -334,6 +342,7 @@ speaks of that object too.
 
 | Member | `true` states that |
 |--------|--------------------|
+| `create` | a [volumes::create](/endpoints/volumes-create/) request of the client may state the mode |
 | `mount` | a running container of the client may mount a volume of the mode |
 | `fuse_serve` | a [volumes::fuse_serve](/endpoints/volumes-fuse-serve/) scope of the client may hold a volume of the mode |
 | `mount_many` | more than one running container may mount a volume of the mode at once |
@@ -350,6 +359,17 @@ speaks of that object too.
   more than the mode allows: the `volumes_persistent` object has
   `fuse_serve_many` and `mount_and_fuse_serve` `false`, absent or
   present.
+- **`create`.** The `create` member states whether the server
+  creates a volume of the mode, and states nothing of a volume that
+  exists. The five other members state what the server does with a
+  volume of the mode that exists, and state nothing of creation. A
+  server that sends `create` `true` creates a volume of the mode for
+  a [volumes::create](/endpoints/volumes-create/) request that states
+  the mode, where it has the capacity. A server that sends `create`
+  `false`, or omits it, answers every such request with the byte `2`
+  and creates nothing. A mode object whose `create` is `true` and
+  whose every other member is `false` is a mode the server holds
+  out.
 - **Consistency.** A server that sends `mount_many` `true` sends
   `mount` `true`. A server that sends `fuse_serve_many` `true` sends
   `fuse_serve` `true`. A server that sends `mount_and_fuse_serve`

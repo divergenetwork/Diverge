@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume no longer exists; exactly the byte 1, 2 or 3 when a running container, a FUSE serve or an operation holds the volume and it was not deleted; exactly the byte 4 when the server keeps no volume; or the byte 5 followed by an error as one JSON value; and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the volume no longer exists; exactly the byte 1, 2 or 3 when a running container, a FUSE serve or an operation holds the volume and it was not deleted; exactly the byte 4 when the server keeps no volume; exactly the byte 6 when the volume is a provided volume; or the byte 5 followed by an error as one JSON value; and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -15,6 +15,7 @@ finish follows the response, and no frame follows the finish.
 [3]                  not deleted: another operation holds the volume
 [4]                  not deleted: the server keeps no volume
 [5][error JSON …]    not deleted
+[6]                  not deleted: the volume is a provided volume
 ```
 
 - **The sequence.** Exactly one response precedes the response
@@ -32,6 +33,16 @@ finish follows the response, and no frame follows the finish.
   byte `0` never contains it, and no interval in which the volume is
   deleted and still listed as available exists. The server sends
   nothing after the byte `0`, and a client ignores every byte that
+  follows it.
+- **Provided.** A payload that is the byte `6` and nothing else
+  states that the volume named is a provided volume — its `provided`
+  is `true` in the client's listing — and that it was not deleted:
+  the volume, its content, and the client's listing are as they were
+  before the request. The server sends it after it has found the
+  volume in the client's listing, and before it decides the byte `1`,
+  `2` or `3`: a request naming a provided volume is answered with the
+  byte `6` whatever holds the volume. A client that sends the request
+  again receives the byte `6` again. A client ignores every byte that
   follows it.
 - **The refusals, and their order.** The server decides the bytes
   `1`, `2` and `3` in the order [Capabilities](/capabilities/#the-hold)
@@ -66,7 +77,7 @@ finish follows the response, and no frame follows the finish.
   states that the volume exists as a result of the request, as it
   did before it, and that the reason is none of the refusals above.
 - **Malformed.** A payload with no byte, a payload whose first byte
-  is none of `0` to `5`, and a payload whose bytes after `5` are not
+  is none of `0` to `6`, and a payload whose bytes after `5` are not
   one JSON value are malformed.
 
 The response is defined by `diverge-sdk-rs/src/provider/endpoints/volumes/delete/server/response/frame.rs`:

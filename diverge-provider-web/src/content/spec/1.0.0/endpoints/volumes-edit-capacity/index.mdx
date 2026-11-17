@@ -27,7 +27,11 @@ finish.
   volume would then have: the largest size the client could state in
   a `volumes::edit` request at that time is the volume's `bytes` plus
   the number. The number `0` states that the size of the volume
-  cannot be increased at the time of the response.
+  cannot be increased at the time of the response. For a provided
+  volume, as the
+  [volumes::list response](/endpoints/volumes-list/response/)
+  defines it, the number is `0` at every time: the size of a provided
+  volume is not edited.
   [Response](/endpoints/volumes-edit-capacity/response/) states its
   form.
 - **No reservation.** The answer is a fact about the time of the

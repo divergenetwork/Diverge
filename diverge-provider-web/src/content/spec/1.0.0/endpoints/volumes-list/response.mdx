@@ -34,7 +34,8 @@ draft: false
   postcard reading of [Notation](/endpoints/#notation) provides: its
   `name` as a varint byte length followed by that many bytes of
   UTF-8, followed by `bytes` as a varint, followed by `created` as a
-  varint, followed by `mode` as one byte.
+  varint, followed by `mode` as one byte, followed by `provided` as
+  one byte.
 - **Added.** A response of the byte `0` states that the volume is
   available to the client. The server sends it exactly once per name
   while the volume is listed: for every volume available when the
@@ -44,8 +45,8 @@ draft: false
   `bytes` or `mode` are now what the response carries. The server
   sends it only for a volume it has sent as added on this scope and
   not since as removed, and only when `bytes` or `mode` differ from
-  what it last sent for that name. The `name` and the `created` of a
-  volume do not change.
+  what it last sent for that name. The `name`, the `created` and the
+  `provided` of a volume do not change.
 - **Removed.** A response of the byte `2` states that the volume is
   no longer available to the client, and carries the volume as the
   server last sent it. The server sends it only for a volume it has
@@ -88,6 +89,25 @@ draft: false
   mounts the volume in and every FUSE serve of it is bound under this
   mode. A byte other than `0`, `1` and
   `2` does not decode.
+- **`provided`.** Whether the server provides the volume as it is,
+  as one byte: `0` is `false`, `1` is `true`. The byte is present in
+  every volume. A byte other than `0` and `1` does not decode. A
+  volume whose `provided` is `true` is a provided volume: the server
+  changes neither its size nor its mode for a
+  [volumes::edit](/endpoints/volumes-edit/) request, and does not
+  delete it for a [volumes::delete](/endpoints/volumes-delete/)
+  request, and answers each with the response its page states for a
+  provided volume; the
+  [volumes::edit_capacity](/endpoints/volumes-edit-capacity/) of a
+  provided volume is the number `0`. A volume whose `provided` is
+  `false` is edited and deleted as those pages state. A volume a
+  [volumes::create](/endpoints/volumes-create/) request of the client
+  made has `provided` `false`. Which other volumes are provided is
+  the server's to determine. `provided` states what may be done with
+  the volume, and states nothing of how the server keeps it. A
+  provided volume is listed, examined, read, written, walked, served
+  and mounted as its `mode` and the mode object of that mode state,
+  and as any other volume is.
 - **Order.** The order of the volumes is not prescribed. A client
   reads nothing into the position of a volume.
 - **A finish with nothing before it.** The request was not served, as
