@@ -111,14 +111,20 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   `Served`).
 - **The root and the config**: `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`, and
   `<root>/viewer.yaml` read with the app's own type (`src-tauri/src/config/`, a folder as the daemon's and the
-  provider's `config` are). The CLI validates the same document with the crate beside the app,
-  `diverge-viewer/config`, which states the same fields; change both together:
-  `daemon.address`, `daemon.issuer`, `daemon.subject` — one of `<root>/identities/`, signed in by
-  `diverge identities login` — `daemon.identity`, the daemon's own identity, which must answer where it is stated,
-  and `daemon.redial`. Every member has a default (`config/daemon.rs`): the address of a daemon on this host,
-  an empty issuer and subject, no `identity`, a redial of 5 seconds. An empty issuer or subject stops the start.
-  `diverge viewer daemon <member> get|set` reads and writes each.
-- **The link dials again by itself**: as `daemon.redial` says — every 5 seconds when absent, as the daemon redials a
+  provider's `config` are). The CLI reads and writes the same document with a type of its own
+  (`diverge-cli/src/config/viewer.rs`), which states the same fields; change both together: `port`, `redial`,
+  `default` and `daemons` — the daemons by name, each an `address`, its own `identity` where stated, `accounts` by
+  name (each one of `<root>/identities/`, signed in by `diverge identities login`) and a `default` account, member
+  for member what the CLI keeps for itself. The default is one daemon, `local`, on this host, with no account; a
+  start whose daemon has no account to dial as is refused. `diverge viewer port|redial|daemons|default …` read and
+  write each.
+- **A start picks the daemon** (`config/arguments.rs`, `config/select.rs`): `--daemon <name>` and
+  `--account <name>`, else the defaults, and the window's title is `Diverge Viewer — <daemon name>`.
+- **One viewer per root, started and stopped by the CLI**: the app holds `<root>/viewer.lock` for its life, its
+  process id written in it once the start cannot fail any more, and hears `POST /stop` on `127.0.0.1:<port>`
+  (`src-tauri/src/stop.rs`), which exits the app. `diverge viewer start|stop` use both as the daemon's and the
+  provider's do, and a setting is refused while the lock is held.
+- **The link dials again by itself**: as `redial` says — every 5 seconds when absent, as the daemon redials a
   provider, a whole number of seconds, or `never` — after a failed dial and after a connection that ended, dialling at
   start. `wire_reset` dials at once. The rules are the SDK's (`diverge-sdk-rs/src/wire/proxy/link.rs`).
 - **The app keeps no files.**

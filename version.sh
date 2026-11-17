@@ -158,7 +158,6 @@ CARGO_TOMLS=(
   diverge-examples/tools/courier/Cargo.toml
   diverge-examples/tools/memory/Cargo.toml
   diverge-examples/tools/taskboard/Cargo.toml
-  diverge-viewer/config/Cargo.toml
   diverge-viewer/src-tauri/Cargo.toml
 )
 

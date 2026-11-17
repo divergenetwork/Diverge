@@ -55,6 +55,7 @@ mod error;
 mod load;
 mod root;
 mod select;
+mod viewer;
 
 pub use account::*;
 pub use config::*;
@@ -63,3 +64,4 @@ pub use error::*;
 pub use load::*;
 pub use root::*;
 pub use select::*;
+pub use viewer::*;

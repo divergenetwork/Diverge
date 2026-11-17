@@ -34,7 +34,7 @@ impl Which {
         let value = match self {
             Which::Daemon => serde_json::to_value(diverge_daemon::config::Config::default()),
             Which::Provider => serde_json::to_value(diverge_provider::config::Config::default()),
-            Which::Viewer => serde_json::to_value(diverge_viewer_config::Config::default()),
+            Which::Viewer => serde_json::to_value(crate::config::Viewer::default()),
             Which::Cli => serde_json::to_value(crate::config::Config::default()),
         };
         value.map_err(Error::Json)

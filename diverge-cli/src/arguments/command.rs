@@ -40,8 +40,9 @@ pub enum Command {
     /// [`provider`](crate::cli::provider).
     #[command(subcommand)]
     Provider(Server),
-    /// Read or write one setting of the viewer: see
-    /// [`viewer`](crate::cli::viewer).
+    /// Start or stop the viewer on the root, or read or write one
+    /// setting of it: see [`lifecycle`](crate::lifecycle),
+    /// [`viewer`](crate::cli::viewer) and [`own`](crate::cli::own).
     #[command(subcommand)]
     Viewer(Viewer),
     /// Read or write one setting of the CLI itself — its

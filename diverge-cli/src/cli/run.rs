@@ -75,8 +75,27 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Provider(Server::Messages(action))) => {
             super::provider::messages(&root, action).await
         }
-        Some(Command::Viewer(Viewer::Daemon(action))) => super::viewer::daemon(&root, action).await,
-        Some(Command::Cli(Own::Daemons(action))) => super::own::daemons(&root, action).await,
-        Some(Command::Cli(Own::Default(action))) => super::own::default(&root, action).await,
+        Some(Command::Viewer(Viewer::Start { daemon, account })) => {
+            // Handed on as the viewer's own arguments, after the root.
+            let mut arguments = Vec::new();
+            for (flag, value) in [("--daemon", daemon), ("--account", account)] {
+                if let Some(value) = value {
+                    arguments.push(flag.into());
+                    arguments.push(value.into());
+                }
+            }
+            Ok(lifecycle::start(&root, Program::Viewer, &arguments).await?)
+        }
+        Some(Command::Viewer(Viewer::Stop)) => Ok(lifecycle::stop(&root, Program::Viewer).await?),
+        Some(Command::Viewer(Viewer::Port(action))) => super::viewer::port(&root, action).await,
+        Some(Command::Viewer(Viewer::Redial(action))) => super::viewer::redial(&root, action).await,
+        Some(Command::Viewer(Viewer::Daemons(action))) => {
+            super::own::daemons::<config::Viewer>(&root, action).await
+        }
+        Some(Command::Viewer(Viewer::Default(action))) => {
+            super::own::default::<config::Viewer>(&root, action).await
+        }
+        Some(Command::Cli(Own::Daemons(action))) => super::own::daemons::<config::Config>(&root, action).await,
+        Some(Command::Cli(Own::Default(action))) => super::own::default::<config::Config>(&root, action).await,
     }
 }

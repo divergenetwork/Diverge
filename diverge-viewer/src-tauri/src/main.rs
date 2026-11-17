@@ -8,11 +8,20 @@
 //!
 //! The root — `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`
 //! — is the one directory every Diverge program on the host shares, and
-//! the app reads the viewer's document in it: `<root>/viewer.yaml` says
-//! which daemon, as which of `<root>/identities/`, and how the daemon is
-//! dialled again when the connection ends ([`config`]). The
-//! app keeps no files of its own; it moves the person's between their
-//! disk and an entity's when asked (`transfer`).
+//! the app reads the viewer's settings in it ([`config`]): the daemons
+//! it may dial, each with the accounts it may dial it as, as the CLI
+//! keeps its own. A start names one of each with `--daemon <name>` and
+//! `--account <name>`, or takes the defaults, and the window's title
+//! says which daemon it is on. The app keeps no files of its own; it
+//! moves the person's between their disk and an entity's when asked
+//! (`transfer`).
+//!
+//! One viewer runs on a root, as one daemon and one provider do: the
+//! app holds the root's `viewer.lock` for its life, with its process
+//! id inside, and hears `POST /stop` on a loopback port of its own
+//! ([`stop`]) — which is how `diverge viewer start` knows it is up,
+//! how `diverge viewer stop` ends it, and why a setting is not
+//! written while it runs.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -23,6 +32,7 @@ use tauri::Manager;
 
 mod config;
 mod frontend;
+mod stop;
 mod transfer;
 
 fn main() {
@@ -30,38 +40,52 @@ fn main() {
         .manage(transfer::Transfers::default())
         .manage(frontend::Frontends::default())
         .setup(|app| {
-            // The root, as the daemon and the provider find theirs; the
-            // document in it, which must name the identity the daemon
-            // is dialled as; the root's identities. A document naming
-            // no identity stops the start, saying so.
-            let (daemon, identities) = tauri::async_runtime::block_on(async {
-                let root = config::root(std::env::args_os().skip(1)).await?;
+            // The root, as the daemon and the provider find theirs;
+            // its lock, taken before anything else and kept for the
+            // app's life, so a second viewer on the root is refused
+            // here; the settings in it, and the daemon and the account
+            // this start is; the root's identities; and the loopback
+            // port the stop is heard on. Any of them failing stops the
+            // start, saying why.
+            let (selected, redial, identities, held, listener) = tauri::async_runtime::block_on(async {
+                let arguments = config::arguments(std::env::args_os().skip(1))?;
+                let root = config::root(arguments.config).await?;
+                let lock = root.join(config::LOCK_FILE);
+                let Some(held) = diverge_sdk::file_lock::try_exclusive(&lock).await? else {
+                    let holder = diverge_sdk::file_lock::holder(&lock).await?.unwrap_or_default();
+                    return Err(format!("a viewer is already running on this root, as process {holder}: stop it first, with `diverge viewer stop`").into());
+                };
                 let config = config::load(&root).await?;
-                let daemon = config.daemon;
-                // The defaults name a daemon and no identity: an
-                // issuer or a subject that is empty is nobody to dial
-                // as.
-                if daemon.issuer.is_empty() || daemon.subject.is_empty() {
-                    return Err("viewer.yaml names no identity to dial the daemon as: sign one in with `diverge identities login`, and name it with `diverge viewer daemon issuer set` and `diverge viewer daemon subject set`".into());
-                }
+                let selected = config::select(&config, arguments.daemon.as_deref(), arguments.account.as_deref())?;
                 let identities = Identities::open(&root).await?;
-                Ok::<_, Box<dyn std::error::Error>>((daemon, identities))
+                let listener = tokio::net::TcpListener::bind(("127.0.0.1", config.port))
+                    .await
+                    .map_err(|error| format!("the viewer's port, {}, could not be listened on: {error}", config.port))?;
+                // The id last, once everything that can refuse the
+                // start has not: a start that reads it knows the app
+                // is up.
+                held.write(std::process::id().to_string().into_bytes()).await?;
+                Ok::<_, Box<dyn std::error::Error>>((selected, config.redial, identities, held, listener))
             })?;
+            app.manage(held);
+            stop::serve(app.handle().clone(), listener);
             // The daemon's connection, held for the page: the SDK's
-            // runner, presenting the identity and its key, holding the
-            // daemon to the key its own token names — and to the
-            // identity viewer.yaml states for it, where it states one —
-            // and dialling again as viewer.yaml's `redial` says.
-            let name = Name { issuer: daemon.issuer, subject: daemon.subject };
-            let presenter = Arc::new(Presenter::new(identities, name).expecting(daemon.identity));
-            app.manage(diverge_sdk::tauri_proxy::TauriProxy::new(daemon.address, presenter, daemon.redial));
+            // runner, presenting the account's identity and its key,
+            // holding the daemon to the key its own token names — and
+            // to the identity the settings state for it, where they
+            // state one — and dialling again as `redial` says.
+            let name = Name { issuer: selected.account.issuer, subject: selected.account.subject };
+            let presenter = Arc::new(Presenter::new(identities, name).expecting(selected.daemon.identity));
+            app.manage(diverge_sdk::tauri_proxy::TauriProxy::new(selected.daemon.address, presenter, redial));
             // The window, made here and not by the configuration, so a
             // link that opens a new window can be answered: the page or
             // a frontend's frame asking for one — a link with a target,
             // `window.open` — is never given a window of the app's. An
             // `http` or `https` address opens in the person's own
-            // browser; anything else opens nothing.
+            // browser; anything else opens nothing. Its title names
+            // the daemon this start is on.
             tauri::WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
+                .title(format!("Diverge Viewer — {}", selected.daemon_name))
                 .on_new_window(|url, _| {
                     if matches!(url.scheme(), "http" | "https") {
                         let _ = webbrowser::open(url.as_str());

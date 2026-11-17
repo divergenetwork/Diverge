@@ -3,73 +3,74 @@
 use clap::Subcommand;
 use diverge_sdk::wire::proxy::Redial;
 
-use super::Identity;
+use super::{Chosen, Daemons, Port};
 
-/// The viewer's settings: one setting of its `daemon` read or
-/// written by itself. They are not worked on whole: there is no
-/// `viewer config`. The viewer is not started or stopped here: a
-/// setting is
-/// written whether the app is open or not, and read by the app at its
-/// next start.
+/// The viewer on this host: started, stopped, or one of its settings
+/// — the port its stop is heard on, its redial, its daemons, what
+/// each of them is, and which of them is the default — read or
+/// written by itself. Its daemons are kept as the CLI's own are. A
+/// setting is not written while the viewer runs on the root.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Viewer {
-    /// Read or write one setting of the daemon the viewer dials, and
-    /// as whom.
+    /// Start the viewer on the root, detached, on one of its daemons
+    /// as one of that daemon's accounts; the command ends once the
+    /// viewer is up, and fails if one already runs on the root or it
+    /// dies before it is up, with what it said. The window's title
+    /// names the daemon.
+    Start {
+        /// The daemon to dial, by its name among the viewer's
+        /// daemons. Absent, the viewer's default daemon.
+        #[arg(long, value_name = "NAME")]
+        daemon: Option<String>,
+        /// The account to dial it as, by its name among that daemon's
+        /// accounts. Absent, the daemon's default account.
+        #[arg(long, value_name = "NAME")]
+        account: Option<String>,
+    },
+    /// Stop the viewer running on the root, asked over its own port
+    /// on this host; the command ends once the viewer has exited.
+    Stop,
+    /// Read or write the loopback port the viewer hears its stop on.
     #[command(subcommand)]
-    Daemon(ViewerDaemon),
-}
-
-/// The settings of the viewer's `daemon`, each a command beneath
-/// `diverge viewer daemon`. Every one
-/// has a default, so every one is read and written whether any
-/// was set before or not.
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
-pub enum ViewerDaemon {
-    /// Read or write where the daemon is dialled, `daemon.address`.
-    #[command(subcommand)]
-    Address(Text),
-    /// Read or write the issuer of the identity the viewer dials as,
-    /// `daemon.issuer`.
-    #[command(subcommand)]
-    Issuer(Text),
-    /// Read or write the subject of the identity the viewer dials as,
-    /// `daemon.subject`.
-    #[command(subcommand)]
-    Subject(Text),
-    /// Read or write the daemon's own identity, which must answer at
-    /// the address where it is stated, `daemon.identity`.
-    #[command(subcommand)]
-    Identity(Identity),
-    /// Read or write whether, and how often, the viewer dials the
-    /// daemon again by itself, `daemon.redial`.
+    Port(Port),
+    /// Read or write whether, and how long after, the viewer dials
+    /// its daemon again when the connection ends.
     #[command(subcommand)]
     Redial(RedialSetting),
+    /// List the daemons the viewer may dial, add one, delete one, or
+    /// — after a daemon's index — read or write one setting of that
+    /// daemon.
+    Daemons(Daemons),
+    /// Read or write which daemon is dialled when a start names none.
+    #[command(subcommand)]
+    Default(Chosen),
 }
 
-/// What is done to a setting that is a string: the viewer's, and a
-/// daemon's address among the CLI's own settings.
+/// What is done to a setting that is a string: a daemon's address.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Text {
     /// Print the string, alone on its line, as it is and not as
-    /// JSON: the default where none was set.
+    /// JSON.
     Get,
     /// Write the string.
     Set {
-        /// The string, as it is to be written.
+        /// The string.
         #[arg(value_name = "VALUE")]
         value: String,
     },
 }
 
-/// What is done to the viewer's `daemon.redial`.
+/// What is done to the viewer's `redial`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum RedialSetting {
     /// Print `never`, or the number of seconds: `5` where none was
     /// set.
     Get,
-    /// Write `never`, or a whole number of seconds.
+    /// Write `never`, or a whole number of seconds. Refused while
+    /// the viewer is running on the root: stop it first.
     Set {
-        /// `never`, or a whole number of seconds, `1` or more.
+        /// `never`, or the seconds to wait before dialling again: at
+        /// least `1`.
         #[arg(value_name = "never|SECONDS", value_parser = redial)]
         value: Redial,
     },
@@ -80,7 +81,7 @@ pub enum RedialSetting {
 fn redial(given: &str) -> Result<Redial, String> {
     let value = match given.parse::<u64>() {
         Ok(seconds) => serde_json::Value::from(seconds),
-        Err(_) => serde_json::Value::String(given.to_string()),
+        Err(_) => serde_json::Value::from(given),
     };
     serde_json::from_value(value).map_err(|_| "`never`, or a whole number of seconds, at least 1".to_string())
 }

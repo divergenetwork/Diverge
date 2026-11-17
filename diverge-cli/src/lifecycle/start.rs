@@ -1,5 +1,6 @@
 //! Starting a program on the root.
 
+use std::ffi::OsString;
 use std::path::Path;
 use std::process::Stdio;
 
@@ -24,7 +25,10 @@ use super::{Error, POLL, Program, beside, say};
 /// - The child is the program's binary beside this one — see
 ///   [`beside`] — given `--config <root>`, the CLI's root, so that it
 ///   runs on the root this command found; `DIVERGE_CONFIG`, which
-///   the program would otherwise consult, is not what it sees. It is not killed when this command ends,
+///   the program would otherwise consult, is not what it sees.
+///   `arguments` follow it: none for the daemon and the provider,
+///   and for the viewer the daemon and the account its start names.
+///   It is not killed when this command ends,
 ///   and on Windows it is made with no console window and apart from
 ///   this one's, so that neither a closed terminal nor this process
 ///   ending takes it down.
@@ -40,7 +44,7 @@ use super::{Error, POLL, Program, beside, say};
 ///   pipe held open for one to write on would tie the detached child
 ///   to this command; the lock file is what they do leave, so it is
 ///   polled.
-pub async fn start(root: &Path, program: Program) -> Result<(), Error> {
+pub async fn start(root: &Path, program: Program, arguments: &[OsString]) -> Result<(), Error> {
     let lock = program.lock(root);
     match file_lock::try_exclusive(&lock).await.map_err(Error::Lock)? {
         Some(probe) => drop(probe),
@@ -66,6 +70,7 @@ pub async fn start(root: &Path, program: Program) -> Result<(), Error> {
     command
         .arg("--config")
         .arg(root)
+        .args(arguments)
         .stdin(Stdio::null())
         .stdout(stdout)
         .stderr(stderr)

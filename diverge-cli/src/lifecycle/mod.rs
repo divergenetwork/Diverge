@@ -1,5 +1,8 @@
-//! The `daemon` and `provider` commands: the program on this host
-//! started, or stopped.
+//! The `daemon`, `provider` and `viewer` commands: the program on
+//! this host started, or stopped. The viewer is started and stopped
+//! as the other two are, with the daemon and the account its start
+//! names handed on to it, and its stop put to the loopback port its
+//! own settings name.
 //!
 //! `diverge daemon start|stop`, `diverge provider start|stop`: the
 //! [`Program`] is the daemon's or the provider's own binary beside
@@ -63,7 +66,7 @@ pub const POLL: Duration = Duration::from_millis(200);
 /// Do `action` to `program` on `root`: see [`start`] and [`stop`].
 pub async fn run(root: &Path, program: Program, action: Lifecycle) -> Result<(), Error> {
     match action {
-        Lifecycle::Start => start(root, program).await,
+        Lifecycle::Start => start(root, program, &[]).await,
         Lifecycle::Stop => stop(root, program).await,
     }
 }

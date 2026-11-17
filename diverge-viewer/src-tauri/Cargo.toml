@@ -16,6 +16,8 @@ diverge-sdk = { path = "../../diverge-sdk-rs", features = ["tauri-proxy", "ident
 # what was wrong in a file that does not parse.
 serde_path_to_error = "0.1.20"
 serde_yaml_ng = "0.10.0"
+# The daemons and their accounts, by name, in the order they were added.
+indexmap = { version = "2.14.2", features = ["serde"] }
 
 tauri = { version = "2.10.3", features = [] }
 # The system's save and folder dialogs a download asks where to put it

@@ -1,8 +1,8 @@
-//! Which program: the daemon, or the provider.
+//! Which program: the daemon, the provider, or the viewer.
 
 use std::path::{Path, PathBuf};
 
-/// One of the two programs the CLI starts and stops on its root. Each
+/// One of the three programs the CLI starts and stops on its root. Each
 /// is its own binary beside this one, holds its own lock file in the
 /// root for as long as it runs, and is given its own log file there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,6 +11,8 @@ pub enum Program {
     Daemon,
     /// The provider, `diverge-provider`.
     Provider,
+    /// The viewer, `diverge-viewer`, the desktop app.
+    Viewer,
 }
 
 impl Program {
@@ -21,6 +23,7 @@ impl Program {
         let name = match self {
             Program::Daemon => "diverge-daemon",
             Program::Provider => "diverge-provider",
+            Program::Viewer => "diverge-viewer",
         };
         format!("{name}{}", std::env::consts::EXE_SUFFIX)
     }
@@ -34,6 +37,7 @@ impl Program {
         match self {
             Program::Daemon => root.join(diverge_sdk::daemon::LOCK_FILE),
             Program::Provider => root.join(diverge_sdk::provider::LOCK_FILE),
+            Program::Viewer => root.join(crate::config::VIEWER_LOCK_FILE),
         }
     }
 
@@ -43,6 +47,7 @@ impl Program {
         match self {
             Program::Daemon => root.join("daemon.log"),
             Program::Provider => root.join("provider.log"),
+            Program::Viewer => root.join("viewer.log"),
         }
     }
 
@@ -52,6 +57,7 @@ impl Program {
         match self {
             Program::Daemon => "daemon",
             Program::Provider => "provider",
+            Program::Viewer => "viewer",
         }
     }
 }

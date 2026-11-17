@@ -60,6 +60,9 @@ pub enum Error {
     Config(config::Error),
     /// `provider.yaml` could not be read as the provider reads it.
     Provider(diverge_provider::config::Error),
+    /// The viewer's settings could not be read as the viewer reads
+    /// them.
+    Viewer(crate::document::Error),
     /// The default daemon's address names a host that is not this
     /// one, and a stop is honoured only from the host the daemon is
     /// on.
@@ -133,6 +136,7 @@ impl fmt::Display for Error {
             }
             Error::Config(error) => write!(f, "{error}"),
             Error::Provider(error) => write!(f, "{error}"),
+            Error::Viewer(error) => write!(f, "{error}"),
             Error::NotLocal(address) => write!(
                 f,
                 "the default daemon is at `{address}`, which is not this host, and a stop is honoured only from the daemon's own host"
@@ -173,6 +177,7 @@ impl std::error::Error for Error {
             | Error::Connect { source, .. } => Some(source),
             Error::Config(error) => Some(error),
             Error::Provider(error) => Some(error),
+            Error::Viewer(error) => Some(error),
             Error::Running { .. }
             | Error::Died { .. }
             | Error::NotLocal(_)

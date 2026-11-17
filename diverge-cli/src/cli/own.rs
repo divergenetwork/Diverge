@@ -1,23 +1,78 @@
-//! The CLI's own document, a setting at a time: its daemons, what
-//! each of them is, and which is the default. The only way the CLI
-//! works on `cli.yaml`: there is no `cli config`.
+//! The daemons a program may dial, a setting at a time: the list,
+//! what each of them is, and which is the default. The CLI keeps
+//! such a list for itself and the viewer keeps one of its own, member
+//! for member the same, so both are worked on here: `diverge cli
+//! daemons …` and `diverge viewer daemons …`, `diverge cli default …`
+//! and `diverge viewer default …`.
 
 use std::path::Path;
 
 use diverge_sdk::shared;
 use indexmap::IndexMap;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::Error;
-use super::setting::{line, read, write};
+use super::setting::{hold, line, read, write};
 use crate::arguments::{Chosen, DaemonAccounts, Daemons, DaemonsCommand, Identity, Text};
-use crate::config::{Account, Config, Daemon};
+use crate::config::{self, Account, Daemon};
 use crate::document::{self, Which};
+use crate::lifecycle::Program;
 
-/// `diverge cli daemons …`: the daemons the CLI may dial, and each of
-/// them. The document keeps the daemons by name, in an order, and
-/// each daemon's accounts likewise; here both are lists in that
-/// order, each item with its name as a member, so that they are
-/// worked on as every other list is. By these rules:
+/// Settings that hold daemons by name and name one of them the
+/// default: the CLI's own, and the viewer's.
+pub trait Book: Serialize + DeserializeOwned {
+    /// Which program's settings these are.
+    const WHICH: Which;
+    /// The program that must not be running on the root while one is
+    /// written: the viewer, for the viewer's. The CLI's have none: the
+    /// CLI reads its own at every command and holds no lock.
+    const PROGRAM: Option<Program>;
+    /// What a command of the list says when it was given an index.
+    const LISTWISE: &'static str;
+    /// What a command of one daemon says when it was given none.
+    const ONE: &'static str;
+    /// The command that makes another daemon the default.
+    const DEFAULT_DAEMON: &'static str;
+    /// The command that makes another account a daemon's default.
+    const DEFAULT_ACCOUNT: &'static str;
+
+    /// The default daemon's name, and the daemons.
+    fn book(&mut self) -> (&mut String, &mut IndexMap<String, Daemon>);
+}
+
+impl Book for config::Config {
+    const WHICH: Which = Which::Cli;
+    const PROGRAM: Option<Program> = None;
+    const LISTWISE: &'static str = "`get`, `add` and `delete` work on the list of daemons and take no daemon's index before them: `diverge cli daemons get`";
+    const ONE: &'static str = "name the daemon by its index first, as `diverge cli daemons get` prints it: `diverge cli daemons 0 address get`";
+    const DEFAULT_DAEMON: &'static str = "diverge cli default set <INDEX>";
+    const DEFAULT_ACCOUNT: &'static str = "diverge cli daemons <INDEX> default set <INDEX>";
+
+    fn book(&mut self) -> (&mut String, &mut IndexMap<String, Daemon>) {
+        (&mut self.default, &mut self.daemons)
+    }
+}
+
+impl Book for config::Viewer {
+    const WHICH: Which = Which::Viewer;
+    const PROGRAM: Option<Program> = Some(Program::Viewer);
+    const LISTWISE: &'static str = "`get`, `add` and `delete` work on the list of daemons and take no daemon's index before them: `diverge viewer daemons get`";
+    const ONE: &'static str = "name the daemon by its index first, as `diverge viewer daemons get` prints it: `diverge viewer daemons 0 address get`";
+    const DEFAULT_DAEMON: &'static str = "diverge viewer default set <INDEX>";
+    const DEFAULT_ACCOUNT: &'static str = "diverge viewer daemons <INDEX> default set <INDEX>";
+
+    fn book(&mut self) -> (&mut String, &mut IndexMap<String, Daemon>) {
+        (&mut self.default, &mut self.daemons)
+    }
+}
+
+/// `diverge cli daemons …` and `diverge viewer daemons …`: the
+/// daemons the program may dial, and each of them. The daemons are
+/// kept by name, in an order, and each daemon's accounts likewise;
+/// here both are lists in that order, each item with its name as a
+/// member, so that they are worked on as every other list is. By
+/// these rules:
 ///
 /// - **The list**, with no index before the command. `get` prints
 ///   each daemon as one JSON line, its `index` and its `name`, and
@@ -26,9 +81,8 @@ use crate::document::{self, Which};
 ///   of its own; a name that is a daemon's already is refused,
 ///   [`Error::Listed`]. `delete` takes the index and removes the
 ///   daemon with its accounts; the default daemon is refused,
-///   [`Error::Default`], since a document whose `default` names no
-///   daemon dials none, and which to dial instead is not the delete's
-///   to choose.
+///   [`Error::Default`], since a `default` that names no daemon dials
+///   none, and which to dial instead is not the delete's to choose.
 /// - **One daemon**, with its index before the command. What a daemon
 ///   is, is read a setting at a time, and there is no reading of a
 ///   daemon whole:
@@ -50,26 +104,23 @@ use crate::document::{self, Which};
 /// - A command of the list given an index, and a command of one
 ///   daemon given none, is refused, [`Error::Usage`]; an index the
 ///   list does not reach is refused, [`Error::NoItem`].
-/// - No lock is taken: the CLI holds none on the root, and reads the
-///   document at every command. Nothing is printed by a write.
-pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
+/// - A write is by [`set`]'s rules: the viewer's is refused while
+///   the viewer runs on the root; the CLI's takes no lock. Nothing is
+///   printed by a write.
+pub async fn daemons<B: Book>(root: &Path, action: Daemons) -> Result<(), Error> {
     let Daemons { index, command } = action;
     let listwise = matches!(command, DaemonsCommand::Get | DaemonsCommand::Add { .. } | DaemonsCommand::Delete { .. });
     match (listwise, index) {
-        (true, Some(_)) => {
-            return Err(Error::Usage("`get`, `add` and `delete` work on the list of daemons and take no daemon's index before them: `diverge cli daemons get`"));
-        }
-        (false, None) => {
-            return Err(Error::Usage("name the daemon by its index first, as `diverge cli daemons get` prints it: `diverge cli daemons 0 address get`"));
-        }
+        (true, Some(_)) => return Err(Error::Usage(B::LISTWISE)),
+        (false, None) => return Err(Error::Usage(B::ONE)),
         _ => {}
     }
     let at = index.unwrap_or_default();
     match command {
         DaemonsCommand::Get => {
-            let config = read::<Config>(root, Which::Cli).await?;
+            let mut config = read::<B>(root, B::WHICH).await?;
             let mut text = Vec::new();
-            for (index, name) in config.daemons.keys().enumerate() {
+            for (index, name) in config.book().1.keys().enumerate() {
                 let line = serde_json::json!({"index": index, "name": name});
                 serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
                 text.push(b'\n');
@@ -77,68 +128,63 @@ pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
             write(text).await
         }
         DaemonsCommand::Add { name, address } => {
-            set(root, |config| {
-                if let Some(index) = config.daemons.get_index_of(&name) {
+            set::<B>(root, |_, daemons| {
+                if let Some(index) = daemons.get_index_of(&name) {
                     return Err(Error::Listed { list: "daemons", item: format!("a daemon named `{name}`"), index });
                 }
-                config.daemons.insert(name, Daemon { address, default: None, identity: None, accounts: IndexMap::new() });
+                daemons.insert(name, Daemon { address, default: None, identity: None, accounts: IndexMap::new() });
                 Ok(())
             })
             .await
         }
         DaemonsCommand::Delete { index } => {
-            set(root, |config| {
-                let Some((name, _)) = config.daemons.get_index(index) else {
-                    return Err(Error::NoItem { list: "daemons", index, count: config.daemons.len() });
+            set::<B>(root, |default, daemons| {
+                let Some((name, _)) = daemons.get_index(index) else {
+                    return Err(Error::NoItem { list: "daemons", index, count: daemons.len() });
                 };
-                if *name == config.default {
-                    return Err(Error::Default {
-                        what: "daemon",
-                        name: name.clone(),
-                        index,
-                        instead: "diverge cli default set <INDEX>",
-                    });
+                if name == default {
+                    return Err(Error::Default { what: "daemon", name: name.clone(), index, instead: B::DEFAULT_DAEMON });
                 }
                 // Shifted, not swapped: every daemon after it moves
                 // one index down, and the order is otherwise kept.
-                config.daemons.shift_remove_index(index);
+                daemons.shift_remove_index(index);
                 Ok(())
             })
             .await
         }
         DaemonsCommand::Address(Text::Get) => {
-            let config = read::<Config>(root, Which::Cli).await?;
-            write(format!("{}\n", one(&config, at)?.address).into_bytes()).await
+            let mut config = read::<B>(root, B::WHICH).await?;
+            write(format!("{}\n", one(config.book().1, at)?.address).into_bytes()).await
         }
         DaemonsCommand::Address(Text::Set { value }) => {
-            set(root, |config| {
-                one_mut(config, at)?.address = value;
+            set::<B>(root, |_, daemons| {
+                one(daemons, at)?.address = value;
                 Ok(())
             })
             .await
         }
         DaemonsCommand::Identity(Identity::Get) => {
-            let config = read::<Config>(root, Which::Cli).await?;
-            line(&one(&config, at)?.identity).await
+            let mut config = read::<B>(root, B::WHICH).await?;
+            line(&one(config.book().1, at)?.identity).await
         }
         DaemonsCommand::Identity(Identity::Set { issuer, subject }) => {
-            set(root, |config| {
-                one_mut(config, at)?.identity = Some(shared::Identity { issuer, subject });
+            set::<B>(root, |_, daemons| {
+                one(daemons, at)?.identity = Some(shared::Identity { issuer, subject });
                 Ok(())
             })
             .await
         }
         DaemonsCommand::Default(Chosen::Get) => {
-            let config = read::<Config>(root, Which::Cli).await?;
-            let daemon = one(&config, at)?;
+            let mut config = read::<B>(root, B::WHICH).await?;
+            let daemon = one(config.book().1, at)?;
             let chosen = daemon.default.as_ref().and_then(|name| {
                 daemon.accounts.get_index_of(name).map(|index| serde_json::json!({"index": index, "name": name}))
             });
             line(&chosen).await
         }
         DaemonsCommand::Default(Chosen::Set { index }) => {
-            set(root, |config| {
-                let daemon = one_mut(config, at)?;
+            set::<B>(root, |_, daemons| {
+                let daemon = one(daemons, at)?;
                 let Some((name, _)) = daemon.accounts.get_index(index) else {
                     return Err(Error::NoItem { list: "accounts", index, count: daemon.accounts.len() });
                 };
@@ -148,9 +194,9 @@ pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
             .await
         }
         DaemonsCommand::Accounts(DaemonAccounts::Get) => {
-            let config = read::<Config>(root, Which::Cli).await?;
+            let mut config = read::<B>(root, B::WHICH).await?;
             let mut text = Vec::new();
-            for (index, (name, account)) in one(&config, at)?.accounts.iter().enumerate() {
+            for (index, (name, account)) in one(config.book().1, at)?.accounts.iter().enumerate() {
                 let line = serde_json::json!({"index": index, "name": name, "issuer": account.issuer, "subject": account.subject});
                 serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
                 text.push(b'\n');
@@ -158,8 +204,8 @@ pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
             write(text).await
         }
         DaemonsCommand::Accounts(DaemonAccounts::Add { name, issuer, subject }) => {
-            set(root, |config| {
-                let daemon = one_mut(config, at)?;
+            set::<B>(root, |_, daemons| {
+                let daemon = one(daemons, at)?;
                 if let Some(index) = daemon.accounts.get_index_of(&name) {
                     return Err(Error::Listed { list: "accounts", item: format!("an account named `{name}`"), index });
                 }
@@ -169,18 +215,13 @@ pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
             .await
         }
         DaemonsCommand::Accounts(DaemonAccounts::Delete { index }) => {
-            set(root, |config| {
-                let daemon = one_mut(config, at)?;
+            set::<B>(root, |_, daemons| {
+                let daemon = one(daemons, at)?;
                 let Some((name, _)) = daemon.accounts.get_index(index) else {
                     return Err(Error::NoItem { list: "accounts", index, count: daemon.accounts.len() });
                 };
                 if daemon.default.as_ref() == Some(name) {
-                    return Err(Error::Default {
-                        what: "account",
-                        name: name.clone(),
-                        index,
-                        instead: "diverge cli daemons <INDEX> default set <INDEX>",
-                    });
+                    return Err(Error::Default { what: "account", name: name.clone(), index, instead: B::DEFAULT_ACCOUNT });
                 }
                 daemon.accounts.shift_remove_index(index);
                 Ok(())
@@ -190,46 +231,40 @@ pub async fn daemons(root: &Path, action: Daemons) -> Result<(), Error> {
     }
 }
 
-/// The daemon at `index` in the document's order, or
-/// [`Error::NoItem`] where the list does not reach it.
-fn one(config: &Config, index: usize) -> Result<&Daemon, Error> {
-    match config.daemons.get_index(index) {
-        Some((_, daemon)) => Ok(daemon),
-        None => Err(Error::NoItem { list: "daemons", index, count: config.daemons.len() }),
-    }
-}
-
-/// [`one`], to change it.
-fn one_mut(config: &mut Config, index: usize) -> Result<&mut Daemon, Error> {
-    let count = config.daemons.len();
-    match config.daemons.get_index_mut(index) {
+/// The daemon at `index` in the list's order, or [`Error::NoItem`]
+/// where the list does not reach it.
+fn one(daemons: &mut IndexMap<String, Daemon>, index: usize) -> Result<&mut Daemon, Error> {
+    let count = daemons.len();
+    match daemons.get_index_mut(index) {
         Some((_, daemon)) => Ok(daemon),
         None => Err(Error::NoItem { list: "daemons", index, count }),
     }
 }
 
-/// `diverge cli default get|set`: which daemon is dialled when a
-/// command names none. The document names it; here it is said by its
-/// index among the daemons, as `daemons get` prints them:
+/// `diverge cli default get|set` and `diverge viewer default
+/// get|set`: which daemon is dialled when none is named. It is kept
+/// by name; here it is said by its index among the daemons, as
+/// `daemons get` prints them:
 ///
 /// - `get` prints `{"index":…,"name":"…"}`, or `null` where the
-///   document's `default` names no daemon the document has.
+///   `default` names no daemon there is.
 /// - `set` takes an index and writes that daemon's name as the
 ///   default. An index the list does not reach is refused,
 ///   [`Error::NoItem`].
-pub async fn default(root: &Path, action: Chosen) -> Result<(), Error> {
+pub async fn default<B: Book>(root: &Path, action: Chosen) -> Result<(), Error> {
     match action {
         Chosen::Get => {
-            let config = read::<Config>(root, Which::Cli).await?;
-            let found = config.daemons.get_index_of(&config.default);
-            line(&found.map(|index| serde_json::json!({"index": index, "name": config.default}))).await
+            let mut config = read::<B>(root, B::WHICH).await?;
+            let (default, daemons) = config.book();
+            let found = daemons.get_index_of(default.as_str());
+            line(&found.map(|index| serde_json::json!({"index": index, "name": default}))).await
         }
         Chosen::Set { index } => {
-            set(root, |config| {
-                let Some((name, _)) = config.daemons.get_index(index) else {
-                    return Err(Error::NoItem { list: "daemons", index, count: config.daemons.len() });
+            set::<B>(root, |default, daemons| {
+                let Some((name, _)) = daemons.get_index(index) else {
+                    return Err(Error::NoItem { list: "daemons", index, count: daemons.len() });
                 };
-                config.default = name.clone();
+                *default = name.clone();
                 Ok(())
             })
             .await
@@ -237,12 +272,24 @@ pub async fn default(root: &Path, action: Chosen) -> Result<(), Error> {
     }
 }
 
-/// The CLI's document read as its type, changed, and written whole.
-/// A change that refuses writes nothing.
-async fn set(root: &Path, change: impl FnOnce(&mut Config) -> Result<(), Error>) -> Result<(), Error> {
-    let mut config = read::<Config>(root, Which::Cli).await?;
-    change(&mut config)?;
+/// The settings read as their type, changed, and written whole. A
+/// change that refuses writes nothing. Where the settings have a
+/// program — the viewer's — its lock on the root is taken first and
+/// kept until the write is done, and a lock that is held is the
+/// program running, [`Error::Stop`]: see [`hold`].
+async fn set<B: Book>(
+    root: &Path,
+    change: impl FnOnce(&mut String, &mut IndexMap<String, Daemon>) -> Result<(), Error>,
+) -> Result<(), Error> {
+    let held = match B::PROGRAM {
+        Some(program) => Some(hold(root, program).await?),
+        None => None,
+    };
+    let mut config = read::<B>(root, B::WHICH).await?;
+    let (default, daemons) = config.book();
+    change(default, daemons)?;
     let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;
-    document::write(root, Which::Cli, &yaml).await?;
+    document::write(root, B::WHICH, &yaml).await?;
+    drop(held);
     Ok(())
 }

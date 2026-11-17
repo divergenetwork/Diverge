@@ -1401,7 +1401,6 @@ dependencies = [
  "diverge-daemon",
  "diverge-provider",
  "diverge-sdk",
- "diverge-viewer-config",
  "futures-util",
  "indexmap 2.14.2",
  "jaq-core",
@@ -1657,6 +1656,7 @@ dependencies = [
  "futures-util",
  "hyper",
  "hyper-util",
+ "indexmap 2.14.2",
  "rfd",
  "serde",
  "serde_json",
@@ -1666,17 +1666,6 @@ dependencies = [
  "tauri-build",
  "tokio",
  "webbrowser",
-]
-
-[[package]]
-name = "diverge-viewer-config"
-version = "1.0.0"
-dependencies = [
- "diverge-sdk",
- "serde",
- "serde_path_to_error",
- "serde_yaml_ng",
- "tokio",
 ]
 
 [[package]]

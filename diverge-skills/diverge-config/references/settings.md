@@ -106,11 +106,15 @@ an account only by its identity.
 
 ## The viewer
 
-Read once, when the viewer starts. Commands: `diverge viewer daemon <setting> …`.
+Read once, when the viewer starts. Commands: `diverge viewer port|redial|daemons|default …`.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `daemon address` | `ws://127.0.0.1:14980/` | Where the daemon is dialled: a WebSocket URL, or a `host:port`. |
-| `daemon issuer`, `daemon subject` | empty | The identity the viewer dials as: one signed in under this root, which must be an administrator or an account of that daemon. What the viewer shows is what that account may see. **With either empty the viewer does not start.** |
-| `daemon identity` | none | `{issuer, subject}`: the daemon's **own** identity. Stated, the viewer connects only if that identity answers and proves its key. Unset, whichever identity answers is accepted. |
-| `daemon redial` | `5` | `never`, or a whole number of seconds (at least `1`) the viewer waits before dialling again after a connection ends or a dial fails. |
+| `port` | `14981` | The port the viewer hears its stop on, on this host only: how `diverge viewer stop` reaches it. One above a daemon's. |
+| `redial` | `5` | `never`, or a whole number of seconds (at least `1`) the viewer waits before dialling again after a connection ends or a dial fails. |
+| `daemons` | one, named `local` | The daemons the viewer may dial, each with a name (`diverge viewer start --daemon <name>`). The viewer's own list, apart from the CLI's. |
+| `default` | `local` | Which daemon a start dials when it names none. |
+| a daemon's `address` | `ws://127.0.0.1:14980/` for `local` | Where the daemon is dialled: a WebSocket URL, or a `host:port`. |
+| a daemon's `accounts` | none | The identities the viewer may dial that daemon as, each with a name (`--account <name>`) and an `{issuer, subject}` signed in under this root. The identity must be an administrator or an account of that daemon. What the viewer shows is what that account may see. |
+| a daemon's `default` | none | Which of its accounts a start uses when it names none. **With none, a start must pass `--account`, or the viewer does not start.** |
+| a daemon's `identity` | none | `{issuer, subject}`: the daemon's **own** identity. Stated, the viewer connects only if that identity answers and proves its key. Unset, whichever identity answers is accepted. |

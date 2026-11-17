@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation. Load it to choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change any setting of the daemon (`diverge daemon port|idle_seconds|admins|identity|postgres …`), the provider (`diverge provider port|identity|incoming|outgoing|podman|containers|volumes|images|messages …`), the viewer (`diverge viewer daemon …`) or the CLI itself (`diverge cli daemons …`, `diverge cli default …`); to move or wipe the provider's podman data, a volume store or the image Store; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation. Load it to choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change any setting of the daemon (`diverge daemon port|idle_seconds|admins|identity|postgres …`), the provider (`diverge provider port|identity|incoming|outgoing|podman|containers|volumes|images|messages …`), the viewer (`diverge viewer port|redial|daemons|default …`) or the CLI itself (`diverge cli daemons …`, `diverge cli default …`); to move or wipe the provider's podman data, a volume store or the image Store; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon, the provider or the viewer; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: settings, identities, start and stop
@@ -43,7 +43,8 @@ Every Diverge program on a host is told which **config root** to use. All of the
 | Port | Who | Setting |
 |---|---|---|
 | 14979 | provider (all interfaces) | `diverge provider port` |
-| 14980 | daemon (all interfaces) | `diverge daemon port` — and the address each CLI daemon entry and the viewer dial |
+| 14980 | daemon (all interfaces) | `diverge daemon port` — and the address each CLI daemon entry and each viewer daemon entry dial |
+| 14981 | viewer (this host only) | `diverge viewer port` |
 
 ## How settings work
 
@@ -57,9 +58,9 @@ Each setting is a command of its own under its program: `diverge daemon …`, `d
   path is printed bare; an object or a list item as one JSON line.
 - **A write prints nothing.** No output and exit 0 is success.
 - **Nothing is given as JSON.** Values are plain arguments and flags.
-- **A write to a daemon or provider setting is refused while that program is running**:
+- **A write to a daemon, provider or viewer setting is refused while that program is running**:
   `Error: the daemon is running on this root, as process <pid>, and nothing was written: stop it first, with`
-  `` `diverge daemon stop` ``. Stop it, change the setting, start it. Viewer and CLI settings have no such rule.
+  `` `diverge daemon stop` ``. Stop it, change the setting, start it. CLI settings have no such rule.
 - **Only the value's shape is checked.** A wrong port, an identity that is not signed in, or a path that does
   not exist is found when the program starts.
 - An optional part of the provider is switched with `enable` and `disable`, and asked with `enabled`. While it
@@ -292,23 +293,43 @@ diverge cli daemons 0 identity set --issuer https://identity.diverge.network --s
 
 ## The viewer's settings
 
+The viewer keeps a list of daemons it may dial, each with accounts to dial it as, exactly as the CLI does, plus
+two settings of its own. Every write is refused while the viewer runs on the root: stop it first.
+
 ```bash
-diverge viewer daemon address get        # ws://127.0.0.1:14980/
-diverge viewer daemon address set ws://10.0.0.5:14980/
-diverge viewer daemon issuer get         # an empty line until one is set
-diverge viewer daemon issuer set https://identity.diverge.network
-diverge viewer daemon subject set github.12345.admin
-diverge viewer daemon identity get       # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
-diverge viewer daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
-diverge viewer daemon redial get         # 5, or never
-diverge viewer daemon redial set never
+diverge viewer port get                  # 14981: the loopback port the viewer hears its stop on
+diverge viewer port set 14983
+diverge viewer redial get                # 5, or never
+diverge viewer redial set never
+
+# the list of daemons, and the default
+diverge viewer daemons get               # {"index":0,"name":"local"}   one line per daemon
+diverge viewer daemons add --name b --address ws://127.0.0.1:14982/
+diverge viewer daemons delete 1
+diverge viewer default get               # {"index":0,"name":"local"}, or null
+diverge viewer default set 1             # by index
+
+# one daemon: its index first, then the setting
+diverge viewer daemons 0 address get     # ws://127.0.0.1:14980/
+diverge viewer daemons 0 address set ws://10.0.0.5:14980/
+diverge viewer daemons 0 accounts get    # {"index":0,"name":"me","issuer":"…","subject":"…"}   one line per account
+diverge viewer daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge viewer daemons 0 accounts delete 0
+diverge viewer daemons 0 default get     # {"index":0,"name":"me"}, or null
+diverge viewer daemons 0 default set 0   # by the account's index
+diverge viewer daemons 0 identity get    # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
+diverge viewer daemons 0 identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
 ```
 
-- **The viewer does not start while `issuer` or `subject` is empty.** Sign the identity in first, then set
-  both. They are who the viewer dials as; what it shows is what that account may see.
-- `identity` is who the daemon must be; unset, whichever daemon answers is accepted. It cannot be cleared.
+- A fresh viewer has one daemon, `local`, at `ws://127.0.0.1:14980/`, with no account: the same daemon a fresh
+  CLI dials. The viewer's list is its own; adding a daemon or an account to the CLI adds nothing to the viewer.
+- Everything said of the CLI's daemons above holds here: index before a daemon's setting, `delete` refusing the
+  default, `identity set` that cannot be cleared.
+- **The viewer does not start until the daemon it is to dial has an account** to dial it as (a default account,
+  or one named at the start). Sign the identity in first, then `accounts add` and `default set`. What the viewer
+  shows is what that account may see.
 - `redial` is `never` or a whole number of seconds (1 or more) the viewer waits before dialling again.
-- A change is read at the viewer's next start. The viewer is a desktop app; the CLI neither starts nor stops it.
+- `port` is heard on this host only. Two viewers on one host are two roots, and need two ports.
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
@@ -491,14 +512,18 @@ diverge run identities login --issuer https://identity.diverge.network --subject
 - Signing an identity in does not make the daemon present it: which identity the daemon presents is its
   `identity` setting, read at start.
 
-## Start and stop: `diverge daemon|provider start|stop`
+## Start and stop: `diverge daemon|provider|viewer start|stop`
 
 ```bash
 diverge provider start > provider-start.out 2>&1; cat provider-start.out   # started provider, process <pid>
 diverge daemon start   > daemon-start.out   2>&1; cat daemon-start.out     # started daemon, process <pid>
 
+diverge viewer start   > viewer-start.out   2>&1; cat viewer-start.out     # started viewer, process <pid>
+diverge viewer start --daemon b --account me > viewer-start.out 2>&1; cat viewer-start.out
+
 diverge daemon stop      # stopped daemon      (or: daemon is not running — exit 0)
 diverge provider stop
+diverge viewer stop
 ```
 
 **Never pipe a `start`** (no `|`, no `$(…)`): the detached server inherits the pipe and the shell hangs.
@@ -528,6 +553,19 @@ Redirect the command's output to a file of your own in your working directory, a
   starting (or the CLI's default daemon names the wrong port). Wait and retry, or fix the address.
 - A stop is honoured only from the same host; there is no remote stop.
 
+The viewer is a desktop app, started and stopped the same way:
+
+- `viewer start` opens the window on the viewer's default daemon as that daemon's default account.
+  `--daemon <name>` and `--account <name>` pick others, by the names `diverge viewer daemons get` and
+  `diverge viewer daemons <INDEX> accounts get` print. The window's title names the daemon it is on.
+- One viewer runs per root. A second start is refused, as a daemon's is. To look at another daemon, stop the
+  viewer and start it with `--daemon`.
+- A start fails, with what the viewer said, when the daemon has no account to dial as, a name is not one the
+  viewer has, or its port is taken.
+- `viewer stop` closes the window. A person closing the window ends it too, and `viewer stop` then says
+  `viewer is not running`.
+- It needs a display: on a host with none, do not start it.
+
 Order. Start: provider, then daemon (the daemon connects to the provider; a daemon redials its providers every
 5 seconds, so a late provider is picked up). Stop in reverse: daemon, then provider. With several roots, stop
 every daemon before the provider they share.
@@ -541,11 +579,11 @@ No server notices a changed setting while it runs, and its settings cannot be ch
 | Change | Takes effect |
 |---|---|
 | Any daemon setting | `diverge daemon stop`, change it, `diverge daemon start`. Agents and tools keep their records; running containers are ended and start again on next use. |
-| `diverge daemon port` | As above, **and** update every address that names it: each CLI daemon entry and the viewer. Change the CLI's address after the stop, since the stop dials the old one. Other daemons and providers that dial this one by address need their records edited. |
+| `diverge daemon port` | As above, **and** update every address that names it: each CLI daemon entry and each viewer daemon entry. Change the CLI's address after the stop, since the stop dials the old one. Other daemons and providers that dial this one by address need their records edited. |
 | `diverge daemon postgres` | As above. A different database is a different set of records. |
 | Any provider setting | `diverge provider stop`, change it, `diverge provider start`. Stopping the provider removes every container it ran; connected daemons show it `disconnected`, redial every 5 seconds, and start containers again on next use. |
 | A CLI setting | The next CLI command. Nothing to restart. |
-| A viewer setting | The next start of the viewer app. |
+| A viewer setting | `diverge viewer stop`, change it, `diverge viewer start`. |
 | `diverge identities login` of an identity a running program already uses | No restart. |
 | Records in the daemon (providers, accounts, roles, agents, …) | Immediate; those are `diverge run` requests, not settings. |
 
@@ -582,7 +620,9 @@ diverge run info        # {"info":{"version":"…"}}
 ```
 
 Then add the provider to the daemon with `diverge run providers add` (skill `diverge-daemons`), and point the
-viewer at the daemon with `diverge viewer daemon issuer set …` and `subject set …`.
+viewer at the daemon by giving its daemon `local` the same account:
+`diverge viewer daemons 0 accounts add --name me --issuer … --subject …`, `diverge viewer daemons 0 default set 0`,
+then `diverge viewer start`.
 
 **Add a second daemon to the CLI.** `diverge cli daemons add --name b --address ws://127.0.0.1:14982/`, find
 its index with `diverge cli daemons get`, give it an account and a default, then `diverge run --daemon b info`.
@@ -604,7 +644,7 @@ start it. (Images: skill `diverge-images`.)
 
 | Message | Cause | Fix |
 |---|---|---|
-| `the daemon is running on this root … stop it first` (or `the provider …`) | A setting was written while the program runs | Stop it, change the setting, start it |
+| `the daemon is running on this root … stop it first` (or `the provider …`, `the viewer …`) | A setting was written while the program runs | Stop it, change the setting, start it |
 | `` `containers` is disabled … enable it first `` (or `volumes`, `images`, `messages`) | A setting of a part that is switched off | `diverge provider <part> enable` |
 | `no account was named, and the daemon … has no default` | The CLI's daemon has no default account (this stops even `request-schema`) | `diverge cli daemons <INDEX> accounts add …` and `default set`, or pass `--account` |
 | `no daemon is named …` / `the daemon … has no account named …` | `--daemon` / `--account` name nothing the CLI has | `diverge cli daemons get`, then `diverge cli daemons <INDEX> accounts get` |

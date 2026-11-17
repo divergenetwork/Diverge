@@ -13,7 +13,6 @@ members = [
     "diverge-postgres",
     "diverge-daemon",
     "diverge-cli",
-    "diverge-viewer/config",
     "diverge-tools/identity-diverge-network",
     "diverge-examples/tools/courier",
     "diverge-examples/tools/memory",

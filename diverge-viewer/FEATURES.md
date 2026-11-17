@@ -616,7 +616,16 @@ refused. An administrator's log is the daemon's own admin log.
   `relay`; one in a daemon's tab carries the route to it.
 - **The outliner's counts are live**, as the board is.
 - **Reconnecting.** The connection is held by the app's Rust and redials
-  by itself as `viewer.yaml` says.
+  by itself as the viewer's `redial` setting says.
+- **A daemon chosen at start.** The viewer keeps its own list of daemons,
+  each with accounts, as the CLI does. A start dials the default daemon
+  as its default account, or the ones `--daemon` and `--account` name.
+- **The title names the daemon.** The window's title is `Diverge Viewer —
+  <daemon name>`.
+- **One viewer per root, started and stopped by the CLI.** `diverge
+  viewer start` opens it and `diverge viewer stop` closes it. A second
+  start on the same root is refused, and a viewer setting is not written
+  while it runs.
 - **Nothing is saved.** The app keeps no files of its own.
 
 ## Limits

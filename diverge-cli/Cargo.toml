@@ -26,9 +26,6 @@ diverge-sdk = { path = "../diverge-sdk-rs", features = ["identities"] }
 # reads it with; path-only, as the SDK is.
 diverge-daemon = { path = "../diverge-daemon" }
 diverge-provider = { path = "../diverge-provider" }
-# The viewer's `viewer.yaml` likewise: a crate beside the app, since a
-# Tauri app is not a library.
-diverge-viewer-config = { path = "../diverge-viewer/config" }
 # The browser an `identity.diverge.network accounts login` opens at
 # the provider's page.
 webbrowser = "=1.2.4"

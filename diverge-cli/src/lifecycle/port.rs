@@ -24,6 +24,11 @@ use crate::config;
 ///   its own crate, so the port is the one the provider is listening
 ///   on; a file the provider would refuse is [`Error::Provider`].
 ///
+/// - The viewer's is `port` in its own settings, read as the viewer
+///   reads it — the default where none was set — which is the
+///   loopback port it hears its stop on; settings the viewer would
+///   refuse are [`Error::Viewer`].
+///
 /// `daemon.yaml` is never consulted: the daemon's own port is in
 /// `cli.yaml`, where the CLI dials it, and the Postgres a daemon
 /// started is the daemon's to stop.
@@ -38,6 +43,12 @@ pub async fn port(root: &Path, program: Program) -> Result<u16, Error> {
             let config = diverge_provider::config::load(root)
                 .await
                 .map_err(Error::Provider)?;
+            Ok(config.port)
+        }
+        Program::Viewer => {
+            let value = crate::document::read(root, crate::document::Which::Viewer).await.map_err(Error::Viewer)?;
+            let config: config::Viewer = serde_path_to_error::deserialize(value)
+                .map_err(|error| Error::Viewer(crate::document::Error::Invalid(error)))?;
             Ok(config.port)
         }
     }

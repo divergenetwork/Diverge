@@ -1,66 +1,48 @@
-//! The daemon the app dials.
+//! One daemon the app may dial, and one account of it.
 
 use diverge_sdk::shared::Identity;
-use diverge_sdk::wire::proxy::Redial;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-/// The daemon the app dials, and as whom: the address, and the
-/// identity the connection presents — one of the root's
-/// [`identities`](diverge_sdk::identities), signed in by
-/// `diverge identities login`, whose `(issuer, subject)` is the
-/// daemon's account. The document holds no token: the app reads the
-/// identity's at start and keeps it fresh, it never reaches the page,
-/// which speaks to the daemon only through the app's own Rust. The
-/// daemon's own token is verified, and the daemon held to the key it
-/// names; where [`identity`](Self::identity) is stated, it must be
-/// that daemon and no other.
+/// A daemon the app may dial: where, and as whom. The same members
+/// the CLI keeps for a daemon of its own.
+///
+/// The settings hold no token: the app reads the account's identity
+/// at start and keeps it fresh, and it never reaches the page, which
+/// speaks to the daemon only through the app's own Rust.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, default)]
+#[serde(deny_unknown_fields)]
 pub struct Daemon {
-    /// Where the daemon is dialled: a WebSocket URL, or a bare
-    /// `host:port` the app puts `ws://` before and `/` after.
+    /// Where it is dialled: a WebSocket URL, or a bare `host:port`
+    /// the app puts `ws://` before and `/` after.
     pub address: String,
-    /// The identity's issuer: the one the app presents its token
-    /// from.
-    pub issuer: String,
-    /// The identity's subject at that issuer.
-    pub subject: String,
+    /// The account dialled as when the start names none, by its name
+    /// in `accounts`. Absent, a start must name one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
     /// The daemon's own identity, `{issuer, subject}`: who must answer
     /// at the address. Stated, the handshake fails unless that
     /// identity answers and proves the key its token names. Absent,
     /// whichever identity answers with a token that verifies is taken.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<Identity>,
-    /// Whether the app dials the daemon again by itself when the
-    /// connection ends or a dial fails, and how long it waits first:
-    /// `never`, or a whole number of seconds, at least `1`. Absent,
-    /// every 5 seconds, as the daemon redials a provider — see
-    /// [`Redial`].
-    #[serde(default, skip_serializing_if = "Redial::is_default")]
-    pub redial: Redial,
+    /// The accounts the app may dial it as, by name, in the order
+    /// they were added.
+    #[serde(default)]
+    pub accounts: IndexMap<String, Account>,
 }
 
-/// What a `daemon` that names nothing gives, and what each member
-/// left out is:
-///
-/// - `address`: the daemon on this host, at the port a daemon listens
-///   on where its own document names none —
-///   `ws://127.0.0.1:<DEFAULT_PORT>/`.
-/// - `issuer` and `subject`: empty. An identity is one somebody
-///   signed in, and none can be supposed: with either empty the
-///   document names no identity, and the app does not start.
-/// - `identity`: none. Whichever identity answers at the address with
-///   a token that verifies is taken.
-/// - `redial`: every five seconds, [`Redial`]'s own default, which is
-///   how long a daemon waits before it dials a provider again.
-impl Default for Daemon {
-    fn default() -> Self {
-        Daemon {
-            address: format!("ws://127.0.0.1:{}/", diverge_sdk::daemon::DEFAULT_PORT),
-            issuer: String::new(),
-            subject: String::new(),
-            identity: None,
-            redial: Redial::default(),
-        }
-    }
+/// An account the app may dial a daemon as: one of the root's
+/// [`identities`](diverge_sdk::identities), signed in by
+/// `diverge identities login`, whose `(issuer, subject)` is the
+/// daemon's account. What the app shows is what that account may
+/// see.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Account {
+    /// The identity's issuer: the one the app presents its token
+    /// from.
+    pub issuer: String,
+    /// The identity's subject at that issuer.
+    pub subject: String,
 }

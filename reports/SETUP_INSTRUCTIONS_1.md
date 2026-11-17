@@ -36,7 +36,7 @@ Read sections 1 and 2 before running anything.
 | **Vault / secrets** | `vault insert {key, value}` stores a value. A template names the secrets it needs, and `agents create` binds each name to a vault key: `"secrets": {"OPENROUTER_API_KEY": "my-or-key"}`. Secrets are never arguments or environment variables. |
 | **Events** | The daemon's graph of who sent what to whom. diverge-viewer draws each one as a line. |
 | **Remote daemons and relay** | Daemon A records daemon B with `daemons add`, which returns a `DaemonId`. A reaches B only **through a provider both are connected to**, where B announces itself (an `announcement` on B's record of that provider) and accepts other daemons (`accept_daemons`, default `true`). Any request may carry `"relay": [<ids>]`: daemon A takes the first ID off and forwards the request to B, which serves it as the account A presents there. diverge-viewer uses this to open another daemon's board in a tab. |
-| **diverge-viewer** | A Tauri + Phaser app (`diverge-viewer/`). Its Rust side holds one connection to the daemon its settings name (`diverge viewer daemon …`), and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
+| **diverge-viewer** | A Tauri + Phaser app (`diverge-viewer/`). Its Rust side holds one connection to the daemon it was started on, one of its settings' daemons (`diverge viewer daemons …`), and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
 
 ---
 
@@ -253,14 +253,18 @@ diverge cli daemons 1 default set 0
 diverge --config "$B" cli daemons 0 address set ws://127.0.0.1:14982/
 
 # the two viewers
-diverge viewer daemon issuer  set "$ISS"
-diverge viewer daemon subject set github.12345.admin
-diverge --config "$B" viewer daemon address set ws://127.0.0.1:14982/
-diverge --config "$B" viewer daemon issuer  set "$ISS"
-diverge --config "$B" viewer daemon subject set github.12345.admin
+diverge viewer daemons 0 accounts add --name admin --issuer "$ISS" --subject github.12345.admin
+diverge viewer daemons 0 default set 0
+diverge --config "$B" viewer port set 14983     # root A's viewer hears its stop on 14981
+diverge --config "$B" viewer daemons 0 address set ws://127.0.0.1:14982/
+diverge --config "$B" viewer daemons 0 accounts add --name admin --issuer "$ISS" --subject github.12345.admin
+diverge --config "$B" viewer daemons 0 default set 0
 ```
 
-The viewer also has `daemon redial`: either `never` or a number of seconds (default 5).
+The viewer keeps its daemons as the CLI does, a list of its own, and also has `redial`: either `never` or a
+number of seconds (default 5). An installed viewer is started and stopped with `diverge viewer start
+[--daemon <name>] [--account <name>]` and `diverge viewer stop`; the steps below run it in dev mode instead. One
+viewer runs per root, and a viewer setting is not written while it runs.
 
 Check: each of these prints the value just set.
 
@@ -270,7 +274,7 @@ diverge daemon identity get
 diverge --config "$B" daemon port get
 diverge cli daemons get
 diverge cli daemons 1 accounts get
-diverge --config "$B" viewer daemon address get
+diverge --config "$B" viewer daemons 0 address get
 ```
 
 ### Step 5: start the provider

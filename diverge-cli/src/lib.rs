@@ -46,9 +46,12 @@
 //! `provider images enabled|enable|disable` with `path get|set|delete`,
 //! `capacity get|set` and `capacity_used`, and
 //! `provider messages enabled|enable|disable` with its two numbers;
-//! see [`cli::provider`]. The viewer's `daemon` is read and written
-//! a setting at a time too — `viewer daemon address|issuer|subject|
-//! identity|redial get|set`; see [`cli::viewer`]. The CLI's own daemons are
+//! see [`cli::provider`]. The viewer's `port` and `redial` are read and
+//! written a setting at a time too; see [`cli::viewer`]. Its daemons
+//! are kept as the CLI's own are — `viewer daemons …`, `viewer default
+//! get|set` — and it is started and stopped as the daemon and the
+//! provider are, `viewer start [--daemon <name>] [--account <name>]`
+//! and `viewer stop`. The CLI's own daemons are
 //! a list too — `cli daemons get|add|delete`, `cli default get|set`
 //! by a daemon's index, and after a daemon's index its `address`,
 //! `identity`, `accounts` and `default` account, as
