@@ -63,15 +63,15 @@ pub enum Error {
         /// The program whose document it is, as the CLI names it.
         program: Program,
     },
-    /// Podman's data could not be moved to the new storage path.
-    /// Nothing was moved, and nothing was written.
+    /// Podman's data, or a volume store, could not be moved to its
+    /// new path. Nothing was moved, and nothing was written.
     Relocate(relocate::Error),
-    /// Podman's data is at the new storage path and the path is
-    /// written, but what was left at the old path could not be
-    /// removed.
+    /// Podman's data, or a volume store, is at its new path and the
+    /// path is written, but what was left at the old path could not
+    /// be removed.
     Leftover(relocate::Error),
-    /// Podman's data at the storage path could not be deleted, or
-    /// not all of it.
+    /// Podman's data at the storage path, or a volume store, could
+    /// not be deleted, or not all of it.
     Wipe(relocate::Error),
     /// A path could not be made absolute.
     Path(std::io::Error),
@@ -79,7 +79,8 @@ pub enum Error {
     /// Nothing was written.
     NoItem {
         /// The list, as the document names it: `admins`, `incoming`,
-        /// `outgoing`, `podman.registries`, `volumes.fixed`.
+        /// `outgoing`, `podman.registries`, `volumes.fixed`,
+        /// `volumes.stores`.
         list: &'static str,
         /// The index named.
         index: usize,
@@ -124,12 +125,12 @@ impl fmt::Display for Error {
                 "`{section}` is disabled, and nothing was written: enable it first, with `diverge {} {section} enable`",
                 program.word()
             ),
-            Error::Relocate(error) => write!(f, "podman's data was not moved, and the path was not written: {error}"),
+            Error::Relocate(error) => write!(f, "the data was not moved, and the path was not written: {error}"),
             Error::Leftover(error) => write!(
                 f,
-                "podman's data is at the new path and the path is written, but the old path could not be cleared: {error}"
+                "the data is at the new path and the path is written, but the old path could not be cleared: {error}"
             ),
-            Error::Wipe(error) => write!(f, "podman's data was not deleted, or not all of it; asked again, the rest is: {error}"),
+            Error::Wipe(error) => write!(f, "the data was not deleted, or not all of it, and nothing was written; asked again, the rest is: {error}"),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")

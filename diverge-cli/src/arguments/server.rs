@@ -73,6 +73,63 @@ pub enum Volumes {
     /// `volumes.fixed` in `provider.yaml`.
     #[command(subcommand)]
     Fixed(Fixed),
+    /// List, add, edit or delete the places a volume may be created
+    /// in, `volumes.stores` in `provider.yaml`. Each is a folder that
+    /// holds every volume created in it: editing a store's path moves
+    /// the folder, and deleting a store deletes it.
+    #[command(subcommand)]
+    Stores(Stores),
+}
+
+/// What is done to the provider's `volumes.stores`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Stores {
+    /// Print the stores, one line each, in the document's order,
+    /// which is the order of preference:
+    /// `{"index":0,"path":"…","capacity":…}`. Nothing is printed
+    /// where there is none, or where the section is absent. The index
+    /// is what `edit` and `delete` take.
+    Get,
+    /// Add a store, after the last. Refused where the section is
+    /// absent — enable it first — where the path is a store's
+    /// already, and while the provider is running on the root. The
+    /// folder is made by the provider at its start.
+    Add {
+        /// The folder: absolute, or relative to the root.
+        #[arg(long)]
+        path: std::path::PathBuf,
+        /// The most the volumes in it may reserve together, in BYTES.
+        #[arg(long)]
+        capacity: u64,
+    },
+    /// Change a store's path, its capacity, or both. A new path MOVES
+    /// the store: the folder and every volume in it is carried there
+    /// before the path is written — renamed where the two paths are
+    /// on one filesystem, copied, checked and the old copy deleted
+    /// where they are not — and if it cannot be, nothing is moved and
+    /// nothing is written. Refused while the provider is running on
+    /// the root.
+    Edit {
+        /// The store's index, as `get` prints it: `0` is the first.
+        #[arg(value_name = "INDEX")]
+        index: usize,
+        /// The new folder: absolute, or relative to the root. It must
+        /// not be there, or be empty.
+        #[arg(long, required_unless_present = "capacity")]
+        path: Option<std::path::PathBuf>,
+        /// The new capacity, in BYTES.
+        #[arg(long)]
+        capacity: Option<u64>,
+    },
+    /// Delete a store: its folder and EVERY VOLUME IN IT, then its
+    /// entry. Not undone. Refused while the provider is running on
+    /// the root. Every store after it moves one index down.
+    Delete {
+        /// The store's index, as `get` prints it: `0` is the first.
+        #[arg(value_name = "INDEX")]
+        index: usize,
+    },
 }
 
 /// What is done to the provider's `volumes.fixed`: see

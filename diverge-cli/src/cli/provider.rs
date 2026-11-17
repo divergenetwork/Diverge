@@ -16,7 +16,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Volumes};
+use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -213,7 +213,7 @@ async fn bytes(root: &Path, action: Bytes, of: impl FnOnce(&mut containers::Cont
 /// - `enable`, `disable`, `fixed add` and `fixed delete` each hold
 ///   the provider's lock and are refused while it runs.
 ///
-/// The stores have no command here.
+/// The stores are [`stores`]'s.
 pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
     let absent = || Error::Disabled { section: "volumes", program: Program::Provider };
     match action {
@@ -269,7 +269,155 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
             })
             .await
         }
+        Volumes::Stores(action) => stores(root, action).await,
     }
+}
+
+/// `diverge provider volumes stores get|add|edit|delete`: the places
+/// a volume may be created in, `volumes.stores`. A store is a folder
+/// that holds every volume made in it, each an image file that
+/// reserves far more than it takes; so the list is worked on as the
+/// others are, and beyond them an entry's path is the folder's, by
+/// these rules:
+///
+/// - `get` prints each store as one JSON line with its `index`
+///   first; an absent section is an empty list, and nothing is
+///   printed.
+/// - `add` puts the store after the last, and nothing on disk is
+///   made: the provider makes the folder at its start. A path that is
+///   a store's already is refused, the two compared resolved.
+/// - `edit` changes the capacity, the path, or both. A capacity is
+///   written as given. A path that resolves to another folder MOVES
+///   the store before anything is written — see
+///   [`relocate::folder`]: a rename where one filesystem holds both,
+///   so that nothing is copied however much is there; a copy, checked,
+///   with the old folder deleted only once the new path is written,
+///   where two do. If the move fails nothing is left moved and
+///   nothing is written; if the write fails the store is carried
+///   back. A path that is another store's is refused.
+/// - `delete` deletes the store's folder and every volume in it, and
+///   then its entry: the folder first, so that an entry is never gone
+///   with its volumes left behind. A folder that will not be deleted
+///   is the error, and nothing is written.
+/// - Before a store is moved or deleted, nothing may hold an image in
+///   it: see [`relocate::released`]. The provider's machine is
+///   stopped where it runs; on Linux a mount left under the
+///   provider's `run/mounts/` is refused.
+/// - `add`, `edit` and `delete` are refused where the section is
+///   absent, [`Error::Disabled`], and each holds the provider's lock
+///   from its first step to its last.
+async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
+    let absent = || Error::Disabled { section: "volumes", program: Program::Provider };
+    let place = |path: &Path| absolute(&diverge_provider::config::resolve(root, path));
+    let given = |path: PathBuf| if path.is_absolute() { absolute(&path) } else { Ok(path) };
+    match action {
+        Stores::Get => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let mut text = Vec::new();
+            for (index, store) in config.volumes.iter().flat_map(|section| &section.stores).enumerate() {
+                let line = serde_json::json!({"index": index, "path": store.path, "capacity": store.capacity});
+                serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
+                text.push(b'\n');
+            }
+            write(text).await
+        }
+        Stores::Add { path, capacity } => {
+            let path = given(path)?;
+            let resolved = place(&path)?;
+            let mut listed = None;
+            let config = read::<Config>(root, Which::Provider).await?;
+            for (index, store) in config.volumes.iter().flat_map(|section| &section.stores).enumerate() {
+                if place(&store.path)? == resolved {
+                    listed = Some(index);
+                }
+            }
+            provider(root, |config| {
+                let section = config.volumes.as_mut().ok_or_else(absent)?;
+                if let Some(index) = listed {
+                    return Err(Error::Listed { list: "volumes.stores", item: format!("`{}`", resolved.display()), index });
+                }
+                section.stores.push(volumes_section::Store { path, capacity });
+                Ok(())
+            })
+            .await
+        }
+        Stores::Edit { index, path, capacity } => {
+            let held = hold(root, Program::Provider).await?;
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            let count = config.volumes.as_ref().ok_or_else(absent)?.stores.len();
+            if index >= count {
+                return Err(Error::NoItem { list: "volumes.stores", index, count });
+            }
+            let old = place(&config.volumes.as_ref().ok_or_else(absent)?.stores[index].path)?;
+            let mut carried = None;
+            let mut written = None;
+            if let Some(path) = path {
+                let path = given(path)?;
+                let new = place(&path)?;
+                for (other, store) in config.volumes.iter().flat_map(|section| &section.stores).enumerate() {
+                    if other != index && place(&store.path)? == new {
+                        return Err(Error::Listed { list: "volumes.stores", item: format!("`{}`", new.display()), index: other });
+                    }
+                }
+                if new != old {
+                    released(root, &config).await?;
+                    carried = Some(relocate::folder(&old, &new).await.map_err(Error::Relocate)?);
+                }
+                written = Some(path);
+            }
+            let section = config.volumes.as_mut().ok_or_else(absent)?;
+            if let Some(path) = written {
+                section.stores[index].path = path;
+            }
+            if let Some(capacity) = capacity {
+                section.stores[index].capacity = capacity;
+            }
+            let stored = match serde_yaml_ng::to_string(&config) {
+                Ok(yaml) => document::write(root, Which::Provider, &yaml).await,
+                Err(error) => Err(document::Error::Serialize(error)),
+            };
+            if let Err(error) = stored {
+                if let Some(carried) = carried {
+                    carried.undo().await;
+                }
+                return Err(error.into());
+            }
+            if let Some(carried) = carried {
+                carried.finish().await.map_err(Error::Leftover)?;
+            }
+            drop(held);
+            Ok(())
+        }
+        Stores::Delete { index } => {
+            let held = hold(root, Program::Provider).await?;
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            let section = config.volumes.as_ref().ok_or_else(absent)?;
+            if index >= section.stores.len() {
+                return Err(Error::NoItem { list: "volumes.stores", index, count: section.stores.len() });
+            }
+            let folder = place(&section.stores[index].path)?;
+            released(root, &config).await?;
+            relocate::remove(&folder).await.map_err(Error::Wipe)?;
+            config.volumes.as_mut().ok_or_else(absent)?.stores.remove(index);
+            let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;
+            document::write(root, Which::Provider, &yaml).await?;
+            drop(held);
+            Ok(())
+        }
+    }
+}
+
+/// Nothing holding an image of any store, before one is moved or
+/// deleted: see [`relocate::released`]. The machine is the one kept
+/// under the provider's `podman.storage_path`, where the provider
+/// uses podman; the mounts are those under `<root>/provider/run/mounts`.
+async fn released(root: &Path, config: &Config) -> Result<(), Error> {
+    let storage = match config.podman_in_use() {
+        true => Some(absolute(&diverge_provider::config::resolve(root, &config.podman.storage_path))?),
+        false => None,
+    };
+    let mounts = root.join("provider").join("run").join("mounts");
+    relocate::released(storage.as_deref(), &mounts).await.map_err(Error::Relocate)
 }
 
 /// `diverge provider podman …`: the settings of the `podman` section,
