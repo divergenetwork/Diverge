@@ -22,21 +22,21 @@ Read sections 1 and 2 before running anything.
 
 | Term | What it is |
 |---|---|
-| **Root** (config root) | One directory holding a set of Diverge programs' documents and state: `provider.yaml`, `daemon.yaml`, `cli.yaml`, `viewer.yaml`, `identities/`, `daemon/`, `provider/`, `bin/`, and the `*.lock`/`*.log` files. Default `~/.diverge`. Each program runs at most once per root, enforced by its `<program>.lock`. |
+| **Root** (config root) | The one directory a set of Diverge programs keep their settings and signed-in identities in. `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`. Each program runs at most once per root. **Nothing inside it is read or edited by hand**: every setting has a `diverge` command, and it holds secrets. The one thing this guide uses from it is the installed programs, `<root>/bin`, on `PATH`. |
 | **Issuer** | An identity's issuer is an OpenID Connect provider that offers the device authorization flow, supports DPoP (RFC 9449) with ES256, and answers access tokens that are signed JWTs bound to the caller's key. Diverge's own is `https://identity.diverge.network`, hosted, with one client id, `diverge`; its subjects are `<issuer>.<id>.<name>` (for example `github.12345.daemon-a`), where `<issuer>.<id>` is a GitHub or Google account signed in with `diverge identity.diverge.network accounts login`. Every program proves who it is with an ID token from an issuer. |
-| **Identity** | One `(issuer, subject)` pair, signed in once with `diverge identities login` and stored at `<root>/identities/<pct-encoded issuer>/<subject>.json`. Programs on a root use the identities stored under **that root**. Each identity has a private key beside it on that host, made at its login. Handshakes are mutual: both ends present an access token bound to their key, send the key and prove they hold it, and every connection is encrypted after. |
-| **Daemon** (`diverge-daemon`) | The hub clients talk to, over a WebSocket on its `port` (default 14980). It keeps all records in its own Postgres: accounts, roles, providers, remote daemons, templates, agents, tools, events, logs, vault. `diverge-postgres` is a supervisor with Postgres embedded at build time; the daemon starts it on a free loopback port, with its data under `<root>/daemon/postgres/`. |
+| **Identity** | One `(issuer, subject)` pair, signed in once with `diverge identities login`. Programs on a root use the identities signed in under **that root**. Each identity has a private key on that host, made at its login, which no command prints. Handshakes are mutual: both ends present an access token bound to their key, send the key and prove they hold it, and every connection is encrypted after. |
+| **Daemon** (`diverge-daemon`) | The hub clients talk to, over a WebSocket on its `port` (default 14980). It keeps all records in its own Postgres: accounts, roles, providers, remote daemons, templates, agents, tools, events, logs, vault. `diverge-postgres` is a supervisor with Postgres embedded at build time; the daemon starts it on a free loopback port. |
 | **Provider** (`diverge-provider`) | Runs containers with podman for the daemons in its `incoming` list, and also serves volumes and an image store. Default port 14979. On Windows and macOS it drives a podman machine named **`diverge-provider`** through the rootful connection **`diverge-provider-root`**. On Linux it runs podman directly and must run as root. |
 | **Container proxy** (`diverge-container-proxy`) | A static Linux musl binary. The provider bind-mounts it into every container (`/.diverge/diverge-container-proxy`) and runs it there. It bridges the provider and the program inside the container: MCP, Postgres, secrets, the message queue. It is **never part of an image**, but the inside-container contract it speaks has to match the image's program. |
 | **Agent program / image** | An OCI image whose program speaks the inside-container contract. The five agent loops are `diverge-agents/{python,openrouter,codex,hermes,cc}`. Each image carries `/.diverge/DIVERGE.md`: JSON frontmatter `{name, schema[, frontend]}` (the schema of the `arguments` the image accepts), followed by prose. |
 | **Template** | `agents templates create` / `standalone-tools templates create`: an image (`{digest, references}`) plus `memory` and `disk` (both in bytes), `arguments`, and the names of the `secrets` it needs. Its id is a hash, so creating the same template twice gives back the same id. |
 | **Agent** | `agents create {template, name}`: one container made from a template. It runs when it is messaged (`agents message`) and is stopped after `idle_seconds` of disuse. Its record and conversation persist. |
 | **Tools** | MCP-server containers. **Standalone tools** are created by hand and attached to agents. **Dependency tools** are declared by an agent image's `dependencies` argument and deployed by the daemon. **Connected standalone tools** are another daemon's standalone tools, held under a name on this daemon. |
-| **Accounts / roles / grants** | The daemon admits a client by identity. The `admins` listed in `daemon.yaml` hold every grant. Anyone else must be an **account** (`accounts create`) holding **roles** (`roles create`), and each role is a list of **grants** such as `{"agents":["create"]}` or `{"agents":{"actions":["list","get"],"within":"any"}}`. |
+| **Accounts / roles / grants** | The daemon admits a client by identity. The identities in the daemon's `admins` setting hold every grant. Anyone else must be an **account** (`accounts create`) holding **roles** (`roles create`), and each role is a list of **grants** such as `{"agents":["create"]}` or `{"agents":{"actions":["list","get"],"within":"any"}}`. |
 | **Vault / secrets** | `vault insert {key, value}` stores a value. A template names the secrets it needs, and `agents create` binds each name to a vault key: `"secrets": {"OPENROUTER_API_KEY": "my-or-key"}`. Secrets are never arguments or environment variables. |
 | **Events** | The daemon's graph of who sent what to whom. diverge-viewer draws each one as a line. |
 | **Remote daemons and relay** | Daemon A records daemon B with `daemons add`, which returns a `DaemonId`. A reaches B only **through a provider both are connected to**, where B announces itself (an `announcement` on B's record of that provider) and accepts other daemons (`accept_daemons`, default `true`). Any request may carry `"relay": [<ids>]`: daemon A takes the first ID off and forwards the request to B, which serves it as the account A presents there. diverge-viewer uses this to open another daemon's board in a tab. |
-| **diverge-viewer** | A Tauri + Phaser app (`diverge-viewer/`). Its Rust side holds one connection to the daemon named by `<root>/viewer.yaml`, and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
+| **diverge-viewer** | A Tauri + Phaser app (`diverge-viewer/`). Its Rust side holds one connection to the daemon its settings name (`diverge viewer daemon …`), and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
 
 ---
 
@@ -51,7 +51,6 @@ Read sections 1 and 2 before running anything.
    Keep every change, commit and push on that branch.
 1. **Never pipe `diverge … start`.** The started server inherits the pipe, and your shell hangs. Always redirect to a
    file, for example `diverge provider start >"$WORK/provider-start.out" 2>&1; cat "$WORK/provider-start.out"`.
-   The server's own log is `<root>/<program>.log`.
 2. **Global CLI flags go before the subcommand.**
    - `--config <dir>` must come first: `diverge --config "$B" daemon start`. It is not a global flag.
    - `--daemon`, `--account`, `--jq` and `--timeout` belong to `run`: `diverge run --daemon b agents list`.
@@ -61,9 +60,9 @@ Read sections 1 and 2 before running anything.
 4. **The CLI starts servers from its own directory.** `diverge daemon|provider start` launches the binary in
    the same directory as the running `diverge` executable and passes it `--config <root>`. Root B therefore needs no
    `bin/`: use root A's `diverge` with `--config "$B"`.
-5. **`diverge daemon stop` reads `cli.yaml`, not `daemon.yaml`.** It takes the port from the address of the
-   **default daemon in that root's `cli.yaml`**. Each root therefore needs a `cli.yaml` whose default daemon is that
-   root's own daemon.
+5. **`diverge daemon stop` dials the CLI's default daemon, not the daemon's own `port` setting.** It takes the
+   port from the address of that root's default CLI daemon (`diverge cli default get`). Each root's default CLI
+   daemon must therefore be that root's own daemon.
 6. **Heavy builds are slow.** Run them one at a time, in the background, with output going to a file.
    - Every image compiles Rust inside the build and takes about 10 minutes.
    - The first `install-diverge.sh` and the first `tauri dev` each take many minutes.
@@ -101,20 +100,16 @@ On Windows, run everything below in **Git Bash**. The install scripts are bash.
 
 | Port | Who | Configured in |
 |---|---|---|
-| 14979 | provider (all interfaces) | `provider.yaml` `port` |
-| 14980 | daemon A (all interfaces) | `$A/daemon.yaml` `port`, `$A/cli.yaml` |
-| **14982** | daemon B | `$B/daemon.yaml` `port`, `$B/cli.yaml`. The value is this guide's choice; any free port works. |
+| 14979 | provider (all interfaces) | `diverge provider port` |
+| 14980 | daemon A (all interfaces) | `diverge daemon port`, and the address of root A's CLI daemon `local` |
+| **14982** | daemon B | `diverge --config "$B" daemon port`, and the address of the CLI daemons that name it. The value is this guide's choice; any free port works. |
 | random loopback | each daemon's Postgres | chosen at every start, so the two daemons never collide |
 | 1440 / 1441 | diverge-viewer Vite dev server / HMR | `diverge-viewer/vite.config.ts` (`strictPort: true`) |
 | 1430 | diverge-viewer (the other app, not used here) | |
 
-| Path | What |
-|---|---|
-| `<root>/bin/` | installed binaries: `diverge`, `diverge-daemon`, `diverge-provider`, `diverge-postgres` (each `.exe` on Windows), `diverge-container-proxy` (no extension) |
-| `<root>/identities/` | signed-in identities |
-| `<root>/daemon/postgres/` | the daemon's Postgres (`bin/`, `data/`, `password`) |
-| `<root>/provider/podman_data/` | `podman.storage_path` (default). On Windows and macOS **this directory is the podman machine**: its disk and SSH key live here. |
-| `<root>/{provider,daemon}.log` | server output |
+Installed programs are in `$A/bin`: `diverge`, `diverge-daemon`, `diverge-provider`, `diverge-postgres` (each
+`.exe` on Windows) and `diverge-container-proxy`. Nothing else inside a root is opened, read or edited in this
+guide, and nothing else in it should be.
 
 The two daemons share **one issuer and one provider**. The code allows this: the provider's `incoming` list holds
 both daemon identities, and it allows one connection per identity, so the two daemons need different subjects.
@@ -196,127 +191,92 @@ diverge --config "$A" identities list   # every identity signed in under root A
 
 Root B needs its own account sign-in (`--config "$B"`), since accounts are per root.
 
-### Step 4: write the documents
+### Step 4: set every program's settings
 
-All documents refuse unknown keys. A typo is an error at start, not ignored.
+Every setting is one command. A write prints nothing; a daemon's or a provider's setting is refused while that
+program runs. Nothing is written by hand.
 
 ```bash
-cat > "$A/provider.yaml" <<EOF
-port: 14979
-identity:
-  issuer: $ISS
-  subject: github.12345.provider
-incoming:
-  - issuer: $ISS
-    subject: github.12345.daemon-a
-  - issuer: $ISS
-    subject: github.12345.daemon-b
-containers: {}
-EOF
+# the provider: who it is, which daemons may dial it, and that it runs containers
+diverge provider identity set --issuer "$ISS" --subject github.12345.provider
+diverge provider incoming add --issuer "$ISS" --subject github.12345.daemon-a
+diverge provider incoming add --issuer "$ISS" --subject github.12345.daemon-b
+diverge provider containers enable
 ```
 
-`containers: {}` is what makes this provider run containers. Without a `containers` section a provider runs none,
-and with neither `containers` nor `images` it runs no podman at all. The section's fields and the `podman`
-section are left out, so their defaults apply:
+`containers enable` is what makes this provider run containers. A fresh provider runs none, and with neither
+containers nor images enabled it runs no podman at all. Everything else stays at its default:
 
-- `podman.storage_path: provider/podman_data`
-- `podman.registries`: docker.io, ghcr.io, quay.io
-- `podman.image_cache_disk` and `containers.container_overlay_disk`: 32 GiB each
-- `containers.memory`: 8 GiB (macOS only)
+- `port`: 14979
+- `podman registries`: docker.io, ghcr.io, quay.io
+- `podman image_cache_disk` and `containers container_overlay_disk`: 32 GiB each
+- `containers memory`: 8 GiB (macOS only)
 
-Optional sections:
+Optional parts:
 
-- `volumes: {stores: [{path, capacity}], fixed: [...]}` gives the provider volumes.
-- `messages: {}` (30 messages per 60 seconds; or `{messages: <n>, seconds: <n>}`) enables daemon-to-daemon direct messages
+- `diverge provider volumes enable`, then `diverge provider volumes stores add --path <PATH> --capacity <BYTES>`,
+  gives the provider volumes.
+- `diverge provider messages enable` (30 messages per 60 seconds) enables daemon-to-daemon direct messages
   (`providers daemons listen|message`). Relay and connected tools do not need it.
 
 ```bash
-cat > "$A/daemon.yaml" <<EOF
-port: 14980
-identity:
-  issuer: $ISS
-  subject: github.12345.daemon-a
-admins:
-  - issuer: $ISS
-    subject: github.12345.admin
-idle_seconds: 120
-EOF
-mkdir -p "$B"
-cat > "$B/daemon.yaml" <<EOF
-port: 14982
-identity:
-  issuer: $ISS
-  subject: github.12345.daemon-b
-admins:
-  - issuer: $ISS
-    subject: github.12345.admin
-idle_seconds: 120
-EOF
+# daemon A (port 14980, the default)
+diverge daemon identity set --issuer "$ISS" --subject github.12345.daemon-a
+diverge daemon admins add   --issuer "$ISS" --subject github.12345.admin
+diverge daemon idle_seconds set 120
+
+# daemon B, on root B
+diverge --config "$B" daemon port set 14982
+diverge --config "$B" daemon identity set --issuer "$ISS" --subject github.12345.daemon-b
+diverge --config "$B" daemon admins add   --issuer "$ISS" --subject github.12345.admin
+diverge --config "$B" daemon idle_seconds set 120
 ```
 
-Notes on `daemon.yaml`:
+Notes on the daemon's settings:
 
 - `idle_seconds` defaults to **10**: a container is stopped 10 s after its last use. A larger value keeps agents
   and tools up while you look at them in the world.
-- `daemon.yaml` holds `port`, `identity`, `admins`, `postgres` and `idle_seconds`, and nothing else. It no
-  longer has `description`, `accept_daemons` or `capacity_poll_seconds`: the document is strict, so a
-  `daemon.yaml` that still holds one of them is refused at start. What the daemon announces itself with, whether
-  it accepts other daemons and whether it hears messages are now set **per provider record** (below); the
-  capacity poll is a fixed ten seconds.
-- `postgres` defaults to `{kind: local, max_connections: 1024}`.
+- The daemon's settings are `port`, `identity`, `admins`, `postgres` and `idle_seconds`, and nothing else. What
+  the daemon announces itself with, whether it accepts other daemons and whether it hears messages are set
+  **per provider record** (below); the capacity poll is a fixed ten seconds.
+- `postgres` defaults to `local` with 1024 connections.
 
 ```bash
-cat > "$A/cli.yaml" <<EOF
-default: a
-daemons:
-  a:
-    address: ws://127.0.0.1:14980/
-    default: admin
-    accounts:
-      admin: {issuer: "$ISS", subject: github.12345.admin}
-  b:
-    address: ws://127.0.0.1:14982/
-    default: admin
-    accounts:
-      admin: {issuer: "$ISS", subject: github.12345.admin}
-EOF
-# Root B's cli.yaml exists so that `diverge --config "$B" daemon stop` finds daemon B's port.
-cat > "$B/cli.yaml" <<EOF
-default: b
-daemons:
-  b:
-    address: ws://127.0.0.1:14982/
-EOF
-cat > "$A/viewer.yaml" <<EOF
-daemon:
-  address: ws://127.0.0.1:14980/
-  issuer: $ISS
-  subject: github.12345.admin
-EOF
-cat > "$B/viewer.yaml" <<EOF
-daemon:
-  address: ws://127.0.0.1:14982/
-  issuer: $ISS
-  subject: github.12345.admin
-EOF
+# root A's CLI: daemon 0 is `local` (daemon A, the default); add daemon B as `b`
+diverge cli daemons add --name b --address ws://127.0.0.1:14982/
+diverge cli daemons 0 accounts add --name admin --issuer "$ISS" --subject github.12345.admin
+diverge cli daemons 0 default set 0
+diverge cli daemons 1 accounts add --name admin --issuer "$ISS" --subject github.12345.admin
+diverge cli daemons 1 default set 0
+
+# root B's CLI: its default daemon must be daemon B, so that `diverge --config "$B" daemon stop` finds it
+diverge --config "$B" cli daemons 0 address set ws://127.0.0.1:14982/
+
+# the two viewers
+diverge viewer daemon issuer  set "$ISS"
+diverge viewer daemon subject set github.12345.admin
+diverge --config "$B" viewer daemon address set ws://127.0.0.1:14982/
+diverge --config "$B" viewer daemon issuer  set "$ISS"
+diverge --config "$B" viewer daemon subject set github.12345.admin
 ```
 
-`viewer.yaml` also accepts `daemon.redial`: either `never` or a number of seconds (default 5).
+The viewer also has `daemon redial`: either `never` or a number of seconds (default 5).
 
-Check: each of these prints its document back as JSON, or one setting of it, which means each document parses.
+Check: each of these prints the value just set.
 
 ```bash
-diverge provider port get
-diverge daemon port get
+diverge provider incoming get
+diverge daemon identity get
 diverge --config "$B" daemon port get
 diverge cli daemons get
-diverge viewer daemon address get
+diverge cli daemons 1 accounts get
+diverge --config "$B" viewer daemon address get
 ```
 
 ### Step 5: start the provider
 
 The provider's first start on Windows or macOS **creates the podman machine** (`podman machine init --rootful
-diverge-provider`, with its data under `$A/provider/podman_data`) and starts it. It needs `podman` and `ssh` on the
+diverge-provider`) and starts it. It needs `podman` and `ssh` on the
 PATH of the shell that runs `start`, and the first start downloads the machine image, so it can take minutes.
 
 ```bash
@@ -327,7 +287,7 @@ diverge provider start > "$WORK/provider-start.out" 2>&1; cat "$WORK/provider-st
 Check:
 
 - `podman machine list` shows `diverge-provider` as running.
-- `$A/provider.log` has no error. On success the provider prints nothing; a failed start is reported there.
+- The `start` printed `started provider`. A provider that fails to start says why in that command's output.
 
 ### Step 6: start both daemons and connect each to the provider
 
@@ -338,9 +298,9 @@ diverge run info                      # daemon A answers with its version
 diverge run --daemon b info           # daemon B
 ```
 
-The first daemon start initialises its Postgres cluster under `<root>/daemon/postgres/`.
+The first daemon start initialises its Postgres cluster, which takes some seconds.
 
-Providers are records in the daemon's database; there is no `providers` key in `daemon.yaml`. Add the shared
+Providers are records in the daemon's database; they are not a daemon setting. Add the shared
 provider to **both** daemons, `outgoing` (the daemon dials it), each with its own `announcement`. The
 announcement is what lets each daemon find the other on the provider.
 
@@ -355,7 +315,7 @@ diverge run --daemon b providers list
 
 A record that stays `disconnected` usually has one of two causes:
 
-- The daemon identity is missing from `provider.yaml` `incoming`.
+- The daemon identity is missing from the provider's `incoming` (`diverge provider incoming get`).
 - The provider is not running.
 
 The daemon redials every 5 s, so fix the cause and list again.
@@ -404,9 +364,9 @@ The provider must be running, because that keeps the machine up.
 
 ```bash
 # Windows / macOS: the same podman the provider drives.
-PD="$A/provider/podman_data"; command -v cygpath >/dev/null && PD="$(cygpath -w "$PD")"
+PD="$(diverge provider podman storage_path get)"; command -v cygpath >/dev/null && PD="$(cygpath -w "$PD")"
 pp() { XDG_DATA_HOME="$PD" XDG_CONFIG_HOME="$PD" podman --connection diverge-provider-root "$@"; }
-# Linux (provider runs as root): pp() { sudo podman --root "<provider root>/provider/podman_data" "$@"; }
+# Linux (provider runs as root): pp() { sudo podman --root "$(diverge provider podman storage_path get)" "$@"; }
 
 cd "$REPO"
 build() {  # build <dir with Containerfile> <short name>
@@ -552,8 +512,8 @@ What `pnpm tauri dev` does:
 1. Runs `pnpm run dev`. That builds `@diverge/sdk` (`pnpm --filter @diverge/sdk build`), then starts Vite on 1440.
 2. Builds and opens the Tauri app.
 
-The app reads `$A/viewer.yaml`, since `DIVERGE_CONFIG` is unset and `~/.diverge` is the default, and it signs in
-as `github.12345.admin` from `$A/identities`.
+The app uses root A's viewer settings, since `DIVERGE_CONFIG` is unset and `~/.diverge` is the default, and it
+signs in as `github.12345.admin`, the identity signed in under root A.
 
 Check:
 
@@ -683,8 +643,8 @@ cd "$REPO/diverge-viewer" && DIVERGE_CONFIG="$(cygpath -w "$B" 2>/dev/null || ec
   pnpm tauri dev --config '{"build":{"beforeDevCommand":""}}' > "$WORK/world-b.log" 2>&1
 ```
 
-Both share the page source with world A, which is fine because the page is identical. World B reads
-`$B/viewer.yaml` and signs in as `github.12345.admin` from `$B/identities`.
+Both share the page source with world A, which is fine because the page is identical. World B uses
+root B's viewer settings and signs in as `github.12345.admin`, the identity signed in under root B.
 
 The app also accepts `--config <dir>` as its first argument. `DIVERGE_CONFIG` is the documented route.
 
@@ -714,7 +674,7 @@ cleanly at the next start.
 | Remote-daemon records | `diverge run daemons list` |
 | Images in the provider store | `pp image ls --no-trunc` |
 | Containers running | `pp ps` |
-| Server failures | `$A/provider.log`, `<root>/daemon.log` |
+| Server failures | the output of the `start` command, which carries what a server said before it died |
 | Every request an account made, allowed or refused | `diverge run logs '{"of":{"type":"admin","issuer":"…","subject":"github.12345.admin"}}'`, or `{"type":"account",…}` (see `diverge run logs request-schema`) |
 
 ---
@@ -724,7 +684,7 @@ cleanly at the next start.
 | Symptom | Cause / fix |
 |---|---|
 | The shell hangs after `diverge … start` | Its output was piped. Always redirect to a file (§2). |
-| Agent containers stop moments after a reply, or the world shows them dim | `idle_seconds` defaults to 10. Raise it in `daemon.yaml` and restart the daemon. |
+| Agent containers stop moments after a reply, or the world shows them dim | `idle_seconds` defaults to 10. Stop the daemon, raise it with `diverge daemon idle_seconds set <SECONDS>`, and start it. |
 | A deploy fails with the image unavailable, or the daemon says "the provider pulls from no registry the image's references name" | The image is not in the **provider's** podman store (it was built with your default podman connection or machine, not `--connection diverge-provider-root` plus the XDG variables), or it is only tagged under `127.0.0.1:`, or the template has no `references` entry naming a registry the provider lists (`docker.io`). |
 | An image deploys but its program misbehaves against the proxy (refused enqueues, a finished channel with no answer) | The image predates the current inside-container contract. **Rebuild every image from current source.** |
 | A plain `podman …` command fails or acts on the wrong machine | Podman's *default* connection may point at another or broken machine. Always pass `--connection diverge-provider-root` with the provider's XDG variables (the `pp` helper). On Windows, podman ignores `XDG_CONFIG_HOME`, so connection definitions live in `~/.config/containers` while the machine's disk and key live under `XDG_DATA_HOME`. |
@@ -732,13 +692,13 @@ cleanly at the next start.
 | `podman exec <ctr> /some/path` turns the path into `C:/Program Files/Git/some/path` | Git Bash path conversion. Prefix that one command with `MSYS_NO_PATHCONV=1`. |
 | A Windows binary is handed a `/c/...` path through an environment variable | Use `cygpath -w` for `DIVERGE_CONFIG`, `XDG_*` and similar variables. Arguments are converted by Git Bash; environment values are less reliably converted. |
 | `install.sh` fails with "Access is denied" or the move fails | The program is running. Stop it, then reinstall. |
-| `daemon stop` targets the wrong daemon or says NotLocal | It uses the default daemon of `<root>/cli.yaml`. Fix that root's `cli.yaml`. |
+| `daemon stop` targets the wrong daemon or says NotLocal | It dials that root's default CLI daemon. Point it at the root's own daemon: `diverge --config <root> cli daemons <INDEX> address set …`. |
 | The first message to a fresh agent fails with "connection ended before the channel answered" | Its dependency tools may still be deploying. Send it again. |
-| `providers add` record stays `disconnected` | The daemon identity is missing from `provider.yaml` `incoming`, or either program has no `identity` in its document or that identity is not signed in under its root, or the provider's `identity` is not the one the record names, or the provider is down. |
+| `providers add` record stays `disconnected` | The daemon identity is missing from the provider's `incoming`, or either program has no `identity` set or that identity is not signed in under its root, or the provider's `identity` is not the one the record names, or the provider is down. |
 | `daemons add` works but relayed requests error | B is not announced (no `announcement` on B's record of the shared provider), B has no **account** for the presented identity (admins don't count), `accept_daemons` is false on B's record of that provider, or A and B are not on a common provider. |
 | `pnpm tauri dev` page breaks after `pnpm typecheck` / an SDK rebuild | The SDK `dist` was rebuilt under the running Vite. Restart the dev server, or reload the window. |
 | Second `pnpm tauri dev` exits at once | Port 1440 is taken (`strictPort`). Use §5 step 11 (a) or (b). |
-| The daemon fails at start after an upgrade, or `providers add` errors on a database made by an earlier build | The daemon's database has no migrations, so a database made by an earlier build is not carried over: move `<root>/daemon/postgres/` aside (do not delete it) and let the daemon initialise a new one. Also remove `description`, `accept_daemons` and `capacity_poll_seconds` from `daemon.yaml`. |
+| The daemon fails at start after an upgrade, or `providers add` errors on a database made by an earlier build | The daemon's database has no migrations, so a database made by an earlier build is not carried over. Tell the user: starting over on a fresh root (`--config <new dir>`) is theirs to decide, and nothing in the old root is removed by hand. |
 | The `diverge-postgres` build fails fetching PostgreSQL | It fetches the bundled archive at build time. Check network access. GitHub rate limiting may need a `GITHUB_TOKEN` (unverified). |
 
 ---
@@ -750,18 +710,18 @@ cleanly at the next start.
 - Use Git Bash for every script.
 - podman 6.x comes from the upstream MSI under `%LOCALAPPDATA%\Programs\Podman`. Put it on `PATH` in every shell
   that starts the provider or runs `pp`.
-- WSL2 backs the machine. The provider creates the machine `diverge-provider` (rootful, data under
-  `<root>\provider\podman_data`) and ignores the default `podman-machine-default`. Two running machines coexist
+- WSL2 backs the machine. The provider creates the machine `diverge-provider` (rootful, its data at
+  `diverge provider podman storage_path get`) and ignores the default `podman-machine-default`. Two running machines coexist
   fine on podman 6.1.4.
-- Machine memory comes from WSL (`.wslconfig`); `containers.memory` only applies on macOS.
+- Machine memory comes from WSL (`.wslconfig`); `containers memory` only applies on macOS.
 - The provider sees host paths inside the machine as `/mnt/c/...`.
-- The proxy binary at `<root>/bin/diverge-container-proxy` is mounted read-only into each container.
+- The proxy binary installed beside `diverge` is mounted read-only into each container.
 
 **macOS (run live on Apple Silicon, podman 6.1.2, the Apple hypervisor)**
 
 - Same as Windows, with the same machine name, connection, XDG variables, `pp` helper and `ssh` tunnel.
-- The provider adds `--memory <containers.memory>` and a `--volume P:P` share for each of: every volume
-  store, every fixed volume, `<root>/provider`, and the executable's directory.
+- The provider adds `--memory <containers memory>` and a `--volume P:P` share for each of: every volume
+  store, every fixed volume, its own data, and the executable's directory.
 - A machine missing a share is removed and re-made, which empties its image cache. Rebuild images after changing
   volume paths. A machine that sees every share is kept across provider restarts, its images with it: a first
   start takes about half a minute, a later one a second or two.
@@ -779,7 +739,7 @@ cleanly at the next start.
 - Build images with `sudo podman --root <that storage_path> build …`. Also run `image ls` and `image inspect` the
   same way.
 - Under `sudo`, `$HOME` is root's, so always pass `--config` explicitly.
-- How a root-owned provider shares `<root>/identities` with a user-run CLI and daemon is not worked out here. A
+- How a root-owned provider shares its root's signed-in identities with a user-run CLI and daemon is not worked out here. A
   separate root for the provider, with its own `github.12345.provider` login, is the obvious arrangement, but it is untested.
 
 ---
