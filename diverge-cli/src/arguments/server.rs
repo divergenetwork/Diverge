@@ -4,11 +4,11 @@ use clap::Subcommand;
 
 use super::{Identity, Lifecycle, Port};
 
-/// The provider on this host: started, stopped, or one setting of its
-/// document in the root, `provider.yaml` — its port,
+/// The provider on this host: started, stopped, or one setting of it
+/// — its port,
 /// its identity, whom it accepts, whom it dials, podman's settings,
 /// whether it runs containers, its volumes, its image Store, the
-/// messages it relays — read or written by itself. The document is
+/// messages it relays — read or written by itself. The settings are
 /// not worked on whole: there is no `provider config`.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Server {
@@ -16,40 +16,36 @@ pub enum Server {
     #[command(flatten)]
     Lifecycle(Lifecycle),
     /// Read or write the TCP port the provider accepts the protocol
-    /// on, `port` in `provider.yaml`.
+    /// on.
     #[command(subcommand)]
     Port(Port),
-    /// Read or write who the provider is, `identity` in
-    /// `provider.yaml`.
+    /// Read or write who the provider is.
     #[command(subcommand)]
     Identity(Identity),
     /// List the identities the provider accepts, add one, or delete
-    /// one, `incoming` in `provider.yaml`.
+    /// one.
     #[command(subcommand)]
     Incoming(Incoming),
-    /// List the peers the provider dials, add one, or delete one,
-    /// `outgoing` in `provider.yaml`.
+    /// List the peers the provider dials, add one, or delete one.
     #[command(subcommand)]
     Outgoing(Outgoing),
-    /// Read or write one setting of the podman the provider uses,
-    /// `podman` in `provider.yaml`.
+    /// Read or write one setting of the podman the provider uses.
     #[command(subcommand)]
     Podman(Podman),
     /// Turn the running of containers on or off, or read or write one
-    /// setting of it, `containers` in `provider.yaml`.
+    /// setting of it.
     #[command(subcommand)]
     Containers(Containers),
     /// Turn the `volumes` section on or off, or list, add or delete
-    /// the volumes the provider provides, `volumes` in
-    /// `provider.yaml`.
+    /// the volumes the provider provides.
     #[command(subcommand)]
     Volumes(Volumes),
     /// Turn the provider's image Store on or off, or read or write
-    /// one setting of it, `images` in `provider.yaml`.
+    /// one setting of it.
     #[command(subcommand)]
     Images(Images),
     /// Turn the relaying of messages on or off, or read or write the
-    /// rate it is relayed at, `messages` in `provider.yaml`.
+    /// rate it is relayed at.
     #[command(subcommand)]
     Messages(Messages),
 }
@@ -107,8 +103,8 @@ pub enum Images {
     /// Print whether the provider keeps a Store: `true` or `false`.
     Enabled,
     /// Have the provider keep a Store: the section made, with its
-    /// defaults — the path `provider/images` under the root, and a
-    /// capacity of 32 GiB. Nothing changes where it is there already.
+    /// defaults — a path of its own under the root, which
+    /// `images path get` prints, and a capacity of 32 GiB. Nothing changes where it is there already.
     /// Refused while the provider is running on the root: stop it
     /// first.
     Enable,
@@ -202,12 +198,11 @@ pub enum Volumes {
     Disable,
     /// List, add or delete the volumes the provider provides as they
     /// are — each a directory on the host, listed to clients as
-    /// `provided`, which no client edits or deletes —
-    /// `volumes.fixed` in `provider.yaml`.
+    /// `provided`, which no client edits or deletes.
     #[command(subcommand)]
     Fixed(Fixed),
     /// List, add, edit or delete the places a volume may be created
-    /// in, `volumes.stores` in `provider.yaml`. Each is a folder that
+    /// in. Each is a folder that
     /// holds every volume created in it: editing a store's path moves
     /// the folder, and deleting a store deletes it.
     #[command(subcommand)]
@@ -218,8 +213,8 @@ pub enum Volumes {
 /// [`provider`](crate::cli::provider).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Stores {
-    /// Print the stores, one line each, in the document's order,
-    /// which is the order of preference:
+    /// Print the stores, one line each, in the order they were
+    /// added, which is the order of preference:
     /// `{"index":0,"path":"…","capacity":…}`. Nothing is printed
     /// where there is none, or where the section is absent. The index
     /// is what `edit` and `delete` take.
@@ -279,8 +274,8 @@ pub enum Stores {
 /// [`provider`](crate::cli::provider).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Fixed {
-    /// Print the fixed volumes, one line each, in the document's
-    /// order: `{"index":0,"name":"…","path":"…","bytes":…,"mode":"…"}`,
+    /// Print the fixed volumes, one line each, in the order they
+    /// were added: `{"index":0,"name":"…","path":"…","bytes":…,"mode":"…"}`,
     /// with `authorize_hook` where it has one. Nothing is printed
     /// where there is none, or where the section is absent. The index
     /// is what `delete` takes.
@@ -376,15 +371,14 @@ pub enum Bytes {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Podman {
     /// List the registries the provider pulls from, add one, or
-    /// delete one, `podman.registries` in `provider.yaml`.
+    /// delete one.
     #[command(subcommand)]
     Registries(Registries),
     /// Read where podman keeps its data, or move the data and write
-    /// the new place, `podman.storage_path` in `provider.yaml`.
+    /// the new place.
     #[command(name = "storage_path", subcommand)]
     StoragePath(StoragePath),
-    /// Read or write the most podman's image cache may hold,
-    /// `podman.image_cache_disk` in `provider.yaml`.
+    /// Read or write the most podman's image cache may hold.
     #[command(name = "image_cache_disk", subcommand)]
     ImageCacheDisk(ImageCacheDisk),
 }
@@ -394,7 +388,7 @@ pub enum Podman {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum ImageCacheDisk {
     /// Print the number of bytes, as the provider reads it: the
-    /// default, 32 GiB, where the document has none.
+    /// default, 32 GiB, where none was set.
     Get,
     /// Write the number of bytes. Refused while the provider is
     /// running on the root: stop it first.
@@ -443,7 +437,7 @@ pub enum StoragePath {
 /// [`provider`](crate::cli::provider).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Registries {
-    /// Print the registries, one line each, in the document's order:
+    /// Print the registries, one line each, in their order:
     /// `{"index":0,"host":"docker.io"}`. The index is what `delete`
     /// takes.
     Get,
@@ -472,7 +466,8 @@ pub enum Registries {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Incoming {
     /// Print the identities the provider accepts, one line each, in
-    /// the document's order: `{"index":0,"issuer":"…","subject":"…"}`.
+    /// the order they were added:
+    /// `{"index":0,"issuer":"…","subject":"…"}`.
     /// The index is what `delete` takes.
     Get,
     /// Add an identity, after the last. Refused while the provider is
@@ -502,7 +497,7 @@ pub enum Incoming {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Outgoing {
     /// Print the peers the provider dials, one line each, in the
-    /// document's order:
+    /// order they were added:
     /// `{"index":0,"address":"…","issuer":"…","subject":"…"}`. The
     /// index is what `delete` takes.
     Get,

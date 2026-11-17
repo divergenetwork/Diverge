@@ -5,24 +5,24 @@ use diverge_sdk::wire::proxy::Redial;
 
 use super::Identity;
 
-/// The viewer's document in the root, `viewer.yaml`: one setting of
-/// its `daemon` read or written by itself. The document is not worked
-/// on whole: there is no `viewer config`. The viewer is not started
-/// or stopped here, and holds no lock on the root: a setting is
+/// The viewer's settings: one setting of its `daemon` read or
+/// written by itself. They are not worked on whole: there is no
+/// `viewer config`. The viewer is not started or stopped here: a
+/// setting is
 /// written whether the app is open or not, and read by the app at its
 /// next start.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Viewer {
     /// Read or write one setting of the daemon the viewer dials, and
-    /// as whom, `daemon` in `viewer.yaml`.
+    /// as whom.
     #[command(subcommand)]
     Daemon(ViewerDaemon),
 }
 
 /// The settings of the viewer's `daemon`, each a command beneath
-/// `diverge viewer daemon`, named as the document names it. Every one
-/// has a default, so every one is read and written whether the
-/// document names a daemon or not.
+/// `diverge viewer daemon`. Every one
+/// has a default, so every one is read and written whether any
+/// was set before or not.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum ViewerDaemon {
     /// Read or write where the daemon is dialled, `daemon.address`.
@@ -47,11 +47,11 @@ pub enum ViewerDaemon {
 }
 
 /// What is done to a setting that is a string: the viewer's, and a
-/// daemon's address in the CLI's own document.
+/// daemon's address among the CLI's own settings.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Text {
     /// Print the string, alone on its line, as it is and not as
-    /// JSON: the default where the document has none.
+    /// JSON: the default where none was set.
     Get,
     /// Write the string.
     Set {
@@ -64,8 +64,8 @@ pub enum Text {
 /// What is done to the viewer's `daemon.redial`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum RedialSetting {
-    /// Print `never`, or the number of seconds: `5` where the
-    /// document has none.
+    /// Print `never`, or the number of seconds: `5` where none was
+    /// set.
     Get,
     /// Write `never`, or a whole number of seconds.
     Set {
@@ -76,7 +76,7 @@ pub enum RedialSetting {
 }
 
 /// A redial from the command line: the word, or the seconds, read as
-/// the document reads them.
+/// the viewer reads them.
 fn redial(given: &str) -> Result<Redial, String> {
     let value = match given.parse::<u64>() {
         Ok(seconds) => serde_json::Value::from(seconds),

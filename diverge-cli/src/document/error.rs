@@ -41,14 +41,14 @@ impl fmt::Display for Error {
                 write!(f, "`{}` could not be read: {source}", path.display())
             }
             Error::Invalid(error) => {
-                write!(f, "the document is not one its program takes: {error}")
+                write!(f, "the settings are not ones their program takes: {error}")
             }
             Error::Json(error) => write!(
                 f,
-                "the default document could not be written as JSON: {error}"
+                "the default settings could not be written as JSON: {error}"
             ),
             Error::Serialize(error) => {
-                write!(f, "the document could not be written as YAML: {error}")
+                write!(f, "the settings could not be written: {error}")
             }
         }
     }

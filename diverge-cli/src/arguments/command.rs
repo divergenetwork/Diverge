@@ -7,10 +7,10 @@ use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
 /// [`Run`](Self::Run). Each program is its own command, and its
-/// document in the root is worked on one setting at a time, each
+/// settings are worked on one at a time, each
 /// setting a command beneath [`Daemon`](Self::Daemon),
 /// [`Provider`](Self::Provider), [`Viewer`](Self::Viewer) or
-/// [`Cli`](Self::Cli); no document is worked on whole. The daemon and the provider on this host
+/// [`Cli`](Self::Cli); none is worked on whole. The daemon and the provider on this host
 /// are also started and stopped under their commands. The host's identities are
 /// [`Identities`](Self::Identities).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
@@ -29,22 +29,22 @@ pub enum Command {
     #[command(name = "identity.diverge.network", subcommand)]
     IdentityDivergeNetwork(IdentityDivergeNetwork),
     /// Start or stop the daemon on the root, or read or write one
-    /// setting of its `daemon.yaml`: see
+    /// setting of it: see
     /// [`lifecycle`](crate::lifecycle) and
     /// [`setting`](crate::cli::setting).
     #[command(subcommand)]
     Daemon(Daemon),
     /// Start or stop the provider on the root, or read or write one
-    /// setting of its `provider.yaml`: see
+    /// setting of it: see
     /// [`lifecycle`](crate::lifecycle) and
     /// [`provider`](crate::cli::provider).
     #[command(subcommand)]
     Provider(Server),
-    /// Read or write one setting of the viewer's `viewer.yaml`: see
+    /// Read or write one setting of the viewer: see
     /// [`viewer`](crate::cli::viewer).
     #[command(subcommand)]
     Viewer(Viewer),
-    /// Read or write one setting of the CLI's own `cli.yaml` — its
+    /// Read or write one setting of the CLI itself — its
     /// daemons, what each is, and which is the default: see
     /// [`own`](crate::cli::own).
     #[command(subcommand)]

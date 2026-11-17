@@ -10,7 +10,8 @@ use super::Command;
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
 #[command(name = "diverge", version, about = "The Diverge daemon's client")]
 pub struct Arguments {
-    /// The root: the directory `cli.yaml` is read from. Absent,
+    /// The config root: the directory every setting and signed-in
+    /// identity is kept under. Absent,
     /// `DIVERGE_CONFIG`, else `.diverge` under the home directory.
     #[arg(long, value_name = "DIR")]
     pub config: Option<PathBuf>,

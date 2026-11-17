@@ -2,8 +2,8 @@
 
 use clap::Subcommand;
 
-/// The host's OpenID Connect identities under the root,
-/// `<root>/identities/`, worked on here: signed in, listed, removed.
+/// The host's OpenID Connect identities under the root, worked on
+/// here: signed in, listed, removed.
 /// No daemon is dialled, and no command prints a token or a key. Each
 /// identity's key on this host is made by itself, at its login or the
 /// first time a token is asked for, and no command makes one.
@@ -12,8 +12,8 @@ pub enum Identities {
     /// Sign an identity in, by the device authorization grant: a code
     /// printed, and approved at the issuer. The command ends once the
     /// code is printed, and the wait for its approval goes on apart
-    /// from it: the identity's lock is held for the whole login, and
-    /// the identity is written once the issuer grants it — replacing
+    /// from it: a second login of the identity waits for the first, and
+    /// the identity is signed in once the issuer grants it — replacing
     /// one already there, signed out or not — which `identities list`
     /// then shows. A grant as another subject writes nothing.
     Login {

@@ -4,33 +4,30 @@ use clap::Subcommand;
 
 use super::Lifecycle;
 
-/// The daemon on this host: started, stopped, or one setting of its
-/// document in the root, `daemon.yaml` — its port, its idle seconds,
+/// The daemon on this host: started, stopped, or one setting of it
+/// — its port, its idle seconds,
 /// its administrators, its identity, its Postgres — read or written
-/// by itself. The document is not worked on whole: there is no
+/// by itself. The settings are not worked on whole: there is no
 /// `daemon config`.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Daemon {
     /// Start or stop the daemon: see [`lifecycle`](crate::lifecycle).
     #[command(flatten)]
     Lifecycle(Lifecycle),
-    /// Read or write the TCP port the daemon accepts the protocol on,
-    /// `port` in `daemon.yaml`.
+    /// Read or write the TCP port the daemon accepts the protocol on.
     #[command(subcommand)]
     Port(Port),
     /// Read or write how many seconds a container lies unused before
-    /// the daemon ends its run, `idle_seconds` in `daemon.yaml`.
+    /// the daemon ends its run.
     #[command(name = "idle_seconds", subcommand)]
     IdleSeconds(IdleSeconds),
-    /// List the daemon's administrators, add one, or delete one,
-    /// `admins` in `daemon.yaml`.
+    /// List the daemon's administrators, add one, or delete one.
     #[command(subcommand)]
     Admins(Admins),
-    /// Read or write who the daemon is, `identity` in `daemon.yaml`.
+    /// Read or write who the daemon is.
     #[command(subcommand)]
     Identity(Identity),
-    /// Read or write which database the daemon runs on, `postgres`
-    /// in `daemon.yaml`.
+    /// Read or write which database the daemon runs on.
     #[command(subcommand)]
     Postgres(Postgres),
 }
@@ -59,7 +56,7 @@ pub enum PostgresKind {
     /// A Postgres the daemon runs itself, under the root.
     Local {
         /// The most connections the cluster accepts at once. Absent,
-        /// the default, 1024 — not what the document had.
+        /// the default, 1024 — not what was set before.
         #[arg(long, value_name = "COUNT")]
         max_connections: Option<u32>,
     },
@@ -70,7 +67,7 @@ pub enum PostgresKind {
         #[arg(long)]
         url: String,
         /// The password. Absent, the daemon dials with none — not
-        /// with the one the document had.
+        /// with the one set before.
         #[arg(long)]
         password: Option<String>,
     },
@@ -81,7 +78,7 @@ pub enum PostgresKind {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Identity {
     /// Print the identity, on one line: `{"issuer":"…","subject":"…"}`,
-    /// or `null` where the document has none.
+    /// or `null` where none is set.
     Get,
     /// Write the identity, whole: both its issuer and its subject.
     /// Refused while the program is running on the root: stop it
@@ -101,8 +98,8 @@ pub enum Identity {
 /// [`setting`](crate::cli::setting).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Admins {
-    /// Print the administrators, one line each, in the document's
-    /// order: `{"index":0,"issuer":"…","subject":"…"}`. The index is
+    /// Print the administrators, one line each, in the order they
+    /// were added: `{"index":0,"issuer":"…","subject":"…"}`. The index is
     /// what `delete` takes.
     Get,
     /// Add an administrator, after the last. Refused while the daemon
@@ -133,7 +130,7 @@ pub enum Admins {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum Port {
     /// Print the port, as the program reads it: the default where
-    /// the document has none.
+    /// none was set.
     Get,
     /// Write the port. Refused while the program is running on the
     /// root: stop it first.
@@ -149,7 +146,7 @@ pub enum Port {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum IdleSeconds {
     /// Print the number of seconds, as the daemon reads it: the
-    /// default where the document has none.
+    /// default where none was set.
     Get,
     /// Write the number of seconds. Refused while the daemon is
     /// running on the root: stop the daemon first.

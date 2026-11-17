@@ -4,19 +4,19 @@ use clap::{Args, Subcommand};
 
 use super::{Identity, Text};
 
-/// The CLI's own document in the root, `cli.yaml`: its daemons, what
+/// The CLI's own settings: its daemons, what
 /// each of them is, and which of them is the default, each read or
-/// written by itself. The document is not worked on whole: there is
-/// no `cli config`. The CLI holds no lock on the root, and reads the
-/// document at every command.
+/// written by itself. They are not worked on whole: there is
+/// no `cli config`. A CLI setting is written whenever asked, and
+/// read at every command.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Own {
     /// List the daemons the CLI may dial, add one, delete one, or —
     /// after a daemon's index — read or write one setting of that
-    /// daemon, `daemons` in `cli.yaml`.
+    /// daemon.
     Daemons(Daemons),
     /// Read or write which daemon is dialled when a command names
-    /// none, `default` in `cli.yaml`.
+    /// none.
     #[command(subcommand)]
     Default(Chosen),
 }
@@ -38,21 +38,20 @@ pub struct Daemons {
 }
 
 /// What is done to the CLI's `daemons`, or to one of them: see
-/// [`own`](crate::cli::own). The document keeps the daemons by name;
-/// here they are a list, in the document's order, and the name is a
-/// member of each.
+/// [`own`](crate::cli::own). The daemons are a list, in the order
+/// they were added, and the name is a member of each.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum DaemonsCommand {
-    /// The list: print the daemons, one line each, in the document's
-    /// order: `{"index":0,"name":"local"}`. The index is what a
+    /// The list: print the daemons, one line each, in the order they
+    /// were added: `{"index":0,"name":"local"}`. The index is what a
     /// setting of one, `delete` and `default set` take. What a daemon
     /// is, is read a setting at a time.
     Get,
     /// The list: add a daemon, after the last, with no account.
     /// Refused where the name is a daemon's already.
     Add {
-        /// The name the daemon has in the document, and on the
-        /// command line as `--daemon`.
+        /// The name the daemon has on the command line, as
+        /// `--daemon`.
         #[arg(long)]
         name: String,
         /// Where it is dialled: a WebSocket URL, or a host and port
@@ -103,19 +102,18 @@ pub enum Chosen {
 }
 
 /// What is done to one daemon's `accounts`: see
-/// [`own`](crate::cli::own). The document keeps them by name; here
-/// they are a list, as the daemons are.
+/// [`own`](crate::cli::own). They are a list, as the daemons are.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum DaemonAccounts {
-    /// Print the accounts, one line each, in the document's order:
+    /// Print the accounts, one line each, in the order they were added:
     /// `{"index":0,"name":"admin","issuer":"…","subject":"…"}`. The
     /// index is what `delete` and the daemon's `default set` take.
     Get,
     /// Add an account, after the last. Refused where the name is an
     /// account's of the daemon already.
     Add {
-        /// The name the account has in the document, and on the
-        /// command line as `--account`.
+        /// The name the account has on the command line, as
+        /// `--account`.
         #[arg(long)]
         name: String,
         /// The identity's issuer, exactly as its discovery document
