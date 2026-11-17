@@ -45,6 +45,19 @@ name: Release
 #
 # No platform is Windows on ARM: the Postgres the daemon ships has no
 # build for it upstream.
+#
+# RUNNERS (looked up 2026-11-16; github.com/actions/runner-images)
+#
+#   • Linux archives are built on Ubuntu 22.04, the oldest image there
+#     is, on purpose: a binary runs on its build host's glibc and newer,
+#     so the oldest host reaches the most machines. Move it only when
+#     22.04 is retired.
+#   • macOS archives are built on macOS 15 (`macos-15` is ARM,
+#     `macos-15-intel` is Intel), one behind `macos-latest`, for the same
+#     reason. macOS 14 was retired on 2026-11-02.
+#   • Windows is pinned to `windows-2025`, which is what `windows-latest`
+#     names today, so that it changes by a commit and not by itself.
+#   • The jobs that build nothing platform-bound run on `ubuntu-latest`.
 
 on:
   push:
@@ -74,7 +87,7 @@ jobs:
       release: ${{ steps.check.outputs.release }}
       version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Decide
         id: check
         env:
@@ -161,7 +174,7 @@ jobs:
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
@@ -169,7 +182,7 @@ jobs:
       # brings it.
       - run: pip install cargo-zigbuild
       - run: cargo zigbuild --release --locked -p diverge-container-proxy --target x86_64-unknown-linux-musl
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: proxy-x86_64
           path: target/x86_64-unknown-linux-musl/release/diverge-container-proxy
@@ -181,13 +194,13 @@ jobs:
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-22.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-musl
       - run: pip install cargo-zigbuild
       - run: cargo zigbuild --release --locked -p diverge-container-proxy --target aarch64-unknown-linux-musl
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: proxy-aarch64
           path: target/aarch64-unknown-linux-musl/release/diverge-container-proxy
@@ -208,12 +221,12 @@ jobs:
         include:
           - { os: linux,   runs-on: ubuntu-22.04 }
           - { os: macos,   runs-on: macos-15-intel }
-          - { os: windows, runs-on: windows-latest }
+          - { os: windows, runs-on: windows-2025 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Tauri's system libraries
@@ -222,7 +235,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
       - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: proxy-x86_64
           path: proxy
@@ -251,12 +264,12 @@ jobs:
       matrix:
         include:
           - { os: linux, runs-on: ubuntu-22.04-arm }
-          - { os: macos, runs-on: macos-14 }
+          - { os: macos, runs-on: macos-15 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Tauri's system libraries
@@ -265,7 +278,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
       - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: proxy-aarch64
           path: proxy
@@ -294,7 +307,7 @@ jobs:
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Publish diverge-sdk
         env:
@@ -316,9 +329,9 @@ jobs:
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
