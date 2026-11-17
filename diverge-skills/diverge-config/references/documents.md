@@ -1,9 +1,8 @@
 # Every document, every field
 
 The four documents in a root. Each is YAML, each refuses a key it does not have, and an absent file means the
-defaults shown. Byte sizes are plain integers in BYTES. Read the live value of the CLI's or the viewer's with
-`diverge <program> config get`, and of the daemon's or the provider's one setting at a time with
-`diverge daemon <setting> get` or `diverge provider <setting> get`.
+defaults shown. Byte sizes are plain integers in BYTES. Read the live value of any setting with its own command,
+`diverge <program> <setting> get`: no command prints a whole document; read the file for that.
 
 Contents: [daemon.yaml](#daemonyaml) · [provider.yaml](#provideryaml) ·
 [cli.yaml](#cliyaml) · [viewer.yaml](#vieweryaml)

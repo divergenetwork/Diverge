@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to list, add or delete the daemons the CLI dials and pick its default (`diverge cli daemons get|add|delete`, `diverge cli default get|set`); to read or change `cli.yaml` with `diverge cli config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to list, add or delete the daemons the CLI dials, give one an account, and pick the defaults (`diverge cli daemons …`, `diverge cli default get|set`); to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -70,66 +70,26 @@ Rules common to all four:
   `admins`, `incoming`, `cli.yaml`, `viewer.yaml`. `https://identity.diverge.network` and
   `https://identity.diverge.network/` are different issuers.
 
-## Reading and changing a document: `config get | set | patch`
+## Reading and changing a document: one setting at a time
 
-These three subcommands exist for **one** document: the CLI's own, `diverge cli config`. They work on
-`cli.yaml` in the root and never contact a running program.
+There is no command that reads or rewrites a whole document, and none that takes JSON. Every document is
+changed one setting at a time, each setting a command of its own under its program: `diverge daemon …`,
+`diverge provider …`, `diverge viewer …`, `diverge cli …`. The sections below list them. What they share:
 
-**The daemon, the provider and the viewer have no `config` command.** `daemon.yaml`, `provider.yaml` and
-`viewer.yaml` are read and changed one setting at a time, with plain arguments and no JSON: see "The daemon's
-settings", "The provider's settings" and "The viewer's settings" below.
-
-### get — read, through jq
-
-```bash
-diverge cli config get                       # the whole document, one compact JSON line
-diverge cli config get .default              # "local"
-diverge cli config get '.daemons | keys[]'   # one line per value the filter yields
-```
-
-The document is shown as JSON. Empty optional members are left out, so a filter over one may see `null`.
-
-### set — rewrite the whole document with a jq program
-
-The program runs with the document as input and must yield **exactly one value**, which becomes the whole new
-document.
-
-```bash
-diverge cli config set '.default = "b"'
-```
-
-Pitfall: a member left out of the document is `null` to the program. Default a list or an object before
-adding to it (`(.daemons // {})`), and set an identity whole: it is one `{issuer, subject}` object, and one
-member of it alone is not a valid document.
-
-### patch — change places with a JSON Patch (RFC 6902)
-
-The argument is a list of operations written as YAML (JSON is YAML). Operations: `add`, `remove`, `replace`,
-`move`, `copy`, `test`. Paths are JSON Pointers: `/default`, `/daemons/b/accounts/admin`; a list's `/-` appends (`add` only); inside
-a key, `/` is written `~1` and `~` is `~0`. Operations apply in order, **all or none**.
-
-```bash
-diverge cli config patch '[{op: test, path: /default, value: local}, {op: replace, path: /default, value: b}]'
-diverge cli config patch '[{op: add, path: /daemons/b, value: {address: "ws://127.0.0.1:14982/", default: admin, accounts: {admin: {issuer: "https://identity.diverge.network", subject: github.12345.admin}}}}]'
-```
-
-- `add` to an object makes or replaces the member; `add` to a list inserts at the index. `replace` and `remove`
-  need the place to exist already.
-- The parent must exist: a path beneath a member the document does not have fails with `nothing is at …`.
-  Add the whole member instead.
-- Use `test` first when a patch depends on a list index, so a document that changed underneath fails the patch
-  rather than removing the wrong element.
-
-### What `set` and `patch` do to the file
-
-- The result is validated against the program's own type before anything is written. A refused result changes
-  nothing: `Error: the document is not one its program takes: bogus: unknown field …`, exit 1.
-- The file is rewritten whole, atomically, as the type's own YAML: **comments are lost** and keys come out in
-  the type's order (the CLI's daemons and accounts keep theirs). Members equal to "none" are dropped.
-- Validation is of shape only. A wrong port, an identity not signed in, or a path that does not exist is found
-  when the program starts.
-- The running program is not told. See "What needs a restart".
-- Editing the YAML file by hand is equally valid, and is the only way to keep comments.
+- **`get` reads, `set` writes.** A list has `get`, `add` and `delete`; `delete` takes the `index` that `get`
+  prints, and items after it move down one.
+- **A `get` prints the value the program runs with**: the default where the file leaves the setting out, and
+  the built-in defaults where there is no file. A number or a path is printed bare; an object or a list item as
+  one JSON line.
+- **A write prints nothing**, and rewrites the file whole as the program's own YAML: **comments are lost**,
+  and keys come out in the type's order (the CLI's daemons and accounts keep theirs).
+- **A write to `daemon.yaml` or `provider.yaml` is refused while that program is running**: stop it first.
+  `viewer.yaml` and `cli.yaml` have no such rule.
+- **Nothing is checked beyond the value's shape.** A wrong port, an identity not signed in, or a path that does
+  not exist is found when the program starts.
+- To see a whole document, read the file: `cat <root>/daemon.yaml`. An absent file means every setting is at
+  its default. Editing the file by hand is equally valid (with the daemon or provider stopped), and is the
+  only way to keep comments.
 
 ## The daemon's settings: `diverge daemon port`, `idle_seconds`, `admins`, `identity`, `postgres`
 
@@ -360,20 +320,40 @@ and Windows. It prints nothing and does not change the path.
 
 ## The CLI's daemons: `diverge cli daemons` and `diverge cli default`
 
-`cli.yaml` keeps the daemons the CLI may dial by name. These commands treat them as a list, in the file's
-order, with the name as a member of each. `diverge cli config get|set|patch` still works on the whole file.
+`cli.yaml` keeps the daemons the CLI may dial by name, and each daemon's accounts by name. These commands
+treat both as lists, in the file's order, with the name as a member of each item. They are the only commands
+for `cli.yaml`; there is no `diverge cli config`.
 
 ```bash
-diverge cli daemons get                  # {"index":0,"name":"local","address":"ws://127.0.0.1:14980/"}   one line per daemon
+# the list of daemons
+diverge cli daemons get                  # {"index":0,"name":"local"}   one line per daemon: index and name only
 diverge cli daemons add --name b --address ws://127.0.0.1:14982/
 diverge cli daemons delete 1             # by the index `get` prints; its accounts go with it
 diverge cli default get                  # {"index":0,"name":"local"}, or null if `default` names no daemon in the file
 diverge cli default set 1                # by index, not by name
+
+# one daemon: its index first, then the setting
+diverge cli daemons 0 address get        # ws://127.0.0.1:14980/
+diverge cli daemons 0 address set ws://10.0.0.5:14980/
+diverge cli daemons 0 accounts get       # {"index":0,"name":"me","issuer":"…","subject":"…"}   one line per account
+diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge cli daemons 0 accounts delete 0
+diverge cli daemons 0 default get        # {"index":0,"name":"me"}, or null: the account used when --account is not given
+diverge cli daemons 0 default set 0      # by the account's index
+diverge cli daemons 0 identity get       # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
+diverge cli daemons 0 identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
 ```
 
-- `daemons get` shows `identity` too where the daemon's own identity is stated. It does not show a daemon's
-  accounts; those are still read and changed with `diverge cli config`.
-- `daemons add` makes a daemon with no account. It refuses a name that is already a daemon's.
+- **There is no `get` of a whole daemon.** `daemons get` lists index and name; everything a daemon holds is
+  read one setting at a time, after its index.
+- `get`, `add` and `delete` work on the list and take no index before them; `address`, `accounts`, `default`
+  and `identity` work on one daemon and need its index first. The wrong form is refused with the right one.
+- `daemons add` makes a daemon with no account, so it cannot be used by `run` until `accounts add`. It refuses
+  a name that is already a daemon's.
+- `accounts add` refuses a name the daemon already has. An account is who the CLI dials **as**: the issuer and
+  subject of an identity signed in under this root. `identity` is who the daemon must **be**; unset, whichever
+  daemon answers at the address is accepted. `identity set` cannot clear it; delete the member by hand.
+- `accounts delete` refuses the daemon's default account; make another the default first.
 - `daemons delete` refuses the default daemon: ``the daemon `local`, at index 0, is the default daemon``.
   Make another the default first.
 - `default set` takes the **index** from `daemons get`, not the name.
@@ -661,13 +641,13 @@ Before restarting anything, say what it will interrupt and make sure the user as
 **Add an account to the CLI and make it the default.**
 
 ```bash
-diverge cli config patch '[
-  {op: add, path: /daemons/local/accounts/me, value: {issuer: "https://identity.diverge.network", subject: github.12345.admin}},
-  {op: add, path: /daemons/local/default, value: me}]'
+diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge cli daemons 0 default set 0     # 0 here is the account's index: `diverge cli daemons 0 accounts get`
 diverge run info        # {"info":{"version":"…"}}
 ```
 
-**Add a second daemon to the CLI** — the `cli config patch` example with `/daemons/b` above — then
+**Add a second daemon to the CLI.** `diverge cli daemons add --name b --address ws://127.0.0.1:14982/`, find
+its index with `diverge cli daemons get`, give it an account and a default as above, then
 `diverge run --daemon b info`.
 
 **Let a daemon use a provider.** In the provider's root: the daemon's identity goes into `incoming`, then the
@@ -684,14 +664,12 @@ provider restarts. In the daemon's root nothing changes; the provider record is 
 | Message | Cause | Fix |
 |---|---|---|
 | `no account was named, and the daemon … has no default` | `cli.yaml` has no default account for that daemon (this stops even `request-schema`) | Add an account and `default`, or pass `--account` |
-| `no daemon is named …` / `the daemon … has no account named …` | `--daemon` / `--account` name nothing in `cli.yaml` | `diverge cli config get` |
+| `no daemon is named …` / `the daemon … has no account named …` | `--daemon` / `--account` name nothing in `cli.yaml` | `diverge cli daemons get`, then `diverge cli daemons <INDEX> accounts get` |
 | `the daemon could not be dialled: …` | Daemon down, or wrong `address` in `cli.yaml` | `diverge daemon start`, or fix the address |
 | `the handshake did not complete: …` | The account's identity is not signed in under this root, is signed out, the issuer is unreachable or writes no key into its tokens, the daemon has no `identity` or its identity is not signed in under the daemon's root, or `cli.yaml` states a daemon `identity` that is not the one that answered | `diverge identities list`; log in again; check `daemon.yaml` `identity` and the daemon entry's `identity` in `cli.yaml` |
 | `the daemon closed the connection without answering: the account may be none of the daemon's` | The identity is neither in `admins` nor an account on that daemon | Add it to `admins` and restart, or have an admin create the account |
-| `the document is not one its program takes: <path>: …` | A `set`/`patch` result the type refuses | Fix the key or value at that path; nothing was written |
-| `the patch could not be applied: #<n> <op>: nothing is at …` | The path, or its parent, does not exist | Add the parent member whole |
-| `the jq program: …` | The filter does not parse, or failed on a missing member | Default absent members with `//` |
-| `` `…yaml` could not be read: … `` | The file on disk does not parse as its type (hand edit) | Fix the file by hand; `config set` cannot run on it |
+| `the document is not one its program takes: <path>: …` | The file on disk holds a key or value its program's type refuses (a hand edit, or a file from an older version) | Fix the key or value at that path in the file; no command can run on it |
+| `` `…yaml` could not be read: … `` | The file on disk does not parse as its type (hand edit) | Fix the file by hand; no command can run on it |
 | A provider record stays `disconnected` | Daemon's identity missing from `provider.yaml` `incoming`; no `identity` in `daemon.yaml` or `provider.yaml`, or it is not signed in; the provider's `identity` is not the one the record names; provider down | Fix, restart the provider; the daemon redials by itself |
 | Wrong documents are being read | `DIVERGE_CONFIG` set | `--config <root>` explicitly |
 

@@ -114,7 +114,8 @@ the working directory is not a root: it is where an image's source keeps its `DI
 3. **`--config` goes first**, before the command: `diverge --config <root> daemon start`. It is not accepted
    after the command. `--daemon`, `--account`, `--jq`, `--timeout` belong to `run` and go after it.
 4. **Check which root you are on.** `DIVERGE_CONFIG`, where it is set, silently names the root.
-   `diverge cli config get` shows the daemons and accounts the root you are on knows.
+   `diverge cli daemons get`, then `diverge cli daemons <INDEX> accounts get`, show the daemons and accounts the
+   root you are on knows.
 5. **A `run` needs an account.** With no `--account` and no default account for the daemon in `cli.yaml`, every
    `run` command fails — even `request-schema` — with `no account was named, and the daemon … has no default`.
    Fix `cli.yaml` (skill `diverge-config`).
@@ -144,7 +145,7 @@ Every `diverge run` family and every top-level command belongs to exactly one sk
 
 | Task | Skill | Commands it owns |
 |---|---|---|
-| The root; any `*.yaml` document; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer daemon …`, `diverge cli config`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
+| The root; any `*.yaml` document; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer daemon …`, `diverge cli daemons …` and `diverge cli default`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
 | Agent templates and agents: create, get, list, edit, delete, tag; sending a message; MCP into an agent; an agent's files, exec, terminal, frontend, mounts | `diverge-agents` | `diverge run agents …` (including `agents templates …` and `agents connect …`) |
 | Standalone tools and their templates; dependency tools; attaching and detaching tools; a tool's files, exec, terminal, frontend; MCP exchanges with a tool | `diverge-tools` | `diverge run standalone-tools …` (including `templates …` and `connect …`), `diverge run dependency-tools …` |
 | Images: an image's `DIVERGE.md`, digests and references, building images into the provider, what each stock image takes as arguments and secrets | `diverge-images` | `diverge run images read\|build\|push\|list` |
@@ -169,7 +170,7 @@ Choosing when a task seems to fit two:
 Read-only, safe on any running installation:
 
 ```bash
-diverge cli config get                      # which daemons and accounts this root names
+diverge cli daemons get                     # which daemons this root names (then: diverge cli daemons 0 accounts get)
 diverge identities list                     # which identities are signed in here
 diverge run info                            # {"info":{"version":"…"}} — the daemon is up and admits you
 diverge run providers list                  # each provider record; "status" should be "connected"

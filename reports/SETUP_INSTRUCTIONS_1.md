@@ -309,7 +309,7 @@ Check: each of these prints its document back as JSON, or one setting of it, whi
 diverge provider port get
 diverge daemon port get
 diverge --config "$B" daemon port get
-diverge cli config get
+diverge cli daemons get
 diverge viewer daemon address get
 ```
 
