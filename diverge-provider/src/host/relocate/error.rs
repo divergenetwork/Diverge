@@ -107,7 +107,7 @@ impl fmt::Display for Error {
             Error::NotText(path) => write!(f, "`{}` is not text", path.display()),
             Error::Remains(path) => write!(f, "`{}` still names the old path", path.display()),
             Error::Mounted(mounts) => {
-                write!(f, "these are still mounted under the old path, and must be unmounted first:")?;
+                write!(f, "these are still mounted, and must be unmounted first:")?;
                 for mount in mounts {
                     write!(f, " `{}`", mount.display())?;
                 }

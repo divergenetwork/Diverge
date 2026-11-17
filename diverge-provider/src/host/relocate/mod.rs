@@ -71,6 +71,14 @@
 //!    old path names it still, and on Windows every distribution
 //!    carried is registered at the new place.
 //!
+//! # A folder that is not podman's
+//!
+//! A volume store is moved and deleted by the same hand, and is
+//! simpler: files and folders, which nothing outside names by path.
+//! [`folder`] carries one by the rules above that are not podman's,
+//! [`remove`] deletes one, and [`released`] is what the caller asks
+//! first: that no image in it is still mounted.
+//!
 //! # Deleted, not carried
 //!
 //! [`wipe`] is the other thing done to a storage path with the
@@ -83,6 +91,7 @@
 
 mod error;
 mod moving;
+mod released;
 mod rewrite;
 mod space;
 mod transfer;
@@ -96,5 +105,7 @@ pub mod machine;
 pub mod wsl;
 
 pub use error::*;
+pub use moving::remove;
+pub use released::*;
 pub use transfer::*;
 pub use wipe::*;

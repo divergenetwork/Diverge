@@ -129,7 +129,7 @@ async fn folder(path: &Path) -> Result<bool, Error> {
 
 /// `path` removed, whatever it is; one not there is nothing to
 /// remove.
-pub(super) async fn remove(path: &Path) -> Result<(), Error> {
+pub async fn remove(path: &Path) -> Result<(), Error> {
     let removed = match tokio::fs::symlink_metadata(path).await {
         Ok(meta) if meta.is_dir() => tokio::fs::remove_dir_all(path).await,
         Ok(_) => tokio::fs::remove_file(path).await,
@@ -212,6 +212,20 @@ const BLOCK: usize = 1024 * 1024;
 async fn sparse(from: &Path, to: &Path, length: u64) -> Result<(), Error> {
     let mut source = tokio::fs::File::open(from).await.map_err(|error| Error::io(from, error))?;
     let mut target = tokio::fs::File::create(to).await.map_err(|error| Error::io(to, error))?;
+    // On NTFS a file keeps holes only once it is marked sparse, and a
+    // volume's image is one: tens of gigabytes reserved, few taken.
+    // The copy of a file that is marked is marked before it is
+    // written, or it would take at the new place all that it reserves.
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt as _;
+        /// `FILE_ATTRIBUTE_SPARSE_FILE`.
+        const SPARSE: u32 = 0x200;
+        let attributes = source.metadata().await.map_err(|error| Error::io(from, error))?.file_attributes();
+        if attributes & SPARSE != 0 {
+            crate::host::volume_manager::sparse(&target).await.map_err(|error| Error::io(to, error))?;
+        }
+    }
     let mut block = vec![0u8; BLOCK];
     loop {
         let read = source.read(&mut block).await.map_err(|error| Error::io(from, error))?;

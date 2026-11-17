@@ -63,6 +63,26 @@ pub struct Transfer {
 /// [`relocate`](super) for the rules. The provider is not running:
 /// the caller holds its lock.
 pub async fn transfer(old: &Path, new: &Path) -> Result<Transfer, Error> {
+    begin(old, new, true).await
+}
+
+/// A folder of the provider's own at `old` carried to `new`, both
+/// absolute — a volume store, which is files and folders and nothing
+/// that anything outside it names by path. The rules of
+/// [`relocate`](super) that are not podman's hold, and the rest do
+/// not apply: nothing to carry, the two apart, the new path free, a
+/// rename where one filesystem holds both and a checked copy with its
+/// source deleted last where two do, all or nothing, and taken up
+/// again where it was cut short. No machine is stopped and no file is
+/// rewritten here: that nothing holds what is in the folder is the
+/// caller's to see first — see [`released`](super::released).
+pub async fn folder(old: &Path, new: &Path) -> Result<Transfer, Error> {
+    begin(old, new, false).await
+}
+
+/// The transfer of [`transfer`], where `podman` is so, or of
+/// [`folder`], where it is not.
+async fn begin(old: &Path, new: &Path, podman: bool) -> Result<Transfer, Error> {
     #[cfg(not(target_os = "linux"))]
     let inside = |path: &Path, base: &Path| super::machine::under(path, base);
     #[cfg(target_os = "linux")]
@@ -103,7 +123,7 @@ pub async fn transfer(old: &Path, new: &Path) -> Result<Transfer, Error> {
     let marker = new.join(MARKER);
     let old_text = old.to_string_lossy().into_owned();
     tokio::fs::write(&marker, old_text.as_bytes()).await.map_err(|source| Error::io(&marker, source))?;
-    match carried(&mut transfer, &olds, resumed).await {
+    match carried(&mut transfer, &olds, resumed, podman).await {
         Ok(()) => Ok(transfer),
         Err(error) => {
             transfer.undo().await;
@@ -113,16 +133,21 @@ pub async fn transfer(old: &Path, new: &Path) -> Result<Transfer, Error> {
 }
 
 /// The carrying itself, every step into `transfer.steps`: rules 4 to
-/// 6 and 9.
-async fn carried(transfer: &mut Transfer, olds: &[String], resumed: bool) -> Result<(), Error> {
+/// 6 and 9. Where the folder is not `podman`'s, rule 4, the WSL
+/// distributions, the files rewritten and rule 9 are none of its.
+async fn carried(transfer: &mut Transfer, olds: &[String], resumed: bool, podman: bool) -> Result<(), Error> {
     let (old, new) = (transfer.old.clone(), transfer.new.clone());
     let there = tokio::fs::metadata(&old).await.is_ok();
     if there {
         // Rule 4.
         #[cfg(target_os = "linux")]
-        super::linux::fit(&old).await?;
+        if podman {
+            super::linux::fit(&old).await?;
+        }
         #[cfg(not(target_os = "linux"))]
-        super::machine::still(&old).await?;
+        if podman {
+            super::machine::still(&old).await?;
+        }
         // Rule 5, and rule 6's room.
         let mode = moving::mode(&old, &new).await?;
         if mode == Mode::Copy {
@@ -133,11 +158,13 @@ async fn carried(transfer: &mut Transfer, olds: &[String], resumed: bool) -> Res
             }
         }
         #[cfg(windows)]
-        super::wsl::carry(&old, &new, &mut transfer.steps).await?;
+        if podman {
+            super::wsl::carry(&old, &new, &mut transfer.steps).await?;
+        }
         moving::carry(mode, &old, &new, resumed, &mut transfer.steps).await?;
     }
     #[cfg(not(target_os = "linux"))]
-    {
+    if podman {
         let new_text = rewrite::written(&new)?;
         let files = super::machine::references(&new).await?;
         for file in &files {
@@ -160,8 +187,10 @@ async fn carried(transfer: &mut Transfer, olds: &[String], resumed: bool) -> Res
         }
     }
     #[cfg(windows)]
-    super::wsl::check(&transfer.steps).await?;
-    let _ = olds;
+    if podman {
+        super::wsl::check(&transfer.steps).await?;
+    }
+    let _ = (olds, podman);
     Ok(())
 }
 
