@@ -88,6 +88,16 @@ pub enum Frame {
     /// Carries nothing. Nothing was looked at; a caller asks another
     /// provider.
     Unsupported,
+    /// The volume is one the provider provides as it is — its
+    /// listing says [`provided`](crate::provider::endpoints::volumes::list::server::response::Volume::provided)
+    /// — so neither its size nor its mode is the caller's to change,
+    /// and it was not edited. Tag `9`, the last given out: the tags
+    /// before it are as they were.
+    ///
+    /// Carries nothing. Nothing was changed, and asking again changes
+    /// nothing: it is so for the volume's whole life, whatever holds
+    /// the volume or does not. Said before any hold is looked at.
+    Provided,
     /// A failure. Tag `8`.
     ///
     /// See [`shared::error::Error`](crate::shared::error::Error) for
@@ -121,6 +131,9 @@ const UNSUPPORTED: u8 = 7;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 8;
+
+/// Tag for [`Frame::Provided`].
+const PROVIDED: u8 = 9;
 
 /// A tag, and for a failure the JSON after it. Postcard encodes the
 /// rest of [`volumes`](crate::provider::endpoints::volumes) and encodes nothing
@@ -173,6 +186,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[UNSUPPORTED]);
                 Ok(())
             }
+            Frame::Provided => {
+                out.extend_from_slice(&[PROVIDED]);
+                Ok(())
+            }
             Frame::Error(error) => {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
@@ -197,6 +214,7 @@ impl Decode<'_> for Frame {
             FUSE_SERVED => Ok(Frame::FuseServed),
             HELD => Ok(Frame::Held),
             UNSUPPORTED => Ok(Frame::Unsupported),
+            PROVIDED => Ok(Frame::Provided),
             ERROR => {
                 Error::decode(rest).map(Frame::Error).map_err(FrameError::Error)
             }

@@ -60,6 +60,10 @@ pub enum Frame {
     /// The account the request is served for holds no grant allowing
     /// it; nothing changed. Tag `3`.
     Forbidden,
+    /// The provider provides the volume as it is — a list shows it
+    /// `provided` — so it is not the client's to delete; nothing changed, and
+    /// asking again changes nothing. Tag `5`, the last given out.
+    Provided,
     /// A failure. Tag `4`.
     ///
     /// Nothing changed. See
@@ -82,6 +86,9 @@ const FORBIDDEN: u8 = 3;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 4;
+
+/// Tag for [`Frame::Provided`].
+const PROVIDED: u8 = 5;
 
 /// A tag, and — for the error alone — that variant's own JSON.
 impl Encode for Frame {
@@ -108,6 +115,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[FORBIDDEN]);
                 Ok(())
             }
+            Frame::Provided => {
+                out.extend_from_slice(&[PROVIDED]);
+                Ok(())
+            }
             Frame::Error(error) => {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
@@ -128,6 +139,7 @@ impl Decode<'_> for Frame {
             NOT_FOUND => Ok(Frame::NotFound),
             IN_USE => Ok(Frame::InUse),
             FORBIDDEN => Ok(Frame::Forbidden),
+            PROVIDED => Ok(Frame::Provided),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
             tag => Err(FrameError::UnknownTag(tag)),
         }

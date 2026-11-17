@@ -68,8 +68,10 @@ pub enum Frame {
     /// The provider cannot reserve that many bytes; nothing exists. Tag
     /// `3`.
     InsufficientCapacity,
-    /// The provider's capabilities keep no volume, or none of the mode
-    /// asked; nothing exists, and the provider was not asked. Tag `4`.
+    /// The provider's capabilities keep no volume, or create none of
+    /// the mode asked — the mode's `create` is not among them, whether
+    /// the provider keeps volumes of the mode or not; nothing exists,
+    /// and the provider was not asked. Tag `4`.
     Unsupported,
     /// The account the request is served for holds no grant allowing
     /// it; nothing changed. Tag `5`.

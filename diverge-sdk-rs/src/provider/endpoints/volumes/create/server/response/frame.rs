@@ -69,8 +69,12 @@ pub enum Frame {
     /// The provider cannot reserve that many bytes, and nothing
     /// exists. Tag `1`.
     InsufficientCapacity,
-    /// The provider has no volumes of the mode asked for, and nothing
-    /// exists. Tag `2`.
+    /// The provider creates no volume of the mode asked for — the
+    /// mode's [`create`](crate::provider::endpoints::info::server::response::VolumeCapabilities::create)
+    /// is `false` in its [`info`](crate::provider::endpoints::info),
+    /// whether because it keeps no volume of the mode at all or
+    /// because every one it keeps there is one it provides — and
+    /// nothing exists. Tag `2`.
     ModeUnsupported,
     /// The provider keeps no volumes: no mode is among its capabilities,
     /// see [`info`](crate::provider::endpoints::info), and every volume

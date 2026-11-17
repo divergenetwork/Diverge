@@ -3,9 +3,15 @@
 use serde::{Deserialize, Serialize};
 
 /// What a provider does with a volume of one
-/// [`Mode`](crate::provider::endpoints::volumes::Mode): whether a run
-/// may mount it, whether a FUSE serve may hold it, and how many of
-/// each, and both, at once.
+/// [`Mode`](crate::provider::endpoints::volumes::Mode): whether one
+/// may be created, whether a run may mount it, whether a FUSE serve
+/// may hold it, and how many of each, and both, at once.
+///
+/// [`create`](Self::create) stands apart from the rest: the others
+/// say what may be done with a volume that is there, and it says
+/// whether one may be made. A provider may keep volumes of a mode and
+/// make none — every volume it has in the mode is one it provides:
+/// see [`provided`](crate::provider::endpoints::volumes::list::server::response::Volume::provided).
 ///
 /// The mode itself says the MOST that may be done with a volume in
 /// it — any number of running containers but one FUSE serve, never
@@ -37,6 +43,14 @@ use serde::{Deserialize, Serialize};
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, schemars::JsonSchema,
 )]
 pub struct VolumeCapabilities {
+    /// A volume of the mode may be created: a
+    /// [`create`](crate::provider::endpoints::volumes::create)
+    /// stating the mode is honored, where there is room. Absent —
+    /// `false` — a create stating the mode is answered
+    /// `ModeUnsupported`, whether the provider keeps volumes of the
+    /// mode or not, and nothing exists.
+    #[serde(default)]
+    pub create: bool,
     /// A run may mount a volume of the mode — a
     /// [`VolumeMount`](crate::shared::containers::request::VolumeMount)
     /// naming one is honored. Absent — `false` — a run naming one is
@@ -75,6 +89,6 @@ impl VolumeCapabilities {
     /// member `true`. Every member `false` is the mode not kept, and
     /// is what an absent member means.
     pub fn kept(&self) -> bool {
-        self.mount || self.fuse_serve || self.mount_many || self.fuse_serve_many || self.mount_and_fuse_serve
+        self.create || self.mount || self.fuse_serve || self.mount_many || self.fuse_serve_many || self.mount_and_fuse_serve
     }
 }

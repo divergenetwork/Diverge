@@ -31,6 +31,15 @@ pub struct Volume {
     /// When it came into being, as the provider says: its listing's
     /// seconds since the Unix epoch, as an RFC 3339 timestamp in UTC.
     pub created: DateTime<Utc>,
+    /// Whether the provider provides the volume as it is, as its
+    /// listing says: `true`, and its size and its mode cannot be
+    /// edited and it cannot be deleted — an
+    /// [`edit`](crate::daemon::endpoints::volumes::edit) or a
+    /// [`delete`](crate::daemon::endpoints::volumes::delete) of it is
+    /// answered `provided`. Its tags are the daemon's, and are put on
+    /// and taken off as any volume's. Absent when `false`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub provided: bool,
     /// The agents that name it in their mounts — a volume mount of the
     /// provider they are pinned to, or a FUSE mount of a file or a
     /// directory in it — running or not, in no order: see

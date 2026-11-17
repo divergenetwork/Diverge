@@ -73,7 +73,9 @@ pub struct Capabilities {
     /// [`create`](crate::provider::endpoints::volumes::create) or an
     /// [`edit`](crate::provider::endpoints::volumes::edit) naming it
     /// is answered `ModeUnsupported`. See
-    /// [`kept`](VolumeCapabilities::kept).
+    /// [`kept`](VolumeCapabilities::kept). A mode that is kept is not
+    /// thereby one a volume may be created in: that is the object's
+    /// own [`create`](VolumeCapabilities::create).
     #[serde(default)]
     pub volumes_persistent: VolumeCapabilities,
     /// What may be done with a volume in the

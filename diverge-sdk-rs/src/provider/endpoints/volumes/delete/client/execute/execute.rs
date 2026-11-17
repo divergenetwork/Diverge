@@ -86,6 +86,7 @@ pub async fn execute(
         response::Frame::FuseServed => Err(ExecuteError::FuseServed),
         response::Frame::Held => Err(ExecuteError::Held),
         response::Frame::Unsupported => Err(ExecuteError::Unsupported),
+        response::Frame::Provided => Err(ExecuteError::Provided),
         response::Frame::Error(error) => Err(ExecuteError::Provider(error)),
     }
 }
@@ -133,6 +134,10 @@ pub enum ExecuteError {
     /// The provider keeps no volumes. The protocol's defined refusal,
     /// not a failure.
     Unsupported,
+    /// The volume is one the provider provides as it is, and it was
+    /// not deleted. Nothing changed, and asking again changes
+    /// nothing.
+    Provided,
     /// The provider could not do it, and said so.
     ///
     /// See [`shared::error::Error`](crate::shared::error::Error) for
@@ -171,6 +176,9 @@ impl fmt::Display for ExecuteError {
                 "another operation has the volume to itself and it was not deleted",
             ),
             ExecuteError::Unsupported => f.write_str("the provider keeps no volumes"),
+            ExecuteError::Provided => f.write_str(
+                "the provider provides the volume as it is and it was not deleted",
+            ),
             ExecuteError::Provider(_) => {
                 f.write_str("the provider could not complete the volume deletion")
             }
@@ -196,6 +204,7 @@ impl std::error::Error for ExecuteError {
             | ExecuteError::FuseServed
             | ExecuteError::Held
             | ExecuteError::Unsupported
+            | ExecuteError::Provided
             | ExecuteError::Provider(_) => None,
         }
     }

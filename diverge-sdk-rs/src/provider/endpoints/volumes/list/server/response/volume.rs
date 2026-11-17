@@ -106,6 +106,25 @@ pub struct Volume {
     ///
     /// One byte in postcard, `0`, `1` or `2`, after `created`.
     pub mode: Mode,
+    /// Whether the provider provides the volume as it is: `true`, and
+    /// nothing of it is the caller's to change — its size and its
+    /// mode cannot be edited, and it cannot be deleted. An
+    /// [`edit`](crate::provider::endpoints::volumes::edit) of one is
+    /// answered `Provided`, and so is a
+    /// [`delete`](crate::provider::endpoints::volumes::delete); its
+    /// [`edit_capacity`](crate::provider::endpoints::volumes::edit_capacity)
+    /// is `0`. `false` is a volume a
+    /// [`create`](crate::provider::endpoints::volumes::create) made,
+    /// which whoever may reach it may edit and delete.
+    ///
+    /// It says what may be done with the volume, and not where the
+    /// volume came from or how the provider keeps it: that stays the
+    /// provider's own. It is a fact of the volume for its whole life,
+    /// and no frame of a listing changes it.
+    ///
+    /// One byte in postcard, `0` or `1`, after `mode`, and always
+    /// there: the record is positional.
+    pub provided: bool,
 }
 
 /// Keyed by the name.

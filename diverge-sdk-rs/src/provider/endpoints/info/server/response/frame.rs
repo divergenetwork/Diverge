@@ -15,9 +15,9 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// ```json
 /// {"version":"1.0.0","capabilities":{"images":{"store":{"build":true},
-/// "registries":["docker.io"]},"volumes_persistent":{"mount":true,
-/// "fuse_serve":true,"mount_many":true,"fuse_serve_many":false,
-/// "mount_and_fuse_serve":false}}}
+/// "registries":["docker.io"]},"volumes_persistent":{"create":true,
+/// "mount":true,"fuse_serve":true,"mount_many":true,
+/// "fuse_serve_many":false,"mount_and_fuse_serve":false}}}
 /// ```
 ///
 /// # The version is fixed, and the specification defines it
