@@ -211,6 +211,11 @@ diverge provider volumes disable                            # removes the sectio
 diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/mnt/datasets","bytes":…,"mode":"read_only"}   one line each; nothing when none
 diverge provider volumes fixed add --name datasets --path /mnt/datasets --bytes 107374182400 --mode read_only
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory
+diverge provider volumes stores get                         # {"index":0,"path":"provider/volumes","capacity":107374182400}   one line each; nothing when none
+diverge provider volumes stores add --path provider/volumes --capacity 107374182400
+diverge provider volumes stores edit 0 --capacity 214748364800   # just the number
+diverge provider volumes stores edit 0 --path D:\divergeolumes # MOVES the store and every volume in it, then writes the path
+diverge provider volumes stores delete 0                    # DELETES the folder and every volume in it, then the entry
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -240,8 +245,24 @@ diverge provider volumes fixed delete 0                     # removes the entry,
   (`persistent`, `ephemeral` or `read_only`) and optionally `--authorize-hook`. It refuses a name already
   listed. The path must already be a directory by the time the provider starts, or it refuses to start.
 - A fixed volume shows to clients as `"provided": true` and cannot be edited or deleted by them.
-- **`volumes.stores` has no command yet**; change it with `diverge provider config set|patch`.
-- Everything else in `provider.yaml` (`volumes.stores`, `images`, `messages`) is still changed
+- **`volumes stores`** is a list like the others, plus `edit`, because a store is a folder holding every volume
+  created in it (each a large, mostly empty image file):
+  - `stores add` only writes the entry; the provider makes the folder at its next start. It refuses a path
+    that is already a store's.
+  - `stores edit <index> --capacity <BYTES>` only writes the number.
+  - `stores edit <index> --path <PATH>` **moves the store**, as `podman storage_path set` moves podman's
+    data: a rename on the same drive (instant, no extra space), or a checked copy to another drive with the
+    old copy deleted only after the path is written. The new path must not exist or must be empty. If the
+    move fails, everything is put back and nothing is written. Interrupted? Run the same command again.
+  - `stores delete <index>` **deletes the folder and every volume in it**, then the entry. There is no undo
+    and no prompt. A failure midway writes nothing; run it again to finish.
+  - Before a move or a delete the podman machine is stopped if it is running (macOS, Windows); on Linux the
+    command is refused while a volume is still mounted under `<root>/provider/run/mounts`.
+  - On macOS a store moved outside the folders the machine was made seeing makes the provider remake its
+    machine at the next start, which empties podman's image cache.
+  - The daemon's tags for the volumes are unaffected by a move. After a delete, the tags of the deleted
+    volumes are cleaned up the next time the daemon connects to the provider.
+- Everything else in `provider.yaml` (`images`, `messages`) is still changed
   with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
   provider runs**: stop it first.
 
