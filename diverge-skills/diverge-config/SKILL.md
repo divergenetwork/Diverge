@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to read or change `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to read or change `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -359,6 +359,34 @@ and Windows. It prints nothing and does not change the path.
 - Everything in the folder goes, including a podman machine someone else made with its data there.
 - **Changing the path on Windows without carrying the data:** `delete`, then `set <path> --no-transfer`.
 - A failure midway leaves it part deleted; run `delete` again to finish.
+
+## The viewer's settings: `diverge viewer daemon …`
+
+`viewer.yaml` has one section, `daemon`: which daemon the viewer dials, and as which identity. Each member has
+its own command, with plain arguments. `diverge viewer config get|set|patch` still works on the whole file.
+
+```bash
+diverge viewer daemon address get        # ws://127.0.0.1:14980/   the default: a daemon on this host
+diverge viewer daemon address set ws://10.0.0.5:14980/
+diverge viewer daemon issuer get         # an empty line until one is set
+diverge viewer daemon issuer set https://identity.diverge.network
+diverge viewer daemon subject set github.12345.admin
+diverge viewer daemon identity get       # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
+diverge viewer daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
+diverge viewer daemon redial get         # 5, or never
+diverge viewer daemon redial set never
+```
+
+- Every member has a default, so every `get` answers and every `set` works even when `viewer.yaml` does not
+  exist or has no `daemon`: address `ws://127.0.0.1:14980/`, issuer and subject empty, no `identity`, redial `5`.
+- **The viewer does not start while `issuer` or `subject` is empty.** Sign the identity in first
+  (`diverge identities login`), then set both.
+- `issuer`/`subject` are who the viewer dials **as**. `identity` is who the daemon must **be**; leave it unset
+  to accept whichever daemon answers at the address. `identity set` cannot clear it; delete the member by hand
+  or with `viewer config`.
+- `redial set` takes `never` or a whole number of seconds (`1` or more).
+- No lock is involved and the app need not be closed: a change is read at the viewer's next start.
+- A `set` prints nothing and rewrites the file (comments are lost).
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 

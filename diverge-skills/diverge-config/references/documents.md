@@ -231,10 +231,10 @@ daemon:
 
 | Field | Default | Meaning |
 |---|---|---|
-| `daemon` | none | The daemon the viewer dials and as whom. **Absent, the viewer does not start.** |
-| `daemon.address` | — (required) | A WebSocket URL, or `host:port` (the viewer adds `ws://` and `/`). |
-| `daemon.issuer` / `daemon.subject` | — (required) | One of this root's signed-in identities; it must be an account or an admin of that daemon. What the viewer shows is what that account may see. |
-| `daemon.identity` | none | `{issuer, subject}`: the daemon's **own** identity. Stated, the world connects only if that identity answers and proves its key. Absent, whichever identity answers with a valid token and key is accepted. |
+| `daemon` | the defaults below | The daemon the viewer dials and as whom. Always there: any member left out takes its default. |
+| `daemon.address` | `ws://127.0.0.1:14980/` | A WebSocket URL, or `host:port` (the viewer adds `ws://` and `/`). The default is a daemon on this host at the default port. |
+| `daemon.issuer` / `daemon.subject` | empty | One of this root's signed-in identities; it must be an account or an admin of that daemon. What the viewer shows is what that account may see. **With either empty the viewer does not start.** |
+| `daemon.identity` | none | `{issuer, subject}`: the daemon's **own** identity. Stated, the viewer connects only if that identity answers and proves its key. Absent, whichever identity answers with a valid token and key is accepted. |
 | `daemon.redial` | `5` | `never`, or a whole number of seconds (at least `1`) the app waits before dialling again after a connection ends or a dial fails. |
 
 The viewer keeps its own files under `<root>/viewer/`.
