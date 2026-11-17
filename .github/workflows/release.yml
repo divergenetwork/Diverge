@@ -1,0 +1,340 @@
+name: Release
+
+# One release of everything, keyed off one version: the SDK crate's, in
+# diverge-sdk-rs/Cargo.toml, which version.sh keeps every other manifest
+# equal to.
+#
+# WHEN IT RUNS
+#
+#   • A push to main that CHANGES that version, where the GitHub Release
+#     `v<version>` does not exist yet. The path filter below means a push
+#     that does not touch the file starts nothing at all, and the `check`
+#     job compares the version before and after the push, so touching the
+#     file without changing the version releases nothing either.
+#   • A manual dispatch (Actions UI, or
+#     `gh workflow run release.yml --ref main`), which releases the
+#     version on main if its release does not exist. With `force=true` it
+#     runs even if it does: every piece skips what is already published,
+#     so this is how a partly failed release is finished.
+#
+# WHAT IT RELEASES
+#
+#   • One archive per platform, uploaded to the release as soon as that
+#     platform is built, so one slow or failed platform holds back no
+#     other: diverge-<version>-<os>-<arch>.tar.gz (.zip on Windows) with
+#     its .sha256, holding the CLI, the daemon, the provider, the
+#     Postgres supervisor, the viewer and the container proxy
+#     (package-diverge.sh).
+#   • diverge-sdk on crates.io.
+#   • @diverge/sdk on npm.
+#
+# ORDER
+#
+#   check ─┬─ create-release ─┬─ binaries (x86_64: linux, macos, windows)
+#          ├─ proxy-x86_64 ───┘
+#          ├─ create-release ─┬─ binaries (aarch64: linux, macos)
+#          ├─ proxy-aarch64 ──┘
+#          ├─ sdk-rust
+#          └─ sdk-javascript
+#
+#   The container proxy runs inside Linux containers whatever the host,
+#   so it is built once per architecture, on Linux, and each platform of
+#   that architecture takes it from there. The two architectures share no
+#   job, so a shortage of one's runners does not hold the other. The two
+#   SDKs depend on nothing here and on each other not at all.
+#
+# No platform is Windows on ARM: the Postgres the daemon ships has no
+# build for it upstream.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - diverge-sdk-rs/Cargo.toml
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Run even if v<version> exists (each piece skips what is already published)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # create the release, upload the archives
+  id-token: write   # npm provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check the version
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decide
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          FORCE: ${{ inputs.force }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          read_version() { awk -F'"' '/^version = "[^"]+"/ { print $2; exit }'; }
+          VERSION="$(read_version < diverge-sdk-rs/Cargo.toml)"
+          [ -n "$VERSION" ] || { echo "no version in diverge-sdk-rs/Cargo.toml" >&2; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version: $VERSION"
+
+          exists=false
+          if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then exists=true; fi
+
+          release=false
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$FORCE" = "true" ]; then
+              echo "dispatched with force: running, each piece skipping what is published"
+              release=true
+            elif [ "$exists" = "true" ]; then
+              echo "v$VERSION is released already, and force was not given: nothing to do"
+            else
+              echo "dispatched, and v$VERSION is not released: releasing"
+              release=true
+            fi
+          else
+            # A push. The version before it, read from the commit the
+            # branch was at; a commit that cannot be had (a new branch, a
+            # forced push) is no evidence of a change, and releases nothing.
+            OLD=""
+            if git fetch --quiet --depth=1 origin "$BEFORE" 2>/dev/null; then
+              OLD="$(git show "$BEFORE:diverge-sdk-rs/Cargo.toml" 2>/dev/null | read_version || true)"
+            fi
+            if [ -z "$OLD" ]; then
+              echo "the version before this push could not be read: nothing released"
+            elif [ "$OLD" = "$VERSION" ]; then
+              echo "the version did not change ($VERSION): nothing released"
+            elif [ "$exists" = "true" ]; then
+              echo "the version changed, $OLD to $VERSION, but v$VERSION is released already: nothing released"
+            else
+              echo "the version changed, $OLD to $VERSION: releasing"
+              release=true
+            fi
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+  create-release:
+    name: Create the release
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create it if it is missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then
+            echo "v$VERSION exists: left as it is"
+            exit 0
+          fi
+          cat > notes.md <<EOF
+          Diverge $VERSION.
+
+          One archive per platform, each holding every program: \`diverge\` (the CLI), \`diverge-daemon\`, \`diverge-provider\`, \`diverge-postgres\`, \`diverge-viewer\` and \`diverge-container-proxy\`. Unpack it and put the programs together in one folder on your \`PATH\`; they find one another beside themselves. Each archive has a \`.sha256\` beside it. An archive appears here as its platform finishes building.
+
+          The SDKs: [\`diverge-sdk\`](https://crates.io/crates/diverge-sdk) on crates.io and [\`@diverge/sdk\`](https://www.npmjs.com/package/@diverge/sdk) on npm, at the same version.
+          EOF
+          gh release create "v$VERSION" --repo "$REPO" --target "$SHA" --title "v$VERSION" --notes-file notes.md --latest
+
+  # ── The container proxy: musl Linux, once per architecture ──────────────
+
+  proxy-x86_64:
+    name: container proxy (x86_64)
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      # zig is the C toolchain ring needs for musl; cargo-zigbuild's wheel
+      # brings it.
+      - run: pip install cargo-zigbuild
+      - run: cargo zigbuild --release --locked -p diverge-container-proxy --target x86_64-unknown-linux-musl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proxy-x86_64
+          path: target/x86_64-unknown-linux-musl/release/diverge-container-proxy
+          if-no-files-found: error
+
+  proxy-aarch64:
+    name: container proxy (aarch64)
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+      - run: pip install cargo-zigbuild
+      - run: cargo zigbuild --release --locked -p diverge-container-proxy --target aarch64-unknown-linux-musl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proxy-aarch64
+          path: target/aarch64-unknown-linux-musl/release/diverge-container-proxy
+          if-no-files-found: error
+
+  # ── The archives: one job per platform, each uploading its own ──────────
+  # Two jobs with the same steps, since `needs` is a job's and not a matrix
+  # row's: each architecture waits for its own proxy and no other.
+
+  binaries-x86_64:
+    name: archive (${{ matrix.os }}-x86_64)
+    needs: [check, create-release, proxy-x86_64]
+    if: needs.check.outputs.release == 'true'
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux,   runs-on: ubuntu-22.04 }
+          - { os: macos,   runs-on: macos-15-intel }
+          - { os: windows, runs-on: windows-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Tauri's system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: proxy-x86_64
+          path: proxy
+      - name: Build and pack
+        shell: bash
+        env:
+          # The Postgres archive the supervisor bakes in is fetched from
+          # GitHub at build time; the token keeps it under the rate limit.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash package-diverge.sh dist --proxy proxy/diverge-container-proxy
+      - name: Upload to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: gh release upload "v$VERSION" dist/diverge-* --clobber --repo "$REPO"
+
+  binaries-aarch64:
+    name: archive (${{ matrix.os }}-aarch64)
+    needs: [check, create-release, proxy-aarch64]
+    if: needs.check.outputs.release == 'true'
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, runs-on: ubuntu-22.04-arm }
+          - { os: macos, runs-on: macos-14 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Tauri's system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: proxy-aarch64
+          path: proxy
+      - name: Build and pack
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash package-diverge.sh dist --proxy proxy/diverge-container-proxy
+      - name: Upload to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: gh release upload "v$VERSION" dist/diverge-* --clobber --repo "$REPO"
+
+  # ── The SDKs ────────────────────────────────────────────────────────────
+  # Each skips a version that is published already, so a run that is
+  # repeated publishes only what is missing. Neither waits for an archive:
+  # a registry cannot take a version back, but neither can an archive
+  # failing make the SDK any less the one this commit states.
+
+  sdk-rust:
+    name: SDK · rust (crates.io)
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish diverge-sdk
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The sparse index's path for a name of four letters or more:
+          # its first two, its next two, the name.
+          if curl -fsS "https://index.crates.io/di/ve/diverge-sdk" 2>/dev/null | grep -q "\"vers\":\"$VERSION\""; then
+            echo "diverge-sdk $VERSION is on crates.io already: skipped"
+            exit 0
+          fi
+          cargo publish --locked -p diverge-sdk
+
+  sdk-javascript:
+    name: SDK · javascript (npm)
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install --frozen-lockfile
+      # Nothing of the package is committed built: its dist is made here,
+      # from this commit.
+      - run: pnpm --filter @diverge/sdk run build
+      - name: Publish @diverge/sdk
+        working-directory: diverge-sdk-js
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "@diverge/sdk@$VERSION" version >/dev/null 2>&1; then
+            echo "@diverge/sdk $VERSION is on npm already: skipped"
+            exit 0
+          fi
+          pnpm publish --access public --no-git-checks --provenance
