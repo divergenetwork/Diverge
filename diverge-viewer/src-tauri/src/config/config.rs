@@ -12,17 +12,18 @@ use super::Daemon;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Config {
-    /// The daemon the app dials, and as whom: see [`Daemon`]. Read
-    /// at start; another daemon is another start. Absent, the app
-    /// does not start, since it has no identity to present.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub daemon: Option<Daemon>,
+    /// The daemon the app dials, and as whom: see [`Daemon`]. Read at
+    /// start; another daemon is another start. Always there: a
+    /// document that leaves it out, or leaves a member of it out, has
+    /// that member's default — see [`Daemon`]'s. The defaults name no
+    /// identity, and the app does not start until one is named.
+    pub daemon: Daemon,
 }
 
-/// A document with no line in it: no daemon, so the app refuses to
-/// start until one is named.
+/// A document with no line in it: the daemon on this host, dialled
+/// as nobody, so the app refuses to start until an identity is named.
 impl Default for Config {
     fn default() -> Self {
-        Config { daemon: None }
+        Config { daemon: Daemon::default() }
     }
 }

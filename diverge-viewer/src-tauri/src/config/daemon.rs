@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// names; where [`identity`](Self::identity) is stated, it must be
 /// that daemon and no other.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct Daemon {
     /// Where the daemon is dialled: a WebSocket URL, or a bare
     /// `host:port` the app puts `ws://` before and `/` after.
@@ -38,4 +38,29 @@ pub struct Daemon {
     /// [`Redial`].
     #[serde(default, skip_serializing_if = "Redial::is_default")]
     pub redial: Redial,
+}
+
+/// What a `daemon` that names nothing gives, and what each member
+/// left out is:
+///
+/// - `address`: the daemon on this host, at the port a daemon listens
+///   on where its own document names none —
+///   `ws://127.0.0.1:<DEFAULT_PORT>/`.
+/// - `issuer` and `subject`: empty. An identity is one somebody
+///   signed in, and none can be supposed: with either empty the
+///   document names no identity, and the app does not start.
+/// - `identity`: none. Whichever identity answers at the address with
+///   a token that verifies is taken.
+/// - `redial`: every five seconds, [`Redial`]'s own default, which is
+///   how long a daemon waits before it dials a provider again.
+impl Default for Daemon {
+    fn default() -> Self {
+        Daemon {
+            address: format!("ws://127.0.0.1:{}/", diverge_sdk::daemon::DEFAULT_PORT),
+            issuer: String::new(),
+            subject: String::new(),
+            identity: None,
+            redial: Redial::default(),
+        }
+    }
 }

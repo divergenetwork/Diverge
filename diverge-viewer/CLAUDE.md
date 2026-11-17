@@ -115,7 +115,9 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   `diverge-viewer/config`, which states the same fields; change both together:
   `daemon.address`, `daemon.issuer`, `daemon.subject` — one of `<root>/identities/`, signed in by
   `diverge identities login` — `daemon.identity`, the daemon's own identity, which must answer where it is stated,
-  and `daemon.redial`. A document naming no daemon stops the start.
+  and `daemon.redial`. Every member has a default (`config/daemon.rs`): the address of a daemon on this host,
+  an empty issuer and subject, no `identity`, a redial of 5 seconds. An empty issuer or subject stops the start.
+  `diverge viewer daemon <member> get|set` reads and writes each.
   `diverge viewer config get|set|patch` edits it.
 - **The link dials again by itself**: as `daemon.redial` says — every 5 seconds when absent, as the daemon redials a
   provider, a whole number of seconds, or `never` — after a failed dial and after a connection that ended, dialling at

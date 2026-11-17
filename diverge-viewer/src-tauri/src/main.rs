@@ -31,15 +31,19 @@ fn main() {
         .manage(frontend::Frontends::default())
         .setup(|app| {
             // The root, as the daemon and the provider find theirs; the
-            // document in it, which must name the daemon and the
-            // identity it is dialled as; the root's identities. A
-            // document naming no daemon stops the start, saying so.
+            // document in it, which must name the identity the daemon
+            // is dialled as; the root's identities. A document naming
+            // no identity stops the start, saying so.
             let (daemon, identities) = tauri::async_runtime::block_on(async {
                 let root = config::root(std::env::args_os().skip(1)).await?;
                 let config = config::load(&root).await?;
-                let daemon = config.daemon.ok_or(
-                    "viewer.yaml names no daemon identity (daemon: {address, issuer, subject}); sign one in with `diverge identities login`",
-                )?;
+                let daemon = config.daemon;
+                // The defaults name a daemon and no identity: an
+                // issuer or a subject that is empty is nobody to dial
+                // as.
+                if daemon.issuer.is_empty() || daemon.subject.is_empty() {
+                    return Err("viewer.yaml names no identity to dial the daemon as: sign one in with `diverge identities login`, and name it with `diverge viewer daemon issuer set` and `diverge viewer daemon subject set`".into());
+                }
                 let identities = Identities::open(&root).await?;
                 Ok::<_, Box<dyn std::error::Error>>((daemon, identities))
             })?;
