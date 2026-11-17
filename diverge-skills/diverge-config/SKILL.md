@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to read or change `cli.yaml` with `diverge cli config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to list, add or delete the daemons the CLI dials and pick its default (`diverge cli daemons get|add|delete`, `diverge cli default get|set`); to read or change `cli.yaml` with `diverge cli config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -357,6 +357,28 @@ and Windows. It prints nothing and does not change the path.
 - Everything in the folder goes, including a podman machine someone else made with its data there.
 - **Changing the path on Windows without carrying the data:** `delete`, then `set <path> --no-transfer`.
 - A failure midway leaves it part deleted; run `delete` again to finish.
+
+## The CLI's daemons: `diverge cli daemons` and `diverge cli default`
+
+`cli.yaml` keeps the daemons the CLI may dial by name. These commands treat them as a list, in the file's
+order, with the name as a member of each. `diverge cli config get|set|patch` still works on the whole file.
+
+```bash
+diverge cli daemons get                  # {"index":0,"name":"local","address":"ws://127.0.0.1:14980/"}   one line per daemon
+diverge cli daemons add --name b --address ws://127.0.0.1:14982/
+diverge cli daemons delete 1             # by the index `get` prints; its accounts go with it
+diverge cli default get                  # {"index":0,"name":"local"}, or null if `default` names no daemon in the file
+diverge cli default set 1                # by index, not by name
+```
+
+- `daemons get` shows `identity` too where the daemon's own identity is stated. It does not show a daemon's
+  accounts; those are still read and changed with `diverge cli config`.
+- `daemons add` makes a daemon with no account. It refuses a name that is already a daemon's.
+- `daemons delete` refuses the default daemon: ``the daemon `local`, at index 0, is the default daemon``.
+  Make another the default first.
+- `default set` takes the **index** from `daemons get`, not the name.
+- No lock and nothing to restart: the CLI reads `cli.yaml` at every command. A write prints nothing and
+  rewrites the file (comments are lost).
 
 ## The viewer's settings: `diverge viewer daemon …`
 

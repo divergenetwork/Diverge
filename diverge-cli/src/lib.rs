@@ -49,7 +49,10 @@
 //! `provider messages enabled|enable|disable` with its two numbers;
 //! see [`cli::provider`]. The viewer's `daemon` is read and written
 //! a setting at a time too — `viewer daemon address|issuer|subject|
-//! identity|redial get|set`; see [`cli::viewer`]. The commands
+//! identity|redial get|set`; see [`cli::viewer`]. The CLI's own daemons are
+//! a list too — `cli daemons get|add|delete`, and `cli default
+//! get|set` by a daemon's index — beside `cli config`; see
+//! [`cli::own`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it

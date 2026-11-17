@@ -86,6 +86,14 @@ pub enum Error {
     },
     /// What a folder holds could not be measured.
     Measure(String),
+    /// A daemon was not deleted from the CLI's document, because it
+    /// is the default daemon.
+    Default {
+        /// The daemon's name.
+        name: String,
+        /// Its index among the daemons.
+        index: usize,
+    },
     /// A path could not be made absolute.
     Path(std::io::Error),
     /// A list of a document has nothing at the index a delete named.
@@ -93,7 +101,7 @@ pub enum Error {
     NoItem {
         /// The list, as the document names it: `admins`, `incoming`,
         /// `outgoing`, `podman.registries`, `volumes.fixed`,
-        /// `volumes.stores`.
+        /// `volumes.stores`, `daemons`.
         list: &'static str,
         /// The index named.
         index: usize,
@@ -149,6 +157,10 @@ impl fmt::Display for Error {
                 "{holder} {used} bytes, and the capacity cannot be {capacity}, which is less; nothing was written"
             ),
             Error::Measure(why) => write!(f, "what is kept there could not be measured: {why}"),
+            Error::Default { name, index } => write!(
+                f,
+                "the daemon `{name}`, at index {index}, is the default daemon, and nothing was written: make another the default first, with `diverge cli default set <INDEX>`"
+            ),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")
@@ -186,7 +198,7 @@ impl std::error::Error for Error {
             Error::Ours(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
-            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Measure(_) => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Measure(_) | Error::Default { .. } => None,
         }
     }
 }

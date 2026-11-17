@@ -1,7 +1,7 @@
 //! One run of the program.
 
 use super::Error;
-use crate::arguments::{Arguments, Command, Daemon, Document, Server, Viewer};
+use crate::arguments::{Arguments, Command, Daemon, Own, Server, Viewer};
 use crate::config;
 use crate::document::Which;
 use crate::lifecycle::{self, Program};
@@ -76,8 +76,10 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
             super::provider::messages(&root, action).await
         }
         Some(Command::Viewer(Viewer::Daemon(action))) => super::viewer::daemon(&root, action).await,
-        Some(Command::Cli(Document::Config(action))) => {
+        Some(Command::Cli(Own::Config(action))) => {
             super::config::run(&root, Which::Cli, action).await
         }
+        Some(Command::Cli(Own::Daemons(action))) => super::own::daemons(&root, action).await,
+        Some(Command::Cli(Own::Default(action))) => super::own::default(&root, action).await,
     }
 }

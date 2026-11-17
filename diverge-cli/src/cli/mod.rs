@@ -23,6 +23,7 @@ mod print;
 pub mod config;
 pub mod identities;
 pub mod identity_diverge_network;
+pub mod own;
 pub mod provider;
 pub mod setting;
 pub mod viewer;
