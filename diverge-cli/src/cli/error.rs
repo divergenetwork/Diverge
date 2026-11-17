@@ -57,7 +57,8 @@ pub enum Error {
     /// A setting was not written, because the section it is in is
     /// absent from the document: the feature is off.
     Disabled {
-        /// The section, as the document names it: `containers`.
+        /// The section, as the document names it: `containers`,
+        /// `volumes`.
         section: &'static str,
         /// The program whose document it is, as the CLI names it.
         program: Program,
@@ -78,7 +79,7 @@ pub enum Error {
     /// Nothing was written.
     NoItem {
         /// The list, as the document names it: `admins`, `incoming`,
-        /// `outgoing`, `podman.registries`.
+        /// `outgoing`, `podman.registries`, `volumes.fixed`.
         list: &'static str,
         /// The index named.
         index: usize,

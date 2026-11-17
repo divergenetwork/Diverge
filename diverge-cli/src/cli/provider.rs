@@ -1,20 +1,22 @@
 //! One setting of the provider's document, read or written by itself:
 //! its port, its identity, whom it accepts, whom it dials, the
 //! registries it pulls from, where podman keeps its data, how much
-//! its image cache may hold, and whether it runs containers. Every
-//! one keeps the rules of [`setting`](super::setting).
+//! its image cache may hold, whether it runs containers, and the
+//! volumes it provides. Every one keeps the rules of
+//! [`setting`](super::setting).
 
 use std::path::{Path, PathBuf};
 
 use diverge_provider::config::Config;
 use diverge_provider::config::containers;
 use diverge_provider::config::outgoing;
+use diverge_provider::config::volumes as volumes_section;
 use diverge_provider::host::relocate;
 use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath};
+use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -176,6 +178,94 @@ async fn bytes(root: &Path, action: Bytes, of: impl FnOnce(&mut containers::Cont
                     Ok(())
                 }
                 None => Err(Error::Disabled { section: "containers", program: Program::Provider }),
+            })
+            .await
+        }
+    }
+}
+
+/// `diverge provider volumes …`: the `volumes` section, there or
+/// not, and the fixed volumes in it. The section holds two lists —
+/// the stores, and the fixed volumes — and the provider keeps
+/// volumes when either holds something: a section with both empty
+/// keeps none, as no section does. So, by these rules:
+///
+/// - `enabled` prints `true` where the section is there and `false`
+///   where it is not. It says the section is there, and not that the
+///   provider keeps volumes.
+/// - `enable` makes the section, with both lists empty, where it is
+///   absent; where it is there nothing is changed or written.
+/// - `disable` removes the section, and both lists with it.
+/// - `fixed get` prints each fixed volume as one JSON line with its
+///   `index` first, in the document's order. An absent section is an
+///   empty list: nothing is printed, and it is no error.
+/// - `fixed add` puts the volume after the last. A name listed
+///   already is refused, [`Error::Listed`]: a volume is asked for by
+///   its name, and two of one name are one that cannot be reached.
+///   The path is written as given, and nothing on disk is made or
+///   looked at: the provider finds a path that is no directory at its
+///   start.
+/// - `fixed delete` takes the index, and removes the entry: the
+///   directory and what is in it are left as they are.
+/// - `fixed add` and `fixed delete` are refused where the section is
+///   absent, [`Error::Disabled`]: neither makes the section by the
+///   way.
+/// - `enable`, `disable`, `fixed add` and `fixed delete` each hold
+///   the provider's lock and are refused while it runs.
+///
+/// The stores have no command here.
+pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
+    let absent = || Error::Disabled { section: "volumes", program: Program::Provider };
+    match action {
+        Volumes::Enabled => line(&read::<Config>(root, Which::Provider).await?.volumes.is_some()).await,
+        Volumes::Enable => {
+            provider(root, |config| {
+                config.volumes.get_or_insert_with(volumes_section::Volumes::default);
+                Ok(())
+            })
+            .await
+        }
+        Volumes::Disable => {
+            provider(root, |config| {
+                config.volumes = None;
+                Ok(())
+            })
+            .await
+        }
+        Volumes::Fixed(Fixed::Get) => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let mut text = Vec::new();
+            for (index, fixed) in config.volumes.iter().flat_map(|section| &section.fixed).enumerate() {
+                let mut line = serde_json::json!({
+                    "index": index,
+                    "name": fixed.name,
+                    "path": fixed.path,
+                    "bytes": fixed.bytes,
+                    "mode": fixed.mode,
+                });
+                if let Some(hook) = &fixed.authorize_hook {
+                    line["authorize_hook"] = serde_json::Value::String(hook.clone());
+                }
+                serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
+                text.push(b'\n');
+            }
+            write(text).await
+        }
+        Volumes::Fixed(Fixed::Add { name, path, bytes, mode, authorize_hook }) => {
+            provider(root, |config| {
+                let section = config.volumes.as_mut().ok_or_else(absent)?;
+                if let Some(index) = section.fixed.iter().position(|fixed| fixed.name == name) {
+                    return Err(Error::Listed { list: "volumes.fixed", item: format!("a volume named `{name}`"), index });
+                }
+                section.fixed.push(volumes_section::Fixed { name, path, bytes, mode, authorize_hook });
+                Ok(())
+            })
+            .await
+        }
+        Volumes::Fixed(Fixed::Delete { index }) => {
+            provider(root, |config| {
+                let section = config.volumes.as_mut().ok_or_else(absent)?;
+                delete("volumes.fixed", &mut section.fixed, index)
             })
             .await
         }

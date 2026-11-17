@@ -43,7 +43,8 @@
 //! podman's data before it writes where it is, or deletes it, and
 //! `provider podman image_cache_disk get|set`, and
 //! `provider containers enabled|enable|disable` with its two
-//! settings; see
+//! settings, and `provider volumes enabled|enable|disable` with
+//! `fixed get|add|delete`; see
 //! [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own

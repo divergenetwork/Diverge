@@ -7,7 +7,8 @@ use super::{Action, Identity, Lifecycle, Port};
 /// The provider on this host: started, stopped, its document in the
 /// root worked on whole, or one setting of that document — its port,
 /// its identity, whom it accepts, whom it dials, podman's settings,
-/// whether it runs containers — read or written by itself.
+/// whether it runs containers, the volumes it provides — read or
+/// written by itself.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Server {
     /// Start or stop the server: see [`lifecycle`](crate::lifecycle).
@@ -41,6 +42,88 @@ pub enum Server {
     /// setting of it, `containers` in `provider.yaml`.
     #[command(subcommand)]
     Containers(Containers),
+    /// Turn the `volumes` section on or off, or list, add or delete
+    /// the volumes the provider provides, `volumes` in
+    /// `provider.yaml`.
+    #[command(subcommand)]
+    Volumes(Volumes),
+}
+
+/// What is done to the provider's `volumes` section: see
+/// [`provider`](crate::cli::provider). The section holds two lists,
+/// the stores a volume may be created in and the fixed volumes the
+/// provider provides; the provider keeps volumes when either holds
+/// something, and none when both are empty, the section there or not.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Volumes {
+    /// Print whether the section is there: `true` or `false`. A
+    /// section that is there with nothing in it still keeps no
+    /// volume.
+    Enabled,
+    /// Make the section, with nothing in it. Nothing changes where it
+    /// is there already. Refused while the provider is running on the
+    /// root: stop it first.
+    Enable,
+    /// Remove the section, and both its lists with it. Refused while
+    /// the provider is running on the root: stop it first.
+    Disable,
+    /// List, add or delete the volumes the provider provides as they
+    /// are — each a directory on the host, listed to clients as
+    /// `provided`, which no client edits or deletes —
+    /// `volumes.fixed` in `provider.yaml`.
+    #[command(subcommand)]
+    Fixed(Fixed),
+}
+
+/// What is done to the provider's `volumes.fixed`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Fixed {
+    /// Print the fixed volumes, one line each, in the document's
+    /// order: `{"index":0,"name":"…","path":"…","bytes":…,"mode":"…"}`,
+    /// with `authorize_hook` where it has one. Nothing is printed
+    /// where there is none, or where the section is absent. The index
+    /// is what `delete` takes.
+    Get,
+    /// Add a fixed volume, after the last. Refused where the section
+    /// is absent — enable it first — where the name is listed
+    /// already, and while the provider is running on the root.
+    Add {
+        /// The name clients list and mount it under.
+        #[arg(long)]
+        name: String,
+        /// The directory on the host: absolute, or relative to the
+        /// root. Written as given.
+        #[arg(long)]
+        path: std::path::PathBuf,
+        /// The size it is listed with, in BYTES: declared, not
+        /// measured.
+        #[arg(long)]
+        bytes: u64,
+        /// The mode it is in: `persistent`, `ephemeral` or
+        /// `read_only`.
+        #[arg(long, value_parser = mode)]
+        mode: diverge_sdk::provider::endpoints::volumes::Mode,
+        /// The hook that says which identities are listed it: a folder
+        /// under the provider's `hooks/`. Absent, every identity is.
+        #[arg(long)]
+        authorize_hook: Option<String>,
+    },
+    /// Delete the fixed volume at an index: the entry, never the
+    /// directory. Refused where the section is absent and while the
+    /// provider is running on the root. Every one after it moves one
+    /// index down.
+    Delete {
+        /// The volume's index, as `get` prints it: `0` is the first.
+        #[arg(value_name = "INDEX")]
+        index: usize,
+    },
+}
+
+/// A volume mode from its name on the wire, snake case.
+fn mode(name: &str) -> Result<diverge_sdk::provider::endpoints::volumes::Mode, String> {
+    serde_json::from_value(serde_json::Value::String(name.to_string()))
+        .map_err(|_| "one of `persistent`, `ephemeral`, `read_only`".to_string())
 }
 
 /// What is done to the provider's `containers` section: see
