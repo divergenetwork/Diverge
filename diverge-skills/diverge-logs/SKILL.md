@@ -225,8 +225,8 @@ diverge run info '{"relay":["<daemon id>"]}'  # the remote's version: also tests
 
 One answer: the daemon's version, which is also the protocol revision (daemon, provider and SDK are
 versioned together). It needs no grant: any admitted connection is answered, so `info` is the check for
-"is the daemon up, and am I admitted". If it fails to connect, the daemon is down or the address in
-`cli.yaml` is wrong; if the connection is closed with no answer, the identity is not admitted
+"is the daemon up, and am I admitted". If it fails to connect, the daemon is down or the CLI's address
+for it is wrong (`diverge cli daemons <INDEX> address get`); if the connection is closed with no answer, the identity is not admitted
 (`diverge-access`). A provider whose `status.type` is `different_version` in `providers list` is not at
 this version (`diverge-daemons`).
 

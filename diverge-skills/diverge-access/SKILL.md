@@ -1,13 +1,13 @@
 ---
 name: diverge-access
-description: Who may do what on a Diverge daemon. Covers accounts (an (issuer, subject) identity the daemon admits), administrators named in daemon.yaml, roles and grants (every grant kind, every action, the make / over / tagging shapes, `within` and tags), creators, the host's identities as the daemon lists them, and how to diagnose a `forbidden` answer or a connection the daemon closes. Load it before running any `diverge run accounts …`, `diverge run roles …` or `diverge run identities …` command, when creating an account or a role for a person, an agent host or another daemon, when writing or narrowing a grant, when tagging records so grants can reach them, when disconnecting an account, or whenever a Diverge request answers `forbidden`.
+description: Who may do what on a Diverge daemon. Covers accounts (an (issuer, subject) identity the daemon admits), the daemon's administrators, roles and grants (every grant kind, every action, the make / over / tagging shapes, `within` and tags), creators, the host's identities as the daemon lists them, and how to diagnose a `forbidden` answer or a connection the daemon closes. Load it before running any `diverge run accounts …`, `diverge run roles …` or `diverge run identities …` command, when creating an account or a role for a person, an agent host or another daemon, when writing or narrowing a grant, when tagging records so grants can reach them, when disconnecting an account, or whenever a Diverge request answers `forbidden`.
 ---
 
 # Diverge access: accounts, roles, grants
 
 A Diverge daemon serves every request for exactly one requester, and decides it by that requester's grants.
 A requester is an **account** (an identity the daemon admits, holding roles), an **administrator** (an
-identity `daemon.yaml` names, holding every grant), or a tool's container (holding the grants its program
+identity among the daemon's `admins`, holding every grant), or a tool's container (holding the grants its program
 declared). A **role** is a named list of **grants**; an account may do what any grant of any role it holds
 allows. Nothing denies: the union is the whole rule.
 
@@ -24,7 +24,7 @@ Every body may also carry `relay` (see the `diverge-daemons` skill).
 2. **An account is one identity the daemon admits**, with a description, roles and tags. One account per
    identity; the identity is the account's name and never changes. An identity that is no account, no
    administrator and no provider is refused in the handshake: the connection closes with no frame.
-3. **Administrators** are the identities under `admins:` in `daemon.yaml`. An administrator is admitted
+3. **Administrators** are the identities in the daemon's `admins` setting (`diverge daemon admins get`). An administrator is admitted
    whether or not it has an account, and every judgment allows it everything without reading a grant. A
    fresh daemon has no account, so its first accounts are made by an administrator. `admins` is read once at
    the daemon's start (see `diverge-config` to change it).
@@ -201,9 +201,9 @@ What to know:
 - **Creating an account does not create the identity.** The subject must exist at its issuer and sign in
   there to get a token (`diverge-config`: `diverge identities login`).
   The issuer string must match the token's `iss` exactly. The daemon needs no entry for that
-  issuer in `daemon.yaml`, and need not be signed in there: the account record alone admits the identity.
-- To use the new account from the CLI, add it under the daemon in `cli.yaml` and pass `--account <name>`
-  (`diverge-config`).
+  issuer of the daemon's own identity, and need not be signed in there: the account record alone admits the identity.
+- To use the new account from the CLI, add it to that daemon's accounts
+  (`diverge cli daemons <INDEX> accounts add …`, skill `diverge-config`) and pass `--account <name>`.
 - `no_role` (a role the daemon does not have) is answered before `forbidden` (no `grant` over a role named).
 - **`accounts edit` closes every connection the account holds**, so it reconnects as it now stands;
   `accounts delete` closes them too. What a deleted account created stays, keeping its creator.
@@ -222,9 +222,9 @@ What to know:
 
 ## The host's identities (`diverge run identities …`)
 
-These are the OIDC identities signed in **on the daemon's host** (files under `<root>/identities/`), as
+These are the OIDC identities signed in **on the daemon's host**, as
 opposed to accounts, which are identities the daemon *admits*. The daemon presents exactly one of them
-(its `daemon.yaml` `identity`) on every connection it accepts and to every provider it dials, and uses others as "our account" on remote daemons (`diverge-daemons`). No
+(its `identity` setting) on every connection it accepts and to every provider it dials, and uses others as "our account" on remote daemons (`diverge-daemons`). No
 request ever answers a token.
 
 ```bash
@@ -262,7 +262,7 @@ diverge run identities list
 - A login replaces an identity already on the host. `held` means another login or a reader holds the
   identity's lock; nothing was asked of the issuer.
 - Signing an identity in does not make the daemon present it: which identity the daemon presents
-  stays `daemon.yaml`'s `identity`.
+  stays the daemon's `identity` setting.
 - Grants: `{"identities":["login"]}` for an identity not yet on the host;
   `{"identities":{"actions":["get","list","login"],"within":…}}` for those there (filter members `issuers`,
   `subjects`, `all_tags`, `any_tags`); the tagging shape for `tag`/`untag`.
@@ -285,7 +285,7 @@ diverge run roles create '{"name":"team-a","grants":[
 diverge run accounts create '{"identity":{"issuer":"'$ISS'","subject":"github.12345.alice"},"roles":["team-a"]}'
 # 3. Tag the existing agents the team should see.
 diverge run agents tag '{"agent":{"name":"echo"},"tags":["team-a"]}'
-# 4. Check as alice (after adding her under the daemon in cli.yaml).
+# 4. Check as alice (after adding her to the daemon's accounts: diverge cli daemons <INDEX> accounts add …).
 diverge run --account alice agents list
 ```
 
@@ -295,13 +295,13 @@ There are three different failures. Tell them apart first.
 
 | What you see | What it is |
 |---|---|
-| The command fails before any answer: the daemon "closed the connection with no answer" / rejected | **Not admitted.** The identity is no account and no administrator of this daemon, or its issuer is not in the daemon's `identities`, or the token could not be had (not signed in on this root). Fix: `accounts create` (as an administrator), check `cli.yaml`'s account identity, `diverge identities list`. |
+| The command fails before any answer: the daemon "closed the connection with no answer" / rejected | **Not admitted.** The identity is no account and no administrator of this daemon, or its issuer is not in the daemon's `identities`, or the token could not be had (not signed in on this root). Fix: `accounts create` (as an administrator), check the identity of the CLI account you dialled as (`diverge cli daemons <INDEX> accounts get`), `diverge identities list`. |
 | The answer is `"forbidden"` | **Admitted, not allowed.** No grant of the account allows this action over everything the request names. |
 | The answer is `"not_found"`, `"no_role"`, `"in_use"`, `{"error":…}` | The request was allowed and came to something else. Not an access problem. |
 
 For `"forbidden"`, work through this list:
 
-1. **Who was I?** The CLI dials as the daemon's default account in `cli.yaml` unless `--account` says
+1. **Who was I?** The CLI dials as that daemon's default account (`diverge cli daemons <INDEX> default get`) unless `--account` says
    otherwise. `diverge run accounts get '{"account":{…}}'` shows the account's `roles` and whether `admin`.
 2. **What do the roles grant?** `diverge run roles list '{"accounts":[<identity>]}' --jq '.added | {name, grants}'`.
 3. **Is the action held at all?** Look the command up in [references/grants.md](references/grants.md): the

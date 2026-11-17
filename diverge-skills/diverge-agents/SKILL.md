@@ -17,7 +17,6 @@ compact JSON line. Run `<leaf> request-schema` or `<leaf> response-schema` for e
 daemon. Every body may also carry `relay` (see `diverge-daemons`).
 
 ```bash
-export PATH="$HOME/.diverge/bin:$PATH"
 diverge run agents --help
 diverge run agents create request-schema
 ```

@@ -7,7 +7,7 @@ A grant is `{"<kind>": <permission>}`. The permission's shapes:
 - **Tagging**: `{"actions":["tag"|"untag", …], "within": "any" | <filter>, "tags": "any" | ["<tag>", …]}`
 - **The one thing** (`postgres`, `events`, `images`): `["<action>", …]`
 
-An administrator (an identity under `admins:` in `daemon.yaml`) is allowed everything and needs no grant.
+An administrator (an identity in the daemon's `admins` setting) is allowed everything and needs no grant.
 `diverge run info` needs no grant. Print the authoritative schema with
 `diverge run roles create request-schema --jq '."$defs"'`.
 

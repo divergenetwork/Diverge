@@ -107,7 +107,7 @@ diverge run images build '{
   - `{"built":{"digest":…,"bytes":…}}`: the image is in the Store. The digest is what a template names.
   - `{"exists":{"digest":…}}`: the build produced a digest already in the Store; nothing was added.
   - `"insufficient_capacity"`: the Store is full. `"context_held"`: something has the context volume to
-    itself. `"unsupported"`: the provider has no Store (no `images` in its `provider.yaml`).
+    itself. `"unsupported"`: the provider has no Store (its `images` are not enabled).
   - `"forbidden"`: no `build` grant over images reaching that provider, or no `mount` grant over the
     context volume. The grant is `{"images":{"actions":["build"],"within":"any"}}`, or narrowed to
     providers by identity or tag (see `diverge-access`).
@@ -120,7 +120,7 @@ diverge run images build '{
 ### Getting source in front of a build
 
 A build reads its context from a volume. For source on the provider's own host, list the folder as a
-fixed, read-only volume in `provider.yaml`, with the provider stopped, and start it again:
+fixed, read-only volume of the provider, with the provider stopped, and start it again:
 
 ```bash
 diverge provider stop
@@ -136,7 +136,7 @@ with a Store and `build` absent or `false` takes pushes and refuses builds. If t
 
 ```bash
 diverge provider stop
-diverge provider images enable           # a Store under <root>/provider/images, 32 GiB
+diverge provider images enable           # a Store of 32 GiB
 diverge provider start
 ```
 
@@ -185,7 +185,7 @@ diverge run images list --watch                            # stays open: added /
   happen. Other answers: `"forbidden"`, `{"error":…}`.
 - What is listed is what the **daemon** owns on each provider: images built with `images build` or pushed
   with `images push`. It is not the provider's pull cache, and not another daemon's Store.
-- A provider that is not connected, that has no Store (`images` absent from its `provider.yaml`), or whose
+- A provider that is not connected, that has no Store (its `images` are not enabled), or whose
   listing is not whole yet contributes nothing; it appears when it is.
 - Grant: `list` over images, reaching the provider.
 
@@ -263,7 +263,7 @@ The parse rules, in the order they are checked:
    it not a fence). Otherwise there is no frontmatter.
 2. The frontmatter is every line up to the next line that is exactly `---`. No such line is an
    unterminated frontmatter.
-3. The frontmatter is **one JSON object** (JSON is valid YAML flow style).
+3. The frontmatter is **one JSON object**.
 4. It has **`type`, required: `"agent"` or `"tool"`**. Missing, or anything else, is an error. The type
    decides which members are allowed.
 5. Both types: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false`

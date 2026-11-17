@@ -26,12 +26,12 @@ into tasks and run the protocol once per task.
 
 | Term | What it is |
 |---|---|
-| Root | One directory holding the documents and state of the Diverge programs on a host: `daemon.yaml`, `provider.yaml`, `cli.yaml`, `viewer.yaml`, `identities/`, logs, locks, `bin/`. Default `~/.diverge`. One of each program per root. |
+| Config root | The one directory the Diverge programs on a host keep their settings and signed-in identities in. `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`. One of each program per root. **Never look inside it or change anything in it by hand**: every setting has a `diverge` command (skill `diverge-config`), and it holds secrets. |
 | Issuer | The OpenID Connect provider that signs the tokens an identity proves itself with. An issuer can be used only if it supports DPoP (RFC 9449) with ES256, answers access tokens that are signed JWTs carrying `sub` and the key's thumbprint (`cnf.jkt`), and offers the device authorization flow. Diverge's own is `https://identity.diverge.network`, hosted, whose subjects are `<issuer>.<id>.<name>` (for example `github.12345.daemon-a`): a GitHub or Google account, and a name that account chose. A login there needs no person once that account is signed in on the host. |
-| Identity | One `(issuer, subject)` pair signed in under a root (`<root>/identities/`), with a private key kept beside it on that host. Every handshake is mutual: both ends present an access token bound to their key, send the key, and prove they hold it. A copied token is useless without the key, and every connection is encrypted after the handshake. |
+| Identity | One `(issuer, subject)` pair signed in under a root, with a private key kept on that host. Every handshake is mutual: both ends present an access token bound to their key, send the key, and prove they hold it. A copied token is useless without the key, and every connection is encrypted after the handshake. |
 | Daemon | `diverge-daemon` (WebSocket, default port 14980). The hub: keeps accounts, roles, provider records, templates, agents, tools, vault, events and logs in its own Postgres, and starts and stops containers on providers. |
-| Account | An identity the daemon admits as a client, holding **roles**; each role is a list of **grants**. Identities listed under `admins` in `daemon.yaml` are admitted without an account and hold every grant. |
-| Provider | `diverge-provider` (default port 14979). Runs containers with podman for the identities it accepts, when its `provider.yaml` has a `containers` section; also serves volumes and an image store, each when configured. A fresh provider has none of the three. A daemon holds a *record* of each provider it uses. |
+| Account | An identity the daemon admits as a client, holding **roles**; each role is a list of **grants**. Identities in the daemon's `admins` setting are admitted without an account and hold every grant. |
+| Provider | `diverge-provider` (default port 14979). Runs containers with podman for the identities it accepts, when containers are enabled on it; also serves volumes and an image store, each when enabled. A fresh provider has none of the three. A daemon holds a *record* of each provider it uses. |
 | Container proxy | A small binary the provider mounts into every container. It carries messages, MCP, Postgres and secrets between the provider and the program inside. Never part of an image; never operated directly. |
 | Image | An OCI image, named by digest plus registry references, whose program speaks the container contract. It carries a `DIVERGE.md` stating its name and the schema of the arguments it takes. |
 | Template | An image plus memory, disk, arguments and the names of the secrets it needs. Its id is a hash of its content: creating the same template twice answers the same id. There are agent templates and standalone-tool templates. |
@@ -44,7 +44,7 @@ into tasks and run the protocol once per task.
 | Events | The daemon's graph of who sent what to whom (accounts, agents, tools). |
 | Remote daemon | A record on this daemon of another daemon, reached through a provider both are connected to. Its id is a short base62 hash. |
 | Relay | `"relay": [<daemon id>, …]` in any request body: this daemon forwards the request to that remote daemon, which serves it as the account the record names. |
-| Viewer | `diverge-viewer`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). It reads `viewer.yaml`, which `diverge viewer daemon address|issuer|subject|identity|redial get|set` reads and writes; the CLI neither starts nor stops it. |
+| Viewer | `diverge-viewer`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). Which daemon it dials, and as whom, is set with `diverge viewer daemon address|issuer|subject|identity|redial get|set`; the CLI neither starts nor stops it. |
 
 ## The shape of the CLI
 
@@ -63,8 +63,8 @@ diverge [--config <dir>] run [--daemon <name>] [--account <name>] [--jq <filter>
 - A **family** is a group of requests: `agents`, `standalone-tools`, `volumes`… Some nest: `agents templates
   create`, `providers daemons list`, `agents connect call-tool`. `info` and `logs` are requests with no family.
 - **BODY** is one JSON object, as one shell argument. Absent, it is `{}`. Single-quote it in the shell.
-- `--daemon` and `--account` pick a named daemon and a named account from `cli.yaml`; absent, the document's
-  defaults. They, `--jq` and `--timeout` may be written anywhere after `run`.
+- `--daemon` and `--account` pick a daemon and an account by the names the CLI has them under; absent, the
+  CLI's defaults. They, `--jq` and `--timeout` may be written anywhere after `run`.
 - Some requests take flags of their own: `--watch` on every `list` but `identities list`, and on the agent and
   tool `filetree`s (keep the
   stream open and print every change after the first whole answer; without it the command ends there),
@@ -106,19 +106,25 @@ the working directory is not a root: it is where an image's source keeps its `DI
 
 ## Rules that keep you from hurting yourself
 
+0. **Never look inside the config root, and never change anything in it by hand.** Do not open, list, read,
+   search or edit what is in `~/.diverge` (or wherever `--config` or `DIVERGE_CONFIG` points). It holds the
+   signed-in identities and their private keys, which are secrets, and nothing in it is yours to edit. Every
+   setting is read with a `get` and changed with a `diverge` command (skill `diverge-config`). If no command
+   does what you need, tell the user.
 1. **Never pipe `diverge … start`.** `diverge daemon|provider start` leaves a detached server running;
    a pipe (`| tail`, `| tee`, `$(…)`) is inherited by it and your shell hangs. Redirect to a file and read the
    file: `diverge daemon start > start.out 2>&1; cat start.out`.
 2. **Do not start, stop or reconfigure a server unless the task asks for it.** A provider stop removes every
    container it ran; a daemon stop ends every agent's run.
-3. **`--config` goes first**, before the command: `diverge --config <root> daemon start`. It is not accepted
+3. **`--config` goes first**, before the command: `diverge --config <dir> daemon start`. It is not accepted
    after the command. `--daemon`, `--account`, `--jq`, `--timeout` belong to `run` and go after it.
 4. **Check which root you are on.** `DIVERGE_CONFIG`, where it is set, silently names the root.
    `diverge cli daemons get`, then `diverge cli daemons <INDEX> accounts get`, show the daemons and accounts the
    root you are on knows.
-5. **A `run` needs an account.** With no `--account` and no default account for the daemon in `cli.yaml`, every
+5. **A `run` needs an account.** With no `--account` and no default account for the daemon in the CLI's settings, every
    `run` command fails — even `request-schema` — with `no account was named, and the daemon … has no default`.
-   Fix `cli.yaml` (skill `diverge-config`).
+   Add an account and make it the default: `diverge cli daemons <INDEX> accounts add …`, then
+   `diverge cli daemons <INDEX> default set <INDEX>` (skill `diverge-config`).
 6. **`relay` exists on every request.** Any body may carry `"relay": ["<daemon id>"]` to have a remote daemon
    serve the request instead. Leave it out unless you mean it (skill `diverge-daemons`).
 7. **Naming an agent or a tool: by name, or by template and index.** `{"name":"echo"}` names the one that has
@@ -145,7 +151,7 @@ Every `diverge run` family and every top-level command belongs to exactly one sk
 
 | Task | Skill | Commands it owns |
 |---|---|---|
-| The root; any `*.yaml` document; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer daemon …`, `diverge cli daemons …` and `diverge cli default`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
+| The config root; every setting of the daemon, the provider, the viewer and the CLI; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer daemon …`, `diverge cli daemons …` and `diverge cli default`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
 | Agent templates and agents: create, get, list, edit, delete, tag; sending a message; MCP into an agent; an agent's files, exec, terminal, frontend, mounts | `diverge-agents` | `diverge run agents …` (including `agents templates …` and `agents connect …`) |
 | Standalone tools and their templates; dependency tools; attaching and detaching tools; a tool's files, exec, terminal, frontend; MCP exchanges with a tool | `diverge-tools` | `diverge run standalone-tools …` (including `templates …` and `connect …`), `diverge run dependency-tools …` |
 | Images: an image's `DIVERGE.md`, digests and references, building images into the provider, what each stock image takes as arguments and secrets | `diverge-images` | `diverge run images read\|build\|push\|list` |
@@ -177,8 +183,8 @@ diverge run providers list                  # each provider record; "status" sho
 diverge run agents list                     # one line per agent, then "listed"
 ```
 
-If `diverge run info` fails with `the daemon could not be dialled`, the daemon is down or `cli.yaml` has the
-wrong address; with `the handshake did not complete`, the account's identity is not signed in (or is signed
+If `diverge run info` fails with `the daemon could not be dialled`, the daemon is down or the CLI has the
+wrong address for it; with `the handshake did not complete`, the account's identity is not signed in (or is signed
 out) under this root; with `the daemon closed the connection without answering`, the identity is neither an
 account nor an admin there. All three are `diverge-config` tasks.
 

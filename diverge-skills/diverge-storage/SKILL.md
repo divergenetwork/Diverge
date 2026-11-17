@@ -45,7 +45,7 @@ component is empty, `.` or `..`, or holds `/`.
   edited and it cannot be deleted: `volumes edit` and `volumes delete` answer `"provided"`, and
   asking again changes nothing. Everything else works as on any volume: mount it, FUSE serve it,
   read, write, stat and tag it. On our own provider these are the directories its configuration
-  names (`volumes.fixed` in `provider.yaml`); it may list one only to some identities.
+  names (`diverge provider volumes fixed`); it may list one only to some identities.
 - **Whether a provider creates volumes** is its capability, per mode: `create` in the mode's object
   (see "What the provider's capabilities mean"). A provider may keep volumes of a mode and create
   none; `volumes create` is then answered `unsupported` without the provider being asked. Our own
@@ -397,8 +397,8 @@ diverge run vault get --jq '.found.agents' '{"key":"or-key"}'      # the agent n
 # Postgres
 
 The daemon serves exactly **one** database into its containers, and keeps its own records in it too.
-Which database is the daemon's configuration (`postgres` in `daemon.yaml`: `{kind: local}`, a
-Postgres the daemon runs beside itself, the default; or `{kind: remote, url: …}`), read at start.
+Which database is the daemon's `postgres` setting (`diverge daemon postgres get`: `local`, a
+Postgres the daemon runs beside itself, the default; or `remote`, one it dials), read at start.
 Nothing on the wire changes it; see `diverge-config`.
 
 What a container sees: its driver dials its own proxy at `127.0.0.1:81`, user `diverge`, database

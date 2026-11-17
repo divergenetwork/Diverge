@@ -67,8 +67,8 @@ Rules:
   provider still sees which daemons talk, when, and how much.
 - The mutual handshake establishes the provider's identity; an outgoing dial is refused unless the
   identity that answers is the record's.
-- The other side must agree: the provider's own `provider.yaml` must accept this daemon's identity (and,
-  for an incoming provider, dial this daemon), and each must have its own `identity` in its document, signed in
+- The other side must agree: the provider's `incoming` setting must list this daemon's identity (and,
+  for an incoming provider, its `outgoing` must dial this daemon), and each must have its own `identity` set, signed in
   under its root. The two need not be at the same issuer. See `diverge-config`.
 - The daemon holds at most one connection per provider identity.
 
@@ -188,7 +188,7 @@ through any connected provider that relays them, whatever its own three settings
 
 The `announcement` is not the record's `description`: the description is your own note about the
 provider and is never sent anywhere. There is no daemon-wide description any more, and no
-`accept_daemons` in `daemon.yaml`: both are per provider record, changed by `providers edit` with no
+`accept_daemons` among the daemon's settings: both are per provider record, changed by `providers edit` with no
 restart.
 
 ## 2. Peers through providers (`diverge run providers daemons …`)
@@ -219,7 +219,7 @@ diverge run providers daemons list
 
 A daemon can send another party an opaque message through a shared provider. Neither the daemon nor the
 provider reads the body. This needs the provider to relay messages at all (`messages:` in
-`provider.yaml`; without it both requests are answered unsupported).
+the provider's settings, `diverge provider messages enable`; without it both requests are answered unsupported).
 
 - **To receive**, a daemon's record of the provider must have `messageable: true`.
 - **To be found by a sender's `providers daemons message`**, the receiver must also be announced there
@@ -470,7 +470,7 @@ to a provider of **another daemon's**. The mount entry names the remote daemon:
 
 ## 6. Worked example: A records B, relays, and holds B's tool
 
-Daemon A is the CLI's default daemon; daemon B is `--daemon b` in `cli.yaml`. Both are connected to one
+Daemon A is the CLI's default daemon; daemon B is `--daemon b`, a daemon the CLI was given with `diverge cli daemons add`. Both are connected to one
 provider, and each has an `announcement` on its record of it. A's daemon presents `github.12345.daemon-a`; B's presents `github.12345.daemon-b`. You are an
 administrator on both. (This is step 10 of `reports/SETUP_INSTRUCTIONS_1.md`.)
 
@@ -526,7 +526,7 @@ Template and tool bodies are covered in `diverge-tools`; image digests in `diver
 
 | Symptom | Likely cause |
 |---|---|
-| Provider record stays `disconnected` | Provider down or wrong `address`; daemon not in the provider's `incoming`; no `identity` in `daemon.yaml` or `provider.yaml`, or it is not signed in; record disabled. |
+| Provider record stays `disconnected` | Provider down or wrong `address`; daemon not in the provider's `incoming`; the daemon or the provider has no `identity` set, or it is not signed in; record disabled. |
 | Provider is `different_version` | Daemon and provider builds differ; the provider is held but unused. Reinstall so both match. |
 | Containers died after a provider edit | The edit set `ips` that no longer admit the incoming provider's source address: the connection was closed (`undeployed` with `provider_edited`). No other edit closes it. They start again on next use, once the provider is connected again. |
 | `providers edit` answers a parse error | The body names a member `edit` does not take: `direction`, `address`, `listable`, `enabled`, `tags`. Only `identity`, `announcement`, `ips`, `accept_daemons`, `messageable`, `description`. |
