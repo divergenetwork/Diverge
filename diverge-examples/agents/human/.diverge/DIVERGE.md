@@ -45,4 +45,4 @@ Secrets: none. Arguments: `{}`.
 Make an agent template of the image (`agents templates create`,
 `arguments` `{}`), an agent of the template (`agents create`), attach
 the tools you want to call as it, and open its **frontend** tab in
-diverge-world.
+diverge-viewer.

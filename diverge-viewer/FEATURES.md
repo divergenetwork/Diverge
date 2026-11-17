@@ -1,4 +1,4 @@
-# Diverge World — features
+# Diverge Viewer — features
 
 Every feature the world has, in plain words. This file is kept current:
 a change that adds, removes or alters a feature updates it in the same

@@ -1,279 +1,133 @@
 # diverge-viewer — read this first
 
-The Diverge viewer. The product's owner sets the product and its words; the SDK's owner owns everything below the
-daemon seam. This file is committed so every session and worktree
-inherits it.
+Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world`, and took this name and place when the earlier viewer was removed; "the world" in these notes and in `src/` is the board the app draws. The product's owner sets the product and its words.
 
 ## The seams
-- `src-tauri/src/daemon/mod.rs` — `Daemon`, one method per daemon verb the app uses (`agents::{templates::{create, get},
-  create, delete, message, list, edit, tag, untag}`, the root `logs` read with an agent as its subject, `standalone_tools::{templates::create, create, edit, register,
-  attach_agent_instance, detach_agent_instance, attach_agent_template, detach_agent_template, delete, list}`). `StubDaemon`
-  (feature `stand-in`) now; `WireDaemon` when a daemon ships. The app doesn't use the tools verbs for rooms: a daemon-attached
-  tool bypasses the app, which seals agents' calls and asks the person first. It lists your tools, and attaches one to an
-  agent or takes it back, only when you do so on the Agents map (`standalone_tools_{list, attach, detach}`, a tool named
-  by the words an agent's list item uses for it).
-  - **Agents come from templates.** New agent makes (or finds: same template, same id) the template the form describes
-    (image, memory, disk, settings) with `agents::templates::create`, then `agents::create` from its id (name, machine,
-    mounts). An agent's name is optional; it is named for good by its template and index. The app keys an agent by
-    `daemon::agent_key` (its name, else `<template>#<index>`) everywhere — tabs, rail, logs, messages, mounts, the door —
-    and `daemon::reference_of` turns a key back into the `reference::Agent` every request takes. `AgentView` carries
-    `template`, `index`, `creator` and `tags`; the Agents map shows them. The image an agent runs is its template's
-    (`agents::templates::get`). No image is built yet, so each of the six has its own placeholder digest
-    (`Kind::digest`, since a template's id leaves the image's references out) and is named in a reference.
-  - **Lists stay open, and the app follows one.** `agents::list` answers `Added`… `Listed` and then what changes (an
-    agent come into the filter `Added`, one in it that differs `Changed`, one gone `Removed` as last sent); a log line
-    changes nothing it says (its `logs_index` is as of the last change of state). `daemon::agents_listed` reads it once and
-    cancels (so do `tools_listed` and `machines::volumes_listed`). **The live list** (`src-tauri/src/fleet.rs`): the app
-    holds exactly one agents list open for its life, asked again a second after it ends or fails, kept by template and
-    index (a rename is a change), and on every change sends the whole list with a generation number, as the tabs do
-    (`agents_watch`; the page never reconciles deltas and never asks on a clock), with where it stands
-    (waiting, live, refused, failed). Each snapshot carries **the tree** (`fleet::tree`, also `agents_tree`): agents you
-    made at the top, an agent another made under its maker, agents one of your tools made under that tool, agents whose
-    maker isn't listed in one group last; working first, then newest; each agent with its cards waiting on you (followed
-    from the door). A self-made or ringed maker is placed once. Built without the stand-in, the list is whole, empty and held open.
-  - **Logs are typed.** No `jq` on the wire: a read is narrowed by kind (`type`), span and count, and every item comes
-    typed; a message's parts are `User` items carrying who sent them. Views' presets are kinds of item.
-  - A `Forbidden` answer (the daemon's grants) shows as the daemon refusing, in `common.forbidden`.
-- `src-tauri/src/machines.rs` — `Machines`: the provider protocol's volume verbs, addressed to one machine. Since
-  `e28031bbd` a volume is its provider's own; the daemon has none. The wire doesn't say yet how the app reaches a machine's verbs.
-  The stand-in daemon implements both seams (it knows every agent's mounts, so it keeps every machine's holds).
-- Meeting up with the real daemon = writing `WireDaemon` and `WireMachines`, nothing else.
-- Everything returns **the SDK's real `diverge_sdk` types** (one crate since `9b338da70`, no features). Every
-  conversion to our view types is an exhaustive `match` (never `_ =>`) so a new variant from him fails our build.
-- The contract is `diverge-sdk-rs/src/{daemon,provider/endpoints/{volumes,containers/{tools,agents}},shared,container_proxy/inside}/**` at `origin/p2p-provider-binary` —
-  never a doc. `CONTRACT_PIN` holds the commit we built against. Start every session with the drift check in it and
-  say in one line whether anything moved.
-- `providers::{list, add, remove}` are **ours until the wire has them** (a product ruling: add a machine inside the app). Machine
-  names are the app's (`machine_names.json`); the daemon's name stays underneath.
-- **Mounts are remembered by the app** (`agent_mounts.json`, by agent key): the daemon never reports an agent's mounts
-  and the app's `agents::edit` states all three lists anew, so the app offers "Mounts" only for agents it made.
-- **Spaces** (`src-tauri/src/spaces/mod.rs`): the social layer on the provider protocol's tool rooms —
-  `containers::tools::run` (host; a room's container names the tool template it is an instance of), joining by id with
-  the host's yes, the MCP exchanges (a room's verbs, resources, notifications), the container's files (a room's table)
-  and `transfer`. The SDK's types on the wire; what rides inside them is ours (below). Since `1371081c1` the provider
-  wire has no join by id (`containers::tools::connect` and the run's `authorize` channel are gone; a tool is reached
-  across daemons with `standalone_tools::{register, connect}`), so `spaces::{Authorize, Answer}` are ours, the shapes
-  the wire had, until the app joins rooms that way. `StubSpaces` runs the real room program in process until rooms are
-  hosted on the wire.
-- **The person layer is ours, not the SDK's** — the wire gives a room no way to tell members apart (a tool program sees
-  one MCP client; a runner sees an address and an opaque string), and nothing on the wire names a person:
-  - `diverge-viewer/room` (crate `diverge-viewer-room`): the room program.
-    - A room's settings (`Args`) are signed by its host, and its id is a label plus the host's mark (`room_id`), so
-      no other host can run a room by that id.
-    - **Rules have numbers** (`Args.rules`; rules 1 isn't written down, so old settings sign the same bytes). A number
-      the program doesn't know is refused in words; a replay picks rules by number. Under rules 1 a member is a key.
-      Under **rules 2** a person is their account: admitted with its proof (genesis + newest device list), keyed by
-      the account id, and any key on the list acts for them; `keys` brings a newer list (a lower number is refused),
-      and a key it leaves off is refused from then on while its earlier moves still replay. The id names the host's
-      account (`account_room_id`), so the host acts from any of its devices. Agents stay keys, tethered to a key on
-      their person's list. A list is its root's word alone (no key on it countersigns), so continuing a room counts only the
-      key that signed the settings or, under rules 2, its account; and a key one member lists can't be let in for anyone else. A receipt from a rules-2 room carries the host's account (`receipt_issuer`). Rooms the app
-      makes are rules 2; a fresh name is a one-device account of its own (`Identity::proof_of`), never yours.
-    - **Erasable words (rules 2).** A seal signs the arguments and also a salted digest of them (`Seal.words`, salt beside
-      it). A rules-2 room keeps the digest form: it chains the digests (`Move.said` for what the move says) and keeps the words
-      beside the chain; a rules-1 room keeps today's seal and bytes. `withdraw` (the author) and `erase` (the host, with a
-      reason) drop a move's words, recorded as "erased by <who> under <reason>". Only what someone said can be erased
-      (`erasable` in room.rs); a let-in, removal, rules change, receipt or erasure stays whole, and a move sealed whole
-      before this stays too. A move that is digest-sealed, or is about one, holds only its own words (a claim names its task, it
-      doesn't repeat its title; a receipt's title lives in its sealed statement). The feed says which moves the room would erase now (`erasable`). Replay accepts a move without words only when a later erasure covers it and its seal over the digest,
-      place and countersign hold. `keep_copy` saves the replayed record and, on a new erasure, writes over the copy before
-      it too. A receipt keeps the title it was issued with, in its statement, so erasing the task after it leaves a record that replays.
-    - **A doorkeeper slot (rules 2).** `Args.keepers` names keys that may only `admit`, signed with the settings. A keeper's
-      admit carries only the knocker's signed `Knocking`, which the room checks itself (this room, signed by the key it
-      names, under a day old, an account naming that key, listed), plus either an invite the host sealed earlier
-      (`mark_invite` with `invite_lock(mark)`; a keeper's let-in uses it up, since its mark is then in the record, and it can't be sealed again) or standing in the room this one continues. Recorded as "let in by <host>'s
-      doorkeeper", marked as the host's. `drop_keeper` ends it. Nothing in the app runs a keeper yet.
-    - **Sealed notes (rules 2 profiles).** A profile's settings name its owner's notes key (`Args.notes_key`, X25519, drawn
-      with HKDF from the recovery words on its own path; `envelope.rs`), and only a rules-2 profile names one. A rules-2 profile
-      made before profiles named it still holds and replays, and takes what visitors leave plainly. A note, a hire,
-      an answer's note and a hire's result come only as envelopes (ChaCha20-Poly1305, a fresh X25519 exchange per reader,
-      bound to room, verb and sealing key) to the owner's key and their author's key for that room (drawn from the key that
-      seals the call); a result goes to the owner and the key the sealed ask names. The room checks shape only, refuses
-      their words in the clear and a reply to them in the open; the feed and every copy hold ciphertext. The app seals
-      before signing (`src-tauri/src/notes.rs`, `prepare`, on every path: screen, door, hires) and opens what it can when it
-      reads a feed (`open_moves`), marking each sealed move `sealed`/`opened`.
-    - Every call is sealed under the `_meta` key `network.diverge.viewer/seal` for that id, and checked against keys
-      the host admitted. Someone let in unlisted is a mark of their key (`key_mark`) until they first act.
-    - Every move is chained and countersigned by the room's own key, which the host's app made and named in the
-      settings. What a move says must be what its sealed verb and arguments make.
-    - A `Record` (settings, the record it continues, moves) is checked only by replaying it under the rules a live
-      call meets (`Room::check`, `Room::from_record`). Restarts, successors and copies all take that path;
-      `tests/attacks.rs` keeps the attacks it has to refuse.
-    - With `--features image` it builds the tool container program (`/register`, `/schema`, `/mcp` over Streamable
-      HTTP, as `container_proxy::inside::tool` states). `/register` takes the settings, the room's key
-      (`room_secret`) and any record, and refuses a damaged one. rmcp lifts `_meta` into the request context, so the
-      program re-attaches it before checking the seal. It never waits on its host while holding the room.
-  - `src-tauri/src/identity.rs`: your usual self and fresh personas, and your agents' keys tethered to the persona they
-    act for, named plainly in a fresh name's rooms. One owner-only file (`identity.json`), written whole and swapped
-    in through `store.rs`, with a backup kept beside it; never the keychain (it can prompt in a popup). If it and its backup are both
-    unreadable, the app signs nothing and says so; it never makes new keys over them. A keys file a newer version wrote, or one the
-    system won't read, is left exactly as it is with its backup, whatever the backup holds, and nothing is signed. Counters live in
-    `counters.json` and never fall behind the clock. One call at a time per key per room (`Identity::turn`).
-  - **Your account** (`src-tauri/src/account.rs`, `room/src/account.rs`): made when the first-run page is finished, never
-    before. Until then there is no persona, and `seal`, `state`, `fresh` and `agent_in` refuse; the stand-in's rooms
-    wait too (`AppState::after_first_run`). Nothing reads the login or the machine's name (a test greps for it). Twelve
-    BIP-39 words make the root (SLIP-10, hardened, `m/0'`), which signs the genesis (account id = its digest) and a
-    device list (sequence 1) naming the usual persona's key as this Mac's, and is dropped. The words stay sealed in
-    `identity.json` (ChaCha20-Poly1305 under an HKDF key from the device key), unconfirmed; the app opens them only to
-    draw the notes key (below), which stays in memory, and no door tool reads them. A keys file from before accounts (v1) upgrades in place, is kept as
-    `identity.v1.json`, and shows the first-run page naming the name an earlier version took from the login.
-  - **Key marks** (`src-tauri/src/marks.rs`): where two members of one room share a name, each gets a short mark of the
-    room and their key, on member lists, the host's list of everyone let in, and hire cards. Per room, so a mark never
-    links a key across rooms.
-  - A knock's opaque authorization carries a `Knocking`, signed by the key it names, for one room, good for a day,
-    with a mark of the invite it came with, and the knocker's account. A vouch names the room it vouches someone into
-    and runs out after a week. An invite is text (`diverge-invite:…`) carrying the room's rules and verbs, checked
-    against the room on entry.
-  - **Members back in**: where a knock arrives (`knocks_watch`), `knock_verdict` reads `Room::standing` over the
-    host's replayed copy: someone let in and still in (listed or not) is answered yes with no admit and no card,
-    someone removed is answered no, anyone else is a card; the knock list says which. A restart to shut someone out
-    (`spaces_restart`) gives the room a new invite secret; a restart that only rebuilds it keeps the secret.
-  - `records/`: the app keeps a replayed copy of every room's record, named for a digest of the room's id, with the
-    copy before it beside it. An unreachable room shows from it, and someone still in it can continue it. A copy that
-    won't parse, isn't that room's or doesn't replay is set aside, and the one before it carries on.
-- **Hires** (`src-tauri/src/hires.rs`): a visitor asks one of your agents for something through your profile room; the
-  room calls its host (on the wire, its own `mcp-call-tool`); you decide on a card. A hire waits until its agent is
-  free, reaches it quoted as the visitor's words, and its result is read from its own run alone
-  (`reporter::run_after`). In a profile that seals, the result goes back sealed whole and never onto the table (which
-  everyone in the room reads); a rules-1 profile's lands on the table. A hire asked while the app was closed is picked up from
-  the profile's record.
-- **The agent door** (`src-tauri/src/door.rs`): the MCP server this app is for its agents — the Space verbs, the table,
-  open asks, and `ask_person` (question / choice / credential by meaning; the value never reaches the agent). Every
-  room move is sealed as the agent. Reading a room and acting in one both ask its person first, unless the person set
-  a daily allowance for that agent in that room, for that kind of move (`Reach`: read, talk, work, pledge;
-  `allowances.json`, keyed by room and the agent's slot). An allowance is spent only on what the room accepts. A card
-  carries the whole call (`CardCall`, `CardHire`), worded by the screen from `src/strings.ts`. Cards wait on the
-  person; nothing times out, but a card whose caller stops waiting (the call's cancellation) is withdrawn
-  (`CardEvent::Withdrawn`) and a late answer does nothing.
-  - Two kinds of agent (`identity::AgentId`): the daemon's, by agent key, and local ones you already run yourself, added
-    with an id (`Identity::add_local`, from Machines → "Agents you run yourself"). A removed local agent's keys stay,
-    marked removed: its past moves are still your agent's, it gets no new key, and its id is never reused. A slot names one agent: a daemon agent's key
-    (`daemon/<key>` if it starts like a slot), or `local/<id>`. Keys are found by kind, name and persona, never by an
-    entry's name, so agents of two kinds never share a key.
-  - The door answers only agents it knows (the daemon's list, asked again on a miss, and the local ones added) and
-    refuses any other before a key could be made. An agent reads and acts only in rooms it's in, by the room's own
-    record, checked before any card; `spaces_list` and `asks_open` name only those rooms.
-  - A local agent can't ask for a key (`door_tools` lists tools per kind), and room text reaches it framed as other
-    people's words, the frame marked with a digest of the text so nothing inside can close it. A room's refusal is room
-    text too: it comes back as a refused result, framed.
-  - The keys file is version 3 since local agents: a build from before reads it as newer and leaves it alone.
-  - **The door served on this Mac** (`src-tauri/src/door_serve.rs`): an rmcp server over Streamable HTTP on
-    127.0.0.1, on a port picked once and kept in `door_agents.json` (never moved; taken → `door_status` says so). It
-    listens only while a local agent is added, and only in the copy holding its folder. Each local agent has a token
-    in `door/<id>.token` (0600) and a helper `door/<id>-headers` (0700) that prints the header; the app keeps only
-    the sha256, compared in constant time. The caller is whichever token matched, never what the client says; a
-    session is its opener's. Any `Origin` → 403; rmcp keeps `Host` to the loopback names. A new key stops the old one
-    at once and withdraws its waiting cards. `local_agents_add` returns the Claude Code `add-json` line, naming the
-    helper, never the token. Measured: a client's `notifications/cancelled`, or ending its session, withdraws a
-    waiting card; a client that drops a request and says nothing leaves the card up.
-- **The reporter** (`src-tauri/src/reporter.rs`): when an agent's run ends it `report`s to the person's Home, with the
-  run's words only while Home is theirs alone.
-- **The stand-in keeps its rooms** between launches (`tables/.stand-in-rooms.json`), rebuilt by replaying their
-  records. A rooms file that won't parse or replay is set aside, and the stand-in starts again from its own past.
-- **Files** (`src-tauri/src/store.rs`): every JSON file the app keeps says what it is and its version
-  (`{"file", "version", "data"}`); one from before versions is read as it is. A write goes to a new owner-only file,
-  synced, then renamed over the old one, which becomes `<file>.bak` where the format keeps a last good copy. A file
-  that won't parse, doesn't check, or that a newer version wrote, is set aside under a new name beside it and never
-  written over; the app carries on from the last good copy, or starts that file empty. A file the system won't open or
-  read this time is left where it is, and the app neither reads nor writes it until it starts again. Every screen says
-  which file (a record copy by its room's title), why, and what the app carried on from (`files_set_aside`, words in
-  `src/strings.ts`).
-- **One copy of the app per folder** (`store::hold`): the app holds `.in-use` in its folder with the system's file lock
-  while it runs; the system lets go when it exits, crash or not. A second copy on the same folder (or one that can't
-  tell) reads your keys and files as they are, writes nothing, answers nothing, and the screens say why.
-- **The stand-in is a feature** (`stand-in`, on by default for now): `StubDaemon`, `StubSpaces`, their seeded past
-  and staged scenes. `StubDaemon` behaves as the daemon does: templates held by hash, agents numbered per template,
-  lists that say `Listed` and stay open, `creator: Client` on what the app makes and `User` items for what you send.
-  Its seeded agents (research-notes, broken-loop, site-fixes) are made from templates, plus one site-fixes made,
-  with no name, and morning-digest, made by your tool nightly-digest (attached to research-notes). site-fixes' long job
-  sets a helper going a minute in (its lines carry `parent_tool_call_id`), so the map shows all three kinds of nesting.
-  Its agents list is live: a tick on every change (made, deleted, a run starting or ending, an edit, tags, tools).
-  Built without it (`--no-default-features`), nothing answers the seams (`absent.rs`): every list is empty, everything else says the network part isn't there yet, and so do the screens. A test checks the
-  stand-in's own words are in the program only when the feature is on.
-- **Setup** is `AppState::open(data)` (actions.rs); main.rs builds the menu and finds the root as the daemon does
-  (`diverge-viewer/config`, crate `diverge-viewer-config`): `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`.
-  `<root>/viewer.yaml` names the daemon and the identity it is dialled as (`daemon.address`, `daemon.issuer`,
-  `daemon.subject`, one of `<root>/identities/`, signed in by `diverge identities login`); a document naming no daemon
-  stops the start. `diverge viewer config get|set|patch` edits it with the same type. Every file the app keeps is in
-  `<root>/viewer/`.
-- **The daemon proxy** is the SDK's `tauri_proxy` runner (the `tauri-proxy` feature): main.rs manages one `TauriProxy`
-  from `viewer.yaml`'s daemon, presenting the identity through the SDK's `identities::Presenter`, and registers its six
-  commands (`wire_request`, `wire_channel_request`, `wire_channel_response`, `wire_channel_response_finish`,
-  `wire_status`, `wire_reset`), dialling at start and again as `viewer.yaml`'s `daemon.redial` says — every 5 seconds
-  when absent, a whole number of seconds, or `never`. The page's handle over it is `src/lib/wire.ts` (`@diverge/sdk`, by workspace path, built
-  by the `sdk` script before `dev`, `build` and `typecheck`). The screens still answer from the seams above.
-- **Providers are OIDC identities** in the SDK; the screens keep telling a machine you dial from one that dials in.
-  `view::ProviderView` maps the two onto an identity by issuer — `dial`, with the address as the subject, or `accept`,
-  with the name — and the stand-in names its machines that way.
-- **The menu** (main.rs): ⌘N new agent, ⌘W closes a TAB (never the window), ⌘1 Home, ⌘2 Inbox; the page handles ⌘3–9
-  and ⌘[ ⌘]. ⌘+ ⌘− ⌘0 (Ctrl on Windows and Linux) zoom the whole window: the window's `zoomHotkeysEnabled` and the
-  `core:webview:allow-set-webview-zoom` permission. Keep those keys off the menu (`src/window.test.ts`).
-- The webview never holds a daemon connection, address or credential. Rust owns them. Its content security policy
-  (tauri.conf.json) lets in only the app's own scripts and styles, pictures also from data: and blob:, and connects
-  only to Tauri's IPC; so nothing in the page may be inline (`src/window.test.ts`). It applies to built windows, not
-  to `pnpm tauri dev`, which loads the dev server directly.
-- View types in `src-tauri/src/view.rs` generate `src/bindings/*.ts` (`cargo test -p diverge-viewer`).
-- Never edit the SDK's crates. Blocked? Note it in the private questions list (kept outside this repo) and
-  route around it on the stub.
-
-## Product laws
-- **The app sets nothing for anyone.** Every permission on screen says who set it (you over your own agents, a host
-  over their room, whoever runs a machine over it, the network's own rules as plain facts), and only its setter can
-  change it. The app ships starting positions for your own settings and says so; it adds no rules of its own.
-- A claim reaches a screen only once a test proves it.
-- Style comes from the protocol site's tokens: `diverge-provider-web/src/layouts/Layout.astro` on origin/main.
-  Gold means ONLY "where you are". All colour goes through `diverge-theme/theme.css`, which is the theme, shared with the world (the
-  viewer's page rules are `src/base.css`): every
-  words-on-background pair keeps 7:1, and every edge of something you can press or type into, and the focus ring,
-  keeps 3:1 (`src/theme.test.ts`, which names today's breaks; each waits on a colour pick). Spacing comes only from
-  `--space-N`, font sizes only from `--text-*`, and app.css names no colour of its own (`src/tokens.test.ts`).
-- Every action has two doors: all actions live in the Rust registry (`src-tauri/src/actions.rs`); no
-  logic only in a click handler. The agent-facing door is the MCP server in `src-tauri/src/door.rs`.
-- No popups, quickstarts, tours, modals, or anything that takes the mouse.
-- Never assume who someone is — show a provider only as the daemon names it.
-- Don't lead with a feed. Lead with the work: agents, runs, files, machines.
-- Nothing times out and a running agent cannot be stopped (`delete` refuses active; a message can only be
-  taken back before delivery). No fake stop button. Ceilings are set at create time.
-- No invented numbers. The stand-in daemon is labelled as one on screen.
-- Words are tabled: every user-facing string lives in `src/strings.ts`.
-
-## Screens (draft four)
-The first-run page, alone, until it's finished (what people should call you, 18 or older, a terms slot that says
-Diverge's terms aren't written yet; no acceptance is recorded) · Agents (the rail's Agents heading: the live map of who
-made whom, as an org chart down or across (`DEFAULT_LAYOUT`), mouse-drag to pan, no zoom of its own; each card says its
-state as the rail does, its machine as the daemon names it, when it last ran, what it's doing now from a watched tail of
-its log (`lib/map.ts`: `doing`, read from 60 items back; idle cards read once, only on screen; a dozen logs at once,
-`lib/tails.ts`), its helpers in this run as smaller cards on a dashed line (a count once the run ends), its tools and
-tags, what waits on you; "More" opens a row under it: tags, attach or detach one of your tools, remove while idle. A
-tree to the keyboard: one Tab stop, arrows along the way it grows, Enter opens the conversation) · Home (feed across Spaces + fleet; tabs are filters; an ask goes to several rooms and is followed as one thread; take
-an offer, or close the ask everywhere) · Inbox (agents and direct rooms, one list) · You (your names, your profile
-room's hires and notes, receipts once each, credited to the room that issued them) · Spaces (knocks that check, with
-notes and vouches; hosted, joined; host with an open door or not; paste an invite) · the door (an invite read before
-knocking: rules and who set them, verbs, every field a knock sends and what each says (`spaces::KNOCK_FIELDS`; a test holds the knock to it); appear as your usual name or a fresh one; a
-vouch) · a Space (what's happened and the table; verbs in plain words; the host's own tools: edit the rules,
-recommend a room, remove someone quietly or not, restart; members with whose agent each is; your agents' allowances
-by kind; the people from before, in a room you continued; an unreachable room from your copy, with how old it is and
-"continue it") · Storage (volumes) · Machines · Views · New agent · a conversation (work folds into one line; cards
-show the whole call; Mounts, changed while it's idle, with scratch space you choose).
-Storage is per machine: pick a machine, then a volume; each volume is in one of the provider's three modes (keeps changes /
-fresh each run / read only).
-
-## Working on it
-Plain words, few of them, tl;dr first. Show screenshots, don't describe. Check the code before asking the product's owner
-anything; settle protocol and industry questions from the code, or make the call and note it. **GitHub: drafts live
-on the `user-experience` branch** of this public repo, kept current with main (merged in) and with the SDK's branch
-(`origin/p2p-provider-binary`, merged in, never rebased onto), built against it at `CONTRACT_PIN`, and are pushed only when the product's owner
-says. Never push to the SDK's branches; no PRs or issues unless asked. **Nothing private enters this repo**, in files
-or commit messages: planning docs, lists of questions, quotes from outside conversations, and wording or ideas that
-came from them. Seed content is invented and everyday.
+- **The page is a Phaser game, no React**: `src/main.ts` makes one `Phaser.Game` filling the window, one scene per
+  file under `src/scenes/`. `ui` takes the keys only. **The look is the shared theme**: `main.ts` imports
+  `diverge-theme/theme.css` first, `main.css` holding the world's own page rules beside it — every colour, size and space comes from its roles — and `lib/theme.ts`
+  resolves a role (`int`, `css`) for the canvas and xterm, since a role is often a `color-mix` only the page can resolve;
+  `data-input` on the root says whether the keys or the mouse are in use, so hover marks nothing while the keys do and
+  focus looks as hover does (no ring, no box round a row). The one menu is the outliner (`outliner/outliner.ts`), HTML
+  over the canvas: a card that floats where its header is dragged, snaps to edges, folds to its header, to the kinds'
+  shapes (upright at a side edge, lying along the top or bottom) or to one button, resizes by its corner's grip, and docks as a rail down the left (`--outliner-left` on the root, which the sheet starts beside) — Arrange,
+  fold and dock in its header, line types and kinds as show/hide chips (`LINES`, `KINDS`), then every node by kind,
+  a row's press (`FOCUS`) flying the board's camera to it and opening its sheet, its hover or focus (`HOVER`) focusing
+  it; the board tells it the nodes (`OUTLINE`) and the open one (`SELECTED`) through the registry, and it tells the
+  board its bounds (`OUTLINER`). Text panels are HTML over the canvas too: clicking an
+  agent opens its bottom sheet (`src/sheet/`), the agent's log followed live (`agents logs` with `watch`) and folded
+  into messages (`sheet/fold.ts`): assistant chunks join into one message (text contiguous, an image breaking it), each
+  tool call a card holding its response, user parts join per sender and are labelled by the sender. Under an agent's
+  log, its composer (`sheet/composer.ts`) writes to it (`agents message`): text, then files attached by its Attach button or a paste,
+  each known by its bytes (`file-type`, `sheet/attach.ts`) and sent as an MCP image, audio or resource block in base64;
+  a message sent waits greyed at the log's bottom, one request and one answer with no cancel, in the page's outbox
+  (`sheet/outbox.ts`, by route and agent, outliving every sheet); it stays greyed, delivered or not,
+  until the log shows an account's user part matching it (first text block, else first block), which takes it out; a
+  refusal leaves it red until clicked. A listed tool
+  opens its own log the same way (folded by `sheet/tool_fold.ts`); both are read through the one root `logs` endpoint,
+  each entity carrying its `Subject`. A tool's sheet also holds the commands its container put to the daemon, and
+  clicking an account opens its command log — every request it put to the daemon, marked allowed or refused (an
+  administrator the daemon's `admins` names is listed as an account too, its log the `admin` subject — the world's own):
+  every call and read the daemon routed into it, a card each with its answer, joined per caller, and each
+  notification under the caller whose MCP session it came on (the proxy opens one session per caller). Clicking another
+  agent or tool swaps the sheet to it; clicking it again, or ✕, closes it. The sheet has tabs, `logs` and
+  `filesystem` (`sheet/files.ts`, `sheet/filetree.ts`): an agent's, tool's or dependency tool's container tree watched
+  live (`<family> filetree`), a volume's asked once (`volumes filetree`, ↻ asks again) — columns of name, size, created
+  and modified, directories first, sortable headers, changed rows glowing. Right-clicking a row opens a menu that downloads it — a file, or a folder whole — where the
+  system's dialog says; files dragged onto the tree upload into the directory they are aimed at (its rows glow, a line
+  says where), a volume re-read after. The app's Rust moves the bytes (`src-tauri/src/transfer.rs`), disk to wire in
+  2 MiB pieces one frame ahead, never through the page; the strip at the window's corner (`sheet/strip.ts`) shows
+  each transfer and stops it. A third tab, `console` (`sheet/console.ts`), is one interactive shell in an agent's,
+  tool's or dependency tool's container (`<family> terminal`), drawn by xterm (`@xterm/xterm`, `@xterm/addon-fit`):
+  keys go to its stdin one write in flight, the rest held and sent as one; the pane's size, settled, is its size;
+  closing or swapping the sheet closes it, which kills the shell. A fourth tab, `frontend` (`sheet/frontend.ts`), shows
+  an agent's or a tool's own web frontend (its image's DIVERGE.md says `frontend: true`; `Entity.frontend`, from `world/names.ts`'s
+  `imageInfo`) in an `<iframe>`: the app's Rust (`src-tauri/src/frontend.rs`, commands `frontend_open`/`frontend_close`)
+  serves it from `127.0.0.1:<fresh port>` (axum), each request one daemon `<family> frontend` scope over the page's
+  connection, bodies streamed, a `101` piped both ways; gated by Host, `Sec-Fetch-Site` and a key on the first load;
+  closed with the sheet, on a swap, and on every page load. An account
+  and a connected standalone tool (another daemon's, its own kind: `connected_standalone_tools list`, the
+  `connected_standalone_tool` log subject) have only logs, a volume only its files, a provider (`providers list`, the
+  record the daemon keeps of one; no log subject) no tab at all, and a daemon (`daemons list`, the record of one account
+  of ours on another daemon; no log subject; `Entity.daemon` its record's ID) one tab of its own, `daemon`, a single
+  button "Open <name>" that opens that daemon's tab of the window — a provider's header's second line its direction and
+  status, a daemon's `as <our subject> · connected|disconnected`; each tab starts reading the first time it is shown, and
+  the tab last chosen carries to the next sheet.
+- **A board per daemon, by its route** (`src/tabs/tabs.ts`, `scenes/board.ts`): the tab strip, HTML along the top
+  (`TABS` tall; the outliner starts beneath it), is Home — the `board` scene, route `[]` — then one tab per daemon
+  opened (`OPEN` from a daemon's sheet, with `{ route, labels }`): a `Board` added at runtime as `board:<id>/<id>…`,
+  given the route, with its own follow, nodes, camera and sheet, and `ui` brought back to the top. Switching sleeps the
+  board shown (its sheet closes; its lists stay open), sets `ACTIVE` and wakes the target; ✕ stops and removes the
+  board. Only the `ACTIVE` board writes `STATUS`, `OUTLINE` and `SELECTED` (`say` keeps the last of each and writes it
+  again on wake) and takes `ARRANGE`, `FOCUS`, `HOVER` and pulses; `KINDS` and `LINES` are shared, set by the first;
+  only Home launches `ui`; the backdrop follows the `ACTIVE` board's camera. **The route is on every request**: each
+  frame is spread with `relayed(route)` (`lib/wire.ts`) — `{}` for `[]`, so Home's frames carry no `relay`, else
+  `{ relay: route }` — in `world/live.ts`, `world/names.ts` and every sheet tab (`Opened.route`); our daemon takes the
+  first ID off and relays the rest. The hex world (`world/snapshot.ts`, `world/watch.ts`) stays Home's.
+- **The board is what opens** (`scenes/backdrop.ts`, `scenes/board.ts`, `src/grid/`): the theme's grid on its ground, every agent,
+  standalone tool, connected standalone tool, dependency tool, account, volume, provider and daemon a flat node in its family's colour
+  (`grid/palette.ts`: who acts in the accent, what they use in ink, where it runs in the quietest words; gold only for where you are), first standing in a column
+  per kind (`grid/place.ts`) and then wherever it is dragged — the links have no say, and positions live only for the
+  page. Each way an event ran is a line in the sender's family colour with a chevron at the receiver, an attachment
+  dashed in the strong edge, every line bowed a little so none runs under a node (`grid/links.ts`); a made-by line
+  shows only for the node pointed at or open, unless its chip is on; a provider is attached to every agent and tool deployed on it (`grid/edges.ts`, rule 2d), a daemon to every connected tool whose `daemon` (first hop) it is (rule 2f); a working agent or tool is traced, a line in ink drawn round its outline and let go (`grid/live.ts`, still and half drawn under reduced motion); the open node has gold corners (`grid/here.ts`); a node is bright only while deployed (an account: connected; a connected tool: its connect held; a provider: `connected`; a daemon: `connected`; a volume: mounted into a deployed container), and the sheet's dot is that brightness; a container
+  that is down makes its node faint, a still shape in the strong edge (`grid/live.ts`); every rise in an event's count runs a short ink stroke along its link
+  (`grid/pulses.ts`, the events list kept open). The backdrop tiles the grid under the board's camera, as the sea does
+  for the hex map. The game draws in the screen's own pixels (`lib/density.ts`: the canvas is the window times the
+  density, shown at the page's size), so a size meant on screen — a name, a grid line, a press's slack, the outliner's
+  bounds, the zoom's limits — is multiplied by `density()`; node textures are drawn `DETAIL` times finer and mipmapped. The hex map below (`Sea`, `World`) is kept, unlisted in `main.ts`.
+- **Live lights** (`render/lights.ts`, `world/watch.ts`): the accounts, agents, tools, providers and daemons lists stay open after the
+  snapshot, and each entity's state lights it: a pulsing green halo and a plate dot while an agent or tool is `active`
+  (working), a steady halo for a `connected` account. The map itself is not rebuilt.
+- **The board follows the daemon** (`world/live.ts`, `follow`): the eleven lists (agent templates, connected standalone tools, providers and daemons among them) kept open for the page's life, a list
+  that reopens reconciled against what it held, the world handed to `scenes/board.ts` at most once a frame once every
+  list was whole once. The board draws the first world, then diffs every later one by key (`apply`): new entities are
+  nodes at `placeOne`, gone ones are removed (their sheet closed), kept ones relabelled; the edges are replaced
+  (`links.setEdges`), the lights reapplied (`light`), the outliner's counts reset; pulses take the same events stream
+  (`pulses.told`) after the world holding their line is drawn.
+- **The hex world is the daemon drawn once** (`scenes/world.ts`, unlisted): eleven lists read to their `listed` (`world/snapshot.ts`),
+  retried every 5 seconds until a read succeeds, never read again; then each tool's image is asked its
+  `images read` once (`world/names.ts`), and a tool is named by its image's DIVERGE.md `name` where it said one. Every account, agent, standalone tool,
+  connected standalone tool, dependency tool, volume, provider and daemon is an entity; every event a directed link, and every volume an agent mounts a dashed
+  mount between them (`world/model.ts`). Each connected group is an island
+  (`islands.ts`). The grid is pointy-top hexes (`hex.ts`). `place.ts` puts an island's entities on slots 3 hexes apart
+  whose rings join into one island, and anneals them so lines avoid entities, plates, each other and tight fans.
+  `land.ts` is every hex within 2 of an entity, nothing more; `pack.ts` packs the islands; `map.ts` puts
+  it together. `render/` draws it procedurally, no art files: hexes of sea and land with sand coasts, then links (one
+  arrowed line per direction, a two-way pair two parallel lines), then the entity tiles (each filling its hex) and name plates. The rules are
+  numbered beside each piece. The sea has no edge: `scenes/sea.ts`, the first scene, draws one tiling sprite of sea
+  hexes (`render/sea.ts`, the map's own grid) under the world, moved and scaled to the world camera every frame;
+  the map itself draws only land.
+- **The page speaks the daemon's protocol itself**, with the TypeScript SDK (`@diverge/sdk`, a path dependency through
+  the pnpm workspace, built by the `sdk` script before `dev`, `build` and `typecheck`). Its one handle is
+  `src/lib/wire.ts`: `wire.proxy.handle(...)` over the app's Rust. Every daemon endpoint is
+  `daemon.endpoints.<family>.<request>.client.execute(handle, frame)`.
+- **Rust holds the one connection** — the address, the identity, the socket — through the SDK's own `tauri_proxy`
+  runner (the `tauri-proxy` feature): main.rs manages one `TauriProxy` and registers its eight commands, the four sends,
+  `wire_took`/`wire_dropped` (a frame crosses to the page only after it took the last) and
+  `wire_status`/`wire_reset`. The content security policy connects only to Tauri's IPC. The app's own commands that
+  make daemon requests — `frontend_open`, `files_download`, `files_upload` — take `relay: Option<Relay>`
+  (`diverge_sdk::shared::relay::Relay`), absent at Home, and put it on every frame they send (a frontend keeps it on
+  `Served`).
+- **The root and the config**: `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`, and
+  `<root>/viewer.yaml` read with the app's own type (`src-tauri/src/config/`, a folder as the daemon's and the
+  provider's `config` are). The CLI validates the same document with the crate beside the app,
+  `diverge-viewer/config`, which states the same fields; change both together:
+  `daemon.address`, `daemon.issuer`, `daemon.subject` — one of `<root>/identities/`, signed in by
+  `diverge identities login` — `daemon.identity`, the daemon's own identity, which must answer where it is stated,
+  and `daemon.redial`. A document naming no daemon stops the start.
+  `diverge viewer config get|set|patch` edits it.
+- **The link dials again by itself**: as `daemon.redial` says — every 5 seconds when absent, as the daemon redials a
+  provider, a whole number of seconds, or `never` — after a failed dial and after a connection that ended, dialling at
+  start. `wire_reset` dials at once. The rules are the SDK's (`diverge-sdk-rs/src/wire/proxy/link.rs`).
+- **The app keeps no files.**
 
 ## Run it
-`pnpm install` (from the repo root) then `cd diverge-viewer && pnpm tauri dev`. Every test, in one command:
-`pnpm test:all` (the app's Rust tests, again without the stand-in, the room crate with its container program, and
-vitest). A second copy on its own root: `DIVERGE_CONFIG=/some/root pnpm tauri dev`. A build from before files
-carried versions reads them all as damaged and writes over them: give it a copy of the folder, never this one.
+`pnpm install` (from the repo root) then `cd diverge-viewer && pnpm tauri dev`. The page is on port 1440 (HMR 1441), so
+it runs beside the viewer (1430). A second copy on its own root: `DIVERGE_CONFIG=/some/root pnpm tauri dev`.
 
-## Browser preview (reviews, cloud sessions — no Mac window needed)
-`pnpm dev` and open http://localhost:1430 in any browser. Outside Tauri the page plays back
-`src/preview/fixture.json`, a snapshot of what the stand-in daemon says (regenerate with
-`DIVERGE_EXPORT_PREVIEW=1 cargo test -p diverge-viewer export_preview_fixture`; a plain `cargo test` leaves it alone). Nothing runs there; the rail says so.
+## Working on it
+**`FEATURES.md` lists every feature, in plain words, and is kept current:** a change that adds, removes or
+alters one updates it in the same commit.
+Plain words, few of them, tl;dr first. **GitHub: this work lives on the `viewer-edge-graph` branch**, pushed after
+every chunk. **Nothing private enters this repo**, in files or commit messages.

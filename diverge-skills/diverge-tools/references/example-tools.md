@@ -138,7 +138,7 @@ diverge run standalone-tools frontend '{"tool":{"name":"chat"},"method":"GET","p
 diverge run agents connect list-tools '{"agent":{"name":"echo"}}'      # chat_read_messages, chat_send_message
 ```
 
-The page is meant for a browser; the viewer (diverge-world) opens a tool's frontend tab. The CLI's `frontend`
+The page is meant for a browser; the viewer (diverge-viewer) opens a tool's frontend tab. The CLI's `frontend`
 leaf is one HTTP request at a time and is enough to check that the page is served.
 
 Taking it down again:

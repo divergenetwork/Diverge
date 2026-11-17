@@ -8,24 +8,21 @@
     "dev": "pnpm run sdk && vite",
     "build": "pnpm run sdk && tsc && vite build",
     "tauri": "tauri",
-    "bindings": "cargo test -p diverge-viewer --quiet",
-    "typecheck": "pnpm run sdk && tsc --noEmit",
-    "test": "vitest run",
-    "test:all": "cargo test -p diverge-viewer && cargo test -p diverge-viewer --no-default-features && cargo test -p diverge-viewer-room --features image && vitest run"
+    "typecheck": "pnpm run sdk && tsc --noEmit"
   },
   "dependencies": {
     "@diverge/sdk": "workspace:*",
     "@tauri-apps/api": "^2.10.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "file-type": "19.6.0",
+    "micromark": "4.0.2",
+    "micromark-extension-gfm": "3.0.0",
+    "phaser": "^4.2.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^5.9.3",
-    "vite": "^8.0.1",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.1"
   }
 }

@@ -1,10 +1,10 @@
 {
-  "productName": "Diverge",
+  "productName": "Diverge Viewer",
   "version": "1.0.0",
   "identifier": "network.diverge.viewer.draft",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1430",
+    "devUrl": "http://localhost:1440",
     "beforeDevCommand": "pnpm run dev",
     "beforeBuildCommand": "pnpm run build"
   },
@@ -13,13 +13,13 @@
     "windows": [
       {
         "label": "main",
-        "title": "Diverge \u2014 draft five",
+        "create": false,
+        "title": "Diverge Viewer",
         "width": 1280,
         "height": 820,
         "minWidth": 960,
         "minHeight": 600,
-        "center": true,
-        "zoomHotkeysEnabled": true
+        "center": true
       }
     ],
     "security": {
@@ -29,6 +29,7 @@
         "style-src": "'self'",
         "img-src": "'self' data: blob:",
         "connect-src": "ipc: http://ipc.localhost",
+        "frame-src": "http://127.0.0.1:*",
         "object-src": "'none'",
         "base-uri": "'none'"
       }

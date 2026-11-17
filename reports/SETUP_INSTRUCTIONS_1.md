@@ -1,4 +1,4 @@
-# Diverge setup: a live diverge-world with two daemons on one machine
+# Diverge setup: a live diverge-viewer with two daemons on one machine
 
 This guide is for a coding agent (Claude Code) on a fresh machine that has this repository cloned. By the end you
 will have:
@@ -6,11 +6,11 @@ will have:
 - one **provider** and **two daemons** (A and B) running on one host
 - the agent images built into the provider's podman store
 - an agent running on daemon A, plus a tool on daemon B that daemon A's agent reaches across the daemons
-- **diverge-world** running in dev mode against daemon A, and optionally a second window against daemon B
+- **diverge-viewer** running in dev mode against daemon A, and optionally a second window against daemon B
 
 Every command, flag and request body here was checked against the source, the installed CLI's `--help`, and the
 CLI's `request-schema` output. Steps 1 to 8 and the CLI half of step 10, daemon to daemon, were also run live on
-macOS (Apple Silicon, podman 6.1.2). Not run there at this revision: diverge-world, which is steps 9 and 11 and
+macOS (Apple Silicon, podman 6.1.2). Not run there at this revision: diverge-viewer, which is steps 9 and 11 and
 what step 10 shows in it; and nothing was run on Linux. Section 9 lists everything that is uncertain. When this
 guide and the code disagree, the code wins.
 
@@ -34,9 +34,9 @@ Read sections 1 and 2 before running anything.
 | **Tools** | MCP-server containers. **Standalone tools** are created by hand and attached to agents. **Dependency tools** are declared by an agent image's `dependencies` argument and deployed by the daemon. **Connected standalone tools** are another daemon's standalone tools, held under a name on this daemon. |
 | **Accounts / roles / grants** | The daemon admits a client by identity. The `admins` listed in `daemon.yaml` hold every grant. Anyone else must be an **account** (`accounts create`) holding **roles** (`roles create`), and each role is a list of **grants** such as `{"agents":["create"]}` or `{"agents":{"actions":["list","get"],"within":"any"}}`. |
 | **Vault / secrets** | `vault insert {key, value}` stores a value. A template names the secrets it needs, and `agents create` binds each name to a vault key: `"secrets": {"OPENROUTER_API_KEY": "my-or-key"}`. Secrets are never arguments or environment variables. |
-| **Events** | The daemon's graph of who sent what to whom. diverge-world draws each one as a line. |
-| **Remote daemons and relay** | Daemon A records daemon B with `daemons add`, which returns a `DaemonId`. A reaches B only **through a provider both are connected to**, where B announces itself (an `announcement` on B's record of that provider) and accepts other daemons (`accept_daemons`, default `true`). Any request may carry `"relay": [<ids>]`: daemon A takes the first ID off and forwards the request to B, which serves it as the account A presents there. diverge-world uses this to open another daemon's board in a tab. |
-| **diverge-world** | A Tauri + Phaser app (`diverge-world/`). Its Rust side holds one connection to the daemon named by `<root>/viewer.yaml`, and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
+| **Events** | The daemon's graph of who sent what to whom. diverge-viewer draws each one as a line. |
+| **Remote daemons and relay** | Daemon A records daemon B with `daemons add`, which returns a `DaemonId`. A reaches B only **through a provider both are connected to**, where B announces itself (an `announcement` on B's record of that provider) and accepts other daemons (`accept_daemons`, default `true`). Any request may carry `"relay": [<ids>]`: daemon A takes the first ID off and forwards the request to B, which serves it as the account A presents there. diverge-viewer uses this to open another daemon's board in a tab. |
+| **diverge-viewer** | A Tauri + Phaser app (`diverge-viewer/`). Its Rust side holds one connection to the daemon named by `<root>/viewer.yaml`, and the page speaks the daemon protocol through `@diverge/sdk` (`diverge-sdk-js`). |
 
 ---
 
@@ -79,8 +79,8 @@ Read sections 1 and 2 before running anything.
 | `rustup target add x86_64-unknown-linux-musl` (or `aarch64-…`) | the container proxy | Built for `<host arch>-unknown-linux-musl`. |
 | `cargo install cargo-zigbuild` + `pip install ziglang` | the container proxy | `diverge-container-proxy/install.sh` refuses to run without `cargo-zigbuild`, and `ring` needs zig as the C toolchain for musl. A `zig` already on PATH also works. |
 | Python 3 | `pip install ziglang`, and the helper snippets below | On Windows the command is `python`; elsewhere `python3`. |
-| Node ≥ 22.18 and pnpm 10.x | diverge-world, diverge-sdk-js | The root `package.json` pins `pnpm@10.25.0`; `diverge-sdk-js` requires node `>=22.18.0`. |
-| Tauri v2 system prerequisites | diverge-world | Windows: MSVC C++ Build Tools and WebView2. Linux: webkit2gtk and the rest of Tauri's list. The Tauri CLI comes from `diverge-world`'s devDependencies (`pnpm tauri`). |
+| Node ≥ 22.18 and pnpm 10.x | diverge-viewer, diverge-sdk-js | The root `package.json` pins `pnpm@10.25.0`; `diverge-sdk-js` requires node `>=22.18.0`. |
+| Tauri v2 system prerequisites | diverge-viewer | Windows: MSVC C++ Build Tools and WebView2. Linux: webkit2gtk and the rest of Tauri's list. The Tauri CLI comes from `diverge-viewer`'s devDependencies (`pnpm tauri`). |
 | **podman** (6.x) | the provider, when it runs containers or keeps an image Store (this guide's does) | **Windows:** install the upstream MSI (6.1.4 is known to work). It installs to `%LOCALAPPDATA%\Programs\Podman`, which is **not on Git Bash's PATH**, so add it (step 0). Podman machines run on **WSL2**, so enable WSL2 first (`wsl --install --no-distribution` in an elevated shell, then reboot). **macOS:** podman with its machine support. **Linux:** rootful podman. See §8. |
 | `ssh` client on PATH | the provider | The provider opens an `ssh -R` tunnel into the podman machine on Windows and macOS. Windows 10+ ships OpenSSH. |
 | Network access during builds | `diverge-postgres`, images | `diverge-postgres` uses `postgresql_embedded` with the `bundled` feature, which fetches the Postgres archive at **build** time. Image builds pull pinned base images from docker.io. |
@@ -105,7 +105,7 @@ On Windows, run everything below in **Git Bash**. The install scripts are bash.
 | 14980 | daemon A (all interfaces) | `$A/daemon.yaml` `port`, `$A/cli.yaml` |
 | **14982** | daemon B | `$B/daemon.yaml` `port`, `$B/cli.yaml`. The value is this guide's choice; any free port works. |
 | random loopback | each daemon's Postgres | chosen at every start, so the two daemons never collide |
-| 1440 / 1441 | diverge-world Vite dev server / HMR | `diverge-world/vite.config.ts` (`strictPort: true`) |
+| 1440 / 1441 | diverge-viewer Vite dev server / HMR | `diverge-viewer/vite.config.ts` (`strictPort: true`) |
 | 1430 | diverge-viewer (the other app, not used here) | |
 
 | Path | What |
@@ -540,11 +540,11 @@ Other commands:
   name.
 - Add `--watch` to a list, or `"watch": true` to a `logs` body, to keep the stream open.
 
-### Step 9: diverge-world against daemon A (dev mode)
+### Step 9: diverge-viewer against daemon A (dev mode)
 
 ```bash
 cd "$REPO" && pnpm install
-cd "$REPO/diverge-world" && pnpm tauri dev > "$WORK/world-a.log" 2>&1    # background; first run compiles Rust
+cd "$REPO/diverge-viewer" && pnpm tauri dev > "$WORK/world-a.log" 2>&1    # background; first run compiles Rust
 ```
 
 What `pnpm tauri dev` does:
@@ -564,7 +564,7 @@ Check:
 Notes:
 
 - The app redials every 5 s, so starting it before the daemon is fine.
-- Don't run `pnpm typecheck` in `diverge-world` while the dev server runs. It rebuilds the SDK `dist` and breaks
+- Don't run `pnpm typecheck` in `diverge-viewer` while the dev server runs. It rebuilds the SDK `dist` and breaks
   the running page.
 - Editing Rust (`src-tauri` or `diverge-sdk-rs`) makes `tauri dev` rebuild and reopen the window.
 
@@ -666,20 +666,20 @@ What to expect:
   board, with every request carrying `relay: [ID_B]`.
 - That board shows what `github.12345.daemon-a`'s account sees on B.
 
-### Step 11 (optional): a second diverge-world against daemon B
+### Step 11 (optional): a second diverge-viewer against daemon B
 
-`diverge-world/CLAUDE.md` says `DIVERGE_CONFIG=/some/root pnpm tauri dev` runs a second copy, but Vite is pinned
+`diverge-viewer/CLAUDE.md` says `DIVERGE_CONFIG=/some/root pnpm tauri dev` runs a second copy, but Vite is pinned
 to port 1440 with `strictPort: true`. A second `pnpm tauri dev` will most likely fail to start its own Vite while
 the first runs (see §9). Two ways that avoid this:
 
 ```bash
 # (a) Reuse the first copy's dev server. A debug build loads http://localhost:1440.
 #     Run the app binary tauri dev built, against root B.
-cd "$REPO" && DIVERGE_CONFIG="$(cygpath -w "$B" 2>/dev/null || echo "$B")" ./target/debug/diverge-world > "$WORK/world-b.log" 2>&1
-#     (On Windows the binary is ./target/debug/diverge-world.exe.)
+cd "$REPO" && DIVERGE_CONFIG="$(cygpath -w "$B" 2>/dev/null || echo "$B")" ./target/debug/diverge-viewer > "$WORK/world-b.log" 2>&1
+#     (On Windows the binary is ./target/debug/diverge-viewer.exe.)
 
 # (b) A second tauri dev with its beforeDevCommand turned off, so it uses the running Vite.
-cd "$REPO/diverge-world" && DIVERGE_CONFIG="$(cygpath -w "$B" 2>/dev/null || echo "$B")" \
+cd "$REPO/diverge-viewer" && DIVERGE_CONFIG="$(cygpath -w "$B" 2>/dev/null || echo "$B")" \
   pnpm tauri dev --config '{"build":{"beforeDevCommand":""}}' > "$WORK/world-b.log" 2>&1
 ```
 
@@ -790,7 +790,7 @@ cleanly at the next start.
    provider: the relay, a tool made on B through it, and a connected tool called by A's agent all work as written.
    The requirements held as `diverge-daemon/src/judge/admit.rs` states them: an account (not an admin) for the
    presented identity — a record presenting an administrator that is no account is refused at once — an
-   announced and accepting B, and a shared provider. What diverge-world shows of it (the daemon node, its "Open"
+   announced and accepting B, and a shared provider. What diverge-viewer shows of it (the daemon node, its "Open"
    tab, B's board) was not run.
 2. **Which tool `connected-standalone-tools create` may name.** Its `tool` is "a standalone tool of the caller's"
    as B reads it, i.e. of `github.12345.daemon-a`'s account. That is why step 10 creates the tool on B *through the relay*. It
@@ -801,7 +801,7 @@ cleanly at the next start.
 4. **World B's view as `admin`.** Asked by the CLI as `admin` on B, `standalone-tools list` shows `notebook`, which
    `github.12345.daemon-a`'s account made: an administrator's listing shows other accounts' records. World B was not run
    against it.
-5. **The second diverge-world copy.** The CLAUDE.md recipe conflicts with Vite's `strictPort: 1440`. Workaround
+5. **The second diverge-viewer copy.** The CLAUDE.md recipe conflicts with Vite's `strictPort: 1440`. Workaround
    (a) in step 11 was run on macOS at an earlier revision, before the handshake changed, and worked: the debug
    binary started with `DIVERGE_CONFIG` set to root B opened B's board beside world A's. It was not run again
    since. Workaround (b) is reasoned from Tauri v2's behaviour (`--config` merges JSON) and was not run.

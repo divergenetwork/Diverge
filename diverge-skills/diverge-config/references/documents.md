@@ -219,7 +219,7 @@ knows an account only by its identity.
 
 ## viewer.yaml
 
-Read once, when the world viewer (`diverge-world`) starts. Holds no token.
+Read once, when the viewer (`diverge-viewer`) starts. Holds no token.
 
 ```yaml
 daemon:

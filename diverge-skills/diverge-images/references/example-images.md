@@ -219,4 +219,4 @@ Agent template body for `diverge run agents templates create`:
 ```
 
 Then `agents create`, attach the tools you want to call as it, and open its frontend (the agent's
-`frontend` commands in `diverge-agents`, or its frontend tab in diverge-world). Secrets: none.
+`frontend` commands in `diverge-agents`, or its frontend tab in diverge-viewer). Secrets: none.

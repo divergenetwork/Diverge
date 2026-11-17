@@ -1,6 +1,6 @@
 ---
 name: diverge
-description: The index and core of the Diverge skills. Load this FIRST for any task that touches Diverge — the `diverge` CLI, a Diverge daemon, provider, identities, agents, agent templates, standalone / dependency / connected tools, images, volumes, the vault, accounts, roles, grants, events, logs, remote daemons, relays, or the diverge-world viewer — and load it AGAIN after each such task finishes. It explains the concepts, the shape of the CLI (`diverge run <family> <request> [BODY]`, `request-schema`, `response-schema`, `--jq`, `--watch`), the rules that keep an agent from hurting itself, and which one of the other Diverge skills to load for the task at hand.
+description: The index and core of the Diverge skills. Load this FIRST for any task that touches Diverge — the `diverge` CLI, a Diverge daemon, provider, identities, agents, agent templates, standalone / dependency / connected tools, images, volumes, the vault, accounts, roles, grants, events, logs, remote daemons, relays, or the diverge-viewer viewer — and load it AGAIN after each such task finishes. It explains the concepts, the shape of the CLI (`diverge run <family> <request> [BODY]`, `request-schema`, `response-schema`, `--jq`, `--watch`), the rules that keep an agent from hurting itself, and which one of the other Diverge skills to load for the task at hand.
 ---
 
 # Diverge: index and core
@@ -44,7 +44,7 @@ into tasks and run the protocol once per task.
 | Events | The daemon's graph of who sent what to whom (accounts, agents, tools). |
 | Remote daemon | A record on this daemon of another daemon, reached through a provider both are connected to. Its id is a short base62 hash. |
 | Relay | `"relay": [<daemon id>, …]` in any request body: this daemon forwards the request to that remote daemon, which serves it as the account the record names. |
-| World viewer | `diverge-world`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). It reads `viewer.yaml`; it has no CLI commands beyond `diverge viewer config`. |
+| Viewer | `diverge-viewer`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). It reads `viewer.yaml`; it has no CLI commands beyond `diverge viewer config`. |
 
 ## The shape of the CLI
 

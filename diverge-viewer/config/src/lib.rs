@@ -26,9 +26,13 @@
 //! [`Error`] is why the root or the file could not be used.
 //!
 //! A crate of its own, beside the app, so that the CLI reads the
-//! document with the viewer's type without depending on the app: the
-//! daemon and the provider lend the CLI their types from their own
-//! crates, which are libraries; a Tauri app is not.
+//! document with a type that states it without depending on the app:
+//! the daemon and the provider lend the CLI their types from their own
+//! crates, which are libraries; a Tauri app is not. The app does not
+//! use this crate: it reads the document with the same type kept in
+//! its own `src-tauri/src/config/`, as the daemon and the provider
+//! keep theirs. The two state one document, and a change to either's
+//! fields is a change to both.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this crate and not through the file it lives in.

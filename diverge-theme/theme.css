@@ -1,10 +1,8 @@
-/* The theme: every colour Diverge's apps use, in one place, shared by the
-   viewer (diverge-viewer/src/main.tsx) and the world (diverge-world/src/
-   main.ts), each importing it first. Nothing else in an app names a colour;
-   it names one of these roles. Copy this file, change the values, and both
-   apps follow. Each app keeps its own page rules beside it (the viewer's
-   src/base.css, the world's src/main.css); the viewer's Rust reads the
-   themes' ids from here (src-tauri/src/actions.rs).
+/* The theme: every colour Diverge's app uses, in one place, imported first
+   by the viewer (diverge-viewer/src/main.ts). Nothing else in the app names
+   a colour; it names one of these roles. Copy this file, change the values,
+   and the app follows. The app keeps its own page rules beside it
+   (src/main.css).
 
    A theme is five colours, and nothing else:
      --ground   the background
@@ -18,8 +16,7 @@
    2026-09-14). A theme is one block, `[data-theme="<id>"]`, setting the five;
    plum and gold is the default, so its block is also plain `:root`. The
    picker's swatches set data-theme on themselves to show a theme's five while
-   another is on. Add a block and diverge-viewer/src/theme.test.ts checks it
-   with the rest.
+   another is on.
 
    The roles:
      --bg, --rail          the ground everything sits on
@@ -39,9 +36,8 @@
    uses reads at 7:1 or better (WCAG AAA), and each edge of something you can
    press or type into, each bar that marks where you are, each status dot,
    and the focus ring, reads at 3:1 against what's around it.
-   diverge-viewer/src/theme.test.ts checks every pair, in every theme block
-   in this file;
-   any break fails the build.
+   Nothing checks it since the test that did went with the app it was in:
+   a new theme block is checked by eye.
 
    Status colours (ok / bad) are NOT from the site — it never needed them.
    They are the only invented values here, and the product owner's to replace. */

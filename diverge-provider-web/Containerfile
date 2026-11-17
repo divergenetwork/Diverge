@@ -27,7 +27,6 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY diverge-provider-web/package.json diverge-provider-web/
 COPY diverge-sdk-js/package.json diverge-sdk-js/
 COPY diverge-viewer/package.json diverge-viewer/
-COPY diverge-world/package.json diverge-world/
 RUN pnpm install --frozen-lockfile --filter diverge-provider-web
 
 # What the site reads of the crate, and nothing else of it.

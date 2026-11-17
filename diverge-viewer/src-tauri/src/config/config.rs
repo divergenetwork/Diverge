@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Daemon;
 
-/// The whole of `viewer.yaml`, as Diverge World reads it: what the app
+/// The whole of `viewer.yaml`, as Diverge Viewer reads it: what the app
 /// is told.
 ///
 /// An absent file is this type's [`Default`]. An unknown key is an

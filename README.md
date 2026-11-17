@@ -18,4 +18,4 @@ Diverge runs agents and tools in containers, on your own machines.
 | `diverge-agents` | the agent loop images: `cc`, `codex`, `hermes`, `lone`, `openrouter`, `python` |
 | `diverge-tools` | the tool images: `identity-diverge-network` |
 | `diverge-examples` | example agent and tool images |
-| `diverge-world`, `diverge-viewer` | the desktop apps |
+| `diverge-viewer` | the desktop app |

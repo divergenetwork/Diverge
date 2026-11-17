@@ -159,9 +159,7 @@ CARGO_TOMLS=(
   diverge-examples/tools/memory/Cargo.toml
   diverge-examples/tools/taskboard/Cargo.toml
   diverge-viewer/config/Cargo.toml
-  diverge-viewer/room/Cargo.toml
   diverge-viewer/src-tauri/Cargo.toml
-  diverge-world/src-tauri/Cargo.toml
 )
 
 PACKAGE_JSONS=(
@@ -169,8 +167,6 @@ PACKAGE_JSONS=(
   diverge-sdk-js/package.json
   diverge-viewer/package.json
   diverge-viewer/src-tauri/tauri.conf.json
-  diverge-world/package.json
-  diverge-world/src-tauri/tauri.conf.json
 )
 
 # The specification's modules. The latest is the folder named after the
@@ -195,7 +191,6 @@ LITERALS=(
   diverge-sdk-rs/src/daemon/endpoints/info/server/response/info.rs
   diverge-sdk-rs/src/provider/endpoints/info/server/response/frame.rs
   diverge-skills/diverge-logs/SKILL.md
-  diverge-viewer/src-tauri/src/daemon/stub/store.rs
 )
 
 # ---------------------------------------------------------------------------
