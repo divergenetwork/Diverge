@@ -58,7 +58,7 @@ pub enum Error {
     /// absent from the document: the feature is off.
     Disabled {
         /// The section, as the document names it: `containers`,
-        /// `volumes`.
+        /// `volumes`, `images`.
         section: &'static str,
         /// The program whose document it is, as the CLI names it.
         program: Program,
@@ -73,16 +73,24 @@ pub enum Error {
     /// Podman's data at the storage path, or a volume store, could
     /// not be deleted, or not all of it.
     Wipe(relocate::Error),
-    /// A store's capacity was not written, because the volumes in
-    /// the store reserve more than it.
+    /// A capacity was not written, because what it is the capacity
+    /// of holds more than it.
     Capacity {
-        /// The store's index.
-        index: usize,
+        /// What holds it, as the error begins: "the volumes in store
+        /// 0 reserve", "the images clients own in the Store take".
+        holder: String,
         /// The capacity asked for, in bytes.
         capacity: u64,
-        /// What the volumes in the store reserve, in bytes.
+        /// What is held, in bytes.
         used: u64,
     },
+    /// A section was not made, because it is there already.
+    Enabled {
+        /// The section, as the document names it: `images`.
+        section: &'static str,
+    },
+    /// What a folder holds could not be measured.
+    Measure(String),
     /// A path could not be made absolute.
     Path(std::io::Error),
     /// A list of a document has nothing at the index a delete named.
@@ -141,10 +149,15 @@ impl fmt::Display for Error {
                 "the data is at the new path and the path is written, but the old path could not be cleared: {error}"
             ),
             Error::Wipe(error) => write!(f, "the data was not deleted, or not all of it, and nothing was written; asked again, the rest is: {error}"),
-            Error::Capacity { index, capacity, used } => write!(
+            Error::Capacity { holder, capacity, used } => write!(
                 f,
-                "the volumes in store {index} reserve {used} bytes, and its capacity cannot be {capacity}, which is less; nothing was written"
+                "{holder} {used} bytes, and the capacity cannot be {capacity}, which is less; nothing was written"
             ),
+            Error::Enabled { section } => write!(
+                f,
+                "`{section}` is enabled already, and nothing was written: change its settings one at a time"
+            ),
+            Error::Measure(why) => write!(f, "what is kept there could not be measured: {why}"),
             Error::Path(error) => write!(f, "the path could not be made absolute: {error}"),
             Error::NoItem { list, index, count: 0 } => {
                 write!(f, "`{list}` has nothing at index {index}: it is empty")
@@ -182,7 +195,7 @@ impl std::error::Error for Error {
             Error::Ours(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
-            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } => None,
+            Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Enabled { .. } | Error::Measure(_) => None,
         }
     }
 }

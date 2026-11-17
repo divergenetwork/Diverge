@@ -1,14 +1,15 @@
 //! One setting of the provider's document, read or written by itself:
 //! its port, its identity, whom it accepts, whom it dials, the
 //! registries it pulls from, where podman keeps its data, how much
-//! its image cache may hold, whether it runs containers, and the
-//! volumes it provides. Every one keeps the rules of
-//! [`setting`](super::setting).
+//! its image cache may hold, whether it runs containers, the volumes
+//! it provides and the stores it makes them in, and its image Store.
+//! Every one keeps the rules of [`setting`](super::setting).
 
 use std::path::{Path, PathBuf};
 
 use diverge_provider::config::Config;
 use diverge_provider::config::containers;
+use diverge_provider::config::images as images_section;
 use diverge_provider::config::outgoing;
 use diverge_provider::config::volumes as volumes_section;
 use diverge_provider::host::relocate;
@@ -16,7 +17,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Stores, Volumes};
+use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -273,7 +274,7 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
     }
 }
 
-/// `diverge provider volumes stores get|capacity|add|edit|delete`: the places
+/// `diverge provider volumes stores get|capacity_used|add|edit|delete`: the places
 /// a volume may be created in, `volumes.stores`. A store is a folder
 /// that holds every volume made in it, each an image file that
 /// reserves far more than it takes; so the list is worked on as the
@@ -286,7 +287,7 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
 /// - `add` puts the store after the last, and nothing on disk is
 ///   made: the provider makes the folder at its start. A path that is
 ///   a store's already is refused, the two compared resolved.
-/// - `capacity` prints, for each store, its capacity, what the
+/// - `capacity_used` prints, for each store, its capacity, what the
 ///   volumes in it reserve — `used`, the sum of their sizes, read
 ///   from the store's folder as the provider reads it — and the
 ///   difference, `free`. A volume reserves its whole size however
@@ -330,7 +331,7 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
             }
             write(text).await
         }
-        Stores::Capacity => {
+        Stores::CapacityUsed => {
             let config = read::<Config>(root, Which::Provider).await?;
             let mut text = Vec::new();
             for (index, store) in config.volumes.iter().flat_map(|section| &section.stores).enumerate() {
@@ -379,7 +380,7 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
             if let Some(capacity) = capacity {
                 let used = diverge_provider::host::volume_manager::reserved(&old).await;
                 if capacity < used {
-                    return Err(Error::Capacity { index, capacity, used });
+                    return Err(Error::Capacity { holder: format!("the volumes in store {index} reserve"), capacity, used });
                 }
             }
             let mut carried = None;
@@ -438,6 +439,169 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
             Ok(())
         }
     }
+}
+
+/// `diverge provider images …`: whether the provider keeps a Store,
+/// where, and how much it may hold. The `images` section is the
+/// provider keeping one, as `containers` is it running containers;
+/// its path is a folder, worked on as podman's storage path is; and
+/// its capacity is held to what the Store holds, as a volume store's
+/// is. By these rules:
+///
+/// - `enabled` prints `true` where the section is there.
+/// - `enable` makes the section with the path and the capacity
+///   given: neither has a default, so both are asked for. Where the
+///   section is there already it is refused, [`Error::Enabled`], and
+///   never changes a setting by the way. Nothing on disk is made: the
+///   provider makes the folder at its start.
+/// - `disable` removes the section. The folder and what is in it are
+///   left: a later `enable` with the same path finds the Store as it
+///   was.
+/// - `path get` prints the path resolved, or `null` where the
+///   section is absent.
+/// - `path set` moves the Store before it writes the path — see
+///   [`relocate::folder`] — by a rename where one filesystem holds
+///   both paths and by a checked copy, its source deleted only once
+///   the path is written, where two do; all or nothing, and taken up
+///   again where it was cut short. With `--no-transfer` the path is
+///   written and nothing is moved or deleted.
+/// - `path delete` deletes the Store's folder and every image in it,
+///   and writes nothing: the section and its path stay, and the
+///   provider makes an empty Store there at its next start.
+/// - `capacity get` prints the number, or `null` where the section
+///   is absent. `capacity set` is refused where the number is less
+///   than what the images clients own take, [`Error::Capacity`]: a
+///   Store evicts nothing that is owned, so it would start over its
+///   capacity. What is only cached does not count: the provider
+///   removes it whenever room is needed.
+/// - `capacity_used` prints the capacity, `used` — the bytes the
+///   owned images take, each blob counted once — `cached` — the
+///   bytes kept besides — and `free`, the capacity less `used`; or
+///   `null` where the section is absent. Read from the Store's
+///   folder as the provider reads it.
+/// - A setting's `set`, and `path delete`, are refused where the
+///   section is absent, [`Error::Disabled`]. Every write holds the
+///   provider's lock from its first step to its last.
+/// - Before the Store is moved or deleted the provider's machine is
+///   stopped where it runs: see [`relocate::released`].
+pub async fn images(root: &Path, action: Images) -> Result<(), Error> {
+    let absent = || Error::Disabled { section: "images", program: Program::Provider };
+    let place = |path: &Path| absolute(&diverge_provider::config::resolve(root, path));
+    let given = |path: PathBuf| if path.is_absolute() { absolute(&path) } else { Ok(path) };
+    match action {
+        Images::Enabled => line(&read::<Config>(root, Which::Provider).await?.images.is_some()).await,
+        Images::Enable { path, capacity } => {
+            let path = given(path)?;
+            provider(root, |config| {
+                if config.images.is_some() {
+                    return Err(Error::Enabled { section: "images" });
+                }
+                config.images = Some(images_section::Images { path, capacity });
+                Ok(())
+            })
+            .await
+        }
+        Images::Disable => {
+            provider(root, |config| {
+                config.images = None;
+                Ok(())
+            })
+            .await
+        }
+        Images::Path(ImagesPath::Get) => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            match &config.images {
+                Some(section) => write(format!("{}\n", place(&section.path)?.display()).into_bytes()).await,
+                None => line(&serde_json::Value::Null).await,
+            }
+        }
+        Images::Path(ImagesPath::Set { path, no_transfer }) => {
+            let held = hold(root, Program::Provider).await?;
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            let old = place(&config.images.as_ref().ok_or_else(absent)?.path)?;
+            let written = given(path)?;
+            let new = place(&written)?;
+            let carried = if old == new || no_transfer {
+                None
+            } else {
+                released(root, &config).await?;
+                Some(relocate::folder(&old, &new).await.map_err(Error::Relocate)?)
+            };
+            config.images.as_mut().ok_or_else(absent)?.path = written;
+            let stored = match serde_yaml_ng::to_string(&config) {
+                Ok(yaml) => document::write(root, Which::Provider, &yaml).await,
+                Err(error) => Err(document::Error::Serialize(error)),
+            };
+            if let Err(error) = stored {
+                if let Some(carried) = carried {
+                    carried.undo().await;
+                }
+                return Err(error.into());
+            }
+            if let Some(carried) = carried {
+                carried.finish().await.map_err(Error::Leftover)?;
+            }
+            drop(held);
+            Ok(())
+        }
+        Images::Path(ImagesPath::Delete) => {
+            let held = hold(root, Program::Provider).await?;
+            let config = read::<Config>(root, Which::Provider).await?;
+            let folder = place(&config.images.as_ref().ok_or_else(absent)?.path)?;
+            released(root, &config).await?;
+            relocate::remove(&folder).await.map_err(Error::Wipe)?;
+            drop(held);
+            Ok(())
+        }
+        Images::Capacity(ImagesCapacity::Get) => {
+            line(&read::<Config>(root, Which::Provider).await?.images.map(|section| section.capacity)).await
+        }
+        Images::Capacity(ImagesCapacity::Set { value }) => {
+            let held = hold(root, Program::Provider).await?;
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            let folder = place(&config.images.as_ref().ok_or_else(absent)?.path)?;
+            let (used, _) = kept(&folder).await?;
+            if value < used {
+                return Err(Error::Capacity { holder: "the images clients own in the Store take".to_string(), capacity: value, used });
+            }
+            config.images.as_mut().ok_or_else(absent)?.capacity = value;
+            let yaml = serde_yaml_ng::to_string(&config).map_err(document::Error::Serialize)?;
+            document::write(root, Which::Provider, &yaml).await?;
+            drop(held);
+            Ok(())
+        }
+        Images::CapacityUsed => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let Some(section) = &config.images else {
+                return line(&serde_json::Value::Null).await;
+            };
+            let (used, cached) = kept(&place(&section.path)?).await?;
+            line(&serde_json::json!({
+                "capacity": section.capacity,
+                "used": used,
+                "cached": cached,
+                "free": section.capacity.saturating_sub(used),
+            }))
+            .await
+        }
+    }
+}
+
+/// What the Store in `folder` holds, in bytes: what the images
+/// clients own take, and what is kept besides. Asked of the
+/// provider's own [`Store`](diverge_provider::host::image_manager::Store),
+/// opened on the folder with no provider running: every blob once,
+/// and of those the ones an ownership record reaches. A folder that
+/// is not there holds nothing.
+async fn kept(folder: &Path) -> Result<(u64, u64), Error> {
+    use diverge_provider::host::image_manager::Store;
+    // A capacity that nothing passes, so that the room left says what
+    // is owned by what it lacks.
+    let store = Store::new(&images_section::Images { path: folder.to_path_buf(), capacity: u64::MAX });
+    let every = store.used().await.map_err(|error| Error::Measure(error.to_string()))?;
+    let room = store.room().await.map_err(|error| Error::Measure(error.to_string()))?;
+    let owned = u64::MAX - room;
+    Ok((owned, every.saturating_sub(owned)))
 }
 
 /// Nothing holding an image of any store, before one is moved or

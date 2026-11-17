@@ -72,6 +72,9 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Provider(Server::Volumes(action))) => {
             super::provider::volumes(&root, action).await
         }
+        Some(Command::Provider(Server::Images(action))) => {
+            super::provider::images(&root, action).await
+        }
         Some(Command::Viewer(Document::Config(action))) => {
             super::config::run(&root, Which::Viewer, action).await
         }

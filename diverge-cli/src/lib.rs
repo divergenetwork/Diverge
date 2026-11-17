@@ -44,8 +44,10 @@
 //! `provider podman image_cache_disk get|set`, and
 //! `provider containers enabled|enable|disable` with its two
 //! settings, and `provider volumes enabled|enable|disable` with
-//! `fixed get|add|delete` and `stores get|capacity|add|edit|delete`, an edit
-//! of a store's path moving the store and a delete deleting it; see
+//! `fixed get|add|delete` and `stores get|capacity_used|add|edit|delete`, an edit
+//! of a store's path moving the store and a delete deleting it, and
+//! `provider images enabled|enable|disable` with `path get|set|delete`,
+//! `capacity get|set` and `capacity_used`; see
 //! [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own

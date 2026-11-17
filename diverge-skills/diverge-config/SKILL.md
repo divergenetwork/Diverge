@@ -213,10 +213,20 @@ diverge provider volumes fixed add --name datasets --path /mnt/datasets --bytes 
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory
 diverge provider volumes stores get                         # {"index":0,"path":"provider/volumes","capacity":107374182400}   one line each; nothing when none
 diverge provider volumes stores add --path provider/volumes --capacity 107374182400
-diverge provider volumes stores capacity                    # {"index":0,"capacity":107374182400,"used":21474836480,"free":85899345920}   one line per store
+diverge provider volumes stores capacity_used               # {"index":0,"capacity":107374182400,"used":21474836480,"free":85899345920}   one line per store
 diverge provider volumes stores edit 0 --capacity 214748364800   # just the number; refused if below `used`
 diverge provider volumes stores edit 0 --path D:\divergeolumes # MOVES the store and every volume in it, then writes the path
 diverge provider volumes stores delete 0                    # DELETES the folder and every volume in it, then the entry
+diverge provider images enabled                             # true or false: does this provider keep an image Store
+diverge provider images enable --path provider/images --capacity 107374182400
+diverge provider images disable                             # removes the section; the folder and its images are left on disk
+diverge provider images path get                            # the resolved, absolute path, or null while disabled
+diverge provider images path set D:\diverge\images          # MOVES the Store there, then writes the path
+diverge provider images path set D:\diverge\images --no-transfer   # writes the path, moves nothing: an empty Store at the new place
+diverge provider images path delete                         # DELETES the Store's folder and every image in it; the section stays
+diverge provider images capacity get                        # 107374182400, or null while disabled
+diverge provider images capacity set 214748364800           # refused if below `used`
+diverge provider images capacity_used                       # {"capacity":…,"used":…,"cached":…,"free":…}, or null while disabled
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -250,7 +260,7 @@ diverge provider volumes stores delete 0                    # DELETES the folder
   created in it (each a large, mostly empty image file):
   - `stores add` only writes the entry; the provider makes the folder at its next start. It refuses a path
     that is already a store's.
-  - `stores capacity` shows, per store, `capacity`, `used` and `free` in bytes. `used` is what the volumes
+  - `stores capacity_used` shows, per store, `capacity`, `used` and `free` in bytes. `used` is what the volumes
     in the store *reserve* (the sum of their sizes), which is what counts against the capacity; it is not
     how much disk the folder takes, since a volume reserves its whole size however little it holds.
   - `stores edit <index> --capacity <BYTES>` only writes the number. It is refused when the number is less
@@ -268,7 +278,26 @@ diverge provider volumes stores delete 0                    # DELETES the folder
     machine at the next start, which empties podman's image cache.
   - The daemon's tags for the volumes are unaffected by a move. After a delete, the tags of the deleted
     volumes are cleaned up the next time the daemon connects to the provider.
-- Everything else in `provider.yaml` (`images`, `messages`) is still changed
+- **`images`** is the provider's Store, where clients build and push images. It is on when its section is
+  in the file.
+  - `images enable` needs both `--path` and `--capacity`: neither has a default. It is refused if `images` is
+    already enabled; change one setting at a time instead.
+  - `images disable` only removes the section. The Store's folder and images stay on disk, and enabling again
+    with the same path finds them.
+  - `images path set` moves the Store exactly as `podman storage_path set` moves podman's data (rename on one
+    drive, checked copy across drives, all or nothing, rerun to resume). The new path must not exist or must be
+    empty. `--no-transfer` writes the path and leaves the old Store where it is.
+  - `images path delete` deletes the folder and every image in it, with no undo and no prompt. The section and
+    its path stay, so the provider starts with an empty Store there.
+  - `images capacity_used`: `used` is what the images clients **own** take (each blob counted once); `cached`
+    is what is kept besides (images clients supplied to a run), which the provider removes whenever it needs
+    room; `free` is `capacity` minus `used`.
+  - `images capacity set` is refused below `used`. Cached bytes do not block it.
+  - A `get` or `capacity_used` prints `null` while `images` is disabled; a `set` or `path delete` is refused
+    then.
+  - Enabling `images` makes the provider need podman at its next start (it builds with it). On macOS a Store
+    moved outside the folders the machine sees makes the provider remake its machine at the next start.
+- Everything else in `provider.yaml` (`messages`) is still changed
   with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
   provider runs**: stop it first.
 

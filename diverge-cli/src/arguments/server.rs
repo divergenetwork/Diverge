@@ -47,6 +47,102 @@ pub enum Server {
     /// `provider.yaml`.
     #[command(subcommand)]
     Volumes(Volumes),
+    /// Turn the provider's image Store on or off, or read or write
+    /// one setting of it, `images` in `provider.yaml`.
+    #[command(subcommand)]
+    Images(Images),
+}
+
+/// What is done to the provider's `images` section: see
+/// [`provider`](crate::cli::provider). The section there is the
+/// provider keeping a Store — the images clients build and push on
+/// it — and the section absent is it keeping none.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Images {
+    /// Print whether the provider keeps a Store: `true` or `false`.
+    Enabled,
+    /// Have the provider keep a Store: the section made, with the
+    /// path and the capacity given, neither of which has a default.
+    /// Refused where the section is there already — change it with
+    /// `path set` and `capacity set` — and while the provider is
+    /// running on the root.
+    Enable {
+        /// The folder the Store is kept in: absolute, or relative to
+        /// the root. Made by the provider at its start.
+        #[arg(long)]
+        path: std::path::PathBuf,
+        /// The most the Store may hold, in BYTES.
+        #[arg(long)]
+        capacity: u64,
+    },
+    /// Have the provider keep no Store: the section removed, and its
+    /// settings with it. The folder and every image in it are left as
+    /// they are. Refused while the provider is running on the root.
+    Disable,
+    /// Read where the Store is kept, move it, or delete it,
+    /// `images.path`.
+    #[command(subcommand)]
+    Path(ImagesPath),
+    /// Read or write the most the Store may hold, `images.capacity`.
+    #[command(subcommand)]
+    Capacity(ImagesCapacity),
+    /// Print how much of the Store is taken:
+    /// `{"capacity":…,"used":…,"cached":…,"free":…}`, in BYTES, or
+    /// `null` where the section is absent. `used` is what the images
+    /// clients own take, which is the least `capacity set` may set;
+    /// `cached` is what is kept besides, which the provider removes
+    /// whenever room is needed.
+    #[command(name = "capacity_used")]
+    CapacityUsed,
+}
+
+/// What is done to the provider's `images.path`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum ImagesPath {
+    /// Print the path, resolved: absolute, a relative one taken from
+    /// the root. `null` where the section is absent.
+    Get,
+    /// Move the Store to the path and write it. Refused where the
+    /// section is absent, and while the provider is running on the
+    /// root. The Store is moved whole — renamed where the two paths
+    /// are on one filesystem, copied, checked and the old copy
+    /// deleted where they are not — and if it cannot be, nothing is
+    /// moved and the path is not written.
+    Set {
+        /// The path: absolute, or relative to the root. It must not
+        /// be there, or be empty.
+        #[arg(value_name = "PATH")]
+        path: std::path::PathBuf,
+        /// Write the path and move nothing: the Store is left at the
+        /// old path, and the provider starts with an empty one at the
+        /// new.
+        #[arg(long)]
+        no_transfer: bool,
+    },
+    /// Delete the Store's folder and EVERY IMAGE IN IT, so that the
+    /// provider starts with an empty Store. Not undone. The path and
+    /// the section stay as they are written. Refused while the
+    /// provider is running on the root.
+    Delete,
+}
+
+/// What is done to the provider's `images.capacity`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum ImagesCapacity {
+    /// Print the number of bytes, or `null` where the section is
+    /// absent.
+    Get,
+    /// Write the number of bytes. Refused where the section is
+    /// absent, where it is less than what the images clients own
+    /// take now — see `capacity_used` — and while the provider is
+    /// running on the root.
+    Set {
+        /// The most the Store may hold, in BYTES.
+        #[arg(value_name = "BYTES")]
+        value: u64,
+    },
 }
 
 /// What is done to the provider's `volumes` section: see
@@ -97,7 +193,8 @@ pub enum Stores {
     /// what counts against `capacity`, and is the least an `edit` may
     /// set the capacity to. Nothing is printed where there is no
     /// store.
-    Capacity,
+    #[command(name = "capacity_used")]
+    CapacityUsed,
     /// Add a store, after the last. Refused where the section is
     /// absent — enable it first — where the path is a store's
     /// already, and while the provider is running on the root. The
@@ -126,7 +223,8 @@ pub enum Stores {
         #[arg(long, required_unless_present = "capacity")]
         path: Option<std::path::PathBuf>,
         /// The new capacity, in BYTES. Refused where it is less than
-        /// what the volumes in the store reserve now: see `capacity`.
+        /// what the volumes in the store reserve now: see
+        /// `capacity_used`.
         #[arg(long)]
         capacity: Option<u64>,
     },
