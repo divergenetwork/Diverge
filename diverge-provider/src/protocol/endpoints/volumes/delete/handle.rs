@@ -95,6 +95,10 @@ where
         Ok(None) => return Err(response::Frame::Error(refusal::unknown(name))),
         Err(error) => return Err(response::Frame::Error(error.into())),
     };
+    // Before the hold: it is so whoever holds the volume.
+    if volume.provided() {
+        return Err(response::Frame::Provided);
+    }
     if let Err(held) = volume.lock().await {
         return Err(match held {
             Held::Mounted => response::Frame::Mounted,

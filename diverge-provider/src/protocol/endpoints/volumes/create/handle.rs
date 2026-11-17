@@ -70,7 +70,9 @@ pub async fn handle<M>(
         scope.send_response_finish().await;
         return;
     }
-    let frame = if capabilities.volume(request.mode).is_none() {
+    // A mode that is not kept has no `create` either, so the one
+    // test answers both.
+    let frame = if !capabilities.volume(request.mode).is_some_and(|mode| mode.create) {
         response::Frame::ModeUnsupported
     } else {
         match manager

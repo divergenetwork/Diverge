@@ -146,6 +146,13 @@ pub trait Volume: Send + Sync {
     /// changing it meanwhile.
     fn mode(&self) -> impl Future<Output = Mode> + Send;
 
+    /// Whether the provider provides the volume as it is: what its
+    /// listing says as `provided`. One that is, is neither edited nor
+    /// deleted by a client, and the handlers of those two answer
+    /// `Provided` on this, before they ask who holds the volume. A
+    /// fact of the volume for its whole life.
+    fn provided(&self) -> bool;
+
     /// Give one shared hold of `holder`'s kind back, as
     /// [`hold::release`](super::hold::release) decides: `true` is one
     /// holder fewer, and there was one; `false` is a volume with no

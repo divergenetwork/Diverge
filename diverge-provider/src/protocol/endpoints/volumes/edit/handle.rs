@@ -125,6 +125,11 @@ where
         Ok(None) => return Err(response::Frame::Error(refusal::unknown(name))),
         Err(error) => return Err(response::Frame::Error(error.into())),
     };
+    // Before the mode and before the hold: it is so whatever was
+    // asked and whoever holds the volume.
+    if volume.provided() {
+        return Err(response::Frame::Provided);
+    }
     if mode_unsupported {
         return Err(response::Frame::ModeUnsupported);
     }

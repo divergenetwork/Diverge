@@ -54,13 +54,9 @@ pub fn capabilities(config: &Config) -> Capabilities {
             store: config.images.is_some().then_some(StoreCapabilities { build: true }),
             registries: registries(config).to_vec(),
         },
-        volumes_persistent: if kept(config, Mode::Persistent) { PERSISTENT } else { VolumeCapabilities::default() },
-        volumes_ephemeral: match (kept(config, Mode::Ephemeral), config.containers.is_some()) {
-            (true, true) => ANY,
-            (true, false) => UNSERVED,
-            (false, _) => VolumeCapabilities::default(),
-        },
-        volumes_read_only: if kept(config, Mode::ReadOnly) { ANY } else { VolumeCapabilities::default() },
+        volumes_persistent: mode(config, Mode::Persistent, PERSISTENT),
+        volumes_ephemeral: mode(config, Mode::Ephemeral, if config.containers.is_some() { ANY } else { UNSERVED }),
+        volumes_read_only: mode(config, Mode::ReadOnly, ANY),
         messages: config.messages.map(|messages| MessagesCapabilities { messages: messages.messages, seconds: messages.seconds }),
     }
 }
@@ -72,21 +68,40 @@ pub fn registries(config: &Config) -> &[String] {
     if config.podman_in_use() { &config.podman.registries } else { &[] }
 }
 
-/// Whether the `volumes` section keeps volumes of `mode`: a store, in
-/// which a volume of any mode may be created, or a fixed volume of
-/// the mode. See [`capabilities`].
-fn kept(config: &Config, mode: Mode) -> bool {
+/// The object of one volume mode, `held` being what the host does
+/// with a volume of the mode once there is one. By the two lists of
+/// the `volumes` section, each of which is empty where it is absent
+/// and where the whole section is:
+///
+/// | `stores` | `fixed` | the mode's object |
+/// |---|---|---|
+/// | one or more | any | `held`, with `create`: a volume of any mode may be made in a store |
+/// | none | one of the mode, or more | `held`, without `create`: the mode is kept, and nothing is made |
+/// | none | none of the mode | every member `false`: the mode is not kept |
+///
+/// So `create` is the stores' alone, and the same in every mode; a
+/// provider with fixed volumes and no store holds out the volumes it
+/// has and makes none; and one with neither list — the section there
+/// or not — keeps no volume at all.
+fn mode(config: &Config, mode: Mode, held: VolumeCapabilities) -> VolumeCapabilities {
     let Some(volumes) = &config.volumes else {
-        return false;
+        return VolumeCapabilities::default();
     };
-    let stores = volumes.stores.as_ref().is_some_and(|stores| !stores.is_empty());
-    let fixed = volumes.fixed.iter().flatten().any(|fixed| fixed.mode == mode);
-    stores || fixed
+    if !volumes.stores.is_empty() {
+        return VolumeCapabilities { create: true, ..held };
+    }
+    if volumes.fixed.iter().any(|fixed| fixed.mode == mode) {
+        return held;
+    }
+    VolumeCapabilities::default()
 }
 
 /// The persistent mode: mounted by any number of containers at once,
-/// FUSE served once and never beside a container.
+/// FUSE served once and never beside a container. `create` is not
+/// said here, in this or the two after: [`mode`] says it, by the
+/// stores.
 const PERSISTENT: VolumeCapabilities = VolumeCapabilities {
+    create: false,
     mount: true,
     fuse_serve: true,
     mount_many: true,
@@ -97,6 +112,7 @@ const PERSISTENT: VolumeCapabilities = VolumeCapabilities {
 /// The ephemeral mode on a provider that runs no containers: mounted
 /// as the mode allows, and never FUSE served, there being no scratch.
 const UNSERVED: VolumeCapabilities = VolumeCapabilities {
+    create: false,
     mount: true,
     fuse_serve: false,
     mount_many: true,
@@ -106,6 +122,7 @@ const UNSERVED: VolumeCapabilities = VolumeCapabilities {
 
 /// A mode held by any number of containers and FUSE serves at once.
 const ANY: VolumeCapabilities = VolumeCapabilities {
+    create: false,
     mount: true,
     fuse_serve: true,
     mount_many: true,

@@ -98,9 +98,9 @@ impl VolumeManager {
         let volumes = volumes.unwrap_or_default();
         VolumeManager {
             resizable,
-            reservation: Arc::new(Reservation::new(volumes.stores.unwrap_or_default())),
+            reservation: Arc::new(Reservation::new(volumes.stores)),
             scratch: Arc::new(scratch),
-            fixed: volumes.fixed.unwrap_or_default(),
+            fixed: volumes.fixed,
             hooks_dir,
             started: SystemTime::now()
                 .duration_since(UNIX_EPOCH)

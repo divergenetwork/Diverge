@@ -28,10 +28,10 @@ pub async fn load(root: &Path) -> Result<Config, Error> {
     };
     config.podman.storage_path = resolve(root, &config.podman.storage_path);
     if let Some(volumes) = &mut config.volumes {
-        for store in volumes.stores.iter_mut().flatten() {
+        for store in volumes.stores.iter_mut() {
             store.path = resolve(root, &store.path);
         }
-        for fixed in volumes.fixed.iter_mut().flatten() {
+        for fixed in volumes.fixed.iter_mut() {
             fixed.path = resolve(root, &fixed.path);
         }
     }

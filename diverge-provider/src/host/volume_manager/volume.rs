@@ -188,6 +188,7 @@ impl Volume {
                     bytes: meta.len(),
                     created: meta.created().or_else(|_| meta.modified()).map(seconds).unwrap_or(0),
                     mode: self.mode().await,
+                    provided: false,
                 })
             }
             Place::Fixed { root, bytes, started } => {
@@ -197,6 +198,7 @@ impl Volume {
                     bytes: *bytes,
                     created: meta.created().map(seconds).unwrap_or(*started),
                     mode: self.mode().await,
+                    provided: true,
                 })
             }
         }
@@ -453,6 +455,12 @@ fn seconds(time: SystemTime) -> u64 {
 
 impl volume::Volume for Volume {
     type Error = Error;
+
+    /// A fixed volume of the configuration is the one the provider
+    /// provides; a stored one a client made.
+    fn provided(&self) -> bool {
+        matches!(self.inner.place, Place::Fixed { .. })
+    }
 
     /// The mode as of now, read under the hold the handler took.
     async fn mode(&self) -> Mode {

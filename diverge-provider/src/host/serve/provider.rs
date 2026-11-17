@@ -296,7 +296,7 @@ async fn ready(config: &Config, dir: &Path) -> Result<(), Error> {
     let Some(volumes) = &config.volumes else {
         return Ok(());
     };
-    for store in volumes.stores.iter().flatten() {
+    for store in volumes.stores.iter() {
         if store.capacity == 0 {
             return Err(Error::Capacity(store.path.clone()));
         }
@@ -305,7 +305,7 @@ async fn ready(config: &Config, dir: &Path) -> Result<(), Error> {
             .map_err(|source| Error::Directory(store.path.clone(), source))?;
     }
     let mut names = HashSet::new();
-    for fixed in volumes.fixed.iter().flatten() {
+    for fixed in volumes.fixed.iter() {
         if !tokio::fs::metadata(&fixed.path).await.is_ok_and(|found| found.is_dir()) {
             return Err(Error::FixedMissing(fixed.path.clone()));
         }
