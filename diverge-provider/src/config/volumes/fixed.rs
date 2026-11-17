@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 
 /// A volume that exists already, under a name the provider chose.
 ///
+/// It is what the protocol calls a provided volume: a listing reports
+/// it `provided`, an edit or a delete of it is answered `Provided`,
+/// and a client does with it only what it does with any volume that
+/// is there — mount it, FUSE serve it, read it, write it. The
+/// protocol says nothing of its being a directory named here.
+///
 /// Of what a listing reports beside the name, `bytes` and `mode`
 /// are declared here and `created` is read: the directory's birth
 /// time, or the provider's own start where the filesystem records
@@ -35,7 +41,7 @@ pub struct Fixed {
     /// ends; `ephemeral`, every container writes into an overlay
     /// podman discards, and the directory is never written;
     /// `read_only`, nothing writes it. Declared, like the size, and
-    /// never edited: a fixed volume refuses every edit. A fixed volume
+    /// never edited: an edit of a fixed volume is answered `Provided`. A fixed volume
     /// in `ephemeral` mode is mounted by containers and not served
     /// over FUSE, this provider having no scratch layer over a
     /// directory.

@@ -40,11 +40,16 @@ component is empty, `.` or `..`, or holds `/`.
 
 - **Stored volume** — one a client created. On the provider it is an ext4 filesystem in a sparse
   image file; its size is *reserved*, not taken. It can be resized, re-moded and deleted.
-- **Fixed volume** — a directory the provider's own configuration names (`volumes.fixed` in
-  `provider.yaml`). It appears in listings like any other, with a declared size and mode, but the
-  provider refuses every edit and never deletes it. A provider may list it only to some identities.
-- A provider creates volumes only if its configuration has `volumes.stores`; with none, a create is
-  answered `unsupported` or `insufficient_capacity`.
+- **Provided volume** — one the provider provides as it is, which no client made. A list shows it
+  with `"provided": true` (the member is absent on any other volume). Its size and mode cannot be
+  edited and it cannot be deleted: `volumes edit` and `volumes delete` answer `"provided"`, and
+  asking again changes nothing. Everything else works as on any volume: mount it, FUSE serve it,
+  read, write, stat and tag it. On our own provider these are the directories its configuration
+  names (`volumes.fixed` in `provider.yaml`); it may list one only to some identities.
+- **Whether a provider creates volumes** is its capability, per mode: `create` in the mode's object
+  (see "What the provider's capabilities mean"). A provider may keep volumes of a mode and create
+  none; `volumes create` is then answered `unsupported` without the provider being asked. Our own
+  provider creates volumes only if its configuration has `volumes.stores`.
 
 **Mode** is a fact of the volume, set at create and changed only by an edit:
 
@@ -83,7 +88,7 @@ component, not starting with `.`, with no `/`, `\` or NUL, and not a fixed volum
 | `"no_provider"` | no provider on record has that identity |
 | `"exists"` | that provider already lists a volume of the name; nothing changed |
 | `"insufficient_capacity"` | the provider cannot reserve that many bytes; ask smaller |
-| `"unsupported"` | the provider keeps no volumes, or none of that mode; ask another provider |
+| `"unsupported"` | the provider keeps no volumes, or creates none of that mode (the mode's `create` is not among its capabilities); ask another provider |
 | `{"error":…}` | could not ask (provider not connected) or the provider refused (bad name, under 4 MiB) |
 
 Grant: `{"volumes":["create"]}`.
@@ -144,7 +149,8 @@ nothing asked.
 | `"insufficient_capacity"` | the provider cannot reserve that many bytes |
 | `"content_too_large"` | the volume holds more than the smaller size asked |
 | `"held"` | a running container has it, or a download/upload/transfer is on it |
-| `{"error":…}` | a patch that does not apply, a fixed volume, under 4 MiB, a provider failure |
+| `"provided"` | the provider provides this volume as it is (`"provided": true` in a list): its size and mode are not edited, ever |
+| `{"error":…}` | a patch that does not apply, under 4 MiB, a provider failure |
 
 Changing the mode changes what every existing mount of the volume means: a mount states the mode it
 expects, and a mismatch is a start error (see mounting). Grant: `edit`.
@@ -461,8 +467,6 @@ schemas, and the CLI refuses to put the request. Admins hold everything. Shapes,
 
 - No request was run live while writing this (the daemon was down); answers are from the SDK's
   response types, the daemon's handlers and the CLI's `response-schema`.
-- What the daemon answers for an edit or delete of a **fixed** volume: the provider refuses it, and
-  it is expected to surface as `{"error":…}`.
 - Whether remaining slot numbers shift after `vault delete` with a `slot`.
 - The exact text of the create's secrets error for an unbound name or an empty key.
 - The largest size a volume may have (a resize refuses sizes whose 4 KiB block count exceeds 32

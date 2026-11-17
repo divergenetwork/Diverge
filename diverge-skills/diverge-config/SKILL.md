@@ -205,6 +205,12 @@ diverge provider containers container_overlay_disk get      # 34359738368, or nu
 diverge provider containers container_overlay_disk set 68719476736
 diverge provider containers memory get                      # 8589934592, or null while containers are disabled
 diverge provider containers memory set 17179869184
+diverge provider volumes enabled                            # true or false: is the `volumes` section in the file
+diverge provider volumes enable                             # adds the section, with nothing in it
+diverge provider volumes disable                            # removes the section and both its lists
+diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/mnt/datasets","bytes":…,"mode":"read_only"}   one line each; nothing when none
+diverge provider volumes fixed add --name datasets --path /mnt/datasets --bytes 107374182400 --mode read_only
+diverge provider volumes fixed delete 0                     # removes the entry, never the directory
 ```
 
 - `incoming` works as the daemon's `admins` does: `add` appends and refuses an identity listed already;
@@ -224,7 +230,18 @@ diverge provider containers memory set 17179869184
   ``Error: `containers` is disabled, and nothing was written: enable it first, with `diverge provider containers enable` ``.
 - Enabling containers makes the provider need podman and the container proxy binary at its next start.
   `memory` also sizes the podman machine on macOS; elsewhere it only caps what containers may reserve.
-- Everything else in `provider.yaml` (`volumes`, `images`, `messages`) is still changed
+- **`volumes`**: the section holds two lists, `stores` (where volumes are created) and `fixed` (volumes the
+  provider provides as they are). The provider keeps volumes when either list has something; a section with
+  both empty keeps none, the same as no section. So `volumes enabled` says the section is in the file, not
+  that the provider keeps volumes.
+- `volumes fixed get` prints nothing when the section is absent or the list is empty; that is not an error.
+  `fixed add` and `fixed delete` are refused while the section is absent (`volumes enable` first).
+- `fixed add` takes `--name`, `--path`, `--bytes` (plain bytes, a declared size, not measured), `--mode`
+  (`persistent`, `ephemeral` or `read_only`) and optionally `--authorize-hook`. It refuses a name already
+  listed. The path must already be a directory by the time the provider starts, or it refuses to start.
+- A fixed volume shows to clients as `"provided": true` and cannot be edited or deleted by them.
+- **`volumes.stores` has no command yet**; change it with `diverge provider config set|patch`.
+- Everything else in `provider.yaml` (`volumes.stores`, `images`, `messages`) is still changed
   with `diverge provider config set|patch`. Those hold the provider's lock too, so they are **refused while the
   provider runs**: stop it first.
 

@@ -125,6 +125,7 @@ A provider states, per mode, what it does with a volume of that mode. See them i
 
 | capability | `true` means | when `false` |
 |---|---|---|
+| `create` | a volume of the mode may be created on the provider | `volumes create` in that mode answers `unsupported`; the provider may still keep volumes of the mode, each one `provided` |
 | `mount` | a container may mount a volume of the mode | a run naming one is refused: the provider is passed over, or, pinned, the start fails ("the provider mounts no volume whose mode is …") |
 | `fuse_serve` | a FUSE serve may hold a volume of the mode | a FUSE mount of one fails at start ("the provider FUSE serves no volume whose mode is …") |
 | `mount_many` | more than one running container may mount one volume of the mode at once | a second container's start is refused while the first runs |
@@ -147,7 +148,8 @@ volume mount on the volume's own provider.
 
 Other capabilities that matter here: `containers` (the provider runs containers at all: its `provider.yaml` has a `containers` section),
 `images.registries` and `images.store` (see `diverge-images`). `volumes create` answers
-`unsupported` for a provider that keeps no volume of the mode asked.
+`unsupported` for a provider whose capabilities have no `create` for the mode asked, whether it
+keeps volumes of that mode or not.
 
 ## Start errors from mounts, and what to do
 

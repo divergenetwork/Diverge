@@ -93,7 +93,7 @@ does not announce itself there), `accept_daemons`, `messageable`, `enabled`, `de
 - `capabilities` says which optional parts the provider serves: `containers`, `images` (an object:
   `store`, there when it keeps a Store, with `build` saying whether it builds; and `registries`, the
   registries it pulls from), `volumes_persistent` / `volumes_ephemeral` /
-  `volumes_read_only` (each an object of `mount`, `fuse_serve`, `mount_many`, `fuse_serve_many`,
+  `volumes_read_only` (each an object of `create`, `mount`, `fuse_serve`, `mount_many`, `fuse_serve_many`,
   `mount_and_fuse_serve`), and `messages` (present only when the provider relays direct messages). A member
   absent is the capability absent. The daemon asks a provider nothing its capabilities exclude.
 - `capacity` is the provider's latest answer, polled every ten seconds (fixed; not configurable):
