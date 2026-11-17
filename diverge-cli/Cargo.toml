@@ -43,12 +43,11 @@ serde_yaml_ng = "0.10.0"
 indexmap = { version = "2.14.2", features = ["serde"] }
 # Where in the document a value was wrong, in a parse error.
 serde_path_to_error = "0.1.20"
-# What a document is on the CLI's side: JSON, keys in the order the
-# document gives them, which is what a jq program sees and what
-# `config get` prints.
+# What a document and a daemon's answer are on the CLI's side: JSON,
+# keys in the order they were given, which is what a jq program sees
+# and what a `run` prints.
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
-# The jq a `config get` narrows by, a `config set` edits with, and a
-# `run --jq` prints through: the language, its standard definitions,
+# The jq a `run --jq` prints through: the language, its standard definitions,
 # and its values over JSON.
 jaq-core = "2.2.1"
 jaq-std = "2.1.2"

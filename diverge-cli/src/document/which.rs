@@ -39,29 +39,4 @@ impl Which {
         };
         value.map_err(Error::Json)
     }
-
-    /// The value as the document's own type takes it, and as that
-    /// type writes it: the YAML to put in the file. A value the type
-    /// refuses — a key it does not have, a wrong kind — is
-    /// [`Error::Invalid`], with the path to what was wrong.
-    pub fn validate(self, value: Value) -> Result<String, Error> {
-        let yaml = match self {
-            Which::Daemon => {
-                serde_yaml_ng::to_string(&typed::<diverge_daemon::config::Config>(value)?)
-            }
-            Which::Provider => {
-                serde_yaml_ng::to_string(&typed::<diverge_provider::config::Config>(value)?)
-            }
-            Which::Viewer => {
-                serde_yaml_ng::to_string(&typed::<diverge_viewer_config::Config>(value)?)
-            }
-            Which::Cli => serde_yaml_ng::to_string(&typed::<crate::config::Config>(value)?),
-        };
-        yaml.map_err(Error::Serialize)
-    }
-}
-
-/// The value as `T`, or where in it `T` refused.
-fn typed<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, Error> {
-    serde_path_to_error::deserialize(value).map_err(Error::Invalid)
 }

@@ -1,8 +1,8 @@
 //! The program, running: the configuration resolved, the command
 //! done.
 //!
-//! [`run`] is the whole of it — [`config`] the `config` beneath every
-//! program, [`setting`] the daemon's `port`, `idle_seconds`, `admins`,
+//! [`run`] is the whole of it — [`own`] the CLI's own daemons,
+//! [`viewer`] the viewer's `daemon`, [`setting`] the daemon's `port`, `idle_seconds`, `admins`,
 //! `identity` and `postgres`, [`provider`] the provider's `port`,
 //! `identity`, `incoming`, `outgoing` and `podman registries`,
 //! [`identities`] the `identities` command,
@@ -20,7 +20,6 @@ mod run;
 
 mod print;
 
-pub mod config;
 pub mod identities;
 pub mod identity_diverge_network;
 pub mod own;

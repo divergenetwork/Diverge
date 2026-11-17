@@ -3,14 +3,11 @@
 use super::Error;
 use crate::arguments::{Arguments, Command, Daemon, Own, Server, Viewer};
 use crate::config;
-use crate::document::Which;
 use crate::lifecycle::{self, Program};
 
 /// Run `diverge` as told: the root found; then, for `run`, `cli.yaml`
 /// read, the daemon and the account selected, and the request put —
-/// see [`run`](crate::run); for `<program> config`, the program's
-/// document read, narrowed, rewritten or edited — see
-/// [`config`](super::config); for `identities`, the root's identities
+/// see [`run`](crate::run); for `identities`, the root's identities
 /// signed in, listed or removed — see [`identities`](super::identities);
 /// for `daemon` and `provider`, the program started on the root or
 /// stopped — see [`lifecycle`]; for `daemon port`,
@@ -18,7 +15,10 @@ use crate::lifecycle::{self, Program};
 /// `daemon postgres`, the one setting read or written — see
 /// [`setting`](super::setting); for `provider port`,
 /// `provider identity`, `provider incoming`, `provider outgoing` and
-/// `provider podman registries`, likewise — see [`provider`](super::provider).
+/// `provider podman registries`, likewise — see [`provider`](super::provider);
+/// for `viewer daemon` and for `cli daemons` and `cli default`, the
+/// one setting of the viewer's document or of the CLI's own — see
+/// [`viewer`](super::viewer) and [`own`](super::own).
 /// With no command the root is found and the run ends.
 pub async fn run(arguments: Arguments) -> Result<(), Error> {
     let root = config::root(arguments.config).await?;
@@ -76,9 +76,6 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
             super::provider::messages(&root, action).await
         }
         Some(Command::Viewer(Viewer::Daemon(action))) => super::viewer::daemon(&root, action).await,
-        Some(Command::Cli(Own::Config(action))) => {
-            super::config::run(&root, Which::Cli, action).await
-        }
         Some(Command::Cli(Own::Daemons(action))) => super::own::daemons(&root, action).await,
         Some(Command::Cli(Own::Default(action))) => super::own::default(&root, action).await,
     }

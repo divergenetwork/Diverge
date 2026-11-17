@@ -46,7 +46,8 @@ pub enum ViewerDaemon {
     Redial(RedialSetting),
 }
 
-/// What is done to a setting that is a string.
+/// What is done to a setting that is a string: the viewer's, and a
+/// daemon's address in the CLI's own document.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Text {
     /// Print the string, alone on its line, as it is and not as

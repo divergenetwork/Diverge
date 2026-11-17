@@ -4,14 +4,12 @@
 //! parsed by clap, whose help and version are the program's own. The
 //! `run` command's own tree — and `request-schema` and
 //! `response-schema` beneath each of
-//! its requests — is [`run`](crate::run)'s. The CLI's own document
-//! is worked on whole, `diverge cli config`, by an [`Action`], and
-//! its daemons and its default daemon by themselves: it is an
-//! [`Own`]. Every other program's is configured not whole but
-//! one setting at a time, each setting a command of its own that
-//! reads it or writes it by itself: the daemon is a [`Daemon`] and
-//! the provider a [`Server`], each also started or stopped by a
-//! [`Lifecycle`], and the viewer a [`Viewer`]. The host's
+//! its requests — is [`run`](crate::run)'s. No program's document
+//! is worked on whole: each is configured one setting at a time, each
+//! setting a command of its own that reads it or writes it by
+//! itself. The daemon is a [`Daemon`] and the provider a [`Server`],
+//! each also started or stopped by a [`Lifecycle`]; the viewer is a
+//! [`Viewer`]; and the CLI's own document is an [`Own`]. The host's
 //! OpenID Connect identities are [`Identities`], and its accounts at
 //! Diverge's own provider are [`IdentityDivergeNetwork`].
 //!
@@ -20,7 +18,6 @@
 
 mod arguments;
 mod command;
-mod config;
 mod daemon;
 mod identities;
 mod identity_diverge_network;
@@ -31,7 +28,6 @@ mod viewer;
 
 pub use arguments::*;
 pub use command::*;
-pub use config::*;
 pub use daemon::*;
 pub use identities::*;
 pub use identity_diverge_network::*;

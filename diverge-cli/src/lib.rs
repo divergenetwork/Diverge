@@ -23,10 +23,9 @@
 //! standalone-tools templates list` — with the daemon and the account
 //! by name, else the defaults, and the body as JSON, whose schema
 //! `request-schema` beneath the request prints, and whose every answer
-//! `response-schema` states; see [`run`]. The CLI's own document in
-//! the root is read, rewritten and edited whole — `cli config` —
-//! through jq, as JSON on this side; see [`document`]. The daemon's,
-//! the provider's and the viewer's are not worked on whole. Five settings of the daemon's
+//! `response-schema` states; see [`run`]. No program's document in
+//! the root is worked on whole: each is read and written one setting
+//! at a time, as its program's own type; see [`document`]. Five settings of the daemon's
 //! are each read and written by themselves, with no JSON given —
 //! `daemon port get|set`, `daemon idle_seconds get|set`,
 //! `daemon admins get|add|delete`, `daemon identity get|set`,
@@ -50,9 +49,10 @@
 //! see [`cli::provider`]. The viewer's `daemon` is read and written
 //! a setting at a time too — `viewer daemon address|issuer|subject|
 //! identity|redial get|set`; see [`cli::viewer`]. The CLI's own daemons are
-//! a list too — `cli daemons get|add|delete`, and `cli default
-//! get|set` by a daemon's index — beside `cli config`; see
-//! [`cli::own`]. The commands
+//! a list too — `cli daemons get|add|delete`, `cli default get|set`
+//! by a daemon's index, and after a daemon's index its `address`,
+//! `identity`, `accounts` and `default` account, as
+//! `cli daemons 0 accounts add` — see [`cli::own`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it
