@@ -23,18 +23,17 @@
 //! standalone-tools templates list` — with the daemon and the account
 //! by name, else the defaults, and the body as JSON, whose schema
 //! `request-schema` beneath the request prints, and whose every answer
-//! `response-schema` states; see [`run`]. The provider's, the
-//! viewer's and the CLI's document in the root is each read,
-//! rewritten and edited beneath its program — `provider config`,
-//! `viewer config`, `cli config` — through jq, as JSON on this side;
-//! see [`document`]. The daemon's is not worked on whole: five
-//! settings of it are each read and written by themselves, with no
-//! JSON given —
+//! `response-schema` states; see [`run`]. The viewer's and the
+//! CLI's document in the root is each read, rewritten and edited
+//! beneath its program — `viewer config`, `cli config` — through jq,
+//! as JSON on this side; see [`document`]. The daemon's and the
+//! provider's are not worked on whole. Five settings of the daemon's
+//! are each read and written by themselves, with no JSON given —
 //! `daemon port get|set`, `daemon idle_seconds get|set`,
 //! `daemon admins get|add|delete`, `daemon identity get|set`,
 //! `daemon postgres get|set` — and each one that writes is
 //! refused while the daemon runs on the root; see
-//! [`cli::setting`]. Five of the provider's are too —
+//! [`cli::setting`]. Every setting of the provider's is too —
 //! `provider port get|set`, `provider identity get|set`,
 //! `provider incoming get|add|delete`,
 //! `provider outgoing get|add|delete`,
@@ -47,8 +46,9 @@
 //! `fixed get|add|delete` and `stores get|capacity_used|add|edit|delete`, an edit
 //! of a store's path moving the store and a delete deleting it, and
 //! `provider images enabled|enable|disable` with `path get|set|delete`,
-//! `capacity get|set` and `capacity_used`; see
-//! [`cli::provider`]. The commands
+//! `capacity get|set` and `capacity_used`, and
+//! `provider messages enabled|enable|disable` with its two numbers;
+//! see [`cli::provider`]. The commands
 //! `daemon start|stop` and `provider start|stop` start the program on
 //! the root — its own
 //! binary beside this one, spawned detached and waited for until it

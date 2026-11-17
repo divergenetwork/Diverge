@@ -2,22 +2,19 @@
 
 use clap::Subcommand;
 
-use super::{Action, Identity, Lifecycle, Port};
+use super::{Identity, Lifecycle, Port};
 
-/// The provider on this host: started, stopped, its document in the
-/// root worked on whole, or one setting of that document — its port,
+/// The provider on this host: started, stopped, or one setting of its
+/// document in the root, `provider.yaml` — its port,
 /// its identity, whom it accepts, whom it dials, podman's settings,
-/// whether it runs containers, the volumes it provides — read or
-/// written by itself.
+/// whether it runs containers, its volumes, its image Store, the
+/// messages it relays — read or written by itself. The document is
+/// not worked on whole: there is no `provider config`.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Server {
     /// Start or stop the server: see [`lifecycle`](crate::lifecycle).
     #[command(flatten)]
     Lifecycle(Lifecycle),
-    /// Read, rewrite or edit the provider's document in the root,
-    /// `provider.yaml`.
-    #[command(subcommand)]
-    Config(Action),
     /// Read or write the TCP port the provider accepts the protocol
     /// on, `port` in `provider.yaml`.
     #[command(subcommand)]
@@ -51,6 +48,54 @@ pub enum Server {
     /// one setting of it, `images` in `provider.yaml`.
     #[command(subcommand)]
     Images(Images),
+    /// Turn the relaying of messages on or off, or read or write the
+    /// rate it is relayed at, `messages` in `provider.yaml`.
+    #[command(subcommand)]
+    Messages(Messages),
+}
+
+/// What is done to the provider's `messages` section: see
+/// [`provider`](crate::cli::provider). The section there is the
+/// provider relaying direct messages between the identities
+/// connected to it, at most `messages` sends per sending identity in
+/// every `seconds`; the section absent is it relaying none.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum Messages {
+    /// Print whether the provider relays messages: `true` or `false`.
+    Enabled,
+    /// Have the provider relay messages: the section made, with its
+    /// defaults, 30 messages in every 60 seconds. Nothing changes
+    /// where it is there already. Refused while the provider is
+    /// running on the root: stop it first.
+    Enable,
+    /// Have the provider relay no messages: the section removed, and
+    /// its rate with it. Refused while the provider is running on the
+    /// root: stop it first.
+    Disable,
+    /// Read or write the most sends one identity makes in one window,
+    /// `messages.messages`.
+    #[command(subcommand)]
+    Messages(Rate),
+    /// Read or write how long one window is, in seconds,
+    /// `messages.seconds`.
+    #[command(subcommand)]
+    Seconds(Rate),
+}
+
+/// What is done to one of the two numbers of the rate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum Rate {
+    /// Print the number, or `null` where the section is absent: no
+    /// message is relayed, and no rate is in effect.
+    Get,
+    /// Write the number. Refused where the section is absent —
+    /// enable it first — and while the provider is running on the
+    /// root.
+    Set {
+        /// The number: `1` or more.
+        #[arg(value_name = "NUMBER")]
+        value: std::num::NonZeroU32,
+    },
 }
 
 /// What is done to the provider's `images` section: see

@@ -50,9 +50,6 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Provider(Server::Lifecycle(action))) => {
             Ok(lifecycle::run(&root, Program::Provider, action).await?)
         }
-        Some(Command::Provider(Server::Config(action))) => {
-            super::config::run(&root, Which::Provider, action).await
-        }
         Some(Command::Provider(Server::Port(action))) => super::provider::port(&root, action).await,
         Some(Command::Provider(Server::Identity(action))) => {
             super::provider::identity(&root, action).await
@@ -74,6 +71,9 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         }
         Some(Command::Provider(Server::Images(action))) => {
             super::provider::images(&root, action).await
+        }
+        Some(Command::Provider(Server::Messages(action))) => {
+            super::provider::messages(&root, action).await
         }
         Some(Command::Viewer(Document::Config(action))) => {
             super::config::run(&root, Which::Viewer, action).await

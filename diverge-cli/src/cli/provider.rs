@@ -2,14 +2,17 @@
 //! its port, its identity, whom it accepts, whom it dials, the
 //! registries it pulls from, where podman keeps its data, how much
 //! its image cache may hold, whether it runs containers, the volumes
-//! it provides and the stores it makes them in, and its image Store.
-//! Every one keeps the rules of [`setting`](super::setting).
+//! it provides and the stores it makes them in, its image Store, and
+//! the messages it relays. Every one keeps the rules of
+//! [`setting`](super::setting). They are the only way the CLI works
+//! on `provider.yaml`: there is no `provider config`.
 
 use std::path::{Path, PathBuf};
 
 use diverge_provider::config::Config;
 use diverge_provider::config::containers;
 use diverge_provider::config::images as images_section;
+use diverge_provider::config::messages as messages_section;
 use diverge_provider::config::outgoing;
 use diverge_provider::config::volumes as volumes_section;
 use diverge_provider::host::relocate;
@@ -17,7 +20,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Outgoing, Podman, Port, Registries, StoragePath, Stores, Volumes};
+use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -437,6 +440,71 @@ async fn stores(root: &Path, action: Stores) -> Result<(), Error> {
             document::write(root, Which::Provider, &yaml).await?;
             drop(held);
             Ok(())
+        }
+    }
+}
+
+/// `diverge provider messages …`: whether the provider relays direct
+/// messages between the identities connected to it, and at what
+/// rate. The `messages` section is the provider relaying them, as
+/// `containers` is it running containers, by the same rules:
+///
+/// - `enabled` prints `true` where the section is there.
+/// - `enable` makes the section with its defaults, thirty messages in
+///   every sixty seconds, where it is absent; where it is there
+///   nothing is changed or written.
+/// - `disable` removes the section, and the rate with it.
+/// - `messages get` and `seconds get` each print the number, or
+///   `null` where the section is absent.
+/// - `messages set` and `seconds set` each write the number, which
+///   is `1` or more — the command line refuses a `0`, as the document
+///   does — and are refused where the section is absent,
+///   [`Error::Disabled`].
+/// - `enable`, `disable` and a `set` each hold the provider's lock
+///   and are refused while it runs.
+pub async fn messages(root: &Path, action: Messages) -> Result<(), Error> {
+    match action {
+        Messages::Enabled => line(&read::<Config>(root, Which::Provider).await?.messages.is_some()).await,
+        Messages::Enable => {
+            provider(root, |config| {
+                config.messages.get_or_insert_with(messages_section::Messages::default);
+                Ok(())
+            })
+            .await
+        }
+        Messages::Disable => {
+            provider(root, |config| {
+                config.messages = None;
+                Ok(())
+            })
+            .await
+        }
+        Messages::Messages(action) => rate(root, action, |section| &mut section.messages).await,
+        Messages::Seconds(action) => rate(root, action, |section| &mut section.seconds).await,
+    }
+}
+
+/// One of the two numbers of the `messages` section, read or
+/// written: `of` is the number in the section. See [`messages`].
+async fn rate(
+    root: &Path,
+    action: Rate,
+    of: impl FnOnce(&mut messages_section::Messages) -> &mut std::num::NonZeroU32,
+) -> Result<(), Error> {
+    match action {
+        Rate::Get => {
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            line(&config.messages.as_mut().map(|section| *of(section))).await
+        }
+        Rate::Set { value } => {
+            provider(root, |config| match &mut config.messages {
+                Some(section) => {
+                    *of(section) = value;
+                    Ok(())
+                }
+                None => Err(Error::Disabled { section: "messages", program: Program::Provider }),
+            })
+            .await
         }
     }
 }

@@ -58,7 +58,7 @@ pub enum Error {
     /// absent from the document: the feature is off.
     Disabled {
         /// The section, as the document names it: `containers`,
-        /// `volumes`, `images`.
+        /// `volumes`, `images`, `messages`.
         section: &'static str,
         /// The program whose document it is, as the CLI names it.
         program: Program,

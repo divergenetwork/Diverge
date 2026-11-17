@@ -4,16 +4,13 @@
 //! parsed by clap, whose help and version are the program's own. The
 //! `run` command's own tree — and `request-schema` and
 //! `response-schema` beneath each of
-//! its requests — is [`run`](crate::run)'s. The provider's, the
-//! viewer's and the CLI's document is each worked on beneath its
-//! program, `diverge <program> config`, by an
-//! [`Action`]: the provider is a [`Server`] — started or stopped by a
-//! [`Lifecycle`], configured, or its `port`, `identity`, `incoming`,
-//! `outgoing` and `podman registries` each read or written by itself — the daemon a [`Daemon`], which is
-//! started or stopped likewise, and configured not whole but by its
-//! `port`, `idle_seconds`, `admins`, `identity` and `postgres`, each
-//! read or written by itself, the viewer
-//! and the CLI each a [`Document`], configured alone. The host's
+//! its requests — is [`run`](crate::run)'s. The viewer's and the
+//! CLI's document is each worked on whole beneath its program,
+//! `diverge <program> config`, by an [`Action`]: each is a
+//! [`Document`], configured alone. The daemon is a [`Daemon`] and the
+//! provider a [`Server`]: each started or stopped by a [`Lifecycle`],
+//! and configured not whole but one setting at a time, each setting a
+//! command of its own that reads it or writes it by itself. The host's
 //! OpenID Connect identities are [`Identities`], and its accounts at
 //! Diverge's own provider are [`IdentityDivergeNetwork`].
 //!

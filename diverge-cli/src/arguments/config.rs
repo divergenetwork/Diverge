@@ -1,6 +1,6 @@
-//! What `<program> config` takes — beneath the provider, the viewer
-//! and the CLI, and not the daemon: what to do to the program's
-//! document.
+//! What `<program> config` takes — beneath the viewer and the CLI,
+//! and neither the daemon nor the provider: what to do to the
+//! program's document.
 
 use clap::Subcommand;
 

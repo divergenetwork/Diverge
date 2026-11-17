@@ -19,9 +19,9 @@ use crate::lifecycle::Program;
 /// the one value it yields as the new document, validates it by the
 /// document's type, and writes it; a `patch` applies the JSON Patch
 /// to the document, whole or not at all, validates the result by the
-/// document's type, and writes it. A `set` and a `patch` of the
-/// provider's document hold the provider's lock, and are refused
-/// while it runs.
+/// document's type, and writes it. Only the viewer's and the CLI's
+/// documents are worked on here: the daemon's and the provider's are
+/// worked on one setting at a time, each holding its program's lock.
 pub async fn run(root: &Path, which: Which, action: Action) -> Result<(), Error> {
     match action {
         Action::Get { filter } => {
