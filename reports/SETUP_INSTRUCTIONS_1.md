@@ -303,14 +303,14 @@ EOF
 
 `viewer.yaml` also accepts `daemon.redial`: either `never` or a number of seconds (default 5).
 
-Check: each of these prints its document back as JSON, or for a daemon or a provider its port, which means each document parses.
+Check: each of these prints its document back as JSON, or one setting of it, which means each document parses.
 
 ```bash
 diverge provider port get
 diverge daemon port get
 diverge --config "$B" daemon port get
 diverge cli config get
-diverge viewer config get
+diverge viewer daemon address get
 ```
 
 ### Step 5: start the provider

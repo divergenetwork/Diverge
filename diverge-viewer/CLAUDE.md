@@ -118,7 +118,6 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   and `daemon.redial`. Every member has a default (`config/daemon.rs`): the address of a daemon on this host,
   an empty issuer and subject, no `identity`, a redial of 5 seconds. An empty issuer or subject stops the start.
   `diverge viewer daemon <member> get|set` reads and writes each.
-  `diverge viewer config get|set|patch` edits it.
 - **The link dials again by itself**: as `daemon.redial` says — every 5 seconds when absent, as the daemon redials a
   provider, a whole number of seconds, or `never` — after a failed dial and after a connection that ended, dialling at
   start. `wire_reset` dials at once. The rules are the SDK's (`diverge-sdk-rs/src/wire/proxy/link.rs`).

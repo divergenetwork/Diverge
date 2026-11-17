@@ -44,7 +44,7 @@ into tasks and run the protocol once per task.
 | Events | The daemon's graph of who sent what to whom (accounts, agents, tools). |
 | Remote daemon | A record on this daemon of another daemon, reached through a provider both are connected to. Its id is a short base62 hash. |
 | Relay | `"relay": [<daemon id>, …]` in any request body: this daemon forwards the request to that remote daemon, which serves it as the account the record names. |
-| Viewer | `diverge-viewer`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). It reads `viewer.yaml`; it has no CLI commands beyond `diverge viewer config`. |
+| Viewer | `diverge-viewer`, a desktop app that draws one daemon's board (providers, accounts, agents, tools, events). It reads `viewer.yaml`, which `diverge viewer daemon address|issuer|subject|identity|redial get|set` reads and writes; the CLI neither starts nor stops it. |
 
 ## The shape of the CLI
 
@@ -144,7 +144,7 @@ Every `diverge run` family and every top-level command belongs to exactly one sk
 
 | Task | Skill | Commands it owns |
 |---|---|---|
-| The root; any `*.yaml` document; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop\|config`, `diverge provider start\|stop\|config`, `diverge viewer config`, `diverge cli config`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
+| The root; any `*.yaml` document; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer daemon …`, `diverge cli config`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …`, `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
 | Agent templates and agents: create, get, list, edit, delete, tag; sending a message; MCP into an agent; an agent's files, exec, terminal, frontend, mounts | `diverge-agents` | `diverge run agents …` (including `agents templates …` and `agents connect …`) |
 | Standalone tools and their templates; dependency tools; attaching and detaching tools; a tool's files, exec, terminal, frontend; MCP exchanges with a tool | `diverge-tools` | `diverge run standalone-tools …` (including `templates …` and `connect …`), `diverge run dependency-tools …` |
 | Images: an image's `DIVERGE.md`, digests and references, building images into the provider, what each stock image takes as arguments and secrets | `diverge-images` | `diverge run images read\|build\|push\|list` |

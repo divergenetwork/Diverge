@@ -1,6 +1,6 @@
 ---
 name: diverge-config
-description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to read or change `cli.yaml` or `viewer.yaml` with `diverge <program> config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
+description: Configuring and operating a Diverge installation's root. Load it to find or choose the config root (`--config`, `DIVERGE_CONFIG`, `~/.diverge`); to read or change `daemon.yaml` one setting at a time (`diverge daemon port|idle_seconds|admins|identity|postgres …`, no JSON, refused while the daemon runs); to read or change the provider's port, identity, `incoming`, `outgoing` and registries the same way (`diverge provider port|identity|incoming|outgoing …`, `diverge provider podman registries …`); to move podman's data to another folder or drive (`diverge provider podman storage_path set`) or wipe it so the provider sets podman up again (`… storage_path delete`); to turn the provider's containers, volumes, image Store or messages on or off and set their sizes (`diverge provider containers|volumes|images|messages …`); to point the viewer at a daemon and an identity (`diverge viewer daemon address|issuer|subject|identity|redial get|set`); to read or change `cli.yaml` with `diverge cli config get|set|patch`; to add a daemon or an account to the CLI; to sign an identity in, list or remove one (`diverge identities login`; the accounts at Diverge's own issuer, `diverge identity.diverge.network …`; `diverge run identities …` on the daemon's host); to start or stop the daemon or provider; to look up ports, admins, `idle_seconds`, registries, volume stores; or to work out what must be restarted after a change and why a connection or handshake is refused.
 ---
 
 # Diverge: the root, the documents, identities, start and stop
@@ -72,12 +72,12 @@ Rules common to all four:
 
 ## Reading and changing a document: `config get | set | patch`
 
-The same three subcommands exist beneath two programs: `diverge viewer config` and `diverge cli config`. They
-work on the file in the root and never contact a running program.
+These three subcommands exist for **one** document: the CLI's own, `diverge cli config`. They work on
+`cli.yaml` in the root and never contact a running program.
 
-**The daemon and the provider have no `config` command.** `daemon.yaml` and `provider.yaml` are read and
-changed one setting at a time, with plain arguments and no JSON: see "The daemon's settings" and "The
-provider's settings" below.
+**The daemon, the provider and the viewer have no `config` command.** `daemon.yaml`, `provider.yaml` and
+`viewer.yaml` are read and changed one setting at a time, with plain arguments and no JSON: see "The daemon's
+settings", "The provider's settings" and "The viewer's settings" below.
 
 ### get — read, through jq
 
@@ -85,7 +85,6 @@ provider's settings" below.
 diverge cli config get                       # the whole document, one compact JSON line
 diverge cli config get .default              # "local"
 diverge cli config get '.daemons | keys[]'   # one line per value the filter yields
-diverge viewer config get '.daemon.address'
 ```
 
 The document is shown as JSON. Empty optional members are left out, so a filter over one may see `null`.
@@ -97,7 +96,6 @@ document.
 
 ```bash
 diverge cli config set '.default = "b"'
-diverge viewer config set '.daemon = {address:"ws://127.0.0.1:14980/", issuer:"https://identity.diverge.network", subject:"github.12345.admin"}'
 ```
 
 Pitfall: a member left out of the document is `null` to the program. Default a list or an object before
@@ -363,7 +361,8 @@ and Windows. It prints nothing and does not change the path.
 ## The viewer's settings: `diverge viewer daemon …`
 
 `viewer.yaml` has one section, `daemon`: which daemon the viewer dials, and as which identity. Each member has
-its own command, with plain arguments. `diverge viewer config get|set|patch` still works on the whole file.
+its own command, with plain arguments. These are the only commands for `viewer.yaml`; there is no
+`diverge viewer config`. To see the whole file, read it: `cat <root>/viewer.yaml`.
 
 ```bash
 diverge viewer daemon address get        # ws://127.0.0.1:14980/   the default: a daemon on this host
@@ -382,8 +381,8 @@ diverge viewer daemon redial set never
 - **The viewer does not start while `issuer` or `subject` is empty.** Sign the identity in first
   (`diverge identities login`), then set both.
 - `issuer`/`subject` are who the viewer dials **as**. `identity` is who the daemon must **be**; leave it unset
-  to accept whichever daemon answers at the address. `identity set` cannot clear it; delete the member by hand
-  or with `viewer config`.
+  to accept whichever daemon answers at the address. `identity set` cannot clear it; delete the member from
+  the file by hand.
 - `redial set` takes `never` or a whole number of seconds (`1` or more).
 - No lock is involved and the app need not be closed: a change is read at the viewer's next start.
 - A `set` prints nothing and rewrites the file (comments are lost).
