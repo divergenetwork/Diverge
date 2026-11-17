@@ -10,7 +10,7 @@
 //! — is the one directory every Diverge program on the host shares, and
 //! the app reads the viewer's document in it: `<root>/viewer.yaml` says
 //! which daemon, as which of `<root>/identities/`, and how the daemon is
-//! dialled again when the connection ends (`diverge_viewer_config`). The
+//! dialled again when the connection ends ([`config`]). The
 //! app keeps no files of its own; it moves the person's between their
 //! disk and an entity's when asked (`transfer`).
 
@@ -21,6 +21,7 @@ use std::sync::Arc;
 use diverge_sdk::identities::{Identities, Name, Presenter};
 use tauri::Manager;
 
+mod config;
 mod frontend;
 mod transfer;
 
@@ -34,8 +35,8 @@ fn main() {
             // identity it is dialled as; the root's identities. A
             // document naming no daemon stops the start, saying so.
             let (daemon, identities) = tauri::async_runtime::block_on(async {
-                let root = diverge_viewer_config::root(std::env::args_os().skip(1)).await?;
-                let config = diverge_viewer_config::load(&root).await?;
+                let root = config::root(std::env::args_os().skip(1)).await?;
+                let config = config::load(&root).await?;
                 let daemon = config.daemon.ok_or(
                     "viewer.yaml names no daemon identity (daemon: {address, issuer, subject}); sign one in with `diverge identities login`",
                 )?;

@@ -109,8 +109,10 @@ Diverge World: a Tauri app beside the viewer, empty up-front. The product's owne
   make daemon requests — `frontend_open`, `files_download`, `files_upload` — take `relay: Option<Relay>`
   (`diverge_sdk::shared::relay::Relay`), absent at Home, and put it on every frame they send (a frontend keeps it on
   `Served`).
-- **The root and the config are the viewer's**: `--config <dir>`, else `DIVERGE_CONFIG`, else `~/.diverge`, and
-  `<root>/viewer.yaml` read with the viewer's own type (`diverge-viewer/config`, crate `diverge-viewer-config`):
+- **The root and the config file are the viewer's; the type is the app's own**: `--config <dir>`, else
+  `DIVERGE_CONFIG`, else `~/.diverge`, and `<root>/viewer.yaml` read with the app's own type
+  (`src-tauri/src/config/`, a folder as the daemon's and the provider's `config` are; no dependency on the
+  viewer's crate, whose type states the same document):
   `daemon.address`, `daemon.issuer`, `daemon.subject` — one of `<root>/identities/`, signed in by
   `diverge identities login` — `daemon.identity`, the daemon's own identity, which must answer where it is stated,
   and `daemon.redial`. A document naming no daemon stops the start.
