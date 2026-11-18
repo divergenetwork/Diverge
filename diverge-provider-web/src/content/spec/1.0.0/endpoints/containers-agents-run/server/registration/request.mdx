@@ -25,9 +25,10 @@ draft: false
   request; `secrets`, an array of strings, the names of the secrets
   the tool's image needs, each a name the agent's template declares,
   whose values the client supplies when it answers the tool's own
-  registration — absent when empty; `mode`, the string `transient`
-  or `service`, which mode the dependency is in, with that mode's own
-  members flat beside it. A template carries no permissions: the
+  registration — absent when empty; `mode`, the string `lazy` or
+  `eager`, which mode the dependency is in, with that mode's own
+  members flat beside it; `scope`, the string `instance`, `template`
+  or `global`, which both modes carry. A template carries no permissions: the
   tool's own program declares them at the tool's own registration.
   The volumes of a tools run are not here: the client chooses them.
   The server relays every member and reads none.
@@ -46,19 +47,22 @@ draft: false
   the proxy sent it and reads none of it.
 - **`permissions`.** Absent. An agent container declares no
   permissions, and the server carries none on an agents-run scope.
-- **A transient tool's members.** `fuse_file_mounts` and
+- **`scope`.** The string `instance`, `template` or `global`: how far
+  the tool is shared, and its database scope with it — one tool and
+  one scope per agent that declares it, one per agent template whose
+  agents declare it, or one for every agent that declares it, from
+  whatever template. A template of either mode carries exactly one
+  `scope`, and a template with none does not parse.
+- **A lazy tool's members.** `scope`, and `fuse_file_mounts` and
   `fuse_directory_mounts`, arrays of mounts, each an object of
   `agent_path` and `tool_path`, both arrays of path components, a
   file or a directory of the agent container the client serves live
-  at a path of the tool container, each absent when empty. A
-  transient tool's database scope is the agent's it is deployed for,
-  and the template says so by its mode alone.
-- **A service's members.** `scope`, the string `instance`,
-  `template` or `global`: how far the service is shared,
-  and its database scope with it — one service and one scope per
-  agent that declares it, one per agent template whose agents
-  declare it, or one for every agent that declares it, from whatever
-  template. A service names no mount.
+  at a path of the tool container, each absent when empty. A lazy
+  template names a mount only where its `scope` is `instance`. A
+  lazy template whose `scope` is `template` or `global` and which
+  names one or more mounts does not parse.
+- **An eager tool's members.** `scope` alone. An eager template
+  names no mount.
 - **The id of a template.** A template has no name. The client names
   a dependency by the template's id: the lowercase hexadecimal
   SHA-256 of the template as compact JSON with absent members

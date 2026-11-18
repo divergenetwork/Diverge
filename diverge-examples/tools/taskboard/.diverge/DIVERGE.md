@@ -5,7 +5,7 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
-    "description": "The arguments a taskboard tool is made with.\n\nNone: the board is the tool's database, and the tool is the same\nwhoever calls it. `{}` is the one value; any member is refused, so\na misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: a service, declared by the image of every\nagent that works from the board. Which agents share one board\nfollows from the service's scope, never from anything the tool\ndecides.",
+    "description": "The arguments a taskboard tool is made with.\n\nNone: the board is the tool's database, and the tool is the same\nwhoever calls it. `{}` is the one value; any member is refused, so\na misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that works from the board. Which agents share one board\nfollows from the eager tool's scope, never from anything the tool\ndecides.",
     "type": "object",
     "additionalProperties": false
   }
@@ -57,7 +57,7 @@ containers in this repository that is an entry in the agent's
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "template"
 }
 ```
@@ -66,8 +66,8 @@ containers in this repository that is an entry in the agent's
 - **Secrets:** none.
 - **Permissions:** none. The database is reached through the proxy,
   not through the daemon, so the tool asks the daemon for nothing.
-- **Mode and scope:** `service`. A board is shared, so it is never
-  `transient`, whose database is one agent's. Scope `template` is one
+- **Mode and scope:** `eager`. A board is shared, so its scope is
+  never `instance`, whose database is one agent's. Scope `template` is one
   board for every agent of the agent's template; `global` is one board
   for every agent that declares this taskboard, from any template.
 - Only agents may use it; a client over a connect is refused.

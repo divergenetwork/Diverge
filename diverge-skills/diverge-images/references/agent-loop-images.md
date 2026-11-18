@@ -33,7 +33,8 @@ One entry:
   "disk": 268435456,
   "arguments": {},
   "secrets": [],
-  "mode": "transient"
+  "mode": "lazy",
+  "scope": "instance"
 }
 ```
 
@@ -43,22 +44,29 @@ One entry:
 | `memory`, `disk` | the tool container's limits, in bytes |
 | `arguments` | handed to the tool's program verbatim; what it may be is the tool image's `DIVERGE.md` schema |
 | `secrets` | names the tool image needs (absent when none). Each must also be a name the **agent's template** declares; the value comes through the vault key the agent binds that name to |
-| `mode` | `"transient"` or `"service"`, with that mode's own members flat beside it |
+| `mode` | `"lazy"` or `"eager"`, with that mode's own members flat beside it |
+| `scope` | required: `"instance"`, `"template"` or `"global"`. How far the tool, and its database, is shared |
 
-`"mode":"transient"` — deployed when the agent's container starts and stopped with the agent's run.
-Its database scope is one per parent agent. It alone may mount the agent's own files, live over FUSE:
+`"mode":"lazy"` — runs only while it is used. With `"scope":"instance"` it is deployed when the
+agent's container starts and stopped with the agent's run. With `"scope":"template"` or `"global"`
+it is one container for every agent the scope covers, started by the first use and stopped once
+nothing has used it for the daemon's idle time.
+
+At the `instance` scope alone it may mount the agent's own files, live over FUSE; a lazy tool of
+another scope that names a mount is refused:
 
 ```json
-"mode": "transient",
+"mode": "lazy",
+"scope": "instance",
 "fuse_file_mounts":      [{ "agent_path": ["root", "notes.md"], "tool_path": ["data", "notes.md"] }],
 "fuse_directory_mounts": [{ "agent_path": ["workspace"],        "tool_path": ["workspace"] }]
 ```
 
-`"mode":"service"` with `"scope"` — made once when the first agent that declares it registers, kept
+`"mode":"eager"` — made once when the first agent that declares it registers, kept
 running while any agent is attached, and retired after the daemon's idle time once none is. It mounts
 nothing of any agent's. `scope` says how far it, and its database, is shared:
 
-| `scope` | one service per |
+| `scope` | one tool per |
 |---|---|
 | `"instance"` | parent agent |
 | `"template"` | parent agent template (every agent of that template shares it) |
@@ -68,7 +76,7 @@ Rules:
 
 - A dependency has no name. It is identified by the hash of its entry (image digest without
   references, limits, arguments, sorted secrets, mode and its members). Declaring the same entry twice
-  in one list is refused. The same service entry under the same scope key is the same service.
+  in one list is refused. The same eager tool entry under the same scope key is the same eager tool.
 - What a dependency tool may ask of the daemon (its permissions) is **not** in the entry: the tool's
   own program declares it at its registration. Some committed `DIVERGE.md` schemas still show a
   `permissions` member on dependency templates; the current SDK type has none.

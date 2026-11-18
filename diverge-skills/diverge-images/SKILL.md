@@ -464,11 +464,11 @@ above with `-f <dir>/Containerfile .`.
 | `diverge-agents/codex` | `codex` | agent | `model`, `auth` | one, by `auth.method`: `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`, `OPENAI_IDENTITY_TOKEN` (fixed) or `CODEX_AUTH` (rotating) |
 | `diverge-agents/hermes` | `hermes` | agent | `provider`, `model` | selected by the provider and the toolsets chosen |
 | `diverge-agents/cc` | `cc` | agent (Claude Code) | `model` | none |
-| `diverge-examples/tools/courier` | `courier` | dependency tool: service, `global` | `{}` | none |
-| `diverge-examples/tools/taskboard` | `taskboard` | dependency tool: service, `template` (or `global`) | `{}` | none |
-| `diverge-examples/tools/memory` | `memory` | dependency tool: transient | `{}` | none |
-| `diverge-examples/tools/alarm` | `alarm` | dependency tool: service, any scope | `{}` | none |
-| `diverge-examples/tools/chat` | `chat` | standalone tool: service, has a frontend | `{}` | none |
+| `diverge-examples/tools/courier` | `courier` | dependency tool: eager, `global` | `{}` | none |
+| `diverge-examples/tools/taskboard` | `taskboard` | dependency tool: eager, `template` (or `global`) | `{}` | none |
+| `diverge-examples/tools/memory` | `memory` | dependency tool: lazy, `instance` | `{}` | none |
+| `diverge-examples/tools/alarm` | `alarm` | dependency tool: eager, any scope | `{}` | none |
+| `diverge-examples/tools/chat` | `chat` | standalone tool: eager, has a frontend | `{}` | none |
 | `diverge-examples/agents/human` | `human` | agent, no model, has a frontend | `{}` | none |
 
 Full per-image detail — every argument, every secret with its mode and value shape, dependencies and
@@ -500,8 +500,7 @@ caller sets. The vault side (keys, slots, locks, `use` grant) is in `diverge-sto
 
 Every agent-loop image accepts a `dependencies` argument: a list of dependency tool templates the
 daemon deploys and serves to the agent as MCP servers. Each entry is
-`{"image":{…},"memory":N,"disk":N,"arguments":{…},"secrets":[…],"mode":"transient"}` or
-`…,"mode":"service","scope":"global"|"template"|"instance"`. A dependency's secrets are resolved
+`{"image":{…},"memory":N,"disk":N,"arguments":{…},"secrets":[…],"mode":"lazy"|"eager","scope":"instance"|"template"|"global"}`. A dependency's secrets are resolved
 through the **agent's** binding, so every name a dependency lists must also be a name the agent's
 template declares. Details and lifecycle are in `diverge-tools`; the entry shape is in
 [references/agent-loop-images.md](references/agent-loop-images.md).

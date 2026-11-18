@@ -4,7 +4,7 @@
 //! forgets them; every note is kept in the tool's database. The
 //! notebook is that database and nothing narrower: the tool tells no
 //! caller apart, so whoever shares the database shares the notes —
-//! one agent's, as a transient dependency, or every agent's that the
+//! one agent's, under the `instance` scope, or every agent's that the
 //! declaration's scope puts on one database.
 //!
 //! The program is an HTTP server on the container's loopback, at the

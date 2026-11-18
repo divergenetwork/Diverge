@@ -402,18 +402,18 @@ The images:
 | `diverge-agents/codex` | codex | agent | `model`, `auth` | exactly one, by `auth.method`: `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`, `CODEX_AUTH` (rotating) or `OPENAI_IDENTITY_TOKEN` |
 | `diverge-agents/hermes` | hermes | agent | `provider`, `model` | depends on provider and toolsets (see its DIVERGE.md) |
 | `diverge-agents/cc` | cc | agent (Claude Code) | `model` | none declared. It installs Claude Code from npm at container start and "logs in by itself", so the container needs network. How credentials reach it is not established here. |
-| `diverge-examples/tools/courier` | courier | dependency tool, service, `global` | `{}` | none |
-| `diverge-examples/tools/taskboard` | taskboard | dependency tool, service, `template` | `{}` | none |
-| `diverge-examples/tools/memory` | memory | dependency tool, transient | `{}` | none |
-| `diverge-examples/tools/alarm` | alarm | dependency tool, service, `global` | `{}` | none |
-| `diverge-examples/tools/chat` | chat | standalone tool, service, has a frontend | `{}` | none |
+| `diverge-examples/tools/courier` | courier | dependency tool, eager, `global` | `{}` | none |
+| `diverge-examples/tools/taskboard` | taskboard | dependency tool, eager, `template` | `{}` | none |
+| `diverge-examples/tools/memory` | memory | dependency tool, lazy, `instance` | `{}` | none |
+| `diverge-examples/tools/alarm` | alarm | dependency tool, eager, `global` | `{}` | none |
+| `diverge-examples/tools/chat` | chat | standalone tool, eager, has a frontend | `{}` | none |
 | `diverge-examples/agents/human` | human | agent, no model, has a frontend | `{}` | none |
 
 Each image's full argument schema is the frontmatter of its `DIVERGE.md`. Running the image's program with
 `--schema` prints the same schema, and `diverge run images read --info` returns the DIVERGE.md of an image a source holds.
 
 Dependency tools go into an agent's `arguments.dependencies` as
-`{"image":{"digest","references"},"memory","disk","arguments":{},"mode":"transient"}`. A service adds `"mode":"service","scope":"global"|"template"|"instance"`.
+`{"image":{"digest","references"},"memory","disk","arguments":{},"mode":"lazy"|"eager","scope":"instance"|"template"|"global"}`.
 
 **Rebuild images whenever the inside-container contract changes** (`diverge-sdk-rs/src/container_proxy/inside`,
 the proxy, or a loop crate). An image built against an older contract fails against the current proxy. Build every
@@ -595,7 +595,7 @@ diverge run agents list "{\"relay\":[\"$ID_B\"]}"     # an empty list then "list
 **A tool on B, made through the relay**, so that it belongs to `github.12345.daemon-a`'s account there:
 
 ```bash
-$PY -c 'import json,sys; print(json.dumps({"type":"tool","mode":"transient","image":{"digest":sys.argv[1],"references":[{"registry":"docker.io","name":"diverge-local/memory"}]},"memory":268435456,"disk":268435456,"arguments":{},"relay":[sys.argv[2]]}))' \
+$PY -c 'import json,sys; print(json.dumps({"type":"tool","mode":"lazy","image":{"digest":sys.argv[1],"references":[{"registry":"docker.io","name":"diverge-local/memory"}]},"memory":268435456,"disk":268435456,"arguments":{},"relay":[sys.argv[2]]}))' \
   "$DIGEST_MEM" "$ID_B" > "$WORK/memory-template.json"
 TPL_MEM="$(diverge run standalone-tools templates create --jq '.created // .exists' "$(cat "$WORK/memory-template.json")" | tr -d '"')"
 diverge run standalone-tools create "{\"template\":\"$TPL_MEM\",\"name\":\"notebook\",\"relay\":[\"$ID_B\"]}"

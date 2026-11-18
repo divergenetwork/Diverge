@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # How it runs
 ///
-/// As a standalone tool, a service: it keeps the sockets of every open
+/// As a standalone tool, an eager tool: it keeps the sockets of every open
 /// page between the agents' calls.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]

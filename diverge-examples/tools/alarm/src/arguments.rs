@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// # How it runs
 ///
-/// As a dependency tool: a service, declared by the image of every
+/// As a dependency tool: an eager tool, declared by the image of every
 /// agent that sets alarms, granted `message` over the agents attached
-/// to it. A service, because it keeps time between the agents' runs;
+/// to it. An eager tool, because it keeps time between the agents' runs;
 /// any scope serves, since every alarm wakes only its own agent.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]

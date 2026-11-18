@@ -4,7 +4,7 @@
 //! about them in comments; every task is kept in the tool's database.
 //! The board is that database and nothing narrower, so whoever shares
 //! the database shares the board — every agent attached to the
-//! service the declaration names. Each call is told apart by the
+//! eager tool the declaration names. Each call is told apart by the
 //! caller the daemon attests: a claim is the caller's, and only its
 //! holder completes or releases a task.
 //!

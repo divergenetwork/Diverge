@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// # How it runs
 ///
 /// As a dependency tool, declared by the image of the agent that
-/// keeps the notes; meant to be transient. Whose notebook it is
+/// keeps the notes; meant to be lazy. Whose notebook it is
 /// follows from whose database the tool is given, never from anything
 /// the tool decides.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]

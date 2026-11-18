@@ -83,8 +83,8 @@ A template cannot be edited: a changed body is a new template with a new id.
 **Dependencies are not a template member.** The tools an agent depends on are declared by the agent's
 *program* when its container registers. For the agent-loop images in this repository that declaration is
 copied from `arguments.dependencies`, a list of dependency tool templates (image, memory, disk, arguments,
-secrets, `"mode":"transient"` with optional mounts of the agent's own paths, or `"mode":"service"` with a
-`scope` of `instance`, `template` or `global`). The daemon deploys them when the agent's container starts.
+secrets, a `mode` of `lazy` or `eager`, and a `scope` of `instance`, `template` or `global`; a lazy
+tool of the `instance` scope may also mount the agent's own paths). The daemon deploys them when the agent's container starts.
 See `diverge-tools` for the full shape and what each mode and scope means.
 
 Other template leaves:

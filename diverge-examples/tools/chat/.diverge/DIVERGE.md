@@ -5,7 +5,7 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
-    "description": "The arguments a chat tool is made with.\n\nNone: the chat is between a person and whichever agents are\nattached to the tool, and the tool is the same whoever calls it.\n`{}` is the one value; any member is refused, so a misspelled\nsetting is never silently ignored.\n\n# How it runs\n\nAs a standalone tool, a service: it keeps the sockets of every open\npage between the agents' calls.",
+    "description": "The arguments a chat tool is made with.\n\nNone: the chat is between a person and whichever agents are\nattached to the tool, and the tool is the same whoever calls it.\n`{}` is the one value; any member is refused, so a misspelled\nsetting is never silently ignored.\n\n# How it runs\n\nAs a standalone tool, an eager tool: it keeps the sockets of every open\npage between the agents' calls.",
     "type": "object",
     "additionalProperties": false
   },
@@ -43,8 +43,8 @@ The agent reads and answers with two tools:
 
 ## Running it
 
-A **standalone tool**, a service: make a template of the image
-(`standalone-tools templates create`, `"mode":"service"`, `arguments`
+A **standalone tool**, an eager tool: make a template of the image
+(`standalone-tools templates create`, `"mode":"eager"`, `arguments`
 `{}`), a tool of the template (`standalone-tools create`), and attach it
 to the agents that chat (`standalone-tools attach-agent-instance` or
 `attach-agent-template`). The tool asks the daemon for `get`, `list` and

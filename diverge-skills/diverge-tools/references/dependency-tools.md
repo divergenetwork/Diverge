@@ -17,7 +17,8 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
   "disk": 268435456,
   "arguments": {},
   "secrets": ["SOME_API_KEY"],
-  "mode": "transient",
+  "mode": "lazy",
+  "scope": "instance",
   "fuse_directory_mounts": [{"agent_path": ["workspace"], "tool_path": ["workspace"]}]
 }
 ```
@@ -28,7 +29,7 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "template"
 }
 ```
@@ -39,9 +40,9 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
 | `memory`, `disk` | bytes |
 | `arguments` | handed to the tool's program verbatim; the tool image's `DIVERGE.md` gives the schema |
 | `secrets` | names only. Every name must also be declared by the **agent's** template; the value comes from the vault key the agent binds that name to. Otherwise the registration fails. |
-| `mode` | `"transient"` or `"service"`. The members of the chosen mode sit flat beside it; members of the other mode are not allowed. |
-| `fuse_file_mounts`, `fuse_directory_mounts` | transient only. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
-| `scope` | service only, required: `"instance"`, `"template"` or `"global"` |
+| `mode` | `"lazy"` (runs while it is used) or `"eager"` (kept up while any agent is attached). The members of the chosen mode sit flat beside it. |
+| `scope` | required in both modes: `"instance"`, `"template"` or `"global"`. How far the tool, and its database, is shared. |
+| `fuse_file_mounts`, `fuse_directory_mounts` | lazy with scope `instance` only; a lazy tool of another scope that names a mount is refused. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
 
 There is no name and no description. The **id** is the lowercase hex SHA-256 of the template's canonical
 JSON: compact, keys sorted at every depth, absent members omitted, image references dropped, secret names
@@ -52,19 +53,21 @@ dependency template cannot name the caller's volumes or a provider.
 
 | declaration | one tool per | `owner` in references and list items | container runs | database lives as long as |
 |---|---|---|---|---|
-| `transient` | agent | `{"agent":{"template":…,"index":…}}` | from the agent's container start to its stop, every run | the tool record (deleted with the agent) |
-| `service` + `instance` | agent | `{"agent":{…}}` | while that agent is attached (declares it) | the agent |
-| `service` + `template` | agent template | `{"agent_template":{"template":"<agent template id>"}}` | while any agent of that template is attached | the agent template |
-| `service` + `global` | dependency template | `"global"` | while any agent at all is attached | until `dependency-tools delete` |
+| `lazy` + `instance` | agent | `{"agent":{"template":…,"index":…}}` | from the agent's container start to its stop, every run | the agent |
+| `lazy` + `template` | agent template | `{"agent_template":{"template":"<agent template id>"}}` | from its first use until nothing has used it for `idle_seconds`; one container for every agent of that template | the agent template |
+| `lazy` + `global` | dependency template | `"global"` | the same, one container for every agent that declares it | until `dependency-tools delete` |
+| `eager` + `instance` | agent | `{"agent":{…}}` | while that agent is attached (declares it) | the agent |
+| `eager` + `template` | agent template | `{"agent_template":{"template":"<agent template id>"}}` | while any agent of that template is attached | the agent template |
+| `eager` + `global` | dependency template | `"global"` | while any agent at all is attached | until `dependency-tools delete` |
 
 - "Attached" for a dependency means: the agent's **last** registration declared the template. An agent is
   attached by registering (its container starting) with the declaration and detached by registering without
-  it. The agent's container stopping does not detach it; a service stays up between its agents' runs.
-- A service with no agent attached goes down after `idle_seconds`. A service whose container ends is started
+  it. The agent's container stopping does not detach it; an eager tool stays up between its agents' runs.
+- An eager tool with no agent attached goes down after `idle_seconds`. An eager tool whose container ends is started
   again while any agent is attached, and at every daemon start.
 - In a request you may name an agent owner either way (`{"agent":{"name":"echo"}}` works); answers always use
   the template-and-index form.
-- The same service template under the same owner is the same service: a second agent declaring it joins it.
+- The same eager tool template under the same owner is the same eager tool: a second agent declaring it joins it.
 
 ## The list item
 
@@ -94,8 +97,8 @@ All optional; lists match any one of, except where noted.
 | `ids` | of any of these dependency template ids |
 | `owners` | owned by any of these (`{"agent":…}`, `{"agent_template":…}`, `"global"`) |
 | `creators` | first declared by any of these |
-| `modes` | `"transient"`, `"service"` |
-| `scopes` | `"instance"`, `"template"`, `"global"`; a transient tool has no scope and matches none |
+| `modes` | `"lazy"`, `"eager"` |
+| `scopes` | `"instance"`, `"template"`, `"global"` |
 | `depended` | `true`: some agent is attached; `false`: none |
 | `agents` | agent names; the tool must be depended on by **every** one |
 | `in_use` | `true`: its container runs now (what makes `delete` answer `"in_use"`) |
@@ -112,10 +115,10 @@ whose last registration declared a template, and each agent's item lists its `de
 
 - Removes every tool of that template under every owner, each tool's database and contents, and the
   template record. Irreversible.
-- `"in_use"` while any of those tools runs (a transient one inside an agent's run, or a service that is up).
-  Nothing is deleted. Wait until the agents are undeployed and services have retired, then retry. A global
-  service stays up as long as any agent is attached, so the agents that declare it must be deleted, or
-  re-registered without it, before the service can go down.
+- `"in_use"` while any of those tools runs (a lazy one inside an agent's run, or an eager tool that is up).
+  Nothing is deleted. Wait until the agents are undeployed and eager tools have retired, then retry. A global
+  eager tool stays up as long as any agent is attached, so the agents that declare it must be deleted, or
+  re-registered without it, before the eager tool can go down.
 - `"not_found"`: no tool of the caller's has that template.
 - Agents that declared it depend on it no more; one that declares it again at its next start gets a new
   tool with a new, empty database.
@@ -127,7 +130,7 @@ whose last registration declared a template, and each agent's item lists its `de
 start one and never stop one; a tool that is down answers `"not_found"`. While `exec`, `terminal` or
 `frontend` runs, the tool and the agent it was deployed for are held up.
 
-To work on a transient dependency: message the agent (which starts both), then run the command before the
+To work on a lazy dependency: message the agent (which starts both), then run the command before the
 agent goes idle, or keep the agent busy.
 
 ```bash

@@ -1183,7 +1183,7 @@ the Proxy's answer to the begin Scope carries one or more dependency
 tool templates or one or more declared secrets, the Provider shall
 open exactly one `registration` Channel on the run Scope carrying the
 id, the templates and the declaration verbatim — every template
-whole, its image, limits, arguments, type, scope, mounts and secrets
+whole, its image, limits, arguments, mode, scope, mounts and secrets
 unread; every declared secret's name and mode unread —
 before the id is sent and beside the FUSE Mounts, and shall read the
 Client's answer to its finish. Where the answer is the byte `0`

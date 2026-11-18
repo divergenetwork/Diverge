@@ -505,7 +505,7 @@ diverge run daemons get '{"id":"'$ID_B'"}' --jq '.found.connected'    # true onc
 
 # --- A tool on B, made through the relay (creator there: github.12345.daemon-a's account).
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' \
-  '{"type":"tool","mode":"transient","image":{"digest":"sha256:<digest>","references":[{"registry":"docker.io","name":"diverge-local/memory"}]},
+  '{"type":"tool","mode":"lazy","image":{"digest":"sha256:<digest>","references":[{"registry":"docker.io","name":"diverge-local/memory"}]},
     "memory":268435456,"disk":268435456,"arguments":{},"relay":["'$ID_B'"]}' | tr -d '"')"
 diverge run standalone-tools create '{"template":"'$TPL'","name":"notebook","relay":["'$ID_B'"]}'
 

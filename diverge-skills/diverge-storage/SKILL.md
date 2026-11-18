@@ -412,8 +412,7 @@ Which scope a container gets:
 |---|---|
 | an agent | its own, one per agent |
 | a standalone tool | its own, one per tool |
-| a transient dependency tool | one per parent agent (and per dependency template) |
-| a service dependency tool | as far as its `scope` says: per agent (`instance`), per agent template (`template`), or one for all (`global`) |
+| a dependency tool, lazy or eager | as far as its `scope` says: per agent (`instance`), per agent template (`template`), or one for all (`global`) |
 
 A scope is made at the container's first connection and dropped only by the delete of what owns it:
 a tool's by the tool's delete, a dependency tool's by its dependency template's delete. **An agent's

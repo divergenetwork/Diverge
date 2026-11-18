@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// # How it runs
 ///
-/// As a dependency tool: a service, declared by the image of every
+/// As a dependency tool: an eager tool, declared by the image of every
 /// agent that works from the board. Which agents share one board
-/// follows from the service's scope, never from anything the tool
+/// follows from the eager tool's scope, never from anything the tool
 /// decides.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]

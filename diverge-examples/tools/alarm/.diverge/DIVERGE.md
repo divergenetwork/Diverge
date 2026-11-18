@@ -5,7 +5,7 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
-    "description": "The arguments an alarm tool is made with.\n\nNone: every alarm names the agent that set it, and the tool is the\nsame whoever calls it. `{}` is the one value; any member is\nrefused, so a misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: a service, declared by the image of every\nagent that sets alarms, granted `message` over the agents attached\nto it. A service, because it keeps time between the agents' runs;\nany scope serves, since every alarm wakes only its own agent.",
+    "description": "The arguments an alarm tool is made with.\n\nNone: every alarm names the agent that set it, and the tool is the\nsame whoever calls it. `{}` is the one value; any member is\nrefused, so a misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that sets alarms, granted `message` over the agents attached\nto it. An eager tool, because it keeps time between the agents' runs;\nany scope serves, since every alarm wakes only its own agent.",
     "type": "object",
     "additionalProperties": false
   }
@@ -46,7 +46,7 @@ an idle agent too. Three tools:
 
 ## Running it
 
-The alarm tool is a **dependency tool**: a service, declared by the
+The alarm tool is a **dependency tool**: an eager tool, declared by the
 image of every agent that sets alarms, at its registration. For the
 agent containers in this repository that is an entry in the agent's
 `dependencies` argument:
@@ -57,15 +57,15 @@ agent containers in this repository that is an entry in the agent's
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "global"
 }
 ```
 
 - **Arguments:** none; `{}`.
 - **Secrets:** none.
-- **Mode:** `service`. The tool keeps time between the agent's runs,
-  so it is never `transient`, which stops with the run. A service is
+- **Mode:** `eager`. The tool keeps time between the agent's runs,
+  so it is never `lazy`, which stops when nothing uses it. An eager tool is
   kept running while any agent that declares it is attached.
 - **Scope:** any. Every alarm names the agent it wakes, so agents that
   share one tool never see or wake to each other's; `global` is one

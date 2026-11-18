@@ -9,11 +9,11 @@ daemon deploys them. One is a **standalone tool** made by hand. One is an **agen
 
 | image | kind | mode / scope | permissions it declares at registration | database |
 |---|---|---|---|---|
-| `courier` | dependency tool | service, `global` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
-| `taskboard` | dependency tool | service, `template` or `global` | none | yes |
-| `memory` | dependency tool | transient | none | yes |
-| `alarm` | dependency tool | service, any scope | `message` over agents `attached` | yes |
-| `chat` | standalone tool, frontend | service | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
+| `courier` | dependency tool | eager, `global` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
+| `taskboard` | dependency tool | eager, `template` or `global` | none | yes |
+| `memory` | dependency tool | lazy, `instance` | none | yes |
+| `alarm` | dependency tool | eager, any scope | `message` over agents `attached` | yes |
+| `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
 | `human` | agent, frontend | — | — (an agent asks the daemon nothing) | yes |
 
 A tool's permissions are declared by its own program each time it starts; neither a template nor an
@@ -53,7 +53,7 @@ Dependency entry (put it in each participating agent's `arguments.dependencies`)
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "global"
 }
 ```
@@ -91,13 +91,13 @@ Dependency entry:
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "template"
 }
 ```
 
 - `"scope":"template"` is one board for every agent made from the same agent template; `"global"` is
-  one board for every agent that declares this taskboard. Never `transient`, whose database is one
+  one board for every agent that declares this taskboard. Never `"instance"`, whose database is one
   agent's.
 - Only the holder completes or releases a task; only the poster deletes one. Only agents may use it.
 
@@ -117,16 +117,18 @@ Dependency entry:
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "transient"
+  "mode": "lazy",
+  "scope": "instance"
 }
 ```
 
-- Transient: deployed with each run of the agent and stopped with it. The notes stay in the database
-  between runs, because a transient tool's database scope is its parent agent's.
+- Lazy, `instance`: deployed with each run of the agent and stopped with it. The notes stay in the
+  database between runs, because the database scope is the parent agent's. `"scope":"template"` or
+  `"global"` is one notebook shared by every agent the scope covers.
 - The tool tells no caller apart: every agent that reaches the same database shares the same notes.
   Whose notebook it is follows from the mode and scope, never from anything the tool decides.
 - The setup report also runs this image as a standalone tool
-  (`standalone-tools templates create` with `"type":"tool","mode":"transient"`); that use is assumed
+  (`standalone-tools templates create` with `"type":"tool","mode":"lazy"`); that use is assumed
   to work and was not run live.
 
 ## alarm — alarms an agent sets to wake itself
@@ -155,12 +157,12 @@ Dependency entry:
   "memory": 268435456,
   "disk": 268435456,
   "arguments": {},
-  "mode": "service",
+  "mode": "eager",
   "scope": "global"
 }
 ```
 
-- A service, never transient: it keeps time between the agent's runs. Any scope works, since every
+- An eager tool, never lazy: it keeps time while no agent is using it. Any scope works, since every
   alarm wakes only the agent that set it.
 - Cron is five fields in UTC; a seconds or year field is refused. An alarm that cannot be sent when
   due is dropped (a recurring one moves on). Alarms that fell due while the tool was down fire once
@@ -186,7 +188,7 @@ A standalone tool, made by hand. Tool template body for `diverge run standalone-
 ```json
 {
   "type": "tool",
-  "mode": "service",
+  "mode": "eager",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/chat" }] },
   "memory": 268435456,
   "disk": 268435456,

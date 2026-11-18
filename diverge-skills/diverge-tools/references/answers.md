@@ -83,15 +83,15 @@ dependency tools, and agents reach them through their own tool list.
 
 ## What starts or holds a tool's container
 
-| trigger | transient standalone | service standalone | dependency |
+| trigger | lazy standalone | eager standalone | dependency |
 |---|---|---|---|
 | `create` | nothing | nothing | (no create) |
 | attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |
-| attached agent begins a loop | started | already up | already up |
+| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `template` or `global`) is started |
 | `connect` exchange | started, held while open | held while open | (no connect) |
 | `exec`, `terminal`, `frontend` | started, held while running | already up or started | must already run |
 | `filetree`, `download`, `upload`, `transfer` | started, stopped after | used as it runs, or started and stopped after | must already run |
-| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | transient: stopped with its agent; service: retired once no agent is attached |
+| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `template`/`global`: stopped; eager: retired once no agent is attached |
 
 ## Grants by leaf
 
