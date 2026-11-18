@@ -70,14 +70,16 @@ pub struct Podman {
     pub image_cache_disk: u64,
 }
 
-/// What a `podman` section that names nothing gives: the three
-/// registries a reference may name, `docker.io` first, each pulled
-/// from anonymously; podman's data under `provider/podman_data` beside
+/// What a `podman` section that names nothing gives: the four
+/// registries a reference may name, Diverge's own first — see
+/// [`REGISTRY`](diverge_sdk::identity_diverge_network::REGISTRY) —
+/// then `docker.io`, `ghcr.io` and `quay.io`, each pulled from
+/// anonymously; podman's data under `provider/podman_data` beside
 /// `provider.yaml`; and a 32 GiB image cache.
 impl Default for Podman {
     fn default() -> Self {
         Podman {
-            registries: ["docker.io", "ghcr.io", "quay.io"].iter().map(|host| host.to_string()).collect(),
+            registries: [diverge_sdk::identity_diverge_network::REGISTRY, "docker.io", "ghcr.io", "quay.io"].iter().map(|host| host.to_string()).collect(),
             storage_path: PathBuf::from("provider/podman_data"),
             // 32 GiB.
             image_cache_disk: 32 * 1024 * 1024 * 1024,

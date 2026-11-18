@@ -49,7 +49,7 @@ Before the daemon asks a provider to run a container, it checks the provider's c
 (`images.registries`, visible inside a connected record's `status` in `diverge run providers list`,
 under its `info`'s `capabilities`). A provider passes when
 **some reference of the image names a registry that provider lists**. The default provider lists
-`docker.io`, `ghcr.io` and `quay.io`.
+`registry.diverge.network`, `docker.io`, `ghcr.io` and `quay.io`.
 
 - An image with **no references** fails this test ("the image names no registry").
 - An image whose references name only unlisted registries fails it ("the provider pulls from no

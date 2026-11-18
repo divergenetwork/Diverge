@@ -45,7 +45,7 @@ none installed.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `podman registries` | `docker.io`, `ghcr.io`, `quay.io` | The registries the provider pulls from when an image's references name them. Each is a host: what a reference names before its first `/`; no scheme, no path; a port is allowed. The provider holds no credential for any, so only public images are pulled. A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
+| `podman registries` | `registry.diverge.network`, `docker.io`, `ghcr.io`, `quay.io` | The registries the provider pulls from when an image's references name them. Each is a host: what a reference names before its first `/`; no scheme, no path; a port is allowed. The provider holds no credential for any, so only public images are pulled. A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
 | `podman storage_path` | inside the config root | Where podman's data is kept: on Linux its image store, on macOS and Windows the `diverge-provider` machine. On Linux its filesystem must support project quotas (XFS `pquota`, or ext4 with project quota) or every container run fails. Changing it moves the data. |
 | `podman image_cache_disk` | `34359738368` (32 GiB) | The most podman's image cache may hold. The provider removes images no running container uses, least recently run first, except images labelled `diverge.network/keep`. An image larger than this cannot be pulled. |
 

@@ -138,8 +138,8 @@ diverge provider podman storage_path set /mnt/big/podman --no-transfer   # chang
 diverge provider podman storage_path delete                 # DELETES podman's data; the next start sets podman up again
 ```
 
-- `registries`: hosts the provider pulls from when an image's references name them (default `docker.io`,
-  `ghcr.io`, `quay.io`). A host is what a reference names before its first `/`. The provider holds no registry
+- `registries`: hosts the provider pulls from when an image's references name them (default `registry.diverge.network`,
+  `docker.io`, `ghcr.io`, `quay.io`). A host is what a reference names before its first `/`. The provider holds no registry
   credential, so only public images are pulled from one. Deleting every registry leaves none.
 - `image_cache_disk`: the most podman's image cache may hold, in plain bytes. Lowering it deletes nothing at
   once; the provider trims the cache at its next container start.
