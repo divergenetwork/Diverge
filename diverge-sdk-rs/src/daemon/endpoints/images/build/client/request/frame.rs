@@ -31,6 +31,13 @@ pub struct Frame {
     /// none, and a Containerfile that copies from its context fails.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<Context>,
+    /// The platforms to build for: one or more, each once, each a
+    /// [platform string](crate::shared::platform::of) such as
+    /// `linux/amd64`. Required. One the provider does not build for —
+    /// one its `images.store.build` does not list — is
+    /// `platform_unsupported`, and nothing is built.
+    #[serde(deserialize_with = "crate::shared::platform::some")]
+    pub platforms: Vec<String>,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,

@@ -45,8 +45,8 @@ pub enum Frame {
     Blob(Blob),
     /// The image is in the daemon's Store on the provider. Tag `1`.
     Pushed(Pushed),
-    /// The daemon already owns the digest there, and nothing moved.
-    /// Tag `2`.
+    /// The daemon already owns the digest there, holding every
+    /// platform named, and nothing moved. Tag `2`.
     Exists(Exists),
     /// The Store has no room for the image, and nothing moved past the
     /// manifest. Tag `3`.
@@ -72,6 +72,9 @@ pub enum Frame {
     NotFound,
     /// A failure, in the daemon's words or the provider's. Tag `10`.
     Error(Error),
+    /// A platform named is not one the image has, and nothing moved.
+    /// Tag `11`.
+    PlatformNotFound,
 }
 
 /// Tag for [`Frame::Blob`].
@@ -106,6 +109,9 @@ const NOT_FOUND: u8 = 9;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 10;
+
+/// Tag for [`Frame::PlatformNotFound`].
+const PLATFORM_NOT_FOUND: u8 = 11;
 
 /// The tag, then the variant's own JSON; a bare answer carries
 /// nothing after its tag.
@@ -144,6 +150,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
             }
+            Frame::PlatformNotFound => {
+                out.extend_from_slice(&[PLATFORM_NOT_FOUND]);
+                Ok(())
+            }
         }
     }
 }
@@ -167,6 +177,7 @@ impl Decode<'_> for Frame {
             FORBIDDEN => Ok(Frame::Forbidden),
             NOT_FOUND => Ok(Frame::NotFound),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
+            PLATFORM_NOT_FOUND => Ok(Frame::PlatformNotFound),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }

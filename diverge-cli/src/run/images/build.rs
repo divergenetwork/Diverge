@@ -5,7 +5,7 @@
 use clap::Args;
 use diverge_sdk::daemon::endpoints::images::build::{client::request, server::response};
 
-use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_schema, shape};
+use crate::run::{Below, Emitter, Error, Target, body_with, request_schema, response_schema, shape};
 
 /// Building an image on a provider.
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
@@ -13,11 +13,17 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the provider, the Containerfile's text, a
-    /// description, and the context, a directory of a volume on that
-    /// provider; `relay` among its members has another daemon serve
+    /// description, the platforms to build for, and the context, a
+    /// directory of a volume on that provider; `relay` among its members has another daemon serve
     /// it. Absent, `{}`.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,
+    /// A platform to build for, as `os/architecture`: `linux/amd64`,
+    /// `linux/arm64`. Given more than once, each of them. Added to the
+    /// body's `platforms`, which the request requires: at least one,
+    /// here or in the body.
+    #[arg(long = "platform", value_name = "OS/ARCH")]
+    pub platforms: Vec<String>,
     /// What is beneath the request: `request-schema`, the JSON Schema
     /// of the body it takes, or `response-schema`, the JSON Schema of
     /// every line it prints — printed in place of putting any request.
@@ -43,7 +49,7 @@ pub async fn run(
         }
         None => {}
     }
-    let request: request::Frame = body(arguments.body.as_deref())?;
+    let request: request::Frame = body_with(arguments.body.as_deref(), "platforms", arguments.platforms)?;
     let handle = target.dial().await?;
     shape::stream::<_, response::Frame, _>(&handle, &request, emitter, shape::never).await
 }

@@ -35,6 +35,15 @@ pub struct Frame {
     /// image owned already.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<Description>,
+    /// The platforms to hold of the image: one or more, each once,
+    /// each a [platform string](crate::shared::platform::of) such as
+    /// `linux/amd64`. Required. Every one must be a platform the image
+    /// has, or the push is `platform_not_found` and nothing is added.
+    /// A provider holds a platform it could not run, and a push of a
+    /// digest the daemon owns there already adds the platforms it
+    /// lacked.
+    #[serde(deserialize_with = "crate::shared::platform::some")]
+    pub platforms: Vec<String>,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,

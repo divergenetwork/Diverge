@@ -64,6 +64,9 @@ pub enum Frame {
     NotFound,
     /// A failure, in the daemon's words or the provider's. Tag `8`.
     Error(Error),
+    /// The provider does not build for a platform named, and nothing
+    /// exists. Tag `9`.
+    PlatformUnsupported,
 }
 
 /// Tag for [`Frame::Output`].
@@ -92,6 +95,9 @@ const NOT_FOUND: u8 = 7;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 8;
+
+/// Tag for [`Frame::PlatformUnsupported`].
+const PLATFORM_UNSUPPORTED: u8 = 9;
 
 /// The tag, then the variant's own JSON; a bare answer carries
 /// nothing after its tag.
@@ -139,6 +145,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
             }
+            Frame::PlatformUnsupported => {
+                out.extend_from_slice(&[PLATFORM_UNSUPPORTED]);
+                Ok(())
+            }
         }
     }
 }
@@ -160,6 +170,7 @@ impl Decode<'_> for Frame {
             FORBIDDEN => Ok(Frame::Forbidden),
             NOT_FOUND => Ok(Frame::NotFound),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
+            PLATFORM_UNSUPPORTED => Ok(Frame::PlatformUnsupported),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -170,7 +181,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's nine.
+    /// A tag that is none of this frame's ten.
     UnknownTag(u8),
     /// The line did not parse.
     Output(serde_json::Error),

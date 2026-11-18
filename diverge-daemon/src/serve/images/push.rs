@@ -106,6 +106,7 @@ async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon
     let ask = Ask {
         image: frame.image,
         description: frame.description,
+        platforms: frame.platforms,
     };
     let mut payload = Vec::new();
     if let Err(error) = ask.encode(&mut Writer::new(&mut payload)) {
@@ -164,6 +165,7 @@ async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon
             Ok(Said::ProofFailed) => break Frame::ProofFailed,
             Ok(Said::Malformed) => break Frame::Malformed,
             Ok(Said::Unsupported) => break Frame::Unsupported,
+            Ok(Said::PlatformNotFound) => break Frame::PlatformNotFound,
             Ok(Said::Error(error)) => break Frame::Error(error),
             Err(error) => break Frame::Error(reply::failure(&error)),
         }

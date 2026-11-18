@@ -3,6 +3,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::shared::containers::request::Reference;
+
 use crate::daemon::agent_log::Identity;
 use crate::shared::description::Description;
 use crate::shared::listing::Keyed;
@@ -38,6 +40,18 @@ pub struct Image {
     /// as the provider says: its listing's seconds since the Unix
     /// epoch, as an RFC 3339 timestamp in UTC.
     pub created: DateTime<Utc>,
+    /// The platforms the image's manifest names, each a
+    /// [platform string](crate::shared::platform::of), in the
+    /// manifest's order: what the digest is for.
+    pub manifest_platforms: Vec<String>,
+    /// The platforms the daemon holds of it on the provider: those of
+    /// `manifest_platforms` a build or a push brought in. Equal to it,
+    /// the image is whole; fewer, a push adds the rest.
+    pub platforms: Vec<String>,
+    /// Where it was published from that provider: each a registry and
+    /// a repository path there. Absent when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub references: Vec<Reference>,
 }
 
 /// Keyed by the provider and the digest: one image is one digest,

@@ -100,6 +100,9 @@ impl Source for Mirrored<'_> {
                         description: image.description,
                         bytes: image.bytes,
                         created: DateTime::<Utc>::from_timestamp(i64::try_from(image.created).unwrap_or(0), 0).unwrap_or_default(),
+                        manifest_platforms: image.manifest_platforms,
+                        platforms: image.platforms,
+                        references: image.references,
                     };
                     if !filter::images::test(self.filter, &item) {
                         continue;
