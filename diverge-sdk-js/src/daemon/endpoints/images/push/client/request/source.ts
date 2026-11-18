@@ -1,8 +1,6 @@
 // Where a pushed image's bytes come from.
 
 import { z } from "zod";
-import { Identity } from "../../../../../agent_log/identity.js";
-import { Relay } from "../../../../../../shared/relay.js";
 
 /**
  * Who answers the provider's asks for the image being pushed: its
@@ -12,21 +10,16 @@ import { Relay } from "../../../../../../shared/relay.js";
  *
  * - `"client"`: the client that sent the request. The daemon carries
  *   each ask to the client's scope and the answer back.
- * - `{ provider }`: one provider on the daemon's record. The daemon
- *   answers the asks itself, from an `images.read` scope it opens there
- *   as itself. Reached by `read` in the `providers` grant.
- * - `{ daemon }`: one remote daemon, by a route read as a request's
- *   `relay` is: the first id is this daemon's record, and the rest are
- *   the route beyond it. The daemon answers the asks itself, from an
- *   `images.read` scope it opens there. Reached by `relay` in the
- *   `daemons` grant over the first record. A route of no id is refused.
+ * - `"daemon"`: the daemon answers the asks itself and picks where
+ *   from, as it does for the image of a container it runs: every other
+ *   provider connected and every remote daemon on record is asked at
+ *   once whether it can supply the image, and the first that can
+ *   supplies it. The provider pushed to is not asked.
  *
- * A source that does not hold the image, or stops answering, is
- * answered to the provider as not held: the push is `unavailable`.
+ * Neither needs a grant beyond `push` over images reaching the
+ * provider pushed to. A source that does not hold the image, or stops
+ * answering, is answered to the provider as not held: the push is
+ * `unavailable`.
  */
-export const Source = z.union([
-  z.literal("client"),
-  z.strictObject({ provider: Identity }),
-  z.strictObject({ daemon: Relay }),
-]);
+export const Source = z.enum(["client", "daemon"]);
 export type Source = z.infer<typeof Source>;

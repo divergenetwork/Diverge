@@ -24,8 +24,8 @@ pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the provider, the image by its digest and
     /// the references its bytes may be fetched under, the `source` its
-    /// bytes come from — a provider or a daemon, and never `client` —
-    /// and a description; `relay` among its members has another daemon
+    /// bytes come from — `daemon`, and never `client` — and a
+    /// description; `relay` among its members has another daemon
     /// serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,
@@ -43,9 +43,9 @@ pub struct Arguments {
 ///
 /// 1. **This program holds no image**, so it is no source of one. A
 ///    request whose `source` is `client` is refused here, before any
-///    daemon is dialled: the source is a provider or a daemon, which
-///    the daemon reads the image from itself.
-/// 2. **Nothing is asked of this program.** With any other source the
+///    daemon is dialled: the source is `daemon`, which finds the
+///    image itself.
+/// 2. **Nothing is asked of this program.** With that source the
 ///    daemon opens no channel on this scope. Were one opened, it is
 ///    answered as not held, by [`Nothing`].
 /// 3. The stream ends by itself, so nothing here cuts it.
@@ -62,7 +62,7 @@ pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitte
     let request: request::Frame = body(arguments.body.as_deref())?;
     // Rule 1.
     if request.source == Source::Client {
-        return Err(Error::Unsupported("a push whose `source` is `client`: this program holds no image; name a provider or a daemon as the source"));
+        return Err(Error::Unsupported("a push whose `source` is `client`: this program holds no image; the source is `daemon`"));
     }
     let handle = target.dial().await?;
     let mut answers = execute(&handle, &request, Arc::new(Nothing)).await.map_err(shape::exchange::open)?;

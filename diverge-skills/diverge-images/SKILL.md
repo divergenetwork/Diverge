@@ -209,13 +209,10 @@ diverge run images push '{
   "provider": {"issuer":"…","subject":"github.12345.provider"},
   "platforms": ["linux/amd64","linux/arm64"],
   "image": {"digest":"sha256:…","references":[{"registry":"ghcr.io","name":"acme/worker"}]},
-  "source": {"provider": {"issuer":"…","subject":"github.12345.other-provider"}},
+  "source": "daemon",
   "description": "worker 1.4"
 }'
 # {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
-
-# from another daemon, by the route to it (the ids of `daemons list`, hop by hop):
-diverge run images push '{"provider":{…},"platforms":["linux/amd64"],"image":{"digest":"sha256:…"},"source":{"daemon":["<daemon id>"]}}'
 ```
 
 Puts an image into the daemon's Store on a provider without building it.
@@ -236,29 +233,29 @@ Where it comes from, in order:
 2. A reference names a registry that provider lists, and the registry serves the digest: the provider
    fetches it. `source` is `{"registry":{"reference":…}}`.
 3. Otherwise the provider asks for the manifest, the blobs and a proof, and the request's **`source`**
-   answers. Nothing but the source is tried.
+   answers.
 
 **`source` is required.** It is one of:
 
-| `source` | The bytes come from | Needs |
-|---|---|---|
-| `{"provider":{"issuer":…,"subject":…}}` | That provider, read by the daemon as itself: the daemon's Store there, or a registry it lists. It may be the provider pushed to. | `read` in the `providers` grant, reaching it |
-| `{"daemon":["<id>",…]}` | A remote daemon. The route is read as `relay` is: the first id is this daemon's record (`daemons list`), the rest are the hops beyond it. | `relay` in the `daemons` grant, over the first record |
-| `"client"` | The client that sent the request, which must hold the bytes | nothing |
+| `source` | The bytes come from |
+|---|---|
+| `"daemon"` | Wherever the daemon finds the image. It asks every other connected provider and every remote daemon it has a record of, all at once, and the first that can supply the image does. This is the same search it makes for the image of a container it runs. The provider pushed to is not asked. |
+| `"client"` | The client that sent the request, which must hold the bytes |
+
+Neither needs a grant beyond `push`.
 
 **The CLI refuses `"source":"client"`** before dialing anything (`not supported from the command line`): the
 `diverge` program holds no image bytes. A client that has the bytes pushes through the SDK (`images.push`
 with a store that answers the asks). In the answer, `pushed.source` is the *provider's* word for where it
-got the image, so a push fed by another provider or daemon still reads `"client"` there: the daemon was
-the provider's client.
+got the image, so a push the daemon sourced still reads `"client"` there: the daemon was the provider's
+client.
 
-A source that does not hold the image, cannot be reached, or stops part way ends the push `"unavailable"`.
+A client that does not answer, a daemon that finds nobody holding the image, or a source that stops part
+way ends the push `"unavailable"`.
 
 Last line, one of: `{"pushed":…}`, `{"exists":…}`, `"insufficient_capacity"` (the Store is full),
 `"unavailable"`, `"proof_failed"`, `"malformed"` (not an image the provider takes),
-`"platform_not_found"` (a platform named is not in the image), `"unsupported"` (the provider has no Store), `"forbidden"` (no `push` grant reaching the provider, or no grant reaching the
-source), `"not_found"` (no such provider, pushed to or named as the source), `{"error":…}` (a source route
-that is empty, or whose first id is no record, among others). Before it, one
+`"platform_not_found"` (a platform named is not in the image), `"unsupported"` (the provider has no Store), `"forbidden"` (no `push` grant reaching the provider), `"not_found"` (no such provider), `{"error":…}`. Before it, one
 `{"blob":{"digest":…,"bytes":…}}` per blob the provider pulled from its caller.
 A push cannot be cancelled.
 

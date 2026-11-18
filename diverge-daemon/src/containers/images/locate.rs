@@ -91,6 +91,27 @@ pub async fn locate(daemon: &Arc<Daemon>, image: &Image, reach: &Reach, ignore: 
     None
 }
 
+/// A provider asked whether its caller, the daemon, holds `image`:
+/// the name the daemon answers with where a source was found and is
+/// kept in `pulls`, and `None` where there is none. What a run's
+/// answerer and a push the daemon sources both answer a `has` with.
+///
+/// The rules:
+///
+/// 1. **Found as [`locate`] finds one**, over the full reach: every
+///    connected provider but `asking` — which has looked in its own
+///    Store and its own registries already — and every remote daemon
+///    recorded. A provider asking needs no grant.
+/// 2. **Kept.** The source found is kept in `pulls`, through which
+///    the image's manifests, blobs and proof are then taken; a `pulls`
+///    released already keeps none, and the answer is `None`.
+/// 3. **Named.** The answer is [`name`](super::name) of the digest.
+pub async fn held(daemon: &Arc<Daemon>, pulls: &super::Pulls, image: &Image, asking: &Identity) -> Option<String> {
+    let reach = Reach::Full { except: Some(asking.clone()) };
+    let source = locate(daemon, image, &reach, &[]).await?;
+    pulls.keep(source).await.then(|| super::name(&image.digest))
+}
+
 /// Rules 1 and 2 of [`locate`]: every ask, made and not yet awaited,
 /// so that all of them run at once as the set is taken from. Each
 /// answers its source when its scope answered held, and `None` for
@@ -155,47 +176,6 @@ pub async fn asks(daemon: &Arc<Daemon>, image: &Image, reach: &Reach, ignore: &[
         );
     }
     asking
-}
-
-/// The one named provider as the source of `image`, its scope held, or
-/// `None`: a provider that is not connected, that keeps no Store and
-/// lists no registry, or that does not answer held. It is asked as
-/// [`locate`] asks a provider, and no other source is.
-pub async fn on_provider(daemon: &Arc<Daemon>, image: &Image, identity: &Identity) -> Option<Source> {
-    let supplies = daemon
-        .live
-        .capabilities(identity)
-        .await
-        .is_some_and(|info| info.capabilities.images.store.is_some() || !info.capabilities.images.registries.is_empty());
-    if !supplies {
-        return None;
-    }
-    let handle = daemon.live.provider(identity).await?;
-    let frame = request::Frame(oci::has::request::Request { image: image.clone() });
-    let scope = execute::execute(&handle, &frame).await.ok()?;
-    Some(Source {
-        holder: Holder::Provider(identity.clone()),
-        scope,
-    })
-}
-
-/// The one remote daemon `record` reaches, or the daemon the route
-/// `rest` leads to from it, as the source of `image`, its scope held,
-/// or `None`. The read is opened on the record's remote as [`locate`]
-/// opens one — this daemon's identity as what it is not to ask — with
-/// `rest` as that request's own `relay`: none where `rest` is empty.
-pub async fn on_daemon(daemon: &Arc<Daemon>, image: &Image, record: &Record, rest: Vec<DaemonId>) -> Option<Source> {
-    let peer = daemons::connect(daemon, record).await.ok()?;
-    let frame = daemon_request::Frame {
-        image: image.clone(),
-        ignore: daemon.authenticator.own().cloned().into_iter().collect(),
-        relay: (!rest.is_empty()).then(|| diverge_sdk::shared::relay::Relay(rest)),
-    };
-    let scope = daemon_execute::execute(&peer.connected.handle, &frame).await.ok()?;
-    Some(Source {
-        holder: Holder::Daemon(record.id),
-        scope,
-    })
 }
 
 /// Rule 3 of [`locate`], for the asks left once an answer is had: they

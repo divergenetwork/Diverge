@@ -2,13 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::daemon::agent_log::Identity;
-use crate::shared::relay::Relay;
-
 /// Who answers the provider's asks for the image being pushed: its
 /// manifests, its blobs and the proof that it is held. Snake case on
-/// the wire: the string `"client"`, or an object of exactly one
-/// member, `provider` or `daemon`.
+/// the wire: the string `"client"`, or the string `"daemon"`.
 ///
 /// The rules:
 ///
@@ -20,44 +16,31 @@ use crate::shared::relay::Relay;
 /// 2. **[`Client`](Self::Client).** The provider's asks are the
 ///    client's to answer: the daemon opens each on the client's scope
 ///    and carries the answer back, reading none of it.
-/// 3. **[`Provider`](Self::Provider).** The daemon answers the asks
-///    itself, from an
-///    [`images::read`](crate::provider::endpoints::images::read) scope
-///    it opens, as itself, on the provider named: one it keeps a
-///    record of and is connected to. So the image comes from the
-///    daemon's own Store there, or from a registry that provider
-///    uses. The provider named may be the one pushed to.
-/// 4. **[`Daemon`](Self::Daemon).** The daemon answers the asks itself,
-///    from an
-///    [`images::read`](crate::daemon::endpoints::images::read) scope it
-///    opens on a remote daemon. The route is read exactly as a
-///    request's [`relay`](Relay) is: the first ID is this daemon's
-///    record of a remote daemon, on which the scope is opened as the
-///    account that record names, and the IDs after it are that
-///    request's own `relay`, so the image is read on the daemon the
-///    route ends at. A route of no ID names no daemon, and the request
-///    is refused as an error.
-/// 5. **Judged as what it is.** A provider named as the source is
-///    reached by the `read` action of the `providers` grant, as an
-///    [`images::read`](crate::daemon::endpoints::images::read) reaches
-///    one; a route by the `relay` action of the `daemons` grant over
-///    its first record, as every relay is. See
-///    [`grant`](crate::daemon::grant). The client needs no grant to be
-///    asked for what it sends.
-/// 6. **A source that does not answer is not held.** A source that
-///    does not hold the image, that cannot be reached, or that stops
-///    answering part way, is answered to the provider as not held, and
-///    the push is then `Unavailable`, or `ProofFailed`. No other
-///    source is tried.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// 3. **[`Daemon`](Self::Daemon).** The daemon answers the asks
+///    itself, and picks where from, exactly as it does for a provider
+///    that asks it for the image of a container it is to run: every
+///    other provider connected that keeps a Store or lists a registry,
+///    and every remote daemon on record, is asked at once whether it
+///    can supply the image, by an
+///    [`images::read`](crate::daemon::endpoints::images::read) scope
+///    opened on it; the first that answers held supplies it, and every
+///    other is let go. The provider pushed to is not asked: it has
+///    looked already.
+/// 4. **Judged as a run's image is.** The daemon asks as itself, of
+///    every source it reaches, whatever the caller's grants are: a
+///    push needs `push` over images reaching the provider pushed to,
+///    and nothing more, whichever the source is.
+/// 5. **A source that does not answer is not held.** A client that
+///    does not answer, or a daemon that finds nobody holding the
+///    image, or whose pick stops answering part way, is answered to
+///    the provider as not held, and the push is then `Unavailable`,
+///    or `ProofFailed`. No second pick is made.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Source {
     /// The client that sent the request: `"client"`.
     Client,
-    /// One provider on the daemon's record, by its identity:
-    /// `{"provider":{…}}`.
-    Provider(Identity),
-    /// One remote daemon, by the route to it: `{"daemon":[…]}`.
-    Daemon(Relay),
+    /// Whichever source the daemon finds: `"daemon"`.
+    Daemon,
 }

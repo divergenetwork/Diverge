@@ -13,15 +13,14 @@ use crate::containers::images;
 /// an `images::read` scope is opened with the image on each, the first
 /// answered held is the run's source, every other is cancelled, and
 /// its manifests, blobs and proof are taken through it — see
-/// [`images`](crate::containers::images). A provider asking needs no
+/// [`images`](crate::containers::images), and [`images::held`], which
+/// a push the daemon sources answers with too. A provider asking needs no
 /// grant, and is never asked itself, having looked already. Asked for
 /// the proof of possession, the daemon relays it from the source, and
 /// hashes nothing itself.
 impl OciStore for Answerer {
     async fn holds(&self, image: &Image) -> Option<String> {
-        let reach = images::Reach::Full { except: Some(self.provider.clone()) };
-        let source = images::locate(&self.daemon, image, &reach, &[]).await?;
-        self.pulls.keep(source).await.then(|| images::name(&image.digest))
+        images::held(&self.daemon, &self.pulls, image, &self.provider).await
     }
 
     type Blob = images::Blob;

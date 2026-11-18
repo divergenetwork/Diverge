@@ -28,7 +28,8 @@ pub struct Frame {
     /// with none that does, the source is asked for it.
     pub image: Image,
     /// Who is asked for the image where the provider asks: the client,
-    /// one provider, or one remote daemon. See [`Source`]. Required.
+    /// or the daemon, which finds a source itself. See [`Source`].
+    /// Required.
     pub source: Source,
     /// What the image is kept as in the Store, beside its digest: one
     /// short line of plain text. Absent, none. Not written over an

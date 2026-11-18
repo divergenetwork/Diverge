@@ -18,8 +18,8 @@
 //!    the daemon owns there already is `Exists`, and nothing moves. A
 //!    reference naming a registry the provider uses, which serves the
 //!    digest, supplies it, and nobody is asked anything. Otherwise
-//!    the request's SOURCE supplies it: the client, one provider, or
-//!    one remote daemon, as
+//!    the request's SOURCE supplies it: the client, or whichever
+//!    source the daemon finds, as
 //!    [`Source`](client::request::Source) states.
 //! 3. **The provider's asks are the source's to answer.** Every
 //!    channel the provider opens on its push — a manifest, each blob
@@ -27,24 +27,23 @@
 //!    by the source and by nothing else. Where the source is the
 //!    client, the daemon opens each on the client's scope, the ask as
 //!    the provider wrote it, and carries the client's answer back as
-//!    the client wrote it, reading none of it. Where the source is a
-//!    provider or a remote daemon, the daemon answers each from the
-//!    one read scope it opens there, and opens nothing on the client's
-//!    scope. It looks nowhere but the source named.
+//!    the client wrote it, reading none of it. Where the source is
+//!    the daemon, the daemon answers each from the one read scope it
+//!    holds on the source it found, as it answers a provider asking
+//!    for the image of a container it runs, and opens nothing on the
+//!    client's scope.
 //! 4. **An ask the source does not answer is not held.** A client that
 //!    reads no channel, that goes away, or that ends an answer short;
-//!    a provider or a remote daemon that does not hold the image, that
-//!    cannot be reached, or that stops answering: each is answered to
-//!    the provider as the empty finish, which is what a caller that
-//!    does not hold the digest says; the push is then `Unavailable`,
-//!    or `ProofFailed`, and nothing is owned.
-//! 5. **Judged by provider, and by source.** The caller holds `push`
-//!    over images, reaching the provider named, by its identity or its
-//!    tags: see [`grant::images`](crate::daemon::grant::images). A
-//!    provider named as the source is reached by `read` in the
-//!    `providers` grant, and a remote daemon by `relay` in the
-//!    `daemons` grant over the route's first record. A client is the
-//!    source of its own image with no grant.
+//!    a daemon that finds nobody holding the image, or whose source
+//!    stops answering: each is answered to the provider as the empty
+//!    finish, which is what a caller that does not hold the digest
+//!    says; the push is then `Unavailable`, or `ProofFailed`, and
+//!    nothing is owned.
+//! 5. **Judged by provider alone.** The caller holds `push` over
+//!    images, reaching the provider named, by its identity or its
+//!    tags: see [`grant::images`](crate::daemon::grant::images). The
+//!    source is judged by nothing: a client is the source of its own
+//!    image, and the daemon asks as itself, as it does for a run.
 //! 6. **A push cannot be stopped** from the client's side: the client
 //!    opens no channel on it.
 //!

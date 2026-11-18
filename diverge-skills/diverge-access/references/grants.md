@@ -189,7 +189,7 @@ decodes.**
 | Action | Allows |
 |---|---|
 | `build` | `images build` on a provider the grant reaches (plus `mount` over the context volume, where one is named) |
-| `push` | `images push` to a provider the grant reaches. Its `source` is judged separately: a provider by `read` in the `providers` grant, a daemon by `relay` in the `daemons` grant, the client by nothing |
+| `push` | `images push` to a provider the grant reaches. Its `source` needs no grant: `daemon` has the daemon find the image as itself, as it does for a run |
 | `get` | `images get` of an image in the Store on a provider the grant reaches |
 | `list` | `images list`: only the Stores on reached providers are listed |
 
