@@ -67,28 +67,32 @@ pub enum ClientRequest<'a> {
     ImagesBuild(images::build::client::request::Frame),
     /// Tag `17`. Push one, without building it.
     ImagesPush(images::push::client::request::Frame),
-    /// Tag `18`. Change one's description.
+    /// Tag `18`. Make one of the platforms of several.
+    ImagesMerge(images::merge::client::request::Frame),
+    /// Tag `19`. Send one to a registry.
+    ImagesPublish(images::publish::client::request::Frame),
+    /// Tag `20`. Change one's description.
     ImagesEdit(images::edit::client::request::Frame),
-    /// Tag `19`. Destroy one.
+    /// Tag `21`. Destroy one.
     ImagesDelete(images::delete::client::request::Frame),
-    /// Tag `20`. Ask whether one image can be supplied, and pull its
+    /// Tag `22`. Ask whether one image can be supplied, and pull its
     /// manifests, its blobs and its proof.
     ImagesRead(images::read::client::request::Frame),
-    /// Tag `21`. Ask what the provider is, and what it does.
+    /// Tag `23`. Ask what the provider is, and what it does.
     Info(info::client::request::Frame),
-    /// Tag `22`. Ask how much the caller may still use.
+    /// Tag `24`. Ask how much the caller may still use.
     Capacity(capacity::client::request::Frame),
-    /// Tag `23`. Accept connections from other daemons.
+    /// Tag `25`. Accept connections from other daemons.
     DaemonsAccept(daemons::accept::client::request::Frame),
-    /// Tag `24`. Connect to another daemon.
+    /// Tag `26`. Connect to another daemon.
     DaemonsConnect(daemons::connect::client::request::Frame),
-    /// Tag `25`. Ask which connected identities are announced.
+    /// Tag `27`. Ask which connected identities are announced.
     DaemonsList(daemons::list::client::request::Frame),
-    /// Tag `26`. Listen for the messages sent to the caller.
+    /// Tag `28`. Listen for the messages sent to the caller.
     DaemonsListen(daemons::listen::client::request::Frame),
-    /// Tag `27`. Send one message to one identity.
+    /// Tag `29`. Send one message to one identity.
     DaemonsMessage(daemons::message::client::request::Frame<'a>),
-    /// Tag `28`. Announce the caller to the provider's daemons list.
+    /// Tag `30`. Announce the caller to the provider's daemons list.
     DaemonsAnnounce(daemons::announce::client::request::Frame),
     /// Something this version cannot read, kept as it arrived.
     ///
@@ -100,7 +104,7 @@ pub enum ClientRequest<'a> {
     /// # It is answered, not dropped
     ///
     /// A server finishes the scope over it, with nothing in front:
-    /// twenty-nine endpoints have twenty-nine error vocabularies, and an
+    /// thirty-one endpoints have thirty-one error vocabularies, and an
     /// invalid request names none of them — where a finish with nothing before
     /// it is already what the wire means by a request that could not
     /// be served, and every executor reads it as its own "unanswered".
@@ -113,15 +117,15 @@ pub enum ClientRequest<'a> {
     /// A server that wants one has the bytes and can ask the specific
     /// request to decode them, which answers precisely: an unknown
     /// tag, a body that would not parse, or nothing at all. Storing a
-    /// reason here would mean this type choosing which of twenty-nine
-    /// error vocabularies to speak, and choosing wrong for twenty-eight
-    /// of them.
+    /// reason here would mean this type choosing which of thirty-one
+    /// error vocabularies to speak, and choosing wrong for thirty of
+    /// them.
     Invalid(&'a [u8]),
 }
 
 impl Encode for ClientRequest<'_> {
-    /// Two ways to fail, because twenty-nine requests use two encodings
-    /// between them — and ten of the twenty-nine use neither: nine have
+    /// Two ways to fail, because thirty-one requests use two encodings
+    /// between them — and ten of the thirty-one use neither: nine have
     /// nothing to encode, and an announce is its text's own bytes.
     type Error = ClientRequestEncodeError;
 
@@ -189,6 +193,12 @@ impl Encode for ClientRequest<'_> {
             }
             ClientRequest::ImagesPush(frame) => {
                 frame.encode(out).map_err(ClientRequestEncodeError::Json)
+            }
+            ClientRequest::ImagesMerge(frame) => {
+                frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
+            }
+            ClientRequest::ImagesPublish(frame) => {
+                frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
             }
             ClientRequest::ImagesEdit(frame) => {
                 frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
@@ -293,37 +303,43 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             17 => images::push::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesPush)
                 .ok(),
-            18 => images::edit::client::request::Frame::decode(bytes)
+            18 => images::merge::client::request::Frame::decode(bytes)
+                .map(ClientRequest::ImagesMerge)
+                .ok(),
+            19 => images::publish::client::request::Frame::decode(bytes)
+                .map(ClientRequest::ImagesPublish)
+                .ok(),
+            20 => images::edit::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesEdit)
                 .ok(),
-            19 => images::delete::client::request::Frame::decode(bytes)
+            21 => images::delete::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesDelete)
                 .ok(),
-            20 => images::read::client::request::Frame::decode(bytes)
+            22 => images::read::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesRead)
                 .ok(),
-            21 => info::client::request::Frame::decode(bytes)
+            23 => info::client::request::Frame::decode(bytes)
                 .map(ClientRequest::Info)
                 .ok(),
-            22 => capacity::client::request::Frame::decode(bytes)
+            24 => capacity::client::request::Frame::decode(bytes)
                 .map(ClientRequest::Capacity)
                 .ok(),
-            23 => daemons::accept::client::request::Frame::decode(bytes)
+            25 => daemons::accept::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsAccept)
                 .ok(),
-            24 => daemons::connect::client::request::Frame::decode(bytes)
+            26 => daemons::connect::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsConnect)
                 .ok(),
-            25 => daemons::list::client::request::Frame::decode(bytes)
+            27 => daemons::list::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsList)
                 .ok(),
-            26 => daemons::listen::client::request::Frame::decode(bytes)
+            28 => daemons::listen::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsListen)
                 .ok(),
-            27 => daemons::message::client::request::Frame::decode(bytes)
+            29 => daemons::message::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsMessage)
                 .ok(),
-            28 => daemons::announce::client::request::Frame::decode(bytes)
+            30 => daemons::announce::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsAnnounce)
                 .ok(),
             _ => None,
@@ -335,8 +351,8 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
 /// A request that could not be written.
 ///
 /// Named for the encoding rather than for the request, because
-/// nineteen requests share two of them and a variant per request
-/// would be nineteen names that mean the same failure — nineteen,
+/// twenty-one requests share two of them and a variant per request
+/// would be twenty-one names that mean the same failure — twenty-one,
 /// because the other ten use neither.
 #[derive(Debug)]
 pub enum ClientRequestEncodeError {

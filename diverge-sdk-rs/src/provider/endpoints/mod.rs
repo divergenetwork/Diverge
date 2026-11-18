@@ -7,7 +7,7 @@
 //! | endpoint | scopes |
 //! |----------|--------|
 //! | [`containers`] | run an agent or a tool server in a container; serve a subtree of a container live |
-//! | [`images`] | list the images in the caller's Store, and keep the listing; examine one; build one; push one without building it; change one's description; destroy one; ask whether one image can be supplied, and read it: its manifests, its blobs, its proof and its DIVERGE.md |
+//! | [`images`] | list the images in the caller's Store, and keep the listing; examine one; build one; push one without building it; make one of the platforms of several; send one to a registry; change one's description; destroy one; ask whether one image can be supplied, and read it: its manifests, its blobs, its proof and its DIVERGE.md |
 //! | [`volumes`] | list what a provider offers, and keep the listing; examine one; read, write or walk one; serve one's files live and watch them as served; ask how large one may be made; make one; ask how far one may grow; resize it; destroy it |
 //! | [`daemons`] | accept connections from other daemons; connect to another daemon; list the connected identities that are announced, and keep the listing; listen for the messages sent to the caller, and keep listening; send one message to one identity; announce the caller to the listing, and keep it there |
 //! | [`info`] | ask what a provider is: its version, and what it does |
@@ -40,19 +40,21 @@
 //! | `15` | [`images::stat`] |
 //! | `16` | [`images::build`] |
 //! | `17` | [`images::push`] |
-//! | `18` | [`images::edit`] |
-//! | `19` | [`images::delete`] |
-//! | `20` | [`images::read`] |
-//! | `21` | [`info`] |
-//! | `22` | [`capacity`] |
-//! | `23` | [`daemons::accept`] |
-//! | `24` | [`daemons::connect`] |
-//! | `25` | [`daemons::list`] |
-//! | `26` | [`daemons::listen`] |
-//! | `27` | [`daemons::message`] |
-//! | `28` | [`daemons::announce`] |
+//! | `18` | [`images::merge`] |
+//! | `19` | [`images::publish`] |
+//! | `20` | [`images::edit`] |
+//! | `21` | [`images::delete`] |
+//! | `22` | [`images::read`] |
+//! | `23` | [`info`] |
+//! | `24` | [`capacity`] |
+//! | `25` | [`daemons::accept`] |
+//! | `26` | [`daemons::connect`] |
+//! | `27` | [`daemons::list`] |
+//! | `28` | [`daemons::listen`] |
+//! | `29` | [`daemons::message`] |
+//! | `30` | [`daemons::announce`] |
 //!
-//! Twenty-nine, grouped by endpoint and ordered within it. The three
+//! Thirty-one, grouped by endpoint and ordered within it. The three
 //! container scopes lead: the agents' run, the tools' run, and the
 //! serve that answers a running container's files live. The eleven volume
 //! scopes follow in the
@@ -60,8 +62,9 @@
 //! it, write one in, see its tree, serve its files live, ask how large
 //! one may be made, make one, ask how far one may grow, resize it,
 //! destroy it.
-//! Then the seven of [`images`]: the caller's Store — list, examine,
-//! build, push, edit, destroy; and the read scope of one image, which
+//! Then the nine of [`images`]: the caller's Store — list, examine,
+//! build, push, merge, publish, edit, destroy; and the read scope of
+//! one image, which
 //! asks whether the provider can supply it and, where it can, serves
 //! its manifests, its blobs, its proof and its DIVERGE.md.
 //! Then [`info`], which asks what a provider is, and [`capacity`],
@@ -81,10 +84,11 @@
 //! removed takes its value with it, the scopes after it moving down —
 //! which is how the container FUSE serve sits at `2`, the volumes at
 //! `3` through `13` — the container info that once stood before them
-//! having gone into the read scope — the images at `14` through `20`
+//! having gone into the read scope — the images at `14` through `22`
 //! — the has and the hash that once stood among them having gone
-//! into the read scope too — and [`capacity`] at `22` beside
-//! [`info`], the daemons at `23` through `28`.
+//! into the read scope too, and the merge and the publish having
+//! come in beside the push — and [`capacity`] at `24` beside
+//! [`info`], the daemons at `25` through `30`.
 //!
 //! This table is the whole allocation. Each request states its own
 //! value and points here, because a value chosen in one module has to

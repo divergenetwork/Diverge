@@ -34,6 +34,7 @@ use crate::wire::encode::{Encode, Writer};
 /// | [`ProofFailed`](Self::ProofFailed), then a finish | the caller supplied the image and did not prove it holds it; nothing is owned, and what the attempt brought in is removed |
 /// | [`Malformed`](Self::Malformed), then a finish | a manifest that does not parse, a media type the provider does not take, or a size or a digest that does not match; nothing is owned |
 /// | [`Unsupported`](Self::Unsupported), then a finish | the provider has no Store; nothing moved |
+/// | [`PlatformNotFound`](Self::PlatformNotFound), then a finish | a platform named is not in the image; nothing moved, and what the image held is as it was |
 /// | an [`Error`](Self::Error), then a finish | it is not owned, for some other reason |
 ///
 /// # The refusals are answers, not errors
@@ -48,7 +49,8 @@ pub enum Frame {
     Blob(Blob),
     /// The image is in the caller's Store. Tag `1`.
     Pushed(Pushed),
-    /// The caller already owns the digest, and nothing moved. Tag `2`.
+    /// The caller already owns the digest and holds every platform
+    /// named, and nothing moved. Tag `2`.
     Exists(Exists),
     /// The Store has no room for the image, by the sizes its manifest
     /// declares, and nothing moved past the manifest. Tag `3`.
@@ -73,6 +75,13 @@ pub enum Frame {
     /// See [`shared::error::Error`](crate::shared::error::Error) for
     /// why it says so little.
     Error(Error),
+    /// A platform the request names is not in the image: no entry of
+    /// its index is for it, or it is not an index and its config
+    /// states another. Tag `9`.
+    ///
+    /// Carries nothing. Nothing is added: the Store holds of the
+    /// image what it held before.
+    PlatformNotFound,
 }
 
 /// Tag for [`Frame::Blob`].
@@ -101,6 +110,9 @@ const UNSUPPORTED: u8 = 7;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 8;
+
+/// Tag for [`Frame::PlatformNotFound`].
+const PLATFORM_NOT_FOUND: u8 = 9;
 
 /// Two formats, and the tag chooses between them: a blob, the image
 /// pushed and the image owned already are postcard, as the rest of
@@ -150,6 +162,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out).map_err(FrameEncodeError::Error)
             }
+            Frame::PlatformNotFound => {
+                out.extend_from_slice(&[PLATFORM_NOT_FOUND]);
+                Ok(())
+            }
         }
     }
 }
@@ -171,6 +187,7 @@ impl Decode<'_> for Frame {
             MALFORMED => Ok(Frame::Malformed),
             UNSUPPORTED => Ok(Frame::Unsupported),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameDecodeError::Error),
+            PLATFORM_NOT_FOUND => Ok(Frame::PlatformNotFound),
             tag => Err(FrameDecodeError::UnknownTag(tag)),
         }
     }

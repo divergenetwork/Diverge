@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::shared::platform;
+
 /// What a provider does with images: whether it keeps a Store, what
 /// its Store does, and the registries it pulls from. A member absent
 /// is that part absent, so a provider that does nothing with images
@@ -44,21 +46,45 @@ impl ImagesCapabilities {
     /// Whether the provider builds: it keeps a Store, and its Store
     /// builds.
     pub fn builds(&self) -> bool {
-        self.store.is_some_and(|store| store.build)
+        self.store.as_ref().is_some_and(|store| store.build.is_some())
     }
 }
 
 /// What a provider's Store does beyond being kept. The Store itself —
-/// listing it, pushing into it, editing and deleting what is in it —
-/// is this object being there at all.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+/// listing it, pushing into it, merging and publishing what is in it,
+/// editing and deleting it — is this object being there at all.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct StoreCapabilities {
-    /// The provider builds into the Store: it answers
+    /// The provider builds into the Store, and for which platforms: it
+    /// answers
     /// [`images::build`](crate::provider::endpoints::images::build).
-    /// Absent — `false` — a build answers `Unsupported`, the first and
-    /// only response of its scope, and nothing is built; every other
-    /// endpoint of the Store is served as it is with `true`.
-    #[serde(default)]
-    pub build: bool,
+    /// See [`BuildCapabilities`]. Absent — no object — a build answers
+    /// `Unsupported`, the first and only response of its scope, and
+    /// nothing is built; every other endpoint of the Store is served
+    /// as it is with the object there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub build: Option<BuildCapabilities>,
+}
+
+/// The provider builds, and the platforms it builds for. The object
+/// being there is the capability: a provider that does not build
+/// sends none. The rules:
+///
+/// 1. **At least one platform.** `platforms` names one or more, each
+///    once, each a [platform string](crate::shared::platform::of). An
+///    object whose list is empty does not decode.
+/// 2. **A build names its platforms**, and each must be one listed
+///    here: a build naming any other is answered
+///    [`PlatformUnsupported`](crate::provider::endpoints::images::build::server::response::Frame::PlatformUnsupported),
+///    and nothing is built.
+/// 3. **Building is not running.** The platforms built for need not be
+///    the platforms
+///    [`containers`](super::Capabilities::containers) runs.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(schemars::JsonSchema)]
+pub struct BuildCapabilities {
+    /// The platforms the provider builds for: one or more, each once.
+    #[serde(deserialize_with = "platform::some")]
+    pub platforms: Vec<String>,
 }

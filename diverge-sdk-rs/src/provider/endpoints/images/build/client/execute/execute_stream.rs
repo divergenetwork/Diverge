@@ -66,6 +66,7 @@ impl Stream for ExecuteStream {
             Ok(response::Frame::InsufficientCapacity) => self.end(ExecuteStreamError::InsufficientCapacity),
             Ok(response::Frame::ContextHeld) => self.end(ExecuteStreamError::ContextHeld),
             Ok(response::Frame::Unsupported) => self.end(ExecuteStreamError::Unsupported),
+            Ok(response::Frame::PlatformUnsupported) => self.end(ExecuteStreamError::PlatformUnsupported),
             Ok(response::Frame::Error(error)) => self.end(ExecuteStreamError::Refused(error)),
             Ok(frame) => Poll::Ready(Some(Ok(frame))),
             Err(error) => self.end(ExecuteStreamError::Response(error)),
@@ -93,6 +94,9 @@ pub enum ExecuteStreamError {
     /// The provider has no Store, and nothing was built. The
     /// protocol's defined refusal, not a failure.
     Unsupported,
+    /// The provider does not build for a platform named, and nothing
+    /// was built. The protocol's defined refusal, not a failure.
+    PlatformUnsupported,
     /// The provider ended the build with an error, in its own words;
     /// the output before it says why. See
     /// [`shared::error::Error`](crate::shared::error::Error) for why
@@ -110,6 +114,7 @@ impl fmt::Display for ExecuteStreamError {
             ExecuteStreamError::InsufficientCapacity => f.write_str("the provider has no room for the image"),
             ExecuteStreamError::ContextHeld => f.write_str("something holds the context volume"),
             ExecuteStreamError::Unsupported => f.write_str("the provider has no Store"),
+            ExecuteStreamError::PlatformUnsupported => f.write_str("the provider does not build for a platform named"),
             ExecuteStreamError::Refused(_) => f.write_str("the provider ended the image build with an error"),
         }
     }
@@ -125,6 +130,7 @@ impl std::error::Error for ExecuteStreamError {
             | ExecuteStreamError::InsufficientCapacity
             | ExecuteStreamError::ContextHeld
             | ExecuteStreamError::Unsupported
+            | ExecuteStreamError::PlatformUnsupported
             | ExecuteStreamError::Refused(_) => None,
         }
     }

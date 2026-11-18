@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Context;
 use crate::shared::description::Description;
+use crate::shared::platform;
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
@@ -39,11 +40,12 @@ use crate::wire::encode::{Encode, Writer};
 /// [`Exists`](crate::provider::endpoints::images::build::server::response::Frame::Exists),
 /// [`InsufficientCapacity`](crate::provider::endpoints::images::build::server::response::Frame::InsufficientCapacity),
 /// [`ContextHeld`](crate::provider::endpoints::images::build::server::response::Frame::ContextHeld),
-/// [`Unsupported`](crate::provider::endpoints::images::build::server::response::Frame::Unsupported)
+/// [`Unsupported`](crate::provider::endpoints::images::build::server::response::Frame::Unsupported),
+/// [`PlatformUnsupported`](crate::provider::endpoints::images::build::server::response::Frame::PlatformUnsupported)
 /// and [`Error`](crate::provider::endpoints::images::build::server::response::Frame::Error).
 /// A build that fails says why in its output, and the error after it
 /// says only that it failed.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Frame {
     /// What the caller says of the image, at most 132 characters, or
     /// `None` for nothing. One postcard byte, `0` for none and `1`
@@ -57,6 +59,16 @@ pub struct Frame {
     /// Containerfile that copies from one fails. One postcard byte,
     /// `0` for none and `1` followed by the context.
     pub context: Option<Context>,
+    /// The platforms to build for: one or more, each once, each a
+    /// [platform string](crate::shared::platform::of). A list that is
+    /// empty does not decode. One platform builds an image for it;
+    /// several build an index over them, one image per platform. A
+    /// platform the provider does not build for — one its
+    /// `images.store.build` does not list — is
+    /// [`PlatformUnsupported`](crate::provider::endpoints::images::build::server::response::Frame::PlatformUnsupported),
+    /// and nothing is built.
+    #[serde(deserialize_with = "platform::some")]
+    pub platforms: Vec<String>,
 }
 
 /// This frame's tag among the scope-opening requests.

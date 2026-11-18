@@ -68,6 +68,7 @@ impl Stream for ExecuteStream {
             Ok(response::Frame::ProofFailed) => self.end(ExecuteStreamError::ProofFailed),
             Ok(response::Frame::Malformed) => self.end(ExecuteStreamError::Malformed),
             Ok(response::Frame::Unsupported) => self.end(ExecuteStreamError::Unsupported),
+            Ok(response::Frame::PlatformNotFound) => self.end(ExecuteStreamError::PlatformNotFound),
             Ok(response::Frame::Error(error)) => self.end(ExecuteStreamError::Refused(error)),
             Ok(frame) => Poll::Ready(Some(Ok(frame))),
             Err(error) => self.end(ExecuteStreamError::Response(error)),
@@ -102,6 +103,9 @@ pub enum ExecuteStreamError {
     /// The provider has no Store, and nothing moved. The protocol's
     /// defined refusal, not a failure.
     Unsupported,
+    /// A platform named is not in the image, and nothing moved. The
+    /// protocol's defined refusal, not a failure.
+    PlatformNotFound,
     /// The provider ended the push with an error, in its own words.
     /// See [`shared::error::Error`](crate::shared::error::Error) for
     /// why it says so little.
@@ -120,6 +124,7 @@ impl fmt::Display for ExecuteStreamError {
             ExecuteStreamError::ProofFailed => f.write_str("the caller did not prove it holds the image"),
             ExecuteStreamError::Malformed => f.write_str("the image is not one the provider takes"),
             ExecuteStreamError::Unsupported => f.write_str("the provider has no Store"),
+            ExecuteStreamError::PlatformNotFound => f.write_str("a platform named is not in the image"),
             ExecuteStreamError::Refused(_) => f.write_str("the provider ended the image push with an error"),
         }
     }
@@ -137,6 +142,7 @@ impl std::error::Error for ExecuteStreamError {
             | ExecuteStreamError::ProofFailed
             | ExecuteStreamError::Malformed
             | ExecuteStreamError::Unsupported
+            | ExecuteStreamError::PlatformNotFound
             | ExecuteStreamError::Refused(_) => None,
         }
     }
