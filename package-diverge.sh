@@ -20,8 +20,8 @@
 # `diverge-container-proxy/install.sh` does.
 #
 # The version is the SDK crate's, which `version.sh` keeps every other
-# manifest equal to. The host's OS and architecture are read, never
-# chosen: nothing is cross-compiled but the proxy.
+# manifest equal to. The host's OS and architecture are read from the
+# Rust toolchain, never chosen: nothing is cross-compiled but the proxy.
 #
 # Needs: cargo; pnpm, with `pnpm install` done (the viewer's page is
 # built and put inside its binary by `pnpm tauri build --no-bundle`);
@@ -56,16 +56,20 @@ workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 version="$(awk -F'"' '/^version = "[^"]+"/ { print $2; exit }' "$workspace/diverge-sdk-rs/Cargo.toml")"
 [[ -n "$version" ]] || { echo "error: no version in diverge-sdk-rs/Cargo.toml" >&2; exit 1; }
 
-case "$(uname -s)" in
-    Linux) os="linux"; exe="" ;;
-    Darwin) os="macos"; exe="" ;;
-    MINGW*|MSYS*|CYGWIN*) os="windows"; exe=".exe" ;;
-    *) echo "error: unsupported system $(uname -s)" >&2; exit 1 ;;
+# The host cargo builds for is the host this archive is for: read from
+# rustc, not from the shell, since a shell can be an emulated one (Git
+# Bash on Windows on ARM may say x86_64) while the toolchain is not.
+host="$(rustc -vV | sed -n 's/^host: //p')"
+case "$host" in
+    *-linux-*) os="linux"; exe="" ;;
+    *-apple-darwin) os="macos"; exe="" ;;
+    *-windows-*) os="windows"; exe=".exe" ;;
+    *) echo "error: unsupported host $host" >&2; exit 1 ;;
 esac
-case "$(uname -m)" in
-    x86_64|amd64) arch="x86_64" ;;
-    aarch64|arm64) arch="aarch64" ;;
-    *) echo "error: unsupported architecture $(uname -m)" >&2; exit 1 ;;
+case "$host" in
+    x86_64-*) arch="x86_64" ;;
+    aarch64-*) arch="aarch64" ;;
+    *) echo "error: unsupported host $host" >&2; exit 1 ;;
 esac
 
 # One cargo invocation for the four that are plain crates: they share

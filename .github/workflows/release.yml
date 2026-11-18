@@ -32,7 +32,7 @@ name: Release
 #
 #   check ─┬─ create-release ─┬─ binaries (x86_64: linux, macos, windows)
 #          ├─ proxy-x86_64 ───┘
-#          ├─ create-release ─┬─ binaries (aarch64: linux, macos)
+#          ├─ create-release ─┬─ binaries (aarch64: linux, macos, windows)
 #          ├─ proxy-aarch64 ──┘
 #          ├─ sdk-rust
 #          └─ sdk-javascript
@@ -43,8 +43,15 @@ name: Release
 #   job, so a shortage of one's runners does not hold the other. The two
 #   SDKs depend on nothing here and on each other not at all.
 #
-# No platform is Windows on ARM: the Postgres the daemon ships has no
-# build for it upstream.
+# THE POSTGRES INSIDE
+#
+#   diverge-postgres bakes a PostgreSQL build in at compile time, fetched
+#   from theseus-rs/postgresql-binaries. Left alone it takes whatever is
+#   newest on the day, so POSTGRESQL_VERSION below pins it: every platform
+#   of a release then ships the same one, and it moves by a commit. A
+#   daemon's data is one major version's, so never move it across a major
+#   without a plan for the data already out there. 18.7.0 is the first
+#   upstream release with a build for Windows on ARM.
 #
 # RUNNERS (looked up 2026-11-16; github.com/actions/runner-images)
 #
@@ -57,6 +64,7 @@ name: Release
 #     reason. macOS 14 was retired on 2026-11-02.
 #   • Windows is pinned to `windows-2025`, which is what `windows-latest`
 #     names today, so that it changes by a commit and not by itself.
+#     Windows on ARM is `windows-11-arm`, the only image there is for it.
 #   • The jobs that build nothing platform-bound run on `ubuntu-latest`.
 
 on:
@@ -78,6 +86,9 @@ permissions:
 concurrency:
   group: release
   cancel-in-progress: false
+
+env:
+  POSTGRESQL_VERSION: '=18.7.0'
 
 jobs:
   check:
@@ -263,8 +274,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: linux, runs-on: ubuntu-22.04-arm }
-          - { os: macos, runs-on: macos-15 }
+          - { os: linux,   runs-on: ubuntu-22.04-arm }
+          - { os: macos,   runs-on: macos-15 }
+          - { os: windows, runs-on: windows-11-arm }
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
