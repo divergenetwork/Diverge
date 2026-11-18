@@ -3,10 +3,12 @@
 //! — from a provider or a remote daemon; [`build`], one built on a
 //! provider into the daemon's Store there; [`push`], one built already
 //! put there, the provider's asks for it carried to the client; and
-//! [`list`], what the daemon owns in its Stores, and [`get`], one image
-//! of them.
+//! [`list`], what the daemon owns in its Stores, [`get`], one image
+//! of them, and [`delete`], one of them taken out, or some of its
+//! platforms.
 
 pub mod build;
+pub mod delete;
 pub mod get;
 pub mod list;
 pub mod push;
