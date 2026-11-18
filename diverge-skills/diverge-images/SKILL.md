@@ -272,6 +272,43 @@ Last line, one of: `{"pushed":…}` (with `platforms`, every one named), `{"exis
 group of platforms that landed.
 A push cannot be cancelled.
 
+## Deleting an image, or some of its platforms: `diverge run images delete`
+
+```bash
+# the whole image
+diverge run images delete '{"provider":{"issuer":"…","subject":"github.12345.provider"},"digest":"sha256:…"}'
+# "deleted"
+
+# only some platforms; the rest stay, under the same digest
+diverge run images delete '{"provider":{…},"digest":"sha256:…","platforms":["linux/arm64"]}'
+# "deleted"
+```
+
+Takes an image out of the daemon's Store on a provider. It cannot be undone; build or push the image
+again to have it back.
+
+- **No `platforms`, the whole image goes.** With `platforms`, only those go.
+- **The digest does not change** when some platforms stay. `images list` then shows `platforms` shorter
+  than `manifest_platforms`, exactly as after a push of only some platforms.
+- **All or nothing.** If one platform named is not held there, the answer is `"platform_not_held"` and
+  nothing is deleted. Check `platforms` in `images list` first.
+- **Naming every platform held deletes the image**, the same as naming none.
+- **Nothing shared is lost.** A layer another platform, another image or another owner still uses stays on
+  the provider. Only what nothing else uses is freed.
+- **In use.** If a container is running the image, the whole image and the platform that provider runs
+  cannot be deleted: `"in_use"`, nothing changed. Stop the container and ask again. A platform the provider
+  does not run can still be deleted.
+- Only the daemon's own image is deleted. Another daemon's image of the same digest on that provider is
+  untouched.
+- A template that names a deleted digest is not told. At its next run the image is found again from
+  another source, or the run fails there.
+
+One line, one of: `"deleted"`, `"in_use"`, `"platform_not_held"`, `"not_found"` (no such provider, or
+the daemon owns no image of that digest there), `"unsupported"` (the provider has no Store),
+`"forbidden"`, `{"error":…}` (the provider is not connected, among others).
+
+Grant: `delete` over images, reaching the provider.
+
 ## `/.diverge/DIVERGE.md`: the image's own word on what it takes
 
 Every image ships one file in the folder `.diverge` at the root of its filesystem, `/.diverge/DIVERGE.md`.

@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the image is no longer in the client’s Store, exactly the byte 1 when a running container runs it and it was not deleted, exactly the byte 2 when the server keeps no Store, or the byte 3 followed by an error as one JSON value, and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is exactly the byte 0 when the image is no longer in the client’s Store, exactly the byte 1 when a running container runs it and it was not deleted, exactly the byte 2 when the server keeps no Store, exactly the byte 4 when a platform named is not held and nothing was deleted, or the byte 3 followed by an error as one JSON value, and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -13,6 +13,7 @@ finish follows the response, and no frame follows the finish.
 [1]                  not deleted: a running container runs the image
 [2]                  not deleted: the server keeps no Store
 [3][error JSON …]    not deleted
+[4]                  not deleted: a platform named is not held
 ```
 
 - **The sequence.** Exactly one response precedes the response
@@ -21,7 +22,12 @@ finish follows the response, and no frame follows the finish.
   [Endpoints](/endpoints/) provides; whether the image is in the
   client's Store is then not stated, and the client learns it from an
   [images::list](/endpoints/images-list/) scope.
-- **Deleted.** A payload whose first byte is `0` states that the
+- **Deleted.** A payload whose first byte is `0` states, of a request
+  that names one or more platforms and does not name every platform
+  the client holds of the image, that the client holds the image for
+  none of the platforms named, as
+  [images::delete](/endpoints/images-delete/) states. Of every other
+  request it states that the
   image is no longer in the client's Store. The server sends it after
   the image is removed from the client's Store. From the moment the server sends it, every `images::list`
   scope the client opens omits the image, and every list scope the
@@ -39,6 +45,12 @@ finish follows the response, and no frame follows the finish.
   no Store, as [Capabilities](/capabilities/) provides. It is
   the only response of the scope, sent before anything is looked up;
   bytes after it are not read.
+- **Platform not held.** A payload that is the byte `4` and nothing
+  else states that the request names a platform the client does not
+  hold of the image, and that nothing was deleted. The image and the
+  client's listing are as they were before the request. The server
+  sends nothing after the byte `4`, and a client ignores every byte
+  that follows it.
 - **The error.** A payload whose first byte is `3` carries an error
   after that byte, running to the end of the payload. The error is
   exactly one JSON value, in the form defined on the
@@ -47,7 +59,7 @@ finish follows the response, and no frame follows the finish.
   states that the image is in the client's Store after the request,
   as it was before it, and that the reason is not a running container.
 - **Malformed.** A payload with no byte, a payload whose first byte
-  is none of `0`, `1`, `2` and `3`, and a payload whose bytes after
+  is none of `0`, `1`, `2`, `3` and `4`, and a payload whose bytes after
   `3` are not one JSON value are malformed.
 
 The response is defined by `diverge-sdk-rs/src/provider/endpoints/images/delete/server/response/frame.rs`:

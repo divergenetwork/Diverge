@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload is the tag byte 21 followed by the digest of the image as a varint length and UTF-8 bytes, in the postcard wire format.'
+summary: 'The payload is the tag byte 21 followed by the digest of the image as a varint length and UTF-8 bytes and by the platforms to delete as a varint count and that many strings, in the postcard wire format.'
 order: 1
 draft: false
 ---
@@ -11,14 +11,25 @@ the postcard wire format, as the postcard reading of
 
 ```text
 [21][digest_len: varint][digest: utf8 …]
+    [platforms_count: varint]
+      { [platform_len: varint][platform: utf8 …] }
 ```
 
 - **`digest`.** The manifest digest of the image, UTF-8, of the form
   `<algorithm>:<hex>`, preceded by its byte length as a varint. It is
   the `digest` of an image in the client's
   [images::list](/endpoints/images-list/) listing.
+- **`platforms`.** The platforms to delete of the image: a count as
+  a varint, followed by that many strings, each UTF-8 and preceded by
+  its byte length as a varint. Each string is one platform, in the
+  form that [Capabilities](/capabilities/) defines for a platform. A
+  count of `0` names no platform, and the request then deletes the
+  image. The field is always present.
+- **Each platform once.** No platform occurs twice in `platforms`. A
+  payload in which a platform occurs twice, or in which a string is
+  not a platform, does not decode as the request.
 - **Bytes after the request.** A server ignores every byte that
-  follows the `digest` field. A request whose payload extends past the
+  follows the `platforms` field. A request whose payload extends past the
   request is not malformed.
 - **Malformed.** A payload with no byte, a payload whose first byte
   is not `21`, and a payload whose bytes after the tag do not decode

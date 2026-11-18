@@ -1011,6 +1011,15 @@ Identity — the platforms it holds of the image for the Identity,
 where it supplies the image from what it holds for the Identity, and
 every platform the image's manifest names, where it supplies the
 image from a registry — each once, and shall send them exactly once.
+The Provider shall delete, for an `images::delete` request that
+names one or more platforms, exactly those platforms from what it
+holds of the image for the Identity, or none of them; shall answer a
+request naming a platform it does not hold of the image for the
+Identity by the byte `4` alone, deleting nothing; shall delete the
+image where the request names no platform or names every platform it
+holds of the image for the Identity; and shall keep every manifest and
+every blob that another platform, another Client Image or another
+Identity's Client Image references.
 No run request names a platform;
 the Provider shall run, of an image that is an index, an image
 manifest whose platform its `containers` lists.
