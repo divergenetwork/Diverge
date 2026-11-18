@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use super::{accounts, agents, agents_templates, connected_standalone_tools, dependency_tools, daemons, events, identities, images, postgres, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
 
 /// One grant: a permission over one kind of thing the daemon holds,
-/// reaching by tags — or, over agents, by the forms
-/// [`agents::Within`] adds. Externally tagged by the
+/// reaching all, the records it lists, or by tags — or, over agents,
+/// by the words [`agents::Within`] adds. Externally tagged by the
 /// kind's name — one object with one member, `{"agents":…}`,
 /// `{"volumes":…}` — whose value is that kind's
 /// [`Permission`](agents::Permission), in one of the shapes

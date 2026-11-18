@@ -4,10 +4,10 @@
 //! digest. What the daemon does hold is a Store on each provider that
 //! keeps one, and that is what a grant over images reaches: an object
 //! of the [`Action`]s held and how far they reach,
-//! `{"images":{"actions":["build","list"],"within":"any"}}`. Here a
-//! grant names nobody, so `within` is `"any"` or the shared
-//! [`Tags`](crate::shared::permission::Tags) test over the providers'
-//! records' tags, as it is for
+//! `{"images":{"actions":["build","list"],"within":"any"}}`. Here
+//! `within` is `"any"`, the providers [`Listed`] by identity, or the
+//! shared [`Tags`](crate::shared::permission::Tags) test over the
+//! providers' records' tags, as it is for
 //! [`providers`](crate::shared::permission::providers) and
 //! [`providers_daemons`](crate::shared::permission::providers_daemons);
 //! the daemon's own grant may also name providers by identity: see
@@ -17,7 +17,9 @@
 //! [`Permission`] is that object as a type.
 
 mod action;
+mod listed;
 mod permission;
 
 pub use action::*;
+pub use listed::*;
 pub use permission::*;

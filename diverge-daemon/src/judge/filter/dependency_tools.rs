@@ -34,7 +34,8 @@ pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
         Mode::Transient { .. } => (Which::Transient, None),
         Mode::Service { scope } => (Which::Service, Some(*scope)),
     };
-    (filter.ids.is_empty() || filter.ids.contains(&tool.template))
+    (filter.tools.is_empty() || filter.tools.iter().any(|key| key.template == tool.template && owned(facts.owner, &key.owner)))
+        && (filter.ids.is_empty() || filter.ids.contains(&tool.template))
         && (filter.owners.is_empty() || filter.owners.iter().any(|wanted| owned_by(facts.owner, wanted)))
         && (filter.creators.is_empty() || filter.creators.contains(&tool.creator))
         && (filter.modes.is_empty() || filter.modes.contains(&mode))
@@ -62,6 +63,18 @@ fn owned_by(owner: &key::Owner, reference: &reference::Owner) -> bool {
         }
         (key::Owner::AgentTemplate { template: owned }, reference::Owner::AgentTemplate { template }) => owned == template,
         (key::Owner::Global, reference::Owner::Global) => true,
+        _ => false,
+    }
+}
+
+/// Whether `owner` is the one a listed tool's key names: an agent by
+/// its template and index, an agent template by id, or nobody.
+fn owned(owner: &key::Owner, wanted: &diverge_sdk::shared::permission::dependency_tools::Owner) -> bool {
+    use diverge_sdk::shared::permission::dependency_tools::Owner;
+    match (owner, wanted) {
+        (key::Owner::Agent(agent), Owner::Agent(key)) => agent.template == key.template && agent.index == key.index,
+        (key::Owner::AgentTemplate { template: owned }, Owner::AgentTemplate { template }) => owned == template,
+        (key::Owner::Global, Owner::Global) => true,
         _ => false,
     }
 }

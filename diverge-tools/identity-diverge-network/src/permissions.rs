@@ -1,7 +1,7 @@
 //! What the tool asks of the daemon, declared at its registration.
 
 use diverge_sdk::shared::permission::identities::{Make, Over, Permission};
-use diverge_sdk::shared::permission::{Grant, Within};
+use diverge_sdk::shared::permission::{Grant, Reach};
 
 /// The tool's permissions: to log in, and nothing else. The rules:
 ///
@@ -22,6 +22,6 @@ pub fn permissions() -> Vec<Grant> {
         // Rule 1.
         Grant::Identities(Permission::Make(vec![Make::Login])),
         // Rule 2.
-        Grant::Identities(Permission::Over { actions: vec![Over::Login], within: Within::Any }),
+        Grant::Identities(Permission::Over { actions: vec![Over::Login], within: Reach::Any }),
     ]
 }

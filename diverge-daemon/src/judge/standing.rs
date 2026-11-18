@@ -39,9 +39,6 @@ pub struct Standing {
     /// The agents `attached` reaches: a tool's attached agents, and
     /// none for an account.
     attached: HashSet<AgentId>,
-    /// The grants over listed agents, in no order: a tool's, and none
-    /// for an account.
-    listed: Vec<grant::Listed>,
     /// Whether this is an administrator, which every judgment allows.
     admin: bool,
 }
@@ -57,7 +54,6 @@ impl Standing {
                 grants,
                 attached_actions: Vec::new(),
                 attached: HashSet::new(),
-                listed: Vec::new(),
                 admin: false,
             })),
             Who::Tool(declared) => {
@@ -75,7 +71,6 @@ impl Standing {
                     grants: declared.fixed.grants.clone(),
                     attached_actions: declared.fixed.attached_actions.clone(),
                     attached,
-                    listed: declared.fixed.listed.clone(),
                     admin: false,
                 }))
             }
@@ -85,7 +80,6 @@ impl Standing {
                 grants: Vec::new(),
                 attached_actions: Vec::new(),
                 attached: HashSet::new(),
-                listed: Vec::new(),
                 admin: true,
             })),
         }
@@ -105,19 +99,6 @@ impl Standing {
     /// Whether the agent is one `attached` reaches.
     pub fn is_attached(&self, agent: AgentId) -> bool {
         self.attached.contains(&agent)
-    }
-
-    /// Whether a grant over listed agents holds `action` at all.
-    pub fn lists(&self, action: grant::agents::Over) -> bool {
-        self.listed.iter().any(|listed| listed.actions.contains(&action))
-    }
-
-    /// Whether a grant over listed agents holds `action` and lists the
-    /// agent of this template and index.
-    pub fn is_listed(&self, action: grant::agents::Over, template: &str, index: u64) -> bool {
-        self.listed.iter().any(|listed| {
-            listed.actions.contains(&action) && listed.agents.iter().any(|key| key.template == template && key.index == index)
-        })
     }
 
     /// The grants over accounts.

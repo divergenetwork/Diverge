@@ -27,7 +27,13 @@
 //! [`Filter`](crate::daemon::endpoints::agents::list::client::request::Filter)
 //! for agents, and so on — read as a TEST: a thing passes when it
 //! passes every member the filter gives, and a filter with no member
-//! passes everything.
+//! passes everything. A `within` reaches all, exactly the records it
+//! names, or by tags, and never two of them: a filter that names
+//! records and tags together, or names records by two members, does
+//! not decode — see [`Only`](crate::shared::permission::Only). Its
+//! other members narrow whichever it is. "These records, or anything
+//! tagged so" is two grants: grants only add, and none takes from
+//! another.
 //! - **Tagging.** For the kinds that carry tags, an object of
 //!   `actions`, `tag` or `untag` or both, `within` as above, and
 //! `tags`, which tags may be put on or taken off: `"any"`, or the list
@@ -95,17 +101,18 @@
 //! Every kind's `Make` and `Over`, with [`Tagging`] and [`Within`], are
 //! defined once in [`shared::permission`](crate::shared::permission)
 //! and re-exported here: the grants a dependency tool template carries
-//! are made of the same actions, reaching by tags alone, and a grant
-//! here reaches by the kind's own filter. The kinds that carry tags —
+//! are made of the same actions, reaching all, the records listed or
+//! by tags, and a grant here reaches by the kind's own filter. The kinds that carry tags —
 //! agents, templates, tools, connected tools, dependency tools,
 //! providers, remote
 //! daemons, accounts, roles, volumes, the vault's keys and the host's
 //! identities — have the tagging shape, and all of them but dependency
 //! tools, which a registration makes, the making shape. The database
 //! and the events carry none, and their grants are bare lists of
-//! actions. A grant that names nothing becomes one of these by
-//! [`From`]: the same actions, reaching by a filter of the tags alone,
-//! which is how a dependency tool's requests are judged.
+//! actions. A grant a tool's program declares becomes one of these by
+//! [`From`]: the same actions, reaching by a filter that names the
+//! records it listed, or one of its tags alone, which is how a tool's
+//! requests are judged.
 //!
 //! The providers' grants are the exception: the providers list filter
 //! names no tags, so a grant over providers, or through them — the

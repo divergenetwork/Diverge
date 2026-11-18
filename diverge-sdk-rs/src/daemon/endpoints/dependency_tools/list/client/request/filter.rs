@@ -25,6 +25,12 @@ use super::Mode;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Filter {
+    /// Exactly these tools, each by what names it once and for all:
+    /// its template and whose it is. See
+    /// [`Key`](crate::shared::permission::dependency_tools::Key).
+    /// Absent when empty, and then any tool.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tools: Vec<crate::shared::permission::dependency_tools::Key>,
     /// Of any one of these templates, by id.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ids: Vec<String>,
@@ -81,4 +87,12 @@ pub struct Filter {
     /// The latest `created` to list, inclusive; absent, no latest.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_to: Option<DateTime<Utc>>,
+}
+
+/// As a grant's `within`: `tools` names records, and
+/// `all_tags` and `any_tags` are the tags. Every other member narrows.
+impl crate::shared::permission::Only for Filter {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.tools.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
+    }
 }

@@ -1,6 +1,6 @@
 //! What the chat asks of the daemon, declared at its registration.
 
-use diverge_sdk::shared::permission::{Grant, Within, agents, agents_templates, daemons, providers};
+use diverge_sdk::shared::permission::{Grant, Reach, agents, agents_templates, daemons, providers};
 
 /// The chat's permissions:
 ///
@@ -15,8 +15,8 @@ use diverge_sdk::shared::permission::{Grant, Within, agents, agents_templates, d
 pub fn permissions() -> Vec<Grant> {
     vec![
         Grant::Agents(agents::Permission::Over { actions: vec![agents::Over::Get, agents::Over::List, agents::Over::Message], within: agents::Within::Attached }),
-        Grant::AgentsTemplates(agents_templates::Permission::Over { actions: vec![agents_templates::Over::Get], within: Within::Any }),
-        Grant::Providers(providers::Permission::Over { actions: vec![providers::Over::Read], within: Within::Any }),
-        Grant::Daemons(daemons::Permission::Over { actions: vec![daemons::Over::Relay], within: Within::Any }),
+        Grant::AgentsTemplates(agents_templates::Permission::Over { actions: vec![agents_templates::Over::Get], within: Reach::Any }),
+        Grant::Providers(providers::Permission::Over { actions: vec![providers::Over::Read], within: Reach::Any }),
+        Grant::Daemons(daemons::Permission::Over { actions: vec![daemons::Over::Relay], within: Reach::Any }),
     ]
 }

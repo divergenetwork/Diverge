@@ -9,7 +9,8 @@ use crate::store::agents::Agent;
 /// whether a loop runs in it, and whether one ever has; `deployed`
 /// whether its container is up.
 pub fn test(filter: &Filter, agent: &Agent, state: AgentState) -> bool {
-    (filter.names.is_empty() || agent.name.as_ref().is_some_and(|name| filter.names.contains(name)))
+    (filter.agents.is_empty() || filter.agents.iter().any(|key| key.template == agent.template && key.index == agent.index))
+        && (filter.names.is_empty() || agent.name.as_ref().is_some_and(|name| filter.names.contains(name)))
         && (filter.templates.is_empty() || filter.templates.contains(&agent.template))
         && (filter.creators.is_empty() || filter.creators.contains(&agent.creator))
         && filter.active.is_none_or(|wanted| wanted.test(state.active, agent.last_active.is_some()))

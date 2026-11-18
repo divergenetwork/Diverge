@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::shared::permission::{self, Tagging, Tags};
-use super::{Make, Over, Within};
+use crate::shared::permission::{self, Tagging};
+use super::{Listed, Make, Over, Within};
 
 /// What one grant over agents allows, in one of three shapes told
 /// apart on the wire by their very form, as
@@ -14,7 +14,7 @@ use super::{Make, Over, Within};
 /// of tagging actions, how far they reach, and which tags. An object
 /// that is none of these — an action of one shape among another's, a
 /// member missing, a `within` that is not `"any"`, `"attached"`,
-/// `"never_active"`, `{"agents":[…]}` or a [`Tags`] — does not decode.
+/// `"never_active"`, `{"agents":[…]}` or a [`Tags`](crate::shared::permission::Tags) — does not decode.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(untagged, deny_unknown_fields)]
@@ -25,7 +25,7 @@ pub enum Permission {
     /// Over agents that exist: the [`Over`] actions held, reaching
     /// every one of them, the tool's attached agents, those never active,
     /// the agents listed, or only those
-    /// the [`Tags`] let through, read as a test.
+    /// the [`Tags`](crate::shared::permission::Tags) let through, read as a test.
     Over {
         /// The actions.
         actions: Vec<Over>,
@@ -35,13 +35,13 @@ pub enum Permission {
         within: Within,
     },
     /// Tagging agents: putting tags on, taking them off, or both,
-    /// reaching every one or only those the [`Tags`] let through, and
+    /// reaching every one or only those the [`Tags`](crate::shared::permission::Tags) let through, and
     /// touching any tag or only the ones listed.
     Tags {
         /// `tag`, `untag`, or both.
         actions: Vec<Tagging>,
-        /// How far: `"any"`, or the tags as a test.
-        within: permission::Within<Tags>,
+        /// How far: `"any"`, the agents listed, or the tags as a test.
+        within: permission::Reach<Listed>,
         /// Which tags: `"any"`, or only these.
         tags: permission::Within<Vec<String>>,
     },

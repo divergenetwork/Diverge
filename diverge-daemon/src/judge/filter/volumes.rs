@@ -6,7 +6,8 @@ use crate::volumes::Listed;
 
 /// Whether the volume passes `filter`.
 pub fn test(filter: &Filter, listed: &Listed) -> bool {
-    (filter.providers.is_empty() || filter.providers.contains(&listed.provider))
+    (filter.volumes.is_empty() || filter.volumes.iter().any(|key| key.provider == listed.provider && key.name == listed.volume.name))
+        && (filter.providers.is_empty() || filter.providers.contains(&listed.provider))
         && (filter.names.is_empty() || filter.names.contains(&listed.volume.name))
         && (filter.modes.is_empty() || filter.modes.contains(&listed.volume.mode))
         && filter.mounted.is_none_or(|wanted| listed.mounted() == wanted)

@@ -22,6 +22,12 @@ use crate::daemon::endpoints::daemons::DaemonId;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Filter {
+    /// Exactly these tools, each by what names it once and for all:
+    /// the daemon it is on, the tool there, and its index. See
+    /// [`Key`](crate::shared::permission::connected_standalone_tools::Key).
+    /// Absent when empty, and then any tool.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tools: Vec<crate::shared::permission::connected_standalone_tools::Key>,
     /// Any one of these names, as a create gave them.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub names: Vec<String>,
@@ -68,4 +74,12 @@ pub struct Filter {
     /// The latest `created` to list, inclusive; absent, no latest.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_to: Option<DateTime<Utc>>,
+}
+
+/// As a grant's `within`: `tools` and `names` name records, and
+/// `all_tags` and `any_tags` are the tags. Every other member narrows.
+impl crate::shared::permission::Only for Filter {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.tools.is_empty(), !self.names.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
+    }
 }

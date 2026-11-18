@@ -20,6 +20,8 @@ pub struct Facts<'a> {
     pub name: Option<&'a str>,
     /// The template it was made from.
     pub template: &'a str,
+    /// Its number among the tools made from that template.
+    pub index: u64,
     /// Who made it.
     pub creator: &'a Creator,
     /// Its template's mode; none for a template that is gone.
@@ -46,6 +48,7 @@ impl<'a> Facts<'a> {
         Facts {
             name: tool.name.as_deref(),
             template: &tool.template,
+            index: tool.index,
             creator: &tool.creator,
             mode,
             active,
@@ -64,7 +67,8 @@ impl<'a> Facts<'a> {
 /// those it is attached to directly, by name, and each template named
 /// among those it is attached to, by id.
 pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
-    (filter.names.is_empty() || facts.name.is_some_and(|name| filter.names.iter().any(|wanted| wanted == name)))
+    (filter.tools.is_empty() || filter.tools.iter().any(|key| key.template == facts.template && key.index == facts.index))
+        && (filter.names.is_empty() || facts.name.is_some_and(|name| filter.names.iter().any(|wanted| wanted == name)))
         && (filter.templates.is_empty() || filter.templates.iter().any(|wanted| wanted == facts.template))
         && (filter.creators.is_empty() || filter.creators.contains(facts.creator))
         && (filter.modes.is_empty() || facts.mode.is_some_and(|mode| filter.modes.contains(&mode)))

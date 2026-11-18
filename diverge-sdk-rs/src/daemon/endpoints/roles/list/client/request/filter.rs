@@ -51,3 +51,11 @@ pub struct Filter {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_to: Option<DateTime<Utc>>,
 }
+
+/// As a grant's `within`: `names` names records, and
+/// `all_tags` and `any_tags` are the tags. Every other member narrows.
+impl crate::shared::permission::Only for Filter {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.names.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
+    }
+}

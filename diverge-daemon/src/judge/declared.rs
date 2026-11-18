@@ -12,9 +12,7 @@ use crate::store::{DependencyToolId, ToolId};
 /// the run: the creator its requests make things as, the daemon's
 /// grants its declaration converts to, and the actions over agents it
 /// holds within `attached`, which no daemon grant can say and which
-/// are judged against the agents attached to the tool, and the grants
-/// it holds over listed agents, which no daemon grant can say either
-/// and which are judged against the agent's template and index.
+/// are judged against the agents attached to the tool.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fixed {
     /// What the tool's requests make things as: the tool itself, a
@@ -24,8 +22,6 @@ pub struct Fixed {
     pub grants: Vec<Grant>,
     /// The actions over agents held within `attached`, in no order.
     pub attached_actions: Vec<grant::agents::Over>,
-    /// The grants over listed agents, in no order.
-    pub listed: Vec<grant::Listed>,
 }
 
 impl Fixed {
@@ -35,7 +31,6 @@ impl Fixed {
             creator,
             grants: converted.grants,
             attached_actions: converted.attached_actions,
-            listed: converted.listed,
         }
     }
 }

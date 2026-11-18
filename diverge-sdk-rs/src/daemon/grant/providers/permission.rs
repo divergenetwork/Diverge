@@ -20,7 +20,7 @@ pub enum Permission {
     Make(Vec<Make>),
     /// Over providers' records: the [`Over`] actions held, reaching
     /// every one of them, or only those the [`Reach`] lets through —
-    /// by identity, by tags, or both.
+    /// by identity, or by tags, and never both in one grant.
     Over {
         /// The actions.
         actions: Vec<Over>,

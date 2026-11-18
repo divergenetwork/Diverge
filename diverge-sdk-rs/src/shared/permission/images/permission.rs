@@ -1,9 +1,9 @@
-//! One grant's worth over images, naming no provider.
+//! One grant's worth over images.
 
 use serde::{Deserialize, Serialize};
 
-use super::Action;
-use crate::shared::permission::{Tags, Within};
+use super::{Action, Listed};
+use crate::shared::permission::{Reach};
 
 /// What one grant over images allows, in the one shape
 /// [`permission`](crate::shared::permission) states for actions over
@@ -17,11 +17,11 @@ use crate::shared::permission::{Tags, Within};
 pub enum Permission {
     /// Over the daemon's Stores: the [`Action`]s held, reaching every
     /// provider's, or only those of the providers whose records the
-    /// [`Tags`] let through, read as a test.
+    /// [`Tags`](crate::shared::permission::Tags) let through, read as a test.
     Over {
         /// The actions.
         actions: Vec<Action>,
-        /// How far: `"any"`, or the tags as a test.
-        within: Within<Tags>,
+        /// How far: `"any"`, the providers listed, or the tags as a test.
+        within: Reach<Listed>,
     },
 }

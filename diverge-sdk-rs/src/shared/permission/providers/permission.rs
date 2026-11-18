@@ -1,15 +1,15 @@
-//! One grant's worth over providers, naming none of them.
+//! One grant's worth over providers.
 
 use serde::{Deserialize, Serialize};
 
-use crate::shared::permission::{Tagging, Tags, Within};
-use super::{Make, Over};
+use crate::shared::permission::{Reach, Tagging, Within};
+use super::{Listed, Make, Over};
 
 /// What one grant over providers allows, in one of three shapes told
 /// apart on the wire by their very form, as
 /// [`permission`](crate::shared::permission) states them: a bare array
 /// of [`Make`] actions; an object of [`Over`] actions and how far they
-/// reach, by tags; or an object of tagging actions, how far they reach,
+/// reach; or an object of tagging actions, how far they reach,
 /// and which tags. An object that is none of these does not decode.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -19,22 +19,22 @@ pub enum Permission {
     /// judged but that the action is held.
     Make(Vec<Make>),
     /// Over providers' records: the [`Over`] actions held, reaching
-    /// every one of them, or only those the [`Tags`] let through, read
+    /// every one of them, or only those the [`Tags`](crate::shared::permission::Tags) let through, read
     /// as a test.
     Over {
         /// The actions.
         actions: Vec<Over>,
-        /// How far: `"any"`, or the tags as a test.
-        within: Within<Tags>,
+        /// How far: `"any"`, the providers listed, or the tags as a test.
+        within: Reach<Listed>,
     },
     /// Tagging providers' records: putting tags on, taking them off, or
-    /// both, reaching every one or only those the [`Tags`] let through,
+    /// both, reaching every one or only those the [`Tags`](crate::shared::permission::Tags) let through,
     /// and touching any tag or only the ones listed.
     Tags {
         /// `tag`, `untag`, or both.
         actions: Vec<Tagging>,
-        /// How far: `"any"`, or the tags as a test.
-        within: Within<Tags>,
+        /// How far: `"any"`, the providers listed, or the tags as a test.
+        within: Reach<Listed>,
         /// Which tags: `"any"`, or only these.
         tags: Within<Vec<String>>,
     },

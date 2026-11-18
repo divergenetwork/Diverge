@@ -37,7 +37,8 @@ pub struct Facts<'a> {
 /// 5. `created_from` and `created_to` bound its `created`, inclusive.
 pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
     let tool = facts.tool;
-    (filter.names.is_empty() || tool.name.as_ref().is_some_and(|name| filter.names.contains(name)))
+    (filter.tools.is_empty() || filter.tools.iter().any(|key| key.daemon == tool.daemon && key.tool == tool.tool && key.index == tool.index))
+        && (filter.names.is_empty() || tool.name.as_ref().is_some_and(|name| filter.names.contains(name)))
         && (filter.daemons.is_empty() || filter.daemons.contains(&tool.daemon))
         && (filter.creators.is_empty() || filter.creators.contains(&tool.creator))
         && filter.active.is_none_or(|wanted| facts.active == wanted)

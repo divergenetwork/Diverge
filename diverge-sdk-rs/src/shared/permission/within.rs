@@ -58,13 +58,59 @@ enum Repr<T> {
     Only(T),
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Within<T> {
+impl<'de, T: Deserialize<'de> + Only> Deserialize<'de> for Within<T> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(match Repr::deserialize(deserializer)? {
+        Ok(match Repr::<T>::deserialize(deserializer)? {
             Repr::Word(Word::Any) => Within::Any,
-            Repr::Only(only) => Within::Only(only),
+            Repr::Only(only) => match only.mixed() {
+                None => Within::Only(only),
+                Some(why) => return Err(serde::de::Error::custom(why)),
+            },
         })
     }
+}
+
+/// What a [`Within`] may hold as its `T`, and what of it a `within`
+/// refuses. The rules, which are the daemon's for every grant's
+/// reach:
+///
+/// 1. **A grant reaches all, exactly these, or by tags, and never two
+///    of them.** `"any"` is all. A `T` that names records reaches
+///    exactly those; a `T` that names tags reaches by them.
+/// 2. **Naming records and naming tags together is refused**, and so
+///    is naming records by two different members at once: such a
+///    `within` would have to say whether it meant both or either, and
+///    it is not left to be supposed. It does not decode.
+/// 3. **Either is two grants.** Grants only add, and none takes from
+///    another.
+/// 4. **Everything else a `T` holds narrows.** A filter's other
+///    members — by creator, by template, by what is running — may
+///    stand beside either form or alone, and all must hold.
+///
+/// [`mixed`](Only::mixed) is why a value breaks rule 2, or `None`
+/// where it does not. A `T` with no such members — a list of tags to
+/// touch — keeps the default.
+pub trait Only {
+    /// Why this may not be a `within`, by rule 2; `None` when it may.
+    fn mixed(&self) -> Option<&'static str> {
+        None
+    }
+}
+
+impl Only for Vec<String> {}
+
+/// Rule 2 of [`Only`], for a filter whose record-naming members are
+/// `naming` — each whether it is given — and whose tags are given or
+/// not.
+pub fn mixed(naming: &[bool], tags: bool) -> Option<&'static str> {
+    let named = naming.iter().filter(|given| **given).count();
+    if named > 1 {
+        return Some("a `within` names records by more than one member: name them by one, and write a grant for each other");
+    }
+    if named == 1 && tags {
+        return Some("a `within` names records and tags together: a grant reaches exactly the records it names, or by tags, never both; write one grant for each");
+    }
+    None
 }
 
 /// The two shapes as a schema: the one word, or `T`'s own. Written by

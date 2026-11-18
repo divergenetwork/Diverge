@@ -15,6 +15,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Filter {
+    /// Exactly these identities, each by its issuer and its subject
+    /// together. Absent when empty, and then any identity.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub identities: Vec<crate::shared::Identity>,
     /// At any one of these issuers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub issuers: Vec<String>,
@@ -30,4 +34,12 @@ pub struct Filter {
     /// empty, and then any tags.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub any_tags: Vec<String>,
+}
+
+/// As a grant's `within`: `identities` and `subjects` name records, and
+/// `all_tags` and `any_tags` are the tags. Every other member narrows.
+impl crate::shared::permission::Only for Filter {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.identities.is_empty(), !self.subjects.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
+    }
 }

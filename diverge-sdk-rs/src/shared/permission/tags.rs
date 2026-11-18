@@ -10,9 +10,10 @@ use serde::{Deserialize, Serialize};
 /// member given. The two words are the ones every list filter of the
 /// daemon's already has, so a grant here and a grant of the daemon's
 /// read tags the same way. No other member decodes: a `within` that
-/// named something — `names`, `templates`, `creators` — would
-/// otherwise read as no tags at all, which is everything, and a grant
-/// must never widen by being misread.
+/// named something beside its tags would otherwise read as no tags at
+/// all, which is everything, and a grant must never widen by being
+/// misread. Naming records is the other form of a
+/// [`Reach`](super::Reach), and is never written with this one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]

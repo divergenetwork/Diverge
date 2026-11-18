@@ -20,6 +20,12 @@ use crate::provider::endpoints::volumes::Mode;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Filter {
+    /// Exactly these volumes, each by the provider that holds it and
+    /// its name there, together. See
+    /// [`Key`](crate::shared::permission::volumes::Key). Absent when
+    /// empty, and then any volume.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub volumes: Vec<crate::shared::permission::volumes::Key>,
     /// Held by any one of these providers: see [`Identity`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub providers: Vec<Identity>,
@@ -51,4 +57,12 @@ pub struct Filter {
     /// The latest `created` to list, inclusive; absent, no latest.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_to: Option<DateTime<Utc>>,
+}
+
+/// As a grant's `within`: `volumes` and `names` name records, and
+/// `all_tags` and `any_tags` are the tags. Every other member narrows.
+impl crate::shared::permission::Only for Filter {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.volumes.is_empty(), !self.names.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
+    }
 }

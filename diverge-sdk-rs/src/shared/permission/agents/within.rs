@@ -8,7 +8,7 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 
-use super::Key;
+use super::{Key, Listed};
 use crate::shared::permission::Tags;
 
 /// How far a grant over agents reaches: every agent there is, the
@@ -74,16 +74,6 @@ pub enum Within {
     Only(Tags),
 }
 
-/// The listed form as it is on the wire: one member, `agents`, and no
-/// other.
-#[derive(Serialize, Deserialize)]
-#[derive(schemars::JsonSchema)]
-#[serde(deny_unknown_fields)]
-struct Listed {
-    /// The agents reached.
-    agents: Vec<Key>,
-}
-
 /// The listed form borrowed, to be written without a copy.
 #[derive(Serialize)]
 struct ListedRef<'a> {
@@ -111,8 +101,8 @@ enum Word {
     NeverActive,
 }
 
-/// The three shapes, tried in order: a word, then the list, then the
-/// tags. The list requires its one member and the tags refuse it, so
+/// The three shapes, tried in order: a word, then the list — the
+/// kind's own [`Listed`] — then the tags. The list requires its one member and the tags refuse it, so
 /// an object is one or the other and never both.
 #[derive(Deserialize)]
 #[serde(untagged)]

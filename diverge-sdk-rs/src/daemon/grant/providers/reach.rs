@@ -15,8 +15,11 @@ use crate::daemon::agent_log::Identity;
 ///    these. Absent when empty, and then any tags.
 /// 3. **`any_tags`**: the provider's record carries any one of these.
 ///    Absent when empty, and then any tags.
-/// 4. **Together, all hold**: a reach naming identities and tags
-///    reaches the named providers that also carry the tags.
+/// 4. **Identities and tags are never together**: a grant reaches
+///    exactly the providers it names, or by tags, and a `within` that
+///    gave both does not decode — see
+///    [`Only`](crate::shared::permission::Only). Either is two grants.
+///    As a value built in code, both given, all hold.
 /// 5. **No other member decodes**: a `within` that named something
 ///    else would otherwise read as nothing at all, which is every
 ///    provider, and a grant must never widen by being misread.
@@ -26,8 +29,9 @@ use crate::daemon::agent_log::Identity;
 /// [`providers_daemons`](crate::daemon::grant::providers_daemons),
 /// over the daemons connected through them; and
 /// [`images`](crate::daemon::grant::images), over the daemon's Stores
-/// on them. A grant a tool's program declares names nobody, and
-/// becomes one of these carrying its tags alone.
+/// on them. A grant a tool's program declares that lists providers
+/// becomes one of these carrying its identities alone, and one that
+/// reaches by tags, its tags alone.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -53,5 +57,13 @@ impl Reach {
         (self.identities.is_empty() || self.identities.contains(identity))
             && self.all_tags.iter().all(|tag| tags.contains(tag))
             && (self.any_tags.is_empty() || self.any_tags.iter().any(|tag| tags.contains(tag)))
+    }
+}
+
+/// As a grant's `within`: `identities` names records, and `all_tags`
+/// and `any_tags` are the tags.
+impl crate::shared::permission::Only for Reach {
+    fn mixed(&self) -> Option<&'static str> {
+        crate::shared::permission::mixed(&[!self.identities.is_empty()], !self.all_tags.is_empty() || !self.any_tags.is_empty())
     }
 }

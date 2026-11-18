@@ -31,28 +31,26 @@ pub fn create(standing: &Standing) -> bool {
 }
 
 /// Whether the standing holds `action` over any agent at all: by a
-/// grant, within `attached`, or over a list of agents.
+/// grant, or within `attached`.
 pub fn holds(standing: &Standing, action: Over) -> bool {
     if standing.admin() {
         return true;
     }
     standing.attached_actions().contains(&action)
-        || standing.lists(action)
         || standing
             .agents()
             .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
 }
 
 /// Whether the standing may do `action` to `agent`, given whether a
-/// loop runs in it now: by a grant that reaches it, within
-/// `attached` where the agent is attached to the standing's tool, or
-/// by a grant over listed agents that lists it.
+/// loop runs in it now: by a grant that reaches it — every agent, the
+/// agents it lists, or by tags — or within `attached` where the agent
+/// is attached to the standing's tool.
 pub fn over(standing: &Standing, action: Over, agent: &Agent, state: AgentState) -> bool {
     if standing.admin() {
         return true;
     }
     (standing.attached_actions().contains(&action) && standing.is_attached(agent.id))
-        || standing.is_listed(action, &agent.template, agent.index)
         || standing.agents().any(|permission| match permission {
             Permission::Over { actions, within } => actions.contains(&action) && reaches(within, agent, state),
             _ => false,
