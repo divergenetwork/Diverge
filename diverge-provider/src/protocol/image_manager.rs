@@ -175,15 +175,19 @@ pub trait ImageManager: Send + Sync {
         description: Option<&Description>,
     ) -> impl Future<Output = Result<Option<bool>, Self::Error>> + Send;
 
-    /// Give up the caller's ownership of the image under `digest`.
+    /// Give up the caller's ownership of the image under `digest`, or,
+    /// where `platforms` names any, of those platforms of it.
     ///
-    /// [`Deletion::Deleted`] is the ownership gone; [`Deletion::InUse`]
-    /// is a running container running the image, and nothing changed;
-    /// [`None`] is a digest the caller owns no image by. [`Err`] is the
-    /// Store as it was.
+    /// [`Deletion::Deleted`] is the ownership gone, or the platforms
+    /// named; [`Deletion::InUse`] is a running container running the
+    /// image, and nothing changed; [`Deletion::PlatformNotHeld`] is a
+    /// platform named that the caller does not hold of it, and nothing
+    /// changed; [`None`] is a digest the caller owns no image by.
+    /// [`Err`] is the Store as it was.
     fn delete(
         &self,
         client_identity: &Identity,
         digest: &str,
+        platforms: &[String],
     ) -> impl Future<Output = Result<Option<Deletion>, Self::Error>> + Send;
 }

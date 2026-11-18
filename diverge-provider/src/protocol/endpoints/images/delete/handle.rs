@@ -13,7 +13,8 @@ use diverge_sdk::shared::error::Error;
 use diverge_sdk::wire::encode::{Encode, Writer};
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
-/// Remove the image and end the scope.
+/// Remove the image, or the platforms the request names of it, and
+/// end the scope.
 ///
 /// A provider whose capabilities keep no Store answers
 /// [`Unsupported`](response::Frame::Unsupported) and asks nothing.
@@ -21,7 +22,9 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 /// [`Deleted`](response::Deletion::Deleted) is the ownership gone,
 /// told to every listing open by digest; [`InUse`](response::Deletion::InUse)
 /// is a running container running it, and the wire's own word for
-/// that; a digest the caller owns no image by is
+/// that; [`PlatformNotHeld`](response::Deletion::PlatformNotHeld) is a
+/// platform named the caller does not hold of it, and the wire's word
+/// for that; a digest the caller owns no image by is
 /// [`refusal::unknown`]; a manager that will not answer is its error,
 /// flattened. The request arrives decoded, as every handler's does.
 pub async fn handle<M>(
@@ -38,12 +41,13 @@ pub async fn handle<M>(
     let frame = if capabilities.images.store.is_none() {
         response::Frame::Unsupported
     } else {
-        match manager.delete(client_identity, &request.digest).await {
+        match manager.delete(client_identity, &request.digest, &request.platforms).await {
             Ok(Some(response::Deletion::Deleted)) => {
                 changes.changed(client_identity, &request.digest);
                 response::Frame::Deleted
             }
             Ok(Some(response::Deletion::InUse)) => response::Frame::InUse,
+            Ok(Some(response::Deletion::PlatformNotHeld)) => response::Frame::PlatformNotHeld,
             Ok(None) => response::Frame::Error(refusal::unknown(&request.digest)),
             Err(error) => response::Frame::Error(error.into()),
         }

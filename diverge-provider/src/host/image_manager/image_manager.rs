@@ -155,25 +155,65 @@ impl image_manager::ImageManager for ImageManager {
         store.describe(client_identity, &parsed, description.cloned()).await
     }
 
-    /// The ownership removed and the Store pruned of what nothing else
-    /// reaches; in use where a container runs the image's copy in the
-    /// cache. The cache's copy, when one is held under the provider's
-    /// own registry's names alone and nobody else holds the digest,
-    /// is removed too. `None` for a digest the identity owns no image
-    /// by.
-    async fn delete(&self, client_identity: &Identity, digest: &str) -> Result<Option<Deletion>, Error> {
+    /// The ownership removed, or the platforms named taken out of it,
+    /// and the Store pruned of what nothing else reaches. `None` for
+    /// a digest the identity owns no image by. The rules:
+    ///
+    /// 1. **All of them, or none.** A platform named that the
+    ///    identity's record of the image does not hold is
+    ///    `PlatformNotHeld`, before anything is changed.
+    /// 2. **The whole image** where no platform is named, and where
+    ///    every platform the record holds is: an image held for no
+    ///    platform is no image.
+    /// 3. **In use** where a container runs the image's copy in the
+    ///    cache and what goes includes what it runs: the whole image,
+    ///    or a platform this provider runs — see
+    ///    [`host`](super::manifest::host). A platform the provider does not run is
+    ///    no container's, and goes.
+    /// 4. **The whole image:** the ownership removed and the Store
+    ///    pruned. The cache's copy, when one is held under the
+    ///    provider's own registry's names alone and nobody else holds
+    ///    the digest, is removed too.
+    /// 5. **Some platforms:** the record's platforms narrowed, read
+    ///    and written in one step under the records' lock so that a
+    ///    push widening the same record at the same moment is not
+    ///    undone; its bytes counted again; and the Store pruned, which
+    ///    keeps every blob another platform, another image, another
+    ///    owner or the cache still reaches. The cache's copy stays.
+    async fn delete(&self, client_identity: &Identity, digest: &str, platforms: &[String]) -> Result<Option<Deletion>, Error> {
         let (Some(store), Some(deployer), Some(parsed)) = (&self.store, &self.deployer, Digest::parse(digest)) else {
             return Ok(None);
         };
-        if store.owned(client_identity, &parsed).await?.is_none() {
+        let Some(owned) = store.owned(client_identity, &parsed).await? else {
             return Ok(None);
+        };
+        // Rule 1.
+        if platforms.iter().any(|platform| !owned.platforms.contains(platform)) {
+            return Ok(Some(Deletion::PlatformNotHeld));
         }
+        // Rule 2.
+        let whole = platforms.is_empty() || owned.platforms.iter().all(|platform| platforms.contains(platform));
+        // Rule 3.
+        let host = super::manifest::host();
+        let runs = |platform: &String| platform == &host || platform.strip_prefix(host.as_str()).is_some_and(|variant| variant.starts_with('/'));
         let copy = podman::image_by_digest_any(digest).await.ok().flatten();
         if let Some((id, _)) = &copy {
-            if deployer.running_image(id).await {
+            if (whole || platforms.iter().any(runs)) && deployer.running_image(id).await {
                 return Ok(Some(Deletion::InUse));
             }
         }
+        if !whole {
+            // Rule 5.
+            let narrowed = store.amend(client_identity, &parsed, |record| record.platforms.retain(|platform| !platforms.contains(platform))).await?;
+            let Some(narrowed) = narrowed else {
+                return Ok(None);
+            };
+            let bytes = store.image_bytes(&parsed, &narrowed.platforms).await;
+            store.amend(client_identity, &parsed, |record| record.bytes = bytes).await?;
+            store.prune().await?;
+            return Ok(Some(Deletion::Deleted));
+        }
+        // Rule 4.
         if !store.disown(client_identity, &parsed).await? {
             return Ok(None);
         }
