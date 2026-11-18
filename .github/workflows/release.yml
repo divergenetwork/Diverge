@@ -6,16 +6,12 @@ name: Release
 #
 # WHEN IT RUNS
 #
-#   • A push to main that CHANGES that version, where the GitHub Release
-#     `v<version>` does not exist yet. The path filter below means a push
-#     that does not touch the file starts nothing at all, and the `check`
-#     job compares the version before and after the push, so touching the
-#     file without changing the version releases nothing either.
-#   • A manual dispatch (Actions UI, or
-#     `gh workflow run release.yml --ref main`), which releases the
-#     version on main if its release does not exist. With `force=true` it
-#     runs even if it does: every piece skips what is already published,
-#     so this is how a partly failed release is finished.
+#   Only when it is dispatched by hand (Actions UI, or
+#   `gh workflow run release.yml --ref main`). No push starts it, whatever
+#   the push changes. A dispatch releases the version on main if the
+#   GitHub Release `v<version>` does not exist. With `force=true` it runs
+#   even if it does: every piece skips what is already published, so
+#   this is how a partly failed release is finished.
 #
 # WHAT IT RELEASES
 #
@@ -70,10 +66,6 @@ name: Release
 #   • The jobs that build nothing platform-bound run on `ubuntu-latest`.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - diverge-sdk-rs/Cargo.toml
   workflow_dispatch:
     inputs:
       force:
@@ -105,8 +97,6 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
           FORCE: ${{ inputs.force }}
           REPO: ${{ github.repository }}
         run: |
@@ -121,34 +111,14 @@ jobs:
           if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then exists=true; fi
 
           release=false
-          if [ "$EVENT" = "workflow_dispatch" ]; then
-            if [ "$FORCE" = "true" ]; then
-              echo "dispatched with force: running, each piece skipping what is published"
-              release=true
-            elif [ "$exists" = "true" ]; then
-              echo "v$VERSION is released already, and force was not given: nothing to do"
-            else
-              echo "dispatched, and v$VERSION is not released: releasing"
-              release=true
-            fi
+          if [ "$FORCE" = "true" ]; then
+            echo "dispatched with force: running, each piece skipping what is published"
+            release=true
+          elif [ "$exists" = "true" ]; then
+            echo "v$VERSION is released already, and force was not given: nothing to do"
           else
-            # A push. The version before it, read from the commit the
-            # branch was at; a commit that cannot be had (a new branch, a
-            # forced push) is no evidence of a change, and releases nothing.
-            OLD=""
-            if git fetch --quiet --depth=1 origin "$BEFORE" 2>/dev/null; then
-              OLD="$(git show "$BEFORE:diverge-sdk-rs/Cargo.toml" 2>/dev/null | read_version || true)"
-            fi
-            if [ -z "$OLD" ]; then
-              echo "the version before this push could not be read: nothing released"
-            elif [ "$OLD" = "$VERSION" ]; then
-              echo "the version did not change ($VERSION): nothing released"
-            elif [ "$exists" = "true" ]; then
-              echo "the version changed, $OLD to $VERSION, but v$VERSION is released already: nothing released"
-            else
-              echo "the version changed, $OLD to $VERSION: releasing"
-              release=true
-            fi
+            echo "v$VERSION is not released: releasing"
+            release=true
           fi
           echo "release=$release" >> "$GITHUB_OUTPUT"
 
