@@ -30,7 +30,7 @@ export type Eager = z.infer<typeof Eager>;
  * mount: it is many agents', and there is no one agent whose files a
  * mount would be. An eager tool has no mounts to name.
  */
-export function refusal(mode: { mode: string; scope: Scope; fuse_file_mounts?: unknown[]; fuse_directory_mounts?: unknown[] }): string | undefined {
+export function refusal(mode: { mode: string; scope: Scope; fuse_file_mounts?: unknown[] | undefined; fuse_directory_mounts?: unknown[] | undefined }): string | undefined {
   if (mode.mode !== "lazy" || mode.scope === "instance") return undefined;
   const mounts = (mode.fuse_file_mounts?.length ?? 0) + (mode.fuse_directory_mounts?.length ?? 0);
   return mounts === 0 ? undefined : "a lazy tool mounts the agent's files only where its scope is `instance`";
