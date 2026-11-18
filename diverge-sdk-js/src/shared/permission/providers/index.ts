@@ -7,6 +7,7 @@
 // of either, or of tagging. The daemon's own grant over providers may
 // also name them by identity: see `daemon.grant.providers`.
 
+export * from "./listed.js";
 export * from "./make.js";
 export * from "./over.js";
 export * from "./permission.js";

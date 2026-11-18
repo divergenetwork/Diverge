@@ -1,9 +1,9 @@
-// One grant's worth through providers, naming none of them.
+// One grant's worth through providers.
 
 import { z } from "zod";
-import { Tags } from "../tags.js";
-import { within } from "../within.js";
+import { reach } from "../reach.js";
 import { Over } from "./over.js";
+import { Listed } from "./listed.js";
 
 /**
  * What one grant through providers allows, in the one shape
@@ -14,7 +14,7 @@ import { Over } from "./over.js";
 export const Permission = z.strictObject({
   /** The actions. */
   actions: z.array(Over),
-  /** How far: `"any"`, or the tags as a test. */
-  within: within(Tags),
+  /** How far: `"any"`, the providers listed, or the tags as a test. */
+  within: reach(Listed),
 });
 export type Permission = z.infer<typeof Permission>;

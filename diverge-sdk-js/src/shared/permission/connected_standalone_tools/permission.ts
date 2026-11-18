@@ -1,11 +1,12 @@
-// One grant's worth over connected tools, naming none of them.
+// One grant's worth over connected tools.
 
 import { z } from "zod";
-import { Tags } from "../tags.js";
+import { reach } from "../reach.js";
 import { Tagging } from "../tagging.js";
 import { within } from "../within.js";
 import { Make } from "./make.js";
 import { Over } from "./over.js";
+import { Listed } from "./listed.js";
 
 /**
  * What one grant over connected tools allows, in one of three shapes told apart
@@ -23,15 +24,15 @@ export const Permission = z.union([
   z.strictObject({
     /** The actions. */
     actions: z.array(Over),
-    /** How far: `"any"`, or the tags as a test. */
-    within: within(Tags),
+    /** How far: `"any"`, the connected standalone tools listed, or the tags as a test. */
+    within: reach(Listed),
   }),
   /** Tagging connected tools: putting tags on, taking them off, or both, reaching every one or only those the tags let through, and touching any tag or only the ones listed. */
   z.strictObject({
     /** `tag`, `untag`, or both. */
     actions: z.array(Tagging),
-    /** How far: `"any"`, or the tags as a test. */
-    within: within(Tags),
+    /** How far: `"any"`, the connected standalone tools listed, or the tags as a test. */
+    within: reach(Listed),
     /** Which tags: `"any"`, or only these. */
     tags: within(z.array(z.string())),
   }),

@@ -1,18 +1,21 @@
-// Permissions that name nothing: the grants a dependency tool
-// template asks for its tool, and the actions every grant of the
-// daemon's is made of.
+// The grants a tool's program declares for itself at its registration,
+// and the actions every grant of the daemon's is made of.
 //
 // A GRANT is one permission over one kind of thing the daemon holds,
 // and on the wire it is one object with one member, named for the
 // kind, whose value is the kind's permission: `{"agents":…}`. The
 // shapes are the daemon's own — to make, over what exists, tagging,
-// the one thing — with one restriction, which is what makes these
-// shareable: a grant here reaches what exists by TAGS alone, `Within`
-// being `"any"` or a `Tags` test, and over agents alone the words
-// `"attached"` and `"never_active"`. Each kind's `Make` and `Over` live here, and the daemon's
-// grants are built of them.
+// the one thing. How far a grant over what exists reaches is its
+// `within`, a `Reach`, one of three and never two: `"any"`, every one;
+// the kind's own `Listed`, exactly the records it names; or a `Tags`
+// test. Over agents alone there are the words `"attached"` and
+// `"never_active"` beside. A list is read out of the arguments the
+// program was registered with, never a constant of the image. Each
+// kind's `Make` and `Over` live here, and the daemon's grants are
+// built of them.
 
 export * from "./grant.js";
+export * from "./reach.js";
 export * from "./tags.js";
 export * from "./tagging.js";
 export * from "./within.js";

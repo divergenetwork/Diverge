@@ -1,7 +1,7 @@
 // One grant's worth over images.
 
 import { z } from "zod";
-import { within } from "../../../shared/permission/within.js";
+import { only, within } from "../../../shared/permission/within.js";
 import { Action } from "../../../shared/permission/images/action.js";
 import { Reach } from "../providers/reach.js";
 
@@ -16,6 +16,6 @@ export const Permission = z.strictObject({
   /** The actions. */
   actions: z.array(Action),
   /** How far: `"any"`, or the reach as a test. */
-  within: within(Reach),
+  within: within(only(Reach, ["identities"])),
 });
 export type Permission = z.infer<typeof Permission>;

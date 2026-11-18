@@ -1,6 +1,7 @@
 // What narrows a list of volumes.
 
 import { z } from "zod";
+import { Key } from "../../../../../../shared/permission/volumes/key.js";
 import { Mode } from "../../../../../../provider/endpoints/volumes/mode.js";
 import { Identity } from "../../../../../agent_log/identity.js";
 
@@ -13,6 +14,8 @@ import { Identity } from "../../../../../agent_log/identity.js";
  * an empty list is absent, and matches everything.
  */
 export const Filter = z.object({
+  /** Exactly these volumes, each by the provider that holds it and its name there, together. Absent when empty, and then any volume. */
+  volumes: z.array(Key).optional(),
   /** Held by any one of these providers. */
   providers: z.array(Identity).optional(),
   /** Any one of these names, on whichever provider. */

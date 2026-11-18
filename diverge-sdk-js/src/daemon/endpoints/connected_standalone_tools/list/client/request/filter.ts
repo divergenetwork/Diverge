@@ -1,6 +1,7 @@
 // What narrows a list of connected tools.
 
 import { z } from "zod";
+import { Key } from "../../../../../../shared/permission/connected_standalone_tools/key.js";
 import { Creator } from "../../../../../creator/creator.js";
 import { DaemonId } from "../../../../daemons/id.js";
 
@@ -13,6 +14,8 @@ import { DaemonId } from "../../../../daemons/id.js";
  * of them; an empty list is absent, and matches everything.
  */
 export const Filter = z.object({
+  /** Exactly these tools, each by the daemon it is on, the tool there, and its index. Absent when empty, and then any tool. */
+  tools: z.array(Key).optional(),
   /** Any one of these names, as a create gave them. */
   names: z.array(z.string()).optional(),
   /** On any one of these daemons, by the ID of this daemon's record of each, as the create named it — the tool's `daemon`. Absent when empty, and then on any. */

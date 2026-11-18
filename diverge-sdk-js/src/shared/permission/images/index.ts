@@ -9,5 +9,6 @@
 // `providers_daemons`; the daemon's own grant may also name providers
 // by identity: see `daemon.grant.images`.
 
+export * from "./listed.js";
 export * from "./action.js";
 export * from "./permission.js";

@@ -1,6 +1,7 @@
 // What narrows a list of the host's identities.
 
 import { z } from "zod";
+import { Identity as Named } from "../../../../../../shared/identity.js";
 
 /**
  * The filter over the host's identities: every member optional, and
@@ -10,6 +11,8 @@ import { z } from "zod";
  * that is any one of them; an empty list is absent.
  */
 export const Filter = z.object({
+  /** Exactly these identities, each by its issuer and its subject together. Absent when empty, and then any identity. */
+  identities: z.array(Named).optional(),
   /** At any one of these issuers. */
   issuers: z.array(z.string()).optional(),
   /** Any one of these subjects, at whichever issuer. */

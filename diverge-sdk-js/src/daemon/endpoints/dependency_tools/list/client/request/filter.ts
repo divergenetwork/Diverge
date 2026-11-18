@@ -1,6 +1,7 @@
 // What narrows a list of dependency tools.
 
 import { z } from "zod";
+import { Key } from "../../../../../../shared/permission/dependency_tools/key.js";
 import { Creator } from "../../../../../creator/creator.js";
 import { Owner } from "../../../../../reference/owner.js";
 import { Scope } from "../../../../../../shared/containers/dependencies/scope.js";
@@ -15,6 +16,8 @@ import { Mode } from "./mode.js";
  * an empty list is absent, and matches everything.
  */
 export const Filter = z.object({
+  /** Exactly these tools, each by its template and whose it is. Absent when empty, and then any tool. */
+  tools: z.array(Key).optional(),
   /** Of any one of these templates, by id. */
   ids: z.array(z.string()).optional(),
   /** Owned by any one of these: an agent, named either way, an agent template, or nobody. Absent when empty, and then any owner. */

@@ -10,5 +10,6 @@
 // own grant through providers may also name them by identity: see
 // `daemon.grant.providers_daemons`.
 
+export * from "./listed.js";
 export * from "./over.js";
 export * from "./permission.js";

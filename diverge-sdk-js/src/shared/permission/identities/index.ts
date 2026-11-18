@@ -4,9 +4,10 @@
 // one subject at one issuer, signed in on the host; the daemon keeps
 // their tags. In the shapes `permission` states: `Make`, the action that
 // brings one onto the host; `Over`, the actions over those there,
-// reaching by tags; and `Permission`, one grant's worth of either, or of
+// reaching all, those listed, or by tags; and `Permission`, one grant's worth of either, or of
 // tagging. No token is ever answered.
 
+export * from "./listed.js";
 export * from "./make.js";
 export * from "./over.js";
 export * from "./permission.js";

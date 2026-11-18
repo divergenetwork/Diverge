@@ -1,12 +1,13 @@
-// One grant's worth over agents, naming none of them.
+// One grant's worth over agents.
 
 import { z } from "zod";
-import { Tags } from "../tags.js";
+import { reach } from "../reach.js";
 import { Tagging } from "../tagging.js";
 import { within } from "../within.js";
 import { Make } from "./make.js";
 import { Over } from "./over.js";
 import { Within as AgentsWithin } from "./within.js";
+import { Listed } from "./listed.js";
 
 /**
  * What one grant over agents allows, in one of three shapes told apart
@@ -24,15 +25,15 @@ export const Permission = z.union([
   z.strictObject({
     /** The actions. */
     actions: z.array(Over),
-    /** How far: `"any"`, or the tags as a test. */
+    /** How far: `"any"`, the agents listed, or the tags as a test. */
     within: AgentsWithin,
   }),
   /** Tagging agents: putting tags on, taking them off, or both, reaching every one or only those the tags let through, and touching any tag or only the ones listed. */
   z.strictObject({
     /** `tag`, `untag`, or both. */
     actions: z.array(Tagging),
-    /** How far: `"any"`, or the tags as a test. */
-    within: within(Tags),
+    /** How far: `"any"`, the agents listed, or the tags as a test. */
+    within: reach(Listed),
     /** Which tags: `"any"`, or only these. */
     tags: within(z.array(z.string())),
   }),

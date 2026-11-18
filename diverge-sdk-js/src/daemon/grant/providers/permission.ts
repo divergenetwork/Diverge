@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { Tagging } from "../../../shared/permission/tagging.js";
-import { within } from "../../../shared/permission/within.js";
+import { only, within } from "../../../shared/permission/within.js";
 import { Make } from "../../../shared/permission/providers/make.js";
 import { Over } from "../../../shared/permission/providers/over.js";
 import { Reach } from "./reach.js";
@@ -22,13 +22,13 @@ export const Permission = z.union([
     /** The actions. */
     actions: z.array(Over),
     /** How far: `"any"`, or the reach as a test. */
-    within: within(Reach),
+    within: within(only(Reach, ["identities"])),
   }),
   z.strictObject({
     /** `tag`, `untag`, or both. */
     actions: z.array(Tagging),
     /** How far: `"any"`, or the reach as a test. */
-    within: within(Reach),
+    within: within(only(Reach, ["identities"])),
     /** Which tags: `"any"`, or only these. */
     tags: within(z.array(z.string())),
   }),

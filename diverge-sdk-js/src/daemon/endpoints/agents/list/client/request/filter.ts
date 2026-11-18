@@ -1,6 +1,7 @@
 // What narrows a list of agents.
 
 import { z } from "zod";
+import { Key } from "../../../../../../shared/permission/agents/key.js";
 import { Creator } from "../../../../../creator/creator.js";
 import { Active } from "./active.js";
 
@@ -13,6 +14,8 @@ import { Active } from "./active.js";
  * an empty list is absent, and matches everything.
  */
 export const Filter = z.object({
+  /** Exactly these agents, each by its template and index. Absent when empty, and then any agent. */
+  agents: z.array(Key).optional(),
   /** Any one of these names, as a create gave them. */
   names: z.array(z.string()).optional(),
   /** Made from any one of these templates, by id. */

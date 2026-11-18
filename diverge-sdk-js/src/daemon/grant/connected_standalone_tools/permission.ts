@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { Tagging } from "../../../shared/permission/tagging.js";
-import { within } from "../../../shared/permission/within.js";
+import { only, within } from "../../../shared/permission/within.js";
 import { Make } from "../../../shared/permission/connected_standalone_tools/make.js";
 import { Over } from "../../../shared/permission/connected_standalone_tools/over.js";
 import { Filter } from "../../endpoints/connected_standalone_tools/list/client/request/filter.js";
@@ -22,13 +22,13 @@ export const Permission = z.union([
     /** The actions. */
     actions: z.array(Over),
     /** How far: `"any"`, or the filter as a test. */
-    within: within(Filter),
+    within: within(only(Filter, ["tools", "names"])),
   }),
   z.strictObject({
     /** `tag`, `untag`, or both. */
     actions: z.array(Tagging),
     /** How far: `"any"`, or the filter as a test. */
-    within: within(Filter),
+    within: within(only(Filter, ["tools", "names"])),
     /** Which tags: `"any"`, or only these. */
     tags: within(z.array(z.string())),
   }),

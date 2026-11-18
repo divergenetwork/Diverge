@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { Tags } from "../tags.js";
-import { Key } from "./key.js";
+import { Listed } from "./listed.js";
 
 /**
  * How far a grant over agents reaches: every agent there is, the
@@ -27,7 +27,7 @@ export const Within = z.union([
   z.literal("any"),
   z.literal("attached"),
   z.literal("never_active"),
-  z.strictObject({ agents: z.array(Key) }),
+  Listed,
   Tags,
 ]);
 export type Within = z.infer<typeof Within>;
