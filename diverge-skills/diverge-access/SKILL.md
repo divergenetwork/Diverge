@@ -56,20 +56,32 @@ not decode. Write a making grant and an over grant as two separate grants.
 
 ### `within`
 
-`within` is either the string `"any"` (every record of the kind) or the kind's own **list filter** read as a
-test: a record passes when it passes every member given; a member that lists candidates passes a record
-that is any one of them; `all_tags` needs every tag, `any_tags` at least one; an empty list is absent.
+**One grant reaches all, exactly the records it names, or by tags. Never two of them.**
+
+| Reach | `within` | Reaches |
+|---|---|---|
+| All | `"any"` | every record of the kind |
+| Specific records | the kind's naming member, e.g. `{"ids":[…]}`, `{"volumes":[…]}` | exactly those records |
+| Tags | `{"all_tags":[…]}`, `{"any_tags":[…]}` or both | records carrying every one of `all_tags` and any one of `any_tags` |
+
+- **Naming records and tags in one grant is refused**, and so is naming records by two different members. The
+  role create or edit, or the tool's registration, fails to decode.
+- **"These records, or anything tagged so" is two grants.** Grants only add: a request is allowed when any one
+  grant allows it, and no grant takes away what another gives.
+- **In a role's grant, the other filter members narrow.** `creators`, `templates`, `active`, `deployed`, dates
+  and the rest may stand beside either form, or alone, and all of them must hold. "Tagged `crew` and made from
+  template X" is one grant: `{"all_tags":["crew"],"templates":["<id>"]}`.
 
 ```json
 {"agents":{"actions":["get","list","message","logs"],"within":{"all_tags":["crew"]}}}
+{"agents":{"actions":["message"],"within":{"agents":[{"template":"<agent template id>","index":3}]}}}
 {"agents":{"actions":["delete"],"within":{"creators":[{"type":"client","identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"}}]}}}
-{"standalone_tools":{"actions":["attach","detach"],"within":{"names":["notebook","courier"]}}}
+{"volumes":{"actions":["get","stat"],"within":{"volumes":[{"provider":{"issuer":"…","subject":"github.12345.provider"},"name":"datasets"}]}}}
 ```
 
-The filter members differ per kind (`names`, `templates`, `creators`, `active`, `deployed`, tags, created
-range, …). For `providers` and `providers_daemons`, `within` is only `"any"` or
-`{"all_tags":[…],"any_tags":[…]}`. The full list per kind is in
-[references/grants.md](references/grants.md).
+Which member names records differs per kind; the table and the narrowing members per kind are in
+[references/grants.md](references/grants.md). For `providers`, `providers_daemons` and `images`, `within` is
+`"any"`, `{"identities":[…]}`, or tags, and nothing narrows.
 
 ### The kinds
 

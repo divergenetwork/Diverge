@@ -13,6 +13,47 @@ An administrator (an identity in the daemon's `admins` setting) is allowed every
 
 Command names below are `diverge run …` leaves.
 
+## `within`: all, specific records, or tags
+
+**One grant reaches all, exactly the records it names, or by tags. Never two of them.**
+
+| Reach | `within` | Reaches |
+|---|---|---|
+| All | `"any"` | every record of the kind |
+| Specific records | the kind's naming member, e.g. `{"ids":[…]}`, `{"volumes":[…]}` | exactly those records |
+| Tags | `{"all_tags":[…]}`, `{"any_tags":[…]}` or both | records carrying every one of `all_tags` and any one of `any_tags` |
+
+- **Naming records and tags in one grant is refused**, and so is naming records by two different members. The
+  role create or edit, or the tool's registration, fails to decode.
+- **"These records, or anything tagged so" is two grants.** Grants only add: a request is allowed when any one
+  grant allows it, and no grant takes away what another gives.
+- In a role's grant the kind's other filter members narrow whichever reach it is, and all must hold. A tool's
+  grant carries the reach and nothing else.
+
+What names one exact record, per kind. The same in a role's grant and in a tool's:
+
+| Kind | Member | One item |
+|---|---|---|
+| `accounts` | `identities` | `{"issuer":…,"subject":…}` |
+| `agents` | `agents` | `{"template":"<agent template id>","index":<n>}` |
+| `agents_templates` | `ids` | the template's id |
+| `standalone_tools` | `tools` | `{"template":"<tool template id>","index":<n>}` |
+| `standalone_tools_templates` | `ids` | the template's id |
+| `connected_standalone_tools` | `tools` | `{"daemon":"<daemon id>","tool":<the tool as that daemon names it>,"index":<n>}` |
+| `dependency_tools` | `tools` | `{"template":"<dependency template id>","owner":<owner>}`; owner is `{"agent":{"template":…,"index":…}}`, `{"agent_template":{"template":…}}` or `"global"` |
+| `daemons` | `ids` | the remote daemon's id |
+| `identities` | `identities` | `{"issuer":…,"subject":…}` |
+| `roles` | `names` | the role's name |
+| `vault` | `keys` | the key |
+| `volumes` | `volumes` | `{"provider":{"issuer":…,"subject":…},"name":"<name>"}` |
+| `providers`, `providers_daemons`, `images` | `identities` | the provider, `{"issuer":…,"subject":…}` |
+
+- `template`, `index`, a daemon's id and a tool's `tool` are what each record's list item shows.
+- In a role's grant these also count as naming records, and so are never written with tags or with each other:
+  `names` (agents, standalone tools, connected tools, volumes) and `subjects` (identities). A name can be given
+  to another record later; the members in the table cannot.
+- An empty list reaches nothing.
+
 ## agents
 
 | Shape | Action | Allows |
@@ -33,7 +74,7 @@ Command names below are `diverge run …` leaves.
 | Over | `connect` | `agents connect …` (MCP exchanges run as the agent) |
 | Tagging | `tag`, `untag` | `agents tag`, `agents untag` |
 
-`within` filter members: `names`, `templates`, `creators`, `active` (`true`/`false`, or `"ever"`/`"never"`),
+`within` members: `agents` (exact), `names`, `templates`, `creators`, `active` (`true`/`false`, or `"ever"`/`"never"`),
 `deployed`, `dependency_tool_templates`, `all_tags`, `any_tags`, `created_from`, `created_to`.
 
 ## agents_templates
@@ -62,7 +103,7 @@ Command names below are `diverge run …` leaves.
 | Over | `logs` | `logs` with `of.type` = `standalone_tool` |
 | Tagging | `tag`, `untag` | `standalone-tools tag` / `untag` |
 
-`within`: `names`, `templates`, `creators`, `modes`, `active`, `deployed`, `attached_agent_instances`,
+`within`: `tools` (exact), `names`, `templates`, `creators`, `modes`, `active`, `deployed`, `attached_agent_instances`,
 `attached_agent_templates`, `all_tags`, `any_tags`, `created_from`, `created_to`.
 
 ## standalone_tools_templates
@@ -88,7 +129,7 @@ Another daemon's standalone tool, held here under a name.
 | Over | `logs` | `logs` with `of.type` = `connected_standalone_tool` |
 | Tagging | `tag`, `untag` | `connected-standalone-tools tag` / `untag` |
 
-`within`: `names`, `daemons` (record IDs), `creators`, `active`, `deployed`, `attached_agent_instances`,
+`within`: `tools` (exact), `names`, `daemons` (record IDs), `creators`, `active`, `deployed`, `attached_agent_instances`,
 `attached_agent_templates`, `all_tags`, `any_tags`, `created_from`, `created_to`.
 
 ## dependency_tools
@@ -105,15 +146,14 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Over | `logs` | `logs` with `of.type` = `dependency_tool` |
 | Tagging | `tag`, `untag` | `dependency-tools tag` / `untag` |
 
-`within`: `ids`, `owners`, `creators`, `modes`, `scopes`, `depended`, `agents`, `in_use`, `all_tags`,
+`within`: `tools` (exact), `ids` (of these templates), `owners`, `creators`, `modes`, `scopes`, `depended`, `agents`, `in_use`, `all_tags`,
 `any_tags`, `created_from`, `created_to`.
 
 ## providers
 
 `within` here is `"any"` or a **provider reach**: `{"identities":[{"issuer":…,"subject":…}],"all_tags":[…],"any_tags":[…]}`,
-each member optional. A provider is reached when it is one of `identities` (if any are given) **and** its
-record carries every one of `all_tags` **and** any one of `any_tags` (if any are given). So a grant can name
-providers by identity, by tag, or both. No other member decodes. The same reach is the `within` of
+each member optional. A grant names providers by `identities`, or by tags (every one of `all_tags` and any one
+of `any_tags`), and never both in one grant: that is refused. Write a grant for each. No other member decodes. The same reach is the `within` of
 `providers_daemons` and of `images`.
 
 | Shape | Action | Allows |
@@ -218,7 +258,7 @@ hold; `create` over roles plus `grant` within `"any"` plus `edit` over accounts 
 | Over | `fuse_serve` | `volumes fuse_serve`: having the volume served over FUSE to the caller. What **another daemon's account** needs here so that its containers can FUSE-mount the volume. `mount` does not imply it |
 | Tagging | `tag`, `untag` | `volumes tag` / `untag` |
 
-`within`: `providers`, `names`, `modes`, `mounted`, `all_tags`, `any_tags`, `created_from`, `created_to`.
+`within`: `volumes` (exact), `providers`, `names`, `modes`, `mounted`, `all_tags`, `any_tags`, `created_from`, `created_to`.
 A grant reaches a volume or a container whole; it cannot narrow by path.
 
 ## vault
@@ -256,7 +296,7 @@ The identities signed in on the daemon's host.
 | Over | `login` | `identities login` replacing an identity already on the host |
 | Tagging | `tag`, `untag` | `identities tag` / `untag` |
 
-`within`: `issuers`, `subjects`, `all_tags`, `any_tags`.
+`within`: `identities` (exact), `issuers`, `subjects`, `all_tags`, `any_tags`.
 
 ## A read-only "observer" role
 
@@ -283,12 +323,17 @@ The identities signed in on the daemon's host.
 ## Grants a tool's image declares
 
 A tool container is not an account. It holds the grants its program declared at registration, written in
-the same vocabulary with one restriction: `within` is `"any"` or a tags test only (no names), plus, over
-agents alone:
+the same vocabulary. For every kind, `within` is one of the three reaches above and nothing else: `"any"`, the
+kind's naming member from the table (`{"ids":[…]}`, `{"volumes":[…]}`, `{"identities":[…]}`, …), or tags. A
+tool's grant has no narrowing members.
+
+- A tool's image never fixes a list of records: a record is one daemon's. A tool whose **arguments** name
+  records (the agents to message, the daemon to relay to, the volume to read) declares those, so the same
+  image declares one list here and another there.
+
+Over agents alone there are two words more:
 
 - `"attached"`: the agents the tool is attached to.
 - `"never_active"`: agents that have never run.
-- `{"agents":[{"template":"<agent template id>","index":<n>}, …]}`: exactly the agents listed, and no
-  other. The one form that names anything. A tool whose arguments are a list of agents declares that list.
 
-None of the three is valid in a role's grant. See `diverge-tools` and `diverge-images`.
+Neither word is valid in a role's grant. See `diverge-tools` and `diverge-images`.

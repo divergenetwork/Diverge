@@ -123,7 +123,7 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
   the agent exactly `<chat>\nYou have a new message\n</chat>`; the agent then calls `read_messages`.
 - Its `DIVERGE.md` declares `"frontend": true`.
 - Permissions it declares: `get`, `list` and `message` over the agents attached to it, `get` over agent
-  templates, `info` over images.
+  templates, `read` over providers and `relay` over remote daemons.
 
 ```bash
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' '{

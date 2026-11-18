@@ -34,15 +34,28 @@ draft: false
   declared them; absent when empty. Each grant is an object of
   exactly one member named for a kind, whose value is a bare array of
   making actions, an object of `actions` and `within`, or an object
-  of `actions`, `within` and `tags`. A `within` is the string `any`
-  or an object of `all_tags` and `any_tags`, and names nothing. Over
-  agents alone, a `within` may also be the string `attached`, the
-  agents attached to the tool; the string `never_active`, the
-  agents that have never run; or an object of exactly one member,
-  `agents`, an array of objects of exactly two members each,
-  `template`, a string, and `index`, an unsigned integer: exactly
-  the agents listed, each the agent of that index among the agents
-  made from that template. The server relays the array as the
+  of `actions`, `within` and `tags`. A `within` is exactly one of
+  three forms. The first form is the string `any`, which reaches
+  every record of the kind. The second form is an object of exactly
+  one member, the kind's list, an array that names records one by
+  one; it reaches exactly the records listed and no other, whatever
+  their tags, and an empty list reaches nothing. The third form is an
+  object of `all_tags` and `any_tags`, which reaches the records
+  whose tags pass both. No `within` carries a list and tags together:
+  an object that has a list's member and a tags member does not
+  decode. The list's member is `identities` for accounts, for
+  identities, for providers, for the daemons through providers and
+  for images; `ids` for agent templates, for standalone tool
+  templates and for remote daemons; `agents` for agents; `tools` for
+  standalone tools, for connected standalone tools and for
+  dependency tools; `names` for roles; `keys` for the vault; and
+  `volumes` for volumes. An agent and a standalone tool are each
+  listed as an object of exactly two members, `template`, a string,
+  and `index`, an unsigned integer: the record of that index among
+  the records made from that template. Over agents alone, a `within`
+  may also be the string `attached`, which reaches the agents
+  attached to the tool, or the string `never_active`, which reaches
+  the agents that have never run. The server relays the array as the
   proxy sent it and reads none of it.
 - **Malformed.** A channel request whose payload does not decode as
   stated is answered by a channel response finish that no channel
@@ -73,7 +86,13 @@ and by `diverge-sdk-rs/src/shared/permission/grant.rs`:
 ```rust include=diverge-sdk-rs/src/shared/permission/grant.rs
 ```
 
-and by `diverge-sdk-rs/src/shared/permission/within.rs`:
+and by `diverge-sdk-rs/src/shared/permission/reach.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/permission/reach.rs
+```
+
+and, for the tags a tagging grant may touch, by
+`diverge-sdk-rs/src/shared/permission/within.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/permission/within.rs
 ```
