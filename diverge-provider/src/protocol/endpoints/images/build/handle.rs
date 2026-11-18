@@ -74,8 +74,15 @@ pub async fn handle<M, V>(
     V: VolumeManager,
     V::Error: Into<Error>,
 {
-    if !capabilities.images.builds() {
+    let Some(builds) = capabilities.images.store.as_ref().and_then(|store| store.build.as_ref()) else {
         send(&scope, &response::Frame::Unsupported).await;
+        scope.send_response_finish().await;
+        return;
+    };
+    // A platform the provider does not build for is refused before
+    // anything is held or built.
+    if request.platforms.iter().any(|platform| !builds.platforms.contains(platform)) {
+        send(&scope, &response::Frame::PlatformUnsupported).await;
         scope.send_response_finish().await;
         return;
     }
@@ -130,6 +137,10 @@ pub async fn handle<M, V>(
             Ok(Progress::InsufficientCapacity) => {
                 ended = true;
                 response::Frame::InsufficientCapacity
+            }
+            Ok(Progress::PlatformUnsupported) => {
+                ended = true;
+                response::Frame::PlatformUnsupported
             }
             Err(error) => {
                 ended = true;

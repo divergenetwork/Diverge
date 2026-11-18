@@ -1,9 +1,10 @@
 //! What this provider holds out, read off its configuration.
 
-use diverge_sdk::provider::endpoints::info::server::response::{Capabilities, ImagesCapabilities, MessagesCapabilities, StoreCapabilities, VolumeCapabilities};
+use diverge_sdk::provider::endpoints::info::server::response::{BuildCapabilities, Capabilities, ContainersCapabilities, ImagesCapabilities, MessagesCapabilities, StoreCapabilities, VolumeCapabilities};
 use diverge_sdk::provider::endpoints::volumes::Mode;
 
 use crate::config::Config;
+use crate::host::image_manager::manifest::host;
 
 /// The host's capabilities, each a fact of the host:
 ///
@@ -12,8 +13,11 @@ use crate::config::Config;
 ///   absent, `false`, and every agents run and tools run answered
 ///   `Unsupported`.
 /// - `images.store`: the `images` section names a Store,
-///   which is the only way the host has one. Its `build` is `true`:
-///   a host with a Store has podman, which is what builds.
+///   which is the only way the host has one. Its `build` names the
+///   one platform this provider builds for — a host with a Store has
+///   podman, which is what builds, for the host's own platform.
+/// - `containers`: the `containers` section, with the one platform
+///   this provider runs: `linux` on the host's architecture.
 /// - `images.registries`: every host of `podman.registries`, the
 ///   registries the host pulls from, anonymously,
 ///   on a provider that uses podman; on one that uses none — neither
@@ -49,9 +53,11 @@ use crate::config::Config;
 ///   `Unsupported`.
 pub fn capabilities(config: &Config) -> Capabilities {
     Capabilities {
-        containers: config.containers.is_some(),
+        containers: config.containers.is_some().then(|| ContainersCapabilities { platforms: vec![host()] }),
         images: ImagesCapabilities {
-            store: config.images.is_some().then_some(StoreCapabilities { build: true }),
+            store: config.images.is_some().then(|| StoreCapabilities {
+                build: Some(BuildCapabilities { platforms: vec![host()] }),
+            }),
             registries: registries(config).to_vec(),
         },
         volumes_persistent: mode(config, Mode::Persistent, PERSISTENT),

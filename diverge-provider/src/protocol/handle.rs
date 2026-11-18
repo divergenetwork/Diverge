@@ -360,6 +360,24 @@ where
                     endpoints::images::push::handle(scope, frame, &identity, &*manager, changes, &capabilities).await;
                 });
             }
+            ClientRequest::ImagesMerge(frame) => {
+                let identity = Arc::clone(&client_identity);
+                let manager = Arc::clone(&image_manager);
+                let changes = Arc::clone(&image_changes);
+                let capabilities = Arc::clone(&capabilities);
+                scopes.spawn(async move {
+                    endpoints::images::merge::handle(scope, frame, &identity, &*manager, changes, &capabilities).await;
+                });
+            }
+            ClientRequest::ImagesPublish(frame) => {
+                let identity = Arc::clone(&client_identity);
+                let manager = Arc::clone(&image_manager);
+                let changes = Arc::clone(&image_changes);
+                let capabilities = Arc::clone(&capabilities);
+                scopes.spawn(async move {
+                    endpoints::images::publish::handle(scope, frame, &identity, &*manager, changes, &capabilities).await;
+                });
+            }
             ClientRequest::ImagesEdit(frame) => {
                 let identity = Arc::clone(&client_identity);
                 let manager = Arc::clone(&image_manager);

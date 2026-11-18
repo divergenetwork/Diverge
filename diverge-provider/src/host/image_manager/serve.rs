@@ -226,8 +226,10 @@ impl Owned {
     /// Whether the image reaches `digest`, while the caller owns it: a
     /// record given up mid-scope serves nothing more.
     async fn reaches(&self, digest: &Digest) -> bool {
-        matches!(self.store.owned(&self.client_identity, &self.digest).await, Ok(Some(_)))
-            && self.store.reach(&self.digest).await.contains(&digest.to_string())
+        match self.store.owned(&self.client_identity, &self.digest).await {
+            Ok(Some(meta)) => self.store.reach_held(&self.digest, &meta.platforms).await.contains(&digest.to_string()),
+            _ => false,
+        }
     }
 
     /// A manifest the image reaches, as the Store holds it.

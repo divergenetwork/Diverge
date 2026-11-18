@@ -17,7 +17,10 @@ pub type Body = Pin<Box<dyn Stream<Item = Bytes> + Send>>;
 
 /// The client: the registries the configuration lists, each by its
 /// host, and the token each repository was last given. It holds no
-/// credential, and asks every registry anonymously.
+/// credential, and reads from every registry anonymously; a publish
+/// writes with the credential its request carries, through a
+/// [`Writer`](super::Writer) of its own that shares nothing with these
+/// tokens.
 /// See [`registry_client`](super) for what it asks and how it
 /// authenticates.
 #[derive(Debug)]
@@ -38,6 +41,11 @@ impl RegistryClient {
             registries: registries.to_vec(),
             tokens: Mutex::new(HashMap::new()),
         })
+    }
+
+    /// The HTTP client every request goes out on.
+    pub(super) fn http(&self) -> &reqwest::Client {
+        &self.http
     }
 
     /// Whether the configuration lists `host`: a reference naming any
@@ -147,7 +155,7 @@ impl RegistryClient {
 }
 
 /// The JSON of a response, read whole.
-async fn json(response: Response) -> Result<Value, String> {
+pub(super) async fn json(response: Response) -> Result<Value, String> {
     let bytes = response.bytes().await.map_err(|error| error.to_string())?;
     serde_json::from_slice(&bytes).map_err(|error| error.to_string())
 }
@@ -155,7 +163,7 @@ async fn json(response: Response) -> Result<Value, String> {
 /// The host the API is reached at, and the name as that host knows
 /// it: Docker Hub's API host, and `library/` before a one-segment
 /// name there.
-fn api(host: &str, name: &str) -> (String, String) {
+pub(super) fn api(host: &str, name: &str) -> (String, String) {
     if host == "docker.io" {
         let name = if name.contains('/') { name.to_string() } else { format!("library/{name}") };
         ("registry-1.docker.io".to_string(), name)
@@ -166,7 +174,7 @@ fn api(host: &str, name: &str) -> (String, String) {
 
 /// A challenge's parameters, `key="value"` or `key=value`, separated
 /// by commas; a comma inside quotes is the value's.
-fn parse(parameters: &str) -> HashMap<String, String> {
+pub(super) fn parse(parameters: &str) -> HashMap<String, String> {
     let mut parsed = HashMap::new();
     let mut rest = parameters.trim();
     while !rest.is_empty() {

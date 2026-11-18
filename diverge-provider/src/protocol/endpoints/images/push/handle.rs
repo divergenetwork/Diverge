@@ -62,7 +62,7 @@ pub async fn handle<M>(
     let scope = Arc::new(scope);
     let source = ImageSource::new(Arc::clone(&scope), manifest_ask, blob_ask, prove_ask);
     let push = manager
-        .push(client_identity, &request.image, request.description.as_ref(), source)
+        .push(client_identity, &request.image, request.description.as_ref(), &request.platforms, source)
         .await;
     let mut push = Box::pin(push);
     let mut ended = false;
@@ -103,6 +103,10 @@ pub async fn handle<M>(
             Ok(Pushing::Malformed) => {
                 ended = true;
                 response::Frame::Malformed
+            }
+            Ok(Pushing::PlatformNotFound) => {
+                ended = true;
+                response::Frame::PlatformNotFound
             }
             Err(error) => {
                 ended = true;

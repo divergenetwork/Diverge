@@ -208,12 +208,18 @@ impl Job {
             let _ = sender.send(Ok(Progress::InsufficientCapacity)).await;
             return Ok(());
         }
-        let bytes = self.store.image_bytes(&digest).await;
+        // What was built is for the platform this provider builds for;
+        // the image says so itself, and is believed where it does.
+        let platforms = self.store.manifest_platforms(&digest).await.unwrap_or_else(|| vec![super::manifest::host()]);
+        let bytes = self.store.image_bytes(&digest, &platforms).await;
         let meta = Meta {
             description: self.description.clone(),
             bytes,
             created: now(),
             containerfile: Some(self.containerfile.clone()),
+            manifest_platforms: platforms.clone(),
+            platforms,
+            references: Vec::new(),
         };
         if !self.store.own(&self.client_identity, &digest, &meta).await? {
             let _ = sender.send(Ok(Progress::Exists(Exists { digest: digest.to_string() }))).await;

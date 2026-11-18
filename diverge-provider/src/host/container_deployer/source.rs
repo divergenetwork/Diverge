@@ -142,6 +142,12 @@ async fn taken(deployer: &ContainerDeployer, store: &Store, attempt: Attempt, ca
             });
         }
         Err(Fetch::Store(error)) => return Err(Error::Store(error)),
+        // A run names no platform, so its plan asks for none by name.
+        Err(Fetch::PlatformNotFound) => {
+            return Err(Error::Malformed {
+                digest: digest.to_string(),
+            });
+        }
     };
     if !check(store, caller.source(), &plan).await.map_err(Error::Store)? {
         return Err(Error::ProofFailed);

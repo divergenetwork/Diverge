@@ -8,7 +8,7 @@ use std::pin::Pin;
 use bytes::Bytes;
 use futures_util::Stream;
 
-use super::manifest::{Descriptor, Parsed, select};
+use super::manifest::{self, Descriptor, Parsed, select};
 use super::{Attempt, Error, Store};
 use crate::host::image_registry::Digest;
 use crate::host::registry_client::RegistryClient;
@@ -44,6 +44,8 @@ pub enum Fetch {
     Supplier(String),
     /// The Store could not be read or written.
     Store(Error),
+    /// A platform asked for is not one the image has.
+    PlatformNotFound,
 }
 
 impl From<Error> for Fetch {
@@ -113,6 +115,90 @@ pub async fn plan<S: Supplier>(store: &Store, attempt: Attempt, supplier: &S, di
         platform,
         blobs,
     })
+}
+
+/// The image `digest` names, planned at the platforms a push asks
+/// for: what its manifest names, and one [`Plan`] per image manifest
+/// to bring in.
+#[derive(Debug, Clone)]
+pub struct Planned {
+    /// The platforms the manifest names, each once, in its order.
+    pub named: Vec<String>,
+    /// One plan per image manifest of a platform asked for. For an
+    /// index, each entry of a platform asked for, the plan's
+    /// `platform` its manifest; for an image that is not an index,
+    /// the one plan, with none.
+    pub parts: Vec<Plan>,
+}
+
+impl Planned {
+    /// The bytes of the blobs the Store does not hold across every
+    /// part, each distinct blob once.
+    pub async fn missing(&self, store: &Store) -> u64 {
+        let mut seen = std::collections::HashSet::new();
+        let mut total = 0;
+        for blob in self.parts.iter().flat_map(|part| &part.blobs) {
+            if seen.insert(blob.digest.to_string()) && store.blob_size(&blob.digest).await.is_none() {
+                total += blob.size;
+            }
+        }
+        total
+    }
+}
+
+/// The manifests of the image `digest` names, in the Store, pinned for
+/// the attempt, and its plans at the platforms `wanted` — what a push
+/// brings in. The rules:
+///
+/// 1. The manifest is the Store's when it holds it, else the
+///    supplier's, found to be the digest's and written.
+/// 2. **An index.** Every platform wanted is the platform of at least
+///    one entry, or the whole is [`Fetch::PlatformNotFound`] and no
+///    platform manifest is fetched. Every entry of a platform wanted
+///    is planned, its manifest fetched the same way; an entry that is
+///    an index itself is [`Fetch::Malformed`].
+/// 3. **An image that is not an index.** Its one platform is the one
+///    its config states, so the config is fetched here, verified and
+///    kept; `wanted` is exactly that platform, or the whole is
+///    [`Fetch::PlatformNotFound`]. A config that states none is
+///    [`Fetch::Malformed`].
+/// 4. No layer is fetched here.
+pub async fn plans<S: Supplier>(store: &Store, attempt: Attempt, supplier: &S, digest: &Digest, wanted: &[String]) -> Result<Planned, Fetch> {
+    let body = manifest(store, attempt, supplier, digest).await?;
+    match Parsed::parse(&body).ok_or(Fetch::Malformed)? {
+        Parsed::Index(entries) => {
+            let named = manifest::named(&entries);
+            if wanted.iter().any(|platform| !named.contains(platform)) {
+                return Err(Fetch::PlatformNotFound);
+            }
+            let mut parts = Vec::new();
+            for entry in entries.iter().filter(|entry| wanted.contains(&entry.platform())) {
+                let platform = entry.descriptor.digest.clone();
+                let body = manifest(store, attempt, supplier, &platform).await?;
+                let Parsed::Image { config, layers } = Parsed::parse(&body).ok_or(Fetch::Malformed)? else {
+                    return Err(Fetch::Malformed);
+                };
+                let mut blobs = Vec::with_capacity(1 + layers.len());
+                blobs.push(config);
+                blobs.extend(layers);
+                parts.push(Plan { digest: digest.clone(), platform: Some(platform), blobs });
+            }
+            Ok(Planned { named, parts })
+        }
+        Parsed::Image { config, layers } => {
+            // The config is a blob like any other, and small: fetched
+            // as a manifest is, since its platform is asked of it now.
+            let stated = manifest(store, attempt, supplier, &config.digest).await?;
+            let platform = manifest::config_platform(&stated).ok_or(Fetch::Malformed)?;
+            if wanted.len() != 1 || wanted[0] != platform {
+                return Err(Fetch::PlatformNotFound);
+            }
+            let mut blobs = Vec::with_capacity(1 + layers.len());
+            blobs.push(config);
+            blobs.extend(layers);
+            Ok(Planned { named: vec![platform], parts: vec![Plan { digest: digest.clone(), platform: None, blobs }] })
+        }
+    }
 }
 
 /// The manifests of the image `digest` names, in the Store, pinned for
