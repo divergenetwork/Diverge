@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { DecodeError, jsonOf, splitTag } from "../../../../../../wire/decode.js";
 import { Error } from "../../../../../../shared/error.js";
+import { Added } from "./added.js";
 import { Blob } from "./blob.js";
 import { Exists } from "./exists.js";
 import { Pushed } from "./pushed.js";
@@ -11,8 +12,10 @@ import { Pushed } from "./pushed.js";
  * A blob pulled, or the one answer that ends the push.
  *
  * A push is a stream with an end: zero or more `{ blob }` frames, one
- * per blob the provider pulled from the client; then exactly one of
- * the others; then the finish.
+ * per blob the provider pulled from its caller, and zero or more
+ * `{ added }` frames, one per push to the provider that ended with its
+ * platforms held, in the order they happen; then exactly one of the
+ * others; then the finish.
  *
  * 1. Judged first: `forbidden` and `not_found` come with nothing
  *    before them, since nothing was asked of the provider.
@@ -47,6 +50,8 @@ export const Frame = z.union([
   z.strictObject({ error: Error }),
   /** A platform named is not one the image has, and nothing moved. Tag `11`. */
   z.literal("platform_not_found"),
+  /** Some of the platforms named are now held. Tag `12`. */
+  z.strictObject({ added: Added }),
 ]);
 export type Frame = z.infer<typeof Frame>;
 
@@ -62,6 +67,7 @@ const FORBIDDEN = 8;
 const NOT_FOUND = 9;
 const ERROR = 10;
 const PLATFORM_NOT_FOUND = 11;
+const ADDED = 12;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -95,6 +101,8 @@ export function decode(bytes: Uint8Array): Frame {
       return { error: Error.parse(jsonOf(rest)) };
     case PLATFORM_NOT_FOUND:
       return "platform_not_found";
+    case ADDED:
+      return { added: Added.parse(jsonOf(rest)) };
     default:
       throw new DecodeError("unexpected_tag", tag);
   }

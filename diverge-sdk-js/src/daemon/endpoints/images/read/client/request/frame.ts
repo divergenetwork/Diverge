@@ -15,6 +15,14 @@ export const Frame = z.object({
   /** The image: its digest, and the references its bytes may be fetched under. */
   image: Image,
   /**
+   * The platforms wanted of the image: one or more, each once, each a
+   * platform string such as `linux/amd64`. The daemon looks until it
+   * has found a source for every one, and reports no platform that is
+   * not among them. Absent, any platform will do: the first source
+   * that can supply anything of the image ends the looking.
+   */
+  platforms: z.array(z.string()).min(1).optional(),
+  /**
    * The remote daemons the daemon does not ask, by the identities they
    * answer as. A daemon asking another sends every identity it was
    * itself told to ignore, and its own. Absent, none.

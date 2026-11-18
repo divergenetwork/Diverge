@@ -21,6 +21,7 @@ import * as prove from "../../../../../../shared/containers/oci/prove/request/re
  * | `5` | `icon_svg`: carries nothing; one frame, the image's `/.diverge/icon.svg`, that there is none, an error, or that it is too large |
  * | `6` | `icon_512`: the same, of `/.diverge/icon-512.png` |
  * | `7` | `icon_64`: the same, of `/.diverge/icon-64.png` |
+ * | `8` | `enough`: carries nothing; a daemon looks no further, lets go of every source it has not kept and settles the scope; answered with the finish alone. A provider, which looks once, does nothing |
  */
 export type Frame =
   | { readonly oci_manifest: manifest.Request }
@@ -30,7 +31,8 @@ export type Frame =
   | "info"
   | "icon_svg"
   | "icon_512"
-  | "icon_64";
+  | "icon_64"
+  | "enough";
 
 const OCI_MANIFEST = 0;
 const OCI_BLOB = 1;
@@ -40,6 +42,7 @@ const INFO = 4;
 const ICON_SVG = 5;
 const ICON_512 = 6;
 const ICON_64 = 7;
+const ENOUGH = 8;
 
 /** One byte of tag, then the ask's own JSON; the cancel, the info and the three icons are the tag alone. */
 export function encode(frame: Frame): Uint8Array {
@@ -57,6 +60,9 @@ export function encode(frame: Frame): Uint8Array {
   }
   if (frame === "icon_64") {
     return Uint8Array.of(ICON_64);
+  }
+  if (frame === "enough") {
+    return Uint8Array.of(ENOUGH);
   }
   if ("oci_manifest" in frame) {
     return tagged(OCI_MANIFEST, manifest.encode(frame.oci_manifest));

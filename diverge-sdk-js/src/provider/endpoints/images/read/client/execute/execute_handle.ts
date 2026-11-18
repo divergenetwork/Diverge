@@ -1,5 +1,7 @@
 // The read scope, held: the channels a caller opens on it.
 
+import { z } from "zod";
+import { jsonOf, splitTag } from "../../../../../../wire/decode.js";
 import { decodeServerFrame } from "../../../../../../wire/frame/server.js";
 import type { Handle, Scope } from "../../../../../../wire/client/index.js";
 import { ChannelStream } from "../../../../containers/client/channel_stream.js";
@@ -19,6 +21,19 @@ import * as channel_request from "../channel_request/index.js";
 /** How a held read scope ended. */
 export type End = "finished" | "closed";
 
+/**
+ * What a read scope says on its main stream after its first held:
+ * more platforms found, a daemon's held after its first; `settled`, a
+ * daemon looking no further; or the scope's end.
+ */
+export type More = { readonly held: readonly string[] } | "settled" | End;
+
+/** The tag a held leads with on a read scope's main stream, a provider's and a daemon's alike. */
+const HELD = 0;
+
+/** The tag a daemon's settled is, on its read scope's main stream. */
+const SETTLED = 4;
+
 /** A blob's pieces, each appending, to the channel's finish; none at all is a digest the image does not reach. */
 export type BlobStream = ChannelStream<Uint8Array, never>;
 
@@ -31,11 +46,66 @@ export type BlobStream = ChannelStream<Uint8Array, never>;
 export class ExecuteHandle {
   readonly #handle: Handle;
   readonly #scope: Scope;
+  readonly #platforms: readonly string[];
   #end: Promise<End> | undefined;
 
-  constructor(handle: Handle, scope: Scope) {
+  constructor(handle: Handle, scope: Scope, platforms: readonly string[] = []) {
     this.#handle = handle;
     this.#scope = scope;
+    this.#platforms = platforms;
+  }
+
+  /** The platforms the first held carried: all a provider can supply, or the first a daemon found. */
+  get platforms(): readonly string[] {
+    return this.#platforms;
+  }
+
+  /**
+   * What the scope says next on its main stream. A daemon's scope goes
+   * on after its first held: a held for each source that adds
+   * platforms, then exactly one `settled`. A provider's says nothing
+   * more until its end. This and `wait` read the one stream: read
+   * every `more` to the `settled` before waiting for the end.
+   */
+  async more(): Promise<More> {
+    for (;;) {
+      const bytes = await this.#scope.responseReceiver.next();
+      if (bytes === undefined) {
+        return "closed";
+      }
+      let envelope;
+      try {
+        envelope = decodeServerFrame(bytes);
+      } catch {
+        return "closed";
+      }
+      if (envelope.kind === "response_finish") {
+        return "finished";
+      }
+      if (envelope.kind !== "response") {
+        continue;
+      }
+      try {
+        const [tag, rest] = splitTag(envelope.payload);
+        if (tag === HELD) {
+          return { held: z.array(z.string()).parse(jsonOf(rest)) };
+        }
+        if (tag === SETTLED) {
+          return "settled";
+        }
+      } catch {
+        // Passed over, as anything else on the stream is.
+      }
+    }
+  }
+
+  /** Ask a daemon's scope to look no further. Nothing but the finish answers on the channel this opens. */
+  async enough(): Promise<void> {
+    try {
+      await this.#handle.sendChannelRequest(this.scope, channel_request.encode("enough"));
+    } catch (cause) {
+      throw new OpenError("send", cause);
+    }
   }
 
   /** The scope's number. */

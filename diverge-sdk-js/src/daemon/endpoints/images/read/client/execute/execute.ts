@@ -9,6 +9,9 @@ import * as response from "../../server/response/index.js";
 /** Why an images read did not hand back a handle. */
 export type ReadErrorKind = "send" | "request" | "closed" | "frame" | "unanswered" | "misrouted" | "response" | "not_found" | "forbidden" | "daemon";
 
+/** What a held scope says after its first held: the provider scope's own type, which only a daemon's scope has more than the end of. */
+export type { More } from "../../../../../../provider/endpoints/images/read/client/execute/execute_handle.js";
+
 /**
  * A read scope that did not come to be held: the machinery failing as
  * a one-answer exchange's can, or the daemon's answer that is not
@@ -30,8 +33,9 @@ export class ReadError extends Error {
 /**
  * Open the daemon's read scope of the one image `frame` names on
  * `handle` and read the daemon's answer: the `ExecuteHandle` when it
- * is held, every ask on it answered on its own channel, else the
- * `ReadError` saying why not. There is no timeout: a daemon that never
+ * is held, every ask on it answered on its own channel, its
+ * `platforms` the first the daemon found and every later held and the
+ * settled read by its `more`; else the `ReadError` saying why not. There is no timeout: a daemon that never
  * answers is waited on until the connection ends.
  */
 export async function execute(handle: Handle, frame: request.Frame): Promise<ExecuteHandle> {
@@ -71,11 +75,15 @@ export async function execute(handle: Handle, frame: request.Frame): Promise<Exe
   } catch (cause) {
     throw new ReadError("response", cause);
   }
-  if (answer === "held") {
-    return new ExecuteHandle(handle, scope);
+  if (answer === "settled") {
+    // Never first: a daemon that held nothing says not found.
+    throw new ReadError("unanswered");
   }
   if (typeof answer === "string") {
     throw new ReadError(answer);
+  }
+  if ("held" in answer) {
+    return new ExecuteHandle(handle, scope, answer.held.platforms);
   }
   throw new ReadError("daemon", answer.error);
 }

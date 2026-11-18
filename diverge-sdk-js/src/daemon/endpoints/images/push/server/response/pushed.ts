@@ -9,7 +9,9 @@ export const Pushed = z.object({
   digest: z.string(),
   /** Its size in BYTES, as the provider counts it against the Store's capacity. */
   bytes: z.number().int().nonnegative(),
-  /** Where the provider took it from: a registry it uses, or the client, who proved it holds it. Never `store`. */
+  /** Where the provider took it from: a registry it uses, or the client, who proved it holds it. Never `store`. Of a push made of several, the last to end's. */
   source: Source,
+  /** Every platform the push named, all now held. */
+  platforms: z.array(z.string()),
 });
 export type Pushed = z.infer<typeof Pushed>;
