@@ -12,32 +12,64 @@ use crate::wire::encode::{Encode, Writer};
 /// not: the answer to the scope's request, which is the question
 /// whether the daemon can supply the image.
 ///
-/// Exactly one of these is the FIRST response on channel `0`. A payload
-/// leads with one byte saying which — `0` for [`Held`](Self::Held), `1`
-/// for [`NotFound`](Self::NotFound), `2` for
-/// [`Forbidden`](Self::Forbidden), `3` for [`Error`](Self::Error) — and
-/// the rest is the error's JSON for `Error`, and nothing for the other
-/// three.
+/// Exactly one of `Held`, `NotFound`, `Forbidden` and `Error` is the
+/// FIRST response on channel `0`. A payload leads with one byte saying
+/// which — `0` for [`Held`](Self::Held), `1` for
+/// [`NotFound`](Self::NotFound), `2` for
+/// [`Forbidden`](Self::Forbidden), `3` for [`Error`](Self::Error), `4`
+/// for [`Settled`](Self::Settled) — and the rest is the platforms'
+/// JSON for `Held`, the error's JSON for `Error`, and nothing for the
+/// other three.
+///
+/// # A held scope's main stream
+///
+/// One or more `Held`, then exactly one `Settled`, then nothing until
+/// the finish. The rules:
+///
+/// 1. **Each held is what one source added.** The daemon asks every
+///    source at once. As each answers, the platforms it can supply
+///    that the request wants and that no earlier `Held` on this scope
+///    carried are sent in one `Held`; a source that adds none is let
+///    go and sends nothing. So with `a`, `b` and `c` wanted, a source
+///    holding `a` and `b` and a later one holding `b` and `c` are
+///    `Held` of `a` and `b`, then `Held` of `c`.
+/// 2. **Never a platform not wanted, never one twice.** The platforms
+///    of every `Held` on a scope are distinct, and each is one the
+///    request named. A request that named none wants any: its one
+///    `Held` carries every platform the first source can supply.
+/// 3. **Settled, once.** The daemon stops looking when every platform
+///    wanted has been sent, when every source has answered, or when
+///    the caller says [`Enough`](crate::provider::endpoints::images::read::client::channel_request::Frame::Enough);
+///    it then sends `Settled`, and sends no `Held` after it.
+/// 4. **Asked on from the first held.** The scope answers channels as
+///    soon as its first `Held` is sent, through the sources kept so
+///    far.
 ///
 /// | the scope | means |
 /// |-----------|-------|
-/// | [`Held`](Self::Held), and stays open | a source the daemon asked can supply the image, and the daemon answers every ask the caller opens on its channel through it |
-/// | [`NotFound`](Self::NotFound), then a finish | no source it asked can; no ask is answered |
+/// | [`Held`](Self::Held), and stays open | a source the daemon asked can supply these platforms of the image, and the daemon answers every ask the caller opens on its channel through the sources it keeps |
+/// | [`NotFound`](Self::NotFound), then a finish | no source it asked can supply any platform wanted; no ask is answered |
 /// | [`Forbidden`](Self::Forbidden), then a finish | the account holds neither `read` over a provider nor `relay` over a daemon; nothing was asked |
 /// | an [`Error`](Self::Error), then a finish | it could not look; no ask is answered |
 ///
 /// # As JSON
 ///
 /// For a client that prints what the daemon answered: the variant,
-/// snake case — `"held"`, `{"error":…}`. The wire is the tag byte and
-/// the payload, never this.
+/// snake case — `{"held":{"platforms":[…]}}`, `"settled"`,
+/// `{"error":…}`. The wire is the tag byte and the payload, never
+/// this.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Frame {
-    /// A source can supply the image, and the daemon serves the scope
-    /// through it. Tag `0`.
-    Held,
+    /// A source can supply these platforms of the image, and the
+    /// daemon serves the scope through it. Tag `0`, then the platforms
+    /// as a JSON array of strings.
+    Held {
+        /// The platforms this source added: wanted, and carried by no
+        /// earlier held on the scope.
+        platforms: Vec<String>,
+    },
     /// No source the daemon asked can. Tag `1`.
     NotFound,
     /// The account the request is served for holds no grant allowing
@@ -48,6 +80,8 @@ pub enum Frame {
     /// See [`shared::error::Error`](crate::shared::error::Error) for
     /// why it says so little.
     Error(Error),
+    /// The daemon looks no further, and no held follows. Tag `4`.
+    Settled,
 }
 
 /// Tag for [`Frame::Held`].
@@ -62,6 +96,9 @@ const FORBIDDEN: u8 = 2;
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 3;
 
+/// Tag for [`Frame::Settled`].
+const SETTLED: u8 = 4;
+
 /// A tag, then the error's JSON, or nothing.
 impl Encode for Frame {
     /// The ordinary JSON failure, from the one variant that has one.
@@ -72,8 +109,12 @@ impl Encode for Frame {
     // called `Error`, so the associated type is ambiguous by that name.
     fn encode(&self, out: &mut Writer<'_>) -> Result<(), serde_json::Error> {
         match self {
-            Frame::Held => {
+            Frame::Held { platforms } => {
                 out.extend_from_slice(&[HELD]);
+                serde_json::to_writer(out, platforms)
+            }
+            Frame::Settled => {
+                out.extend_from_slice(&[SETTLED]);
                 Ok(())
             }
             Frame::NotFound => {
@@ -100,7 +141,8 @@ impl Decode<'_> for Frame {
     fn decode(bytes: &[u8]) -> Result<Self, FrameError> {
         let (tag, rest) = bytes.split_first().ok_or(FrameError::Empty)?;
         match *tag {
-            HELD => Ok(Frame::Held),
+            HELD => serde_json::from_slice(rest).map(|platforms| Frame::Held { platforms }).map_err(FrameError::Platforms),
+            SETTLED => Ok(Frame::Settled),
             NOT_FOUND => Ok(Frame::NotFound),
             FORBIDDEN => Ok(Frame::Forbidden),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
@@ -114,10 +156,12 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's four.
+    /// A tag that is none of this frame's five.
     UnknownTag(u8),
     /// The error did not parse.
     Error(serde_json::Error),
+    /// The platforms of a held did not parse.
+    Platforms(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -126,6 +170,7 @@ impl fmt::Display for FrameError {
             FrameError::Empty => f.write_str("images read response frame is empty"),
             FrameError::UnknownTag(tag) => write!(f, "unknown images read response frame tag {tag}"),
             FrameError::Error(error) => write!(f, "images read error did not parse: {error}"),
+            FrameError::Platforms(error) => write!(f, "images read platforms did not parse: {error}"),
         }
     }
 }
@@ -133,7 +178,7 @@ impl fmt::Display for FrameError {
 impl std::error::Error for FrameError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            FrameError::Error(error) => Some(error),
+            FrameError::Error(error) | FrameError::Platforms(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }
     }

@@ -39,7 +39,7 @@ pub async fn execute(handle: &Handle, request: &request::Frame) -> Result<Execut
         return Err(ExecuteError::Unanswered);
     };
     match response::Frame::decode(payload).map_err(ExecuteError::Response)? {
-        response::Frame::Held => Ok(ExecuteHandle::new(handle.clone(), scope.scope, scope.response_receiver)),
+        response::Frame::Held { platforms } => Ok(ExecuteHandle::new(handle.clone(), scope.scope, scope.response_receiver, platforms)),
         response::Frame::NotFound => Err(ExecuteError::NotFound),
         response::Frame::Unsupported => Err(ExecuteError::Unsupported),
         response::Frame::Error(error) => Err(ExecuteError::Provider(error)),

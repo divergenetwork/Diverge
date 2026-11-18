@@ -23,6 +23,7 @@ use crate::wire::encode::{Encode, Writer};
 /// | `5` | [`IconSvg`](Self::IconSvg) |
 /// | `6` | [`Icon512`](Self::Icon512) |
 /// | `7` | [`Icon64`](Self::Icon64) |
+/// | `8` | [`Enough`](Self::Enough) |
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Frame {
     /// A manifest the scope's image reaches, by digest. Tag `0`.
@@ -84,6 +85,16 @@ pub enum Frame {
     /// Carries nothing, and is answered as [`IconSvg`](Self::IconSvg)
     /// is.
     Icon64,
+    /// Look no further. Tag `8`.
+    ///
+    /// Carries nothing — the variant is bare. It is a daemon's read
+    /// scope that looks on after its first answer, finding platforms
+    /// source by source: asked this, it stops looking, lets go of
+    /// every source it has not kept, and settles the scope with what
+    /// it holds. Answered with the finish and nothing before it. A
+    /// provider, which answers once and looks no further, answers it
+    /// the same way and does nothing.
+    Enough,
 }
 
 /// Tag for [`Frame::OciManifest`].
@@ -109,6 +120,9 @@ const ICON_512: u8 = 6;
 
 /// Tag for [`Frame::Icon64`].
 const ICON_64: u8 = 7;
+
+/// Tag for [`Frame::Enough`].
+const ENOUGH: u8 = 8;
 
 /// A tag, then the ask's own JSON; the cancel, the info and the three
 /// icons are the tag alone.
@@ -151,12 +165,16 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ICON_64]);
                 Ok(())
             }
+            Frame::Enough => {
+                out.extend_from_slice(&[ENOUGH]);
+                Ok(())
+            }
         }
     }
 }
 
 impl Decode<'_> for Frame {
-    /// Three ways to fail: nothing, a tag that is none of the eight, or
+    /// Three ways to fail: nothing, a tag that is none of the nine, or
     /// an ask that did not parse.
     type Error = FrameError;
 
@@ -171,6 +189,7 @@ impl Decode<'_> for Frame {
             ICON_SVG => Ok(Frame::IconSvg),
             ICON_512 => Ok(Frame::Icon512),
             ICON_64 => Ok(Frame::Icon64),
+            ENOUGH => Ok(Frame::Enough),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -181,7 +200,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's eight.
+    /// A tag that is none of this frame's nine.
     UnknownTag(u8),
     /// An ask did not parse.
     Oci(serde_json::Error),

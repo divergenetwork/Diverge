@@ -19,6 +19,14 @@ pub struct Frame {
     /// The image: see [`Image`]. The digest is the image; the
     /// references are where a provider may fetch it from.
     pub image: Image,
+    /// The platforms wanted of the image: one or more, each once,
+    /// each a [platform string](crate::shared::platform::of) such as
+    /// `linux/amd64`. The daemon looks until it has found a source for
+    /// every one, and reports no platform that is not among them.
+    /// Absent, any platform will do: the first source that can supply
+    /// anything of the image ends the looking.
+    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "platforms")]
+    pub platforms: Option<Vec<String>>,
     /// The remote daemons the daemon does not ask, by the identities
     /// they answer as. A daemon asking another sends every identity it
     /// was itself told to ignore, and its own. Absent, none.
@@ -27,6 +35,12 @@ pub struct Frame {
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,
+}
+
+/// The platforms wanted, where the member is present: one or more,
+/// as [`platform::some`](crate::shared::platform::some) reads them.
+fn platforms<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<Vec<String>>, D::Error> {
+    crate::shared::platform::some(deserializer).map(Some)
 }
 
 /// This frame's tag among the scope-opening requests.

@@ -17,24 +17,29 @@ use serde::{Deserialize, Serialize};
 ///    client's to answer: the daemon opens each on the client's scope
 ///    and carries the answer back, reading none of it.
 /// 3. **[`Daemon`](Self::Daemon).** The daemon answers the asks
-///    itself, and picks where from, exactly as it does for a provider
-///    that asks it for the image of a container it is to run: every
-///    other provider connected that keeps a Store or lists a registry,
-///    and every remote daemon on record, is asked at once whether it
-///    can supply the image, by an
+///    itself, and picks where from. Every provider connected that
+///    keeps a Store or lists a registry, the one pushed to among them,
+///    and every remote daemon on record, is asked at once which
+///    platforms of the image it can supply, by an
 ///    [`images::read`](crate::daemon::endpoints::images::read) scope
-///    opened on it; the first that answers held supplies it, and every
-///    other is let go. The provider pushed to is not asked: it has
-///    looked already.
-/// 4. **Judged as a run's image is.** The daemon asks as itself, of
+///    opened on it. Each source that supplies a platform named which
+///    no source before it did is kept for those platforms; every
+///    other is let go, and the asking ends once every platform named
+///    has a source.
+/// 4. **Sources are combined.** An image whose platforms are spread
+///    over several sources is pushed from all of them: one push to
+///    the provider for each source, naming that source's platforms,
+///    all at once. See [`push`](super::super::super).
+/// 5. **Judged as a run's image is.** The daemon asks as itself, of
 ///    every source it reaches, whatever the caller's grants are: a
 ///    push needs `push` over images reaching the provider pushed to,
 ///    and nothing more, whichever the source is.
-/// 5. **A source that does not answer is not held.** A client that
-///    does not answer, or a daemon that finds nobody holding the
-///    image, or whose pick stops answering part way, is answered to
-///    the provider as not held, and the push is then `Unavailable`,
-///    or `ProofFailed`. No second pick is made.
+/// 6. **All found, or nothing moved.** A daemon that finds no source
+///    for a platform named asks nothing of the provider, and the push
+///    is `Unavailable`. A client that does not answer, or a source
+///    that stops answering part way, is answered to the provider as
+///    not held, and the push it was answering is then `Unavailable`,
+///    or `ProofFailed`. No second source is asked for its platforms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]

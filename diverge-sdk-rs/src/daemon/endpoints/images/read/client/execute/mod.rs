@@ -19,5 +19,9 @@ pub use execute::*;
 /// [`images::read::client::execute::ExecuteHandle`](crate::provider::endpoints::images::read::client::execute::ExecuteHandle).
 pub type ExecuteHandle = crate::provider::endpoints::images::read::client::execute::ExecuteHandle;
 
+/// What a held scope says after its first held: the provider scope's
+/// own type, which only a daemon's scope has more than the end of.
+pub type More = crate::provider::endpoints::images::read::client::execute::More;
+
 /// How a held scope ended: the provider scope's own.
 pub type End = crate::provider::endpoints::images::read::client::execute::End;

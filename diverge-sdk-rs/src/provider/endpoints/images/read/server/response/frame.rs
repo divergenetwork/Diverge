@@ -15,8 +15,8 @@ use crate::wire::encode::{Encode, Writer};
 /// payload leads with one byte saying which — `0` for
 /// [`Held`](Self::Held), `1` for [`NotFound`](Self::NotFound), `2` for
 /// [`Unsupported`](Self::Unsupported), `3` for [`Error`](Self::Error)
-/// — and the rest is the error's JSON for `Error`, and nothing for
-/// the other three.
+/// — and the rest is the platforms' JSON for `Held`, the error's JSON
+/// for `Error`, and nothing for the other two.
 ///
 /// | the scope | means |
 /// |-----------|-------|
@@ -37,8 +37,20 @@ use crate::wire::encode::{Encode, Writer};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
     /// The provider can supply the image, and serves the scope. Tag
-    /// `0`.
-    Held,
+    /// `0`, then the platforms as a JSON array of strings.
+    ///
+    /// `platforms` is every platform of the image the provider can
+    /// supply, each once, each a
+    /// [platform string](crate::shared::platform::of): the platforms
+    /// the caller's record of the image holds, where the image is the
+    /// caller's in the Store; every platform the manifest names, where
+    /// a registry serves it. Sent once: a provider says what it can
+    /// supply when it answers, and nothing after changes it. A request
+    /// names no platform, and none is asked for.
+    Held {
+        /// The platforms the provider can supply of the image.
+        platforms: Vec<String>,
+    },
     /// It cannot: neither the caller's Store nor a registry it is
     /// configured with, named by one of the image's references, has
     /// it. Tag `1`.
@@ -79,9 +91,9 @@ impl Encode for Frame {
     // called `Error`, so the associated type is ambiguous by that name.
     fn encode(&self, out: &mut Writer<'_>) -> Result<(), serde_json::Error> {
         match self {
-            Frame::Held => {
+            Frame::Held { platforms } => {
                 out.extend_from_slice(&[HELD]);
-                Ok(())
+                serde_json::to_writer(out, platforms)
             }
             Frame::NotFound => {
                 out.extend_from_slice(&[NOT_FOUND]);
@@ -107,7 +119,7 @@ impl Decode<'_> for Frame {
     fn decode(bytes: &[u8]) -> Result<Self, FrameError> {
         let (tag, rest) = bytes.split_first().ok_or(FrameError::Empty)?;
         match *tag {
-            HELD => Ok(Frame::Held),
+            HELD => serde_json::from_slice(rest).map(|platforms| Frame::Held { platforms }).map_err(FrameError::Platforms),
             NOT_FOUND => Ok(Frame::NotFound),
             UNSUPPORTED => Ok(Frame::Unsupported),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
@@ -125,6 +137,8 @@ pub enum FrameError {
     UnknownTag(u8),
     /// The error did not parse.
     Error(serde_json::Error),
+    /// The platforms of a held did not parse.
+    Platforms(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -133,6 +147,7 @@ impl fmt::Display for FrameError {
             FrameError::Empty => f.write_str("image read response frame is empty"),
             FrameError::UnknownTag(tag) => write!(f, "unknown image read response frame tag {tag}"),
             FrameError::Error(error) => write!(f, "image read error did not parse: {error}"),
+            FrameError::Platforms(error) => write!(f, "image read platforms did not parse: {error}"),
         }
     }
 }
@@ -140,7 +155,7 @@ impl fmt::Display for FrameError {
 impl std::error::Error for FrameError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            FrameError::Error(error) => Some(error),
+            FrameError::Error(error) | FrameError::Platforms(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }
     }

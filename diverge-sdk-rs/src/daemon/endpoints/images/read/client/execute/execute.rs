@@ -14,7 +14,10 @@ use crate::wire::frame;
 ///
 /// The first frame on the main stream answers the request:
 /// [`Held`](response::Frame::Held) is the [`ExecuteHandle`], every ask
-/// on it answered on its own channel;
+/// on it answered on its own channel, its
+/// [`platforms`](ExecuteHandle::platforms) the first the daemon found
+/// and every later held and the settled read by its
+/// [`more`](ExecuteHandle::more);
 /// [`NotFound`](response::Frame::NotFound),
 /// [`Forbidden`](response::Frame::Forbidden) and
 /// [`Error`](response::Frame::Error) are [`ExecuteError::NotFound`],
@@ -38,7 +41,10 @@ pub async fn execute(handle: &Handle, request: &request::Frame) -> Result<Execut
         return Err(ExecuteError::Unanswered);
     };
     match response::Frame::decode(payload).map_err(ExecuteError::Response)? {
-        response::Frame::Held => Ok(ExecuteHandle::new(handle.clone(), scope.scope, scope.response_receiver)),
+        response::Frame::Held { platforms } => Ok(ExecuteHandle::new(handle.clone(), scope.scope, scope.response_receiver, platforms)),
+        // A settled is never first: a daemon that held nothing says
+        // not found.
+        response::Frame::Settled => Err(ExecuteError::Unanswered),
         response::Frame::NotFound => Err(ExecuteError::NotFound),
         response::Frame::Forbidden => Err(ExecuteError::Forbidden),
         response::Frame::Error(error) => Err(ExecuteError::Daemon(error)),

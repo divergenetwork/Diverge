@@ -37,8 +37,29 @@ pub type BlobStream = ChannelStream<OciBlob>;
 pub struct ExecuteHandle {
     handle: Handle,
     scope: u32,
+    platforms: Vec<String>,
     main: Mutex<crate::wire::credit::Receiver>,
 }
+
+/// What a read scope says on its main stream after its first held:
+/// what [`more`](ExecuteHandle::more) reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum More {
+    /// More platforms found: a daemon's held, after its first.
+    Held(Vec<String>),
+    /// A daemon looks no further: nothing more is found on this scope,
+    /// which stays open to be asked on.
+    Settled,
+    /// The scope ended.
+    End(End),
+}
+
+/// The tag a held leads with on a read scope's main stream, a
+/// provider's and a daemon's alike.
+const HELD: u8 = 0;
+
+/// The tag a daemon's settled is, on its read scope's main stream.
+const SETTLED: u8 = 4;
 
 /// One channel request of this scope, as its bytes.
 fn payload(frame: &channel_request::Frame) -> Result<Vec<u8>, serde_json::Error> {
@@ -48,12 +69,60 @@ fn payload(frame: &channel_request::Frame) -> Result<Vec<u8>, serde_json::Error>
 }
 
 impl ExecuteHandle {
-    pub(crate) fn new(handle: Handle, scope: u32, main: crate::wire::credit::Receiver) -> Self {
+    pub(crate) fn new(handle: Handle, scope: u32, main: crate::wire::credit::Receiver, platforms: Vec<String>) -> Self {
         ExecuteHandle {
             handle,
             scope,
+            platforms,
             main: Mutex::new(main),
         }
+    }
+
+    /// The platforms the first held carried: all a provider can
+    /// supply, or the first a daemon found.
+    pub fn platforms(&self) -> &[String] {
+        &self.platforms
+    }
+
+    /// What the scope says next on its main stream. The rules:
+    ///
+    /// 1. **A daemon's scope goes on.** After its first held a daemon
+    ///    sends a held for each source it finds that adds platforms,
+    ///    carrying those and no other, then exactly one settled: each
+    ///    is one [`More`].
+    /// 2. **A provider's does not.** It says nothing more until the
+    ///    finish, which is the [`End`].
+    /// 3. **Read in order, by one reader.** This and
+    ///    [`wait`](Self::wait) read the one stream: a caller reads
+    ///    every `more` to the settled before it waits for the end.
+    ///    Anything else that arrives is passed over.
+    pub async fn more(&self) -> More {
+        let mut main = self.main.lock().await;
+        while let Some(bytes) = main.recv().await {
+            match frame::server::ServerFrame::decode(&bytes) {
+                Ok(frame::server::ServerFrame::ResponseFinish { .. }) => return More::End(End::Finished),
+                Ok(frame::server::ServerFrame::Response { payload, .. }) => match payload.split_first() {
+                    Some((&HELD, rest)) => {
+                        if let Ok(platforms) = serde_json::from_slice(rest) {
+                            return More::Held(platforms);
+                        }
+                    }
+                    Some((&SETTLED, _)) => return More::Settled,
+                    _ => {}
+                },
+                Ok(_) => {}
+                Err(_) => return More::End(End::Closed),
+            }
+        }
+        More::End(End::Closed)
+    }
+
+    /// Ask a daemon's scope to look no further: see
+    /// [`Enough`](channel_request::Frame::Enough). Nothing but the
+    /// finish answers on the channel this opens.
+    pub async fn enough(&self) -> Result<(), OpenError> {
+        let payload = payload(&channel_request::Frame::Enough).map_err(OpenError::Request)?;
+        self.handle.send_channel_request(self.scope, &payload).await.map(|_| ()).map_err(OpenError::Send)
     }
 
     /// The scope's number, as this end minted it.
@@ -154,9 +223,10 @@ impl ExecuteHandle {
 
     /// The scope's end: the finish, after the cancel, the provider
     /// ending the scope on its own, or the connection going first. The
-    /// held was read by [`execute`](super::execute), and nothing more
-    /// comes on the main stream before the finish; anything else that
-    /// arrives is passed over. Resolves once and answers the same way
+    /// held was read by [`execute`](super::execute); anything else that
+    /// arrives before the finish — a daemon's later helds and its
+    /// settled, where nobody read them with [`more`](Self::more) — is
+    /// passed over. Resolves once and answers the same way
     /// again after.
     pub async fn wait(&self) -> End {
         let mut main = self.main.lock().await;

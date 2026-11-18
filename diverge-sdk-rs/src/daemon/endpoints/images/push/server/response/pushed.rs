@@ -21,5 +21,8 @@ pub struct Pushed {
     /// Where the provider took it from: a registry it uses, or the
     /// client, who proved it holds it. Never
     /// [`Store`](Source::Store): a digest owned already is `Exists`.
+    /// Of a push made of several, the last to end's.
     pub source: Source,
+    /// Every platform the push named, all now held.
+    pub platforms: Vec<String>,
 }

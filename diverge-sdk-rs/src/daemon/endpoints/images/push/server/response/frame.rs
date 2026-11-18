@@ -3,7 +3,7 @@
 use serde::Serialize;
 use std::fmt;
 
-use super::{Blob, Exists, Pushed};
+use super::{Added, Blob, Exists, Pushed};
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
@@ -11,7 +11,9 @@ use crate::shared::error::Error;
 /// A blob pulled, or the one answer that ends the push.
 ///
 /// A push is a stream with an end: zero or more [`Blob`](Self::Blob)
-/// frames, one per blob the provider pulled from the client; then
+/// frames, one per blob the provider pulled from its caller, and zero
+/// or more [`Added`](Self::Added) frames, one per push to the provider
+/// that ended with its platforms held, in the order they happen; then
 /// exactly one of the others; then the finish, and nothing after it.
 /// The rules:
 ///
@@ -43,6 +45,9 @@ use crate::shared::error::Error;
 pub enum Frame {
     /// A blob pulled from the client and verified. Tag `0`.
     Blob(Blob),
+    /// Some of the platforms named are now held. Tag `12`. See
+    /// [`Added`].
+    Added(Added),
     /// The image is in the daemon's Store on the provider. Tag `1`.
     Pushed(Pushed),
     /// The daemon already owns the digest there, holding every
@@ -112,6 +117,9 @@ const ERROR: u8 = 10;
 /// Tag for [`Frame::PlatformNotFound`].
 const PLATFORM_NOT_FOUND: u8 = 11;
 
+/// Tag for [`Frame::Added`].
+const ADDED: u8 = 12;
+
 /// The tag, then the variant's own JSON; a bare answer carries
 /// nothing after its tag.
 impl Encode for Frame {
@@ -129,6 +137,10 @@ impl Encode for Frame {
             Frame::Blob(blob) => {
                 out.extend_from_slice(&[BLOB]);
                 serde_json::to_writer(out, blob)
+            }
+            Frame::Added(added) => {
+                out.extend_from_slice(&[ADDED]);
+                serde_json::to_writer(out, added)
             }
             Frame::Pushed(pushed) => {
                 out.extend_from_slice(&[PUSHED]);
@@ -166,6 +178,7 @@ impl Decode<'_> for Frame {
         let (tag, rest) = bytes.split_first().ok_or(FrameError::Empty)?;
         match *tag {
             BLOB => serde_json::from_slice(rest).map(Frame::Blob).map_err(FrameError::Blob),
+            ADDED => serde_json::from_slice(rest).map(Frame::Added).map_err(FrameError::Pushed),
             PUSHED => serde_json::from_slice(rest).map(Frame::Pushed).map_err(FrameError::Pushed),
             EXISTS => serde_json::from_slice(rest).map(Frame::Exists).map_err(FrameError::Pushed),
             INSUFFICIENT_CAPACITY => Ok(Frame::InsufficientCapacity),
@@ -187,11 +200,12 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's eleven.
+    /// A tag that is none of this frame's thirteen.
     UnknownTag(u8),
     /// The blob pulled did not parse.
     Blob(serde_json::Error),
-    /// The image pushed, or owned already, did not parse.
+    /// The image pushed, the platforms added, or the image owned
+    /// already, did not parse.
     Pushed(serde_json::Error),
     /// The error did not parse.
     Error(serde_json::Error),
