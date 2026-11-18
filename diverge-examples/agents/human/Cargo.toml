@@ -28,16 +28,16 @@ async-stream = { version = "0.3.6" }
 axum = { version = "0.8.9", features = ["ws"] }
 # The tools the person calls, over the proxy's MCP; the same version
 # and features the agent images use.
-rmcp = { version = "3.1.2", default-features = false, features = ["client", "transport-streamable-http-client-reqwest"] }
+rmcp = { version = "3.11.0", default-features = false, features = ["client", "transport-streamable-http-client-reqwest"] }
 # `--schema` states the arguments'.
-schemars = { version = "1.2.2" }
+schemars = { version = "1.2.3" }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = { version = "1.0.151", features = ["preserve_order"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
 # The transcript: the agent's database, through the proxy's loopback
 # pgwire. `json` binds a chunk as jsonb.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
 # A socket's two halves.
-futures-util = { version = "0.3.33", default-features = false, features = ["std", "sink"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["std", "sink"] }
 # The runtime under the listener, the desk's lock, the run's channel,
 # and the fan-out to open pages.
-tokio = { version = "1.53.1", default-features = false, features = ["net", "rt-multi-thread", "sync", "macros"] }
+tokio = { version = "1.54.1", default-features = false, features = ["net", "rt-multi-thread", "sync", "macros"] }

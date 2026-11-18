@@ -26,29 +26,29 @@ axum = { version = "0.8.9" }
 diverge-sdk = { path = "../../diverge-sdk-rs" }
 # The agent's JSON Schema, derived from the agent types for
 # `--schema`.
-schemars = { version = "1.2.2" }
+schemars = { version = "1.2.3" }
 # The run's outbound stream, as a generator.
 async-stream = { version = "0.3.6" }
 # `Stream` and its combinators, for the chunk stream the response is.
-futures-util = { version = "0.3.33", default-features = false, features = ["std"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 # The chunk vocabulary's content types (tool results, text content)
 # — model types only, no transport; Codex is driven as a process.
-rmcp = { version = "3.1.2", default-features = false }
+rmcp = { version = "3.11.0", default-features = false }
 # The derives under the agent module, the response module, and the
 # config the harness renders.
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = { version = "1.0.151", features = ["preserve_order"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
 # Codex's `config.toml`, rendered from the agent.
-toml = { version = "0.8" }
+toml = { version = "1.2" }
 # Postgres, through the proxy's loopback pgwire, for the continuation:
 # `postgres` and the rustls TLS the driver wants at compile time,
 # though the loopback negotiates none. No macros. Version: the
 # workspace lock's.
-sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls"] }
+sqlx = { version = "0.9.1", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls"] }
 # The tool-call ids this container mints: v4 uuids.
-uuid = { version = "1.22.0", features = ["v4"] }
+uuid = { version = "1.29.3", features = ["v4"] }
 # The runtime under the listener, `sync` for the queue's mutex and
 # the claim's Notify, `process` + `io-util` for the Codex process and
 # its lines, `fs` for the config, the login file and the rollouts.
 # No `macros` — the runtime is built in main, not attributed onto it.
-tokio = { version = "1.53.1", default-features = false, features = ["fs", "io-util", "net", "process", "rt-multi-thread", "sync"] }
+tokio = { version = "1.54.1", default-features = false, features = ["fs", "io-util", "net", "process", "rt-multi-thread", "sync"] }

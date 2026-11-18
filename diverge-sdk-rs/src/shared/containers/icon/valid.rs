@@ -123,7 +123,12 @@ pub fn png(bytes: &[u8], side: u32) -> Result<(), Invalid> {
         return Err(Invalid::Size { width, height });
     }
     // Rule 3.
-    let mut pixels = vec![0; reader.output_buffer_size()];
+    // An image whose decoded size does not fit in memory's own
+    // count is one that does not decode here.
+    let Some(size) = reader.output_buffer_size() else {
+        return Err(Invalid::Png("the decoded image is too large".to_string()));
+    };
+    let mut pixels = vec![0; size];
     reader.next_frame(&mut pixels).map_err(invalid)?;
     Ok(())
 }

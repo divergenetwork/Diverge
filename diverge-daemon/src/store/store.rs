@@ -56,7 +56,7 @@ async fn create_database(options: PgConnectOptions) -> Result<(), Error> {
     if !exists {
         // The name is this crate's own constant, so it is quoted here
         // rather than bound: DDL takes no parameters.
-        sqlx::query(&format!("CREATE DATABASE \"{DATABASE}\"")).execute(&mut conn).await?;
+        sqlx::query(sqlx::AssertSqlSafe(format!("CREATE DATABASE \"{DATABASE}\""))).execute(&mut conn).await?;
     }
     conn.close().await?;
     Ok(())

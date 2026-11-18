@@ -23,15 +23,15 @@ diverge-sdk = { path = "../../../diverge-sdk-rs" }
 axum = { version = "0.8.9" }
 # The MCP server, over Streamable HTTP; the same version the SDK's
 # content blocks and attestation are written against.
-rmcp = { version = "3.1.2", default-features = false, features = ["server", "transport-streamable-http-server"] }
+rmcp = { version = "3.11.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
 # Each tool's parameters state their own JSON Schema; `--schema`
 # states the arguments'.
-schemars = { version = "1.2.2" }
+schemars = { version = "1.2.3" }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = { version = "1.0.151", features = ["preserve_order"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
 # The board: the tool's database, through the proxy's loopback pgwire.
 # `chrono` for the times each task and comment keep.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "chrono"] }
-chrono = { version = "0.4.39", default-features = false, features = ["std", "serde", "clock"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "chrono"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "serde", "clock"] }
 # The runtime under the listener and the lazily made pool.
-tokio = { version = "1.53.1", default-features = false, features = ["net", "rt-multi-thread", "sync"] }
+tokio = { version = "1.54.1", default-features = false, features = ["net", "rt-multi-thread", "sync"] }

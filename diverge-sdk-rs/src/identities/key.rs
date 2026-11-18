@@ -7,7 +7,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::signature::Signer as _;
 use p256::ecdsa::{Signature, SigningKey};
-use rand::RngCore as _;
+use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt as _;
 use zeroize::{Zeroize as _, Zeroizing};
@@ -101,7 +101,7 @@ impl Key {
 
     /// The public half: the uncompressed point, sixty-five bytes.
     pub fn public(&self) -> [u8; POINT_LEN] {
-        let point = self.0.verifying_key().to_encoded_point(false);
+        let point = self.0.verifying_key().to_sec1_point(false);
         let mut public = [0u8; POINT_LEN];
         public.copy_from_slice(point.as_bytes());
         public

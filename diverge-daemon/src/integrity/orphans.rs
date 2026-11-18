@@ -29,7 +29,7 @@ pub const BOOKS: [(&str, &str); 5] = [
 ///   left;
 /// - a book's folder that is not there holds no log.
 pub async fn owned(conn: &mut PgConnection, logs: &Path, folder: &str, table: &str) -> Result<Vec<i64>, Error> {
-    let ids: Vec<i64> = sqlx::query_scalar(&format!("SELECT id FROM diverge.{table}"))
+    let ids: Vec<i64> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT id FROM diverge.{table}")))
         .fetch_all(&mut *conn)
         .await
         .map_err(crate::store::Error::from)?;

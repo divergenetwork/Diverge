@@ -47,20 +47,20 @@ pub async fn ensure(conn: &mut PgConnection, role: &str, password: &str) -> Resu
         .bind(lock_key(role))
         .execute(&mut *conn)
         .await?;
-    sqlx::query(&format!(
+    sqlx::query(sqlx::AssertSqlSafe(format!(
         "DO $$ BEGIN CREATE ROLE {role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS; \
          EXCEPTION WHEN duplicate_object THEN NULL; END $$"
-    ))
+    )))
     .execute(&mut *conn)
     .await?;
     let verifier = escape_literal(&scram_sha_256(password.as_bytes()));
-    sqlx::query(&format!("ALTER ROLE {role} PASSWORD {verifier}"))
+    sqlx::query(sqlx::AssertSqlSafe(format!("ALTER ROLE {role} PASSWORD {verifier}")))
         .execute(&mut *conn)
         .await?;
-    sqlx::query(&format!("CREATE SCHEMA IF NOT EXISTS {role} AUTHORIZATION {role}"))
+    sqlx::query(sqlx::AssertSqlSafe(format!("CREATE SCHEMA IF NOT EXISTS {role} AUTHORIZATION {role}")))
         .execute(&mut *conn)
         .await?;
-    sqlx::query(&format!("ALTER ROLE {role} SET search_path = {role}"))
+    sqlx::query(sqlx::AssertSqlSafe(format!("ALTER ROLE {role} SET search_path = {role}")))
         .execute(&mut *conn)
         .await?;
     Ok(())
@@ -86,10 +86,10 @@ pub async fn drop(conn: &mut PgConnection, role: &str) -> Result<(), store::Erro
         .bind(role)
         .execute(&mut *conn)
         .await?;
-    sqlx::query(&format!("DROP SCHEMA IF EXISTS {role} CASCADE"))
+    sqlx::query(sqlx::AssertSqlSafe(format!("DROP SCHEMA IF EXISTS {role} CASCADE")))
         .execute(&mut *conn)
         .await?;
-    sqlx::query(&format!("DO $$ BEGIN DROP ROLE IF EXISTS {role}; EXCEPTION WHEN OTHERS THEN NULL; END $$"))
+    sqlx::query(sqlx::AssertSqlSafe(format!("DO $$ BEGIN DROP ROLE IF EXISTS {role}; EXCEPTION WHEN OTHERS THEN NULL; END $$")))
         .execute(&mut *conn)
         .await?;
     Ok(())

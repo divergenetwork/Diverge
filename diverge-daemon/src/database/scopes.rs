@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use rand::RngCore as _;
+use rand::Rng as _;
 use tokio::sync::OnceCell;
 
 use super::{container_of, provision, role_of};

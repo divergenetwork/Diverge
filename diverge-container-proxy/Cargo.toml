@@ -16,7 +16,7 @@ publish = false
 axum = { version = "0.8.9", features = ["ws"] }
 # What a frame's payload is carried as — the frame's own bytes, not
 # copied.
-bytes = { version = "1.11.1", default-features = false }
+bytes = { version = "1.12.2", default-features = false }
 # Path-only: this crate rides the workspace and is never published, so
 # the SDK is named by where it lives rather than by a version pin
 # version.sh would have to chase. `server`: the frame-level session
@@ -26,7 +26,7 @@ diverge-sdk = { path = "../diverge-sdk-rs" }
 # The inside of the container, stated once: the loopback ports the
 # program dials, and the agent server's own contract.
 # `Stream` on a body, the fan-out's `join_all`, and the binds joined.
-futures-util = { version = "0.3.33", default-features = false }
+futures-util = { version = "0.3.34", default-features = false }
 # The filesystem watch behind a tree: inotify, on the images this
 # runs in. The daemon's line.
 notify = "8.2"
@@ -34,16 +34,16 @@ notify = "8.2"
 # server whose handler is this crate's relay. And the MCP client a
 # tool container's server is called through, over Streamable HTTP on
 # the loopback.
-rmcp = { version = "3.1.2", default-features = false, features = ["server", "transport-streamable-http-server", "client", "transport-streamable-http-client-reqwest"] }
+rmcp = { version = "3.11.0", default-features = false, features = ["server", "transport-streamable-http-server", "client", "transport-streamable-http-client-reqwest"] }
 # A refusal the far side sent, rendered whole into a tool result; the
 # errors this crate mints in the protocol's one shape.
-serde_json = { version = "1.0.151", features = ["preserve_order", "raw_value"] }
+serde_json = { version = "1.0.154", features = ["preserve_order", "raw_value"] }
 # The secrets a begin carries, name by name in the order given.
-indexmap = { version = "2.14.0", features = ["serde"] }
+indexmap = { version = "2.14.2", features = ["serde"] }
 # The agent's server, dialed: each of its five calls is one HTTP call
 # to the loopback. No TLS — it is the loopback. `json` reads a fate or
 # an outcome; `stream` reads the loop's events as they land.
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream"] }
 # The loop's events, parsed out of that stream.
 eventsource-stream = "0.2.3"
 # The runtime under the listeners, built in main rather than
@@ -51,11 +51,11 @@ eventsource-stream = "0.2.3"
 # driver turns on; `io-util` reads and writes the driver's socket;
 # `time` paces an accept loop that keeps failing; `fs` opens and
 # reads the files the server asks for.
-tokio = { version = "1.53.1", default-features = false, features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.54.1", default-features = false, features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
 # The FUSE mounts: files and directories the caller serves live,
 # mounted by the proxy itself. Pure Rust — `fuser` talks to /dev/fuse
 # and mounts through the syscall as the namespace's root. `libc` for
 # the one open flag the trait hands over raw (`O_TRUNC`). The proxy is
 # Unix, as the container is; it is built for nothing else.
 fuser = { version = "0.18.0" }
-libc = { version = "0.2.186" }
+libc = { version = "0.2.191" }

@@ -60,7 +60,7 @@ pub async fn create(pool: &PgPool, agent: &Participant, note: &str, cron: Option
 
 /// `agent`'s alarms, soonest first.
 pub async fn list(pool: &PgPool, agent: &Participant) -> Result<Vec<Alarm>, Failure> {
-    let rows = sqlx::query(&format!("select {COLUMNS} from alarm_alarms where agent_template = $1 and agent_index = $2 order by due, id"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("select {COLUMNS} from alarm_alarms where agent_template = $1 and agent_index = $2 order by due, id")))
         .bind(&agent.template)
         .bind(agent.index)
         .fetch_all(pool)
@@ -88,7 +88,7 @@ pub async fn cancel(pool: &PgPool, id: i64, agent: &Participant) -> Result<(), F
 /// transaction until it commits; rows another transaction holds are
 /// skipped, so no alarm is fired twice at once.
 pub async fn due(transaction: &mut Transaction<'_, Postgres>, now: DateTime<Utc>) -> Result<Vec<Alarm>, Failure> {
-    let rows = sqlx::query(&format!("select {COLUMNS} from alarm_alarms where due <= $1 order by due, id for update skip locked"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("select {COLUMNS} from alarm_alarms where due <= $1 order by due, id for update skip locked")))
         .bind(now)
         .fetch_all(&mut **transaction)
         .await?;

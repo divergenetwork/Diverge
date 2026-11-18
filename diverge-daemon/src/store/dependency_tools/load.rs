@@ -10,7 +10,7 @@ use crate::store::{AgentId, DependencyToolId, Error, agents};
 
 /// Every dependency tool, oldest first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<DependencyTool>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} {ORDER}")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} {ORDER}"))).fetch_all(&mut *conn).await?;
     rows.iter().map(row::tool).collect()
 }
 
@@ -18,7 +18,7 @@ pub async fn all(conn: &mut PgConnection) -> Result<Vec<DependencyTool>, Error> 
 /// the transaction.
 pub async fn by_id(conn: &mut PgConnection, id: DependencyToolId, lock: bool) -> Result<Option<DependencyTool>, Error> {
     let locking = if lock { " FOR UPDATE OF t" } else { "" };
-    let row = sqlx::query(&format!("{SELECT} WHERE t.id = $1{locking}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE t.id = $1{locking}")))
         .bind(id.0)
         .fetch_optional(&mut *conn)
         .await?;
@@ -37,9 +37,9 @@ pub async fn by_scope(
     lock: bool,
 ) -> Result<Option<DependencyTool>, Error> {
     let locking = if lock { " FOR UPDATE OF t" } else { "" };
-    let row = sqlx::query(&format!(
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!(
         "{SELECT} WHERE t.template = $1 AND t.scope = $2 AND t.owner_agent IS NOT DISTINCT FROM $3 AND t.owner_template IS NOT DISTINCT FROM $4{locking}"
-    ))
+    )))
     .bind(template)
     .bind(scope_name(scope))
     .bind(owner_agent.map(|agent| agent.0))
@@ -71,7 +71,7 @@ pub async fn by_reference(conn: &mut PgConnection, reference: &reference::Depend
 /// row is locked for the transaction.
 pub async fn of_template(conn: &mut PgConnection, template: &str, lock: bool) -> Result<Vec<DependencyTool>, Error> {
     let locking = if lock { " FOR UPDATE OF t" } else { "" };
-    let rows = sqlx::query(&format!("{SELECT} WHERE t.template = $1 {ORDER}{locking}"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE t.template = $1 {ORDER}{locking}")))
         .bind(template)
         .fetch_all(&mut *conn)
         .await?;
@@ -80,7 +80,7 @@ pub async fn of_template(conn: &mut PgConnection, template: &str, lock: bool) ->
 
 /// Every tool owned by the agent: the instance ones of its own.
 pub async fn of_owner_agent(conn: &mut PgConnection, agent: AgentId) -> Result<Vec<DependencyTool>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} WHERE t.owner_agent = $1 {ORDER}"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE t.owner_agent = $1 {ORDER}")))
         .bind(agent.0)
         .fetch_all(&mut *conn)
         .await?;
@@ -89,7 +89,7 @@ pub async fn of_owner_agent(conn: &mut PgConnection, agent: AgentId) -> Result<V
 
 /// Every tool owned by the agent template: the per-template ones.
 pub async fn of_owner_template(conn: &mut PgConnection, template: &str) -> Result<Vec<DependencyTool>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} WHERE t.owner_template = $1 {ORDER}"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE t.owner_template = $1 {ORDER}")))
         .bind(template)
         .fetch_all(&mut *conn)
         .await?;
@@ -98,9 +98,9 @@ pub async fn of_owner_template(conn: &mut PgConnection, template: &str) -> Resul
 
 /// Every tool the agent is attached to, in the tools' order.
 pub async fn of_agent(conn: &mut PgConnection, agent: AgentId) -> Result<Vec<DependencyTool>, Error> {
-    let rows = sqlx::query(&format!(
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
         "{SELECT} WHERE t.id IN (SELECT tool FROM diverge.dependency_attachments WHERE agent = $1) {ORDER}"
-    ))
+    )))
     .bind(agent.0)
     .fetch_all(&mut *conn)
     .await?;

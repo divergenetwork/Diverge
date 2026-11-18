@@ -8,7 +8,7 @@ use crate::store::Error;
 
 /// Every live agent template, oldest first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Record>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} WHERE NOT deleted {ORDER}")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE NOT deleted {ORDER}"))).fetch_all(&mut *conn).await?;
     rows.iter().map(row::record).collect()
 }
 
@@ -16,7 +16,7 @@ pub async fn all(conn: &mut PgConnection) -> Result<Vec<Record>, Error> {
 /// locked for the transaction.
 pub async fn by_id(conn: &mut PgConnection, id: &str, lock: bool) -> Result<Option<Record>, Error> {
     let locking = if lock { " FOR UPDATE" } else { "" };
-    let row = sqlx::query(&format!("{SELECT} WHERE id = $1 AND NOT deleted{locking}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE id = $1 AND NOT deleted{locking}")))
         .bind(id)
         .fetch_optional(&mut *conn)
         .await?;

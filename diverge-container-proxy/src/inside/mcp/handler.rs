@@ -9,7 +9,7 @@ use rmcp::model::{
     CallToolRequestParams, CallToolResponse, Implementation,
     ListResourcesResult, ListToolsResult, PaginatedRequestParams,
     ReadResourceRequestParams, ReadResourceResponse, ServerCapabilities,
-    ServerInfo,
+    ServerConfig,
 };
 use rmcp::service::{NotificationContext, RequestContext};
 use rmcp::{ErrorData, RoleServer, ServerHandler};
@@ -81,8 +81,8 @@ impl ServerHandler for Handler {
     /// `resources.subscribe` is deliberately absent: `resources/
     /// subscribe` is not one of the wire's exchanges, so it is a
     /// promise this server could not keep.
-    fn get_info(&self) -> ServerInfo {
-        let mut info = ServerInfo::default();
+    fn get_info(&self) -> ServerConfig {
+        let mut info = ServerConfig::default();
         info.capabilities = ServerCapabilities::builder()
             .enable_tools()
             .enable_tool_list_changed()

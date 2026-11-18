@@ -1,6 +1,6 @@
 //! The client: the proxy, from the inside.
 
-use rmcp::model::{ClientCapabilities, ClientInfo, Implementation};
+use rmcp::model::{ClientCapabilities, ClientConfig, Implementation};
 use rmcp::service::RunningService;
 use rmcp::transport::StreamableHttpClientTransport;
 use rmcp::{RoleClient, ServiceExt as _};
@@ -23,7 +23,7 @@ use super::Error;
 pub struct Client {
     /// The MCP session with the proxy's server at `/mcp`, made
     /// by the first MCP method that needs it.
-    mcp: OnceCell<RunningService<RoleClient, ClientInfo>>,
+    mcp: OnceCell<RunningService<RoleClient, ClientConfig>>,
 }
 
 impl Client {
@@ -42,10 +42,10 @@ impl Client {
     /// client rather than rmcp.
     pub(crate) async fn mcp(
         &self,
-    ) -> Result<&RunningService<RoleClient, ClientInfo>, Error> {
+    ) -> Result<&RunningService<RoleClient, ClientConfig>, Error> {
         self.mcp
             .get_or_try_init(|| async {
-                ClientInfo::new(
+                ClientConfig::new(
                     ClientCapabilities::default(),
                     Implementation::new("diverge", env!("CARGO_PKG_VERSION")),
                 )

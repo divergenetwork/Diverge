@@ -67,18 +67,18 @@ async fn size(file: &fs::File, bytes: u64) -> Result<(), Error> {
 /// sparseness saved. The UUID is derived from the path and the
 /// moment, so two volumes never share one.
 pub async fn format_image(path: &Path, bytes: u64) -> Result<(), Error> {
-    let opts = FormatOpts {
-        kind: FsKind::Ext4,
-        // 4 KiB.
-        block_size: 4096,
-        blocks_count: u32::try_from(bytes / 4096).map_err(|_| Error::TooLarge(bytes))?,
-        // 16 KiB per inode.
-        inodes_count: u32::try_from(bytes / 16384).map_err(|_| Error::TooLarge(bytes))?,
-        uuid: uuid(path),
-        create_lost_found: true,
-        prezeroed: true,
-        ..FormatOpts::default()
-    };
+    // Set member by member: the options are a struct the crate may
+    // add to, and so one only its `default` makes.
+    let mut opts = FormatOpts::default();
+    opts.kind = FsKind::Ext4;
+    // 4 KiB.
+    opts.block_size = 4096;
+    opts.blocks_count = u32::try_from(bytes / 4096).map_err(|_| Error::TooLarge(bytes))?;
+    // 16 KiB per inode.
+    opts.inodes_count = u32::try_from(bytes / 16384).map_err(|_| Error::TooLarge(bytes))?;
+    opts.uuid = uuid(path);
+    opts.create_lost_found = true;
+    opts.prezeroed = true;
     let image = path.to_path_buf();
     let formatted = tokio::task::spawn_blocking(move || {
         let mut device = FileBackend::open(&image)?;

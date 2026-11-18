@@ -9,7 +9,7 @@ use crate::store::{Error, ToolId};
 
 /// Every tool, oldest first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Tool>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} {ORDER}")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} {ORDER}"))).fetch_all(&mut *conn).await?;
     rows.iter().map(row::tool).collect()
 }
 
@@ -17,7 +17,7 @@ pub async fn all(conn: &mut PgConnection) -> Result<Vec<Tool>, Error> {
 /// the transaction.
 pub async fn by_id(conn: &mut PgConnection, id: ToolId, lock: bool) -> Result<Option<Tool>, Error> {
     let locking = if lock { " FOR UPDATE" } else { "" };
-    let row = sqlx::query(&format!("{SELECT} WHERE id = $1{locking}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE id = $1{locking}")))
         .bind(id.0)
         .fetch_optional(&mut *conn)
         .await?;

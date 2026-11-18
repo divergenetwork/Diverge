@@ -92,7 +92,7 @@ pub async fn create(conn: &mut PgConnection, record: &Record) -> Result<bool, Er
 /// the transaction.
 pub async fn by_identity(conn: &mut PgConnection, identity: &Identity, lock: bool) -> Result<Option<Record>, Error> {
     let lock = if lock { " FOR UPDATE" } else { "" };
-    let row = sqlx::query(&format!("SELECT {COLUMNS} FROM diverge.providers WHERE issuer = $1 AND subject = $2{lock}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM diverge.providers WHERE issuer = $1 AND subject = $2{lock}")))
         .bind(&identity.issuer)
         .bind(&identity.subject)
         .fetch_optional(&mut *conn)
@@ -115,7 +115,7 @@ pub async fn share(conn: &mut PgConnection, identity: &Identity) -> Result<bool,
 /// Every record, oldest first: the order the daemon tries providers in
 /// when nothing pins a run.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Record>, Error> {
-    let rows = sqlx::query(&format!("SELECT {COLUMNS} FROM diverge.providers ORDER BY created, issuer, subject"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM diverge.providers ORDER BY created, issuer, subject")))
         .fetch_all(&mut *conn)
         .await?;
     rows.iter().map(record).collect()

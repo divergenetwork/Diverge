@@ -210,7 +210,9 @@ fn nonblocking(master: OwnedFd) -> io::Result<AsyncFd<OwnedFd>> {
             return Err(io::Error::last_os_error());
         }
     }
-    AsyncFd::new(master)
+    // SAFETY: `master` is an open descriptor this value owns, and it
+    // stays open and the same for as long as the `AsyncFd` holds it.
+    Ok(unsafe { AsyncFd::register(master) }?)
 }
 
 /// One read of the terminal, waiting for one. `Ok(0)` or an error

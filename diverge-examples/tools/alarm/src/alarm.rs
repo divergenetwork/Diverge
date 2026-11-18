@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use diverge_sdk::container_proxy::inside::Client;
-use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, MetaObject, PaginatedRequestParams, ServerCapabilities, ServerInfo};
+use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, MetaObject, PaginatedRequestParams, ServerCapabilities, ServerConfig};
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
 use tokio::sync::Notify;
@@ -64,8 +64,8 @@ const INSTRUCTIONS: &str = "Alarms that wake you later. Set one with `set_alarm`
 `<alarm>` the note `</alarm>`, even if you were not running. See yours with `list_alarms`; cancel one with `cancel_alarm`.";
 
 impl ServerHandler for Alarm {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("alarm", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }

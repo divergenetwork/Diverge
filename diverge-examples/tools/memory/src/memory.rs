@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use diverge_sdk::container_proxy::inside::Client;
-use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo};
+use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig};
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
 
@@ -39,8 +39,8 @@ const INSTRUCTIONS: &str = "A notebook that outlasts your conversation. Keep a n
 `recall`: by a search of their text, by tags, or both; with neither, the newest. Delete one with `forget`.";
 
 impl ServerHandler for Memory {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("memory", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }

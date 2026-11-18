@@ -1,8 +1,8 @@
 //! An end's one-time key pair.
 
-use p256::elliptic_curve::sec1::ToEncodedPoint as _;
 use p256::{PublicKey, SecretKey};
-use rand::RngCore as _;
+use p256::elliptic_curve::sec1::ToSec1Point as _;
+use rand::Rng as _;
 use zeroize::Zeroizing;
 
 use crate::wire::frame::auth::POINT_LEN;
@@ -31,7 +31,7 @@ impl Exchange {
 
     /// The public half, as it is sent: the uncompressed point.
     pub(super) fn public(&self) -> [u8; POINT_LEN] {
-        let point = self.secret.public_key().to_encoded_point(false);
+        let point = self.secret.public_key().to_sec1_point(false);
         let mut public = [0u8; POINT_LEN];
         public.copy_from_slice(point.as_bytes());
         public

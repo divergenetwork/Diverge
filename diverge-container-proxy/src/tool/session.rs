@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use diverge_sdk::shared::mcp::attest_request;
 use diverge_sdk::shared::mcp::attestation::Caller;
-use rmcp::model::{ClientInfo, ClientResult, ServerNotification, ServerRequest};
+use rmcp::model::{ClientConfig, ClientResult, ServerNotification, ServerRequest};
 use rmcp::service::{NotificationContext, RequestContext, RunningService, ServiceExt as _};
 use rmcp::transport::StreamableHttpClientTransport;
 use rmcp::{ErrorData, RoleClient, Service};
@@ -137,8 +137,8 @@ impl Service<RoleClient> for Handler {
 
     /// The `initialize` the session opens with: the caller under
     /// `_meta`, as the daemon attested it.
-    fn get_info(&self) -> ClientInfo {
-        let mut info = ClientInfo::default();
+    fn get_info(&self) -> ClientConfig {
+        let mut info = ClientConfig::default();
         attest_request(&mut info, &self.caller);
         info
     }

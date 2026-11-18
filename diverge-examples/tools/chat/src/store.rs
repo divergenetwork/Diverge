@@ -111,19 +111,19 @@ impl Store {
 /// `issuer`/`subject`.
 pub async fn user(pool: &PgPool, agent: &Participant, issuer: &str, subject: &str, body: &str) -> Result<Message, Failure> {
     let statement = format!("insert into chat_messages (template, index, author, issuer, subject, body) values ($1, $2, 'user', $3, $4, $5) returning {COLUMNS}");
-    Ok(sqlx::query_as(&statement).bind(&agent.template).bind(agent.index).bind(issuer).bind(subject).bind(body).fetch_one(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(statement)).bind(&agent.template).bind(agent.index).bind(issuer).bind(subject).bind(body).fetch_one(pool).await?)
 }
 
 /// Keep `agent`'s message.
 pub async fn agent(pool: &PgPool, agent: &Participant, body: &str) -> Result<Message, Failure> {
     let statement = format!("insert into chat_messages (template, index, author, name, body) values ($1, $2, 'agent', $3, $4) returning {COLUMNS}");
-    Ok(sqlx::query_as(&statement).bind(&agent.template).bind(agent.index).bind(&agent.name).bind(body).fetch_one(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(statement)).bind(&agent.template).bind(agent.index).bind(&agent.name).bind(body).fetch_one(pool).await?)
 }
 
 /// Every message with `agent`, either way, oldest first.
 pub async fn history(pool: &PgPool, template: &str, index: i64) -> Result<Vec<Message>, Failure> {
     let statement = format!("select {COLUMNS} from chat_messages where template = $1 and index = $2 order by id");
-    Ok(sqlx::query_as(&statement).bind(template).bind(index).fetch_all(pool).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(statement)).bind(template).bind(index).fetch_all(pool).await?)
 }
 
 /// The person's messages to `agent`, oldest first: the unread ones, or
@@ -133,7 +133,7 @@ pub async fn read(pool: &PgPool, agent: &Participant, include_read: bool) -> Res
     let mut transaction = pool.begin().await?;
     let filter = if include_read { "" } else { " and not read" };
     let statement = format!("select {COLUMNS} from chat_messages where template = $1 and index = $2 and author = 'user'{filter} order by id for update");
-    let messages: Vec<Message> = sqlx::query_as(&statement).bind(&agent.template).bind(agent.index).fetch_all(&mut *transaction).await?;
+    let messages: Vec<Message> = sqlx::query_as(sqlx::AssertSqlSafe(statement)).bind(&agent.template).bind(agent.index).fetch_all(&mut *transaction).await?;
     sqlx::query("update chat_messages set read = true where template = $1 and index = $2 and author = 'user' and not read")
         .bind(&agent.template)
         .bind(agent.index)

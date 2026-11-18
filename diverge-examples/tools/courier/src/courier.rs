@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use diverge_sdk::container_proxy::inside::Client;
-use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, MetaObject, PaginatedRequestParams, ServerCapabilities, ServerInfo};
+use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, MetaObject, PaginatedRequestParams, ServerCapabilities, ServerConfig};
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
 
@@ -58,8 +58,8 @@ list your conversations with unread messages with `list_conversations`, then rea
 `include_read` is true.";
 
 impl ServerHandler for Courier {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("courier", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }

@@ -137,7 +137,7 @@ pub async fn create(conn: &mut PgConnection, new: &New) -> Result<(DaemonId, boo
 /// transaction.
 pub async fn by_id(conn: &mut PgConnection, id: DaemonId, lock: bool) -> Result<Option<Record>, Error> {
     let lock = if lock { " FOR UPDATE" } else { "" };
-    let row = sqlx::query(&format!("SELECT {COLUMNS} FROM diverge.daemons WHERE id = $1{lock}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM diverge.daemons WHERE id = $1{lock}")))
         .bind(to_column(id))
         .fetch_optional(&mut *conn)
         .await?;
@@ -146,7 +146,7 @@ pub async fn by_id(conn: &mut PgConnection, id: DaemonId, lock: bool) -> Result<
 
 /// Every record, oldest first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Record>, Error> {
-    let rows = sqlx::query(&format!("SELECT {COLUMNS} FROM diverge.daemons ORDER BY created, id")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM diverge.daemons ORDER BY created, id"))).fetch_all(&mut *conn).await?;
     rows.iter().map(record).collect()
 }
 

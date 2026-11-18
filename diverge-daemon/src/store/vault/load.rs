@@ -8,7 +8,7 @@ use crate::store::Error;
 
 /// Every key, oldest first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Entry>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} {ORDER}")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} {ORDER}"))).fetch_all(&mut *conn).await?;
     row::entries(conn, &rows).await
 }
 
@@ -16,7 +16,7 @@ pub async fn all(conn: &mut PgConnection) -> Result<Vec<Entry>, Error> {
 /// for the transaction.
 pub async fn by_key(conn: &mut PgConnection, key: &str, lock: bool) -> Result<Option<Entry>, Error> {
     let locking = if lock { " FOR UPDATE" } else { "" };
-    let rows = sqlx::query(&format!("{SELECT} WHERE key = $1{locking}"))
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE key = $1{locking}")))
         .bind(key)
         .fetch_all(&mut *conn)
         .await?;

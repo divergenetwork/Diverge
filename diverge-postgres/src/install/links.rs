@@ -17,12 +17,16 @@ use tar::Archive;
 /// 1. **Why.** The archive names some of its files twice, the second
 ///    name a tar hard link to the first: every time zone that is
 ///    another's alias, `UTC` among them. `postgresql_archive` 0.20
-///    extracts the directories, the files and the symbolic links, and
-///    passes over the rest; a server without `share/timezone/UTC`
+///    extracted the directories, the files and the symbolic links, and
+///    passed over the rest; a server without `share/timezone/UTC`
 ///    refuses a connection that asks for `TimeZone=UTC`, which is
-///    every connection the daemon makes. `postgresql_archive` 0.22
-///    makes the links itself, and this goes when the dependency
-///    reaches it.
+///    every connection the daemon makes. `postgresql_archive` 0.22,
+///    the one in use, makes the links itself, as hard links. This
+///    stays behind it: a link it made is one already there and is
+///    left as it is (rule 2 of [`make`]), and one it could not make
+///    is made here as a copy. It has not been run against 0.22; it
+///    goes once an extraction by 0.22 alone is seen to serve
+///    `TimeZone=UTC`.
 /// 2. **Here, and not after.** The archive's bytes are
 ///    `postgresql_embedded`'s own, handed to nothing but the extractor
 ///    it asks the registry for: that is the one place they can be read

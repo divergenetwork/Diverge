@@ -19,27 +19,27 @@ serde_yaml_ng = "0.10.0"
 # The daemons and their accounts, by name, in the order they were added.
 indexmap = { version = "2.14.2", features = ["serde"] }
 
-tauri = { version = "2.10.3", features = [] }
+tauri = { version = "2.12.6", features = [] }
 # The system's save and folder dialogs a download asks where to put it
 # with. Not Tauri's dialog plugin, whose versions require a newer Tauri.
-rfd = "0.17.2"
+rfd = "0.18.0"
 # Downloads and uploads, between the disk and the wire in pieces
 # (`transfer.rs`).
-tokio = { version = "1.53.1", features = ["fs", "io-util", "macros", "net", "sync", "time"] }
-futures-util = { version = "0.3.33", default-features = false, features = ["std"] }
-bytes = "1.11.1"
+tokio = { version = "1.54.1", features = ["fs", "io-util", "macros", "net", "sync", "time"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+bytes = "1.12.2"
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 # A tool's frontend, served to the page's frame from a server of the
 # app's own on the loopback (`frontend.rs`): every request one daemon
 # frontend request, an upgrade piped both ways.
 axum = "0.8.9"
-hyper = { version = "1.8.1", features = ["server", "http1"] }
-hyper-util = { version = "0.1.20", features = ["tokio"] }
+hyper = { version = "1.12.0", features = ["server", "http1"] }
+hyper-util = { version = "0.1.21", features = ["tokio"] }
 
 # A link that asks for a new window, opened in the person's own
 # browser instead (`main.rs`).
-webbrowser = "=1.2.4"
+webbrowser = "=1.2.7"
 
 [build-dependencies]
-tauri-build = { version = "2.5.6", features = [] }
+tauri-build = { version = "2.7.5", features = [] }

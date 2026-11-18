@@ -45,7 +45,7 @@ pub async fn daemon(conn: &mut PgConnection, id: DaemonId) -> Result<bool, Error
 }
 
 /// The `id` column of every row of `query`.
-async fn ids(conn: &mut PgConnection, query: &str) -> Result<HashSet<String>, Error> {
+async fn ids(conn: &mut PgConnection, query: &'static str) -> Result<HashSet<String>, Error> {
     let rows = sqlx::query(query).fetch_all(&mut *conn).await?;
     let mut ids = HashSet::with_capacity(rows.len());
     for row in &rows {

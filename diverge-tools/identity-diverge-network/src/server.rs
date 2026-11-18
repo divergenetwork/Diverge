@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use diverge_sdk::container_proxy::inside::Client;
-use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo};
+use rmcp::model::{CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig};
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
 
@@ -73,8 +73,8 @@ Sign a subject in with `login`, giving the account's `issuer` and `id` and the s
 A name never used before begins a new subject. Accounts are added by a person at this tool's page, never by a tool call: if `list_accounts` answers none, ask a person to open the page and sign one in.";
 
 impl ServerHandler for Server {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("identity-diverge-network", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }

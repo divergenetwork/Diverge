@@ -25,35 +25,34 @@ diverge-sdk = { path = "../diverge-sdk-rs" }
 # The Postgres binaries themselves, baked into this program at build
 # time (`bundled`, from the theseus builds) and extracted once into the
 # directory. Nothing is downloaded when the program runs. `tokio` for
-# the extraction's commands, `rustls` because that is the TLS the
+# the extraction's commands, `tls-rustls-aws-lc-rs` because that is the TLS the
 # workspace builds with; the default native TLS is left off.
-postgresql_embedded = { version = "0.20", default-features = false, features = ["bundled", "theseus", "tokio", "rustls"] }
+postgresql_embedded = { version = "0.22", default-features = false, features = ["bundled", "theseus", "tokio", "tls-rustls-aws-lc-rs"] }
 # The crate `postgresql_embedded` extracts the archive with, named for
-# its extractor registry: 0.20 passes over the archive's hard links —
+# its extractor registry: 0.20 passed over the archive's hard links —
 # every time zone that is another's alias, `UTC` among them — and the
-# extractor registered here makes them. `theseus` for the extractor
+# extractor registered here makes them where 0.22 has not. `theseus` for the extractor
 # of the theseus builds, which this one is registered ahead of and
 # calls; its default native TLS is left off, as above. The same
-# version as `postgresql_embedded`'s, so the one registry; 0.22 makes
-# the links itself, and this goes with a move to it.
-postgresql_archive = { version = "0.20", default-features = false, features = ["theseus"] }
+# version as `postgresql_embedded`'s, so the one registry.
+postgresql_archive = { version = "0.22", default-features = false, features = ["theseus", "tls-rustls-aws-lc-rs"] }
 # The archive read a second time, for its links: the gzip, and the tar
 # inside it, each by the crate `postgresql_archive` reads it with.
-flate2 = "1.1.9"
+flate2 = "1.1.11"
 tar = "0.4.46"
 # The two lines that cross stdio — the SDK's `postgres_supervisor`
 # types — are JSON, one object each.
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 # `process` for postgres, pg_ctl and initdb; `io-util` for stdin's
 # lines and stdout's one line; `fs` for the directory; `net` for the
 # free port and the readiness probe; `time` for every deadline;
 # `signal` for Ctrl-C and SIGTERM; `rt-multi-thread` and `sync` for
 # the runtime `main` builds.
-tokio = { version = "1.53.1", features = ["process", "io-util", "fs", "sync", "rt", "rt-multi-thread", "net", "time", "signal"] }
+tokio = { version = "1.54.1", features = ["process", "io-util", "fs", "sync", "rt", "rt-multi-thread", "net", "time", "signal"] }
 # `future::select`: the stop is whichever comes first of a shutdown
 # line, a signal, and the postmaster exiting on its own.
-futures-util = { version = "0.3.33", default-features = false, features = ["alloc"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["alloc"] }
 # The superuser password, minted once: a v4 uuid's thirty-two hex
 # digits.
-uuid = { version = "1.26.1", default-features = false, features = ["v4"] }
+uuid = { version = "1.29.3", default-features = false, features = ["v4"] }

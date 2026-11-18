@@ -43,7 +43,7 @@ pub struct Broken;
 impl Seal {
     /// The direction whose key is `key`, having carried nothing.
     pub fn new(key: &[u8; KEY_LEN]) -> Seal {
-        Seal { cipher: Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(key)), count: 0 }
+        Seal { cipher: Aes256Gcm::new(&Key::<Aes256Gcm>::from(*key)), count: 0 }
     }
 
     /// The nonce of the next message, the count moved on past it —
@@ -58,14 +58,14 @@ impl Seal {
     /// `frame`, sealed as this direction's next message.
     pub fn seal(&mut self, frame: &[u8]) -> Result<Bytes, Broken> {
         let nonce = self.nonce()?;
-        self.cipher.encrypt(Nonce::from_slice(&nonce), frame).map(Bytes::from).map_err(|_| Broken)
+        self.cipher.encrypt(&Nonce::from(nonce), frame).map(Bytes::from).map_err(|_| Broken)
     }
 
     /// The frame `message` holds, opened as this direction's next
     /// message — rules 3 and 4.
     pub fn open(&mut self, message: &[u8]) -> Result<Bytes, Broken> {
         let nonce = self.nonce()?;
-        self.cipher.decrypt(Nonce::from_slice(&nonce), message).map(Bytes::from).map_err(|_| Broken)
+        self.cipher.decrypt(&Nonce::from(nonce), message).map(Bytes::from).map_err(|_| Broken)
     }
 }
 

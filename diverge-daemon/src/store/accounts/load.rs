@@ -9,13 +9,13 @@ use crate::store::{AccountId, Error};
 
 /// Every account, oldest created first.
 pub async fn all(conn: &mut PgConnection) -> Result<Vec<Account>, Error> {
-    let rows = sqlx::query(&format!("{SELECT} {GROUP}")).fetch_all(&mut *conn).await?;
+    let rows = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} {GROUP}"))).fetch_all(&mut *conn).await?;
     rows.iter().map(row::account).collect()
 }
 
 /// The account with the id, if any.
 pub async fn by_id(conn: &mut PgConnection, id: AccountId) -> Result<Option<Account>, Error> {
-    let row = sqlx::query(&format!("{SELECT} WHERE a.id = $1 {GROUP}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE a.id = $1 {GROUP}")))
         .bind(id.0)
         .fetch_optional(&mut *conn)
         .await?;
@@ -38,7 +38,7 @@ pub async fn by_identity(conn: &mut PgConnection, identity: &Identity, lock: boo
         };
         return by_id(conn, AccountId(locked.try_get("id")?)).await;
     }
-    let row = sqlx::query(&format!("{SELECT} WHERE a.issuer = $1 AND a.subject = $2 {GROUP}"))
+    let row = sqlx::query(sqlx::AssertSqlSafe(format!("{SELECT} WHERE a.issuer = $1 AND a.subject = $2 {GROUP}")))
         .bind(&identity.issuer)
         .bind(&identity.subject)
         .fetch_optional(&mut *conn)
