@@ -14,8 +14,10 @@
 //! through the daemon. [`list`] is what the daemon owns in its Stores,
 //! provider by provider, kept open; [`get`] is one of them, as the
 //! list would report it. [`delete`] takes one out of the
-//! Store, or some of its platforms. The five are held by the images
-//! grant, each reaching the providers its `within` lets through; a
+//! Store, or some of its platforms. [`publish`] sends one or more
+//! to a registry as one image, bringing onto a provider what it lacks
+//! and merging first where there are several. The six are held by the
+//! images grant, each reaching the providers its `within` lets through; a
 //! build also takes `mount` over the volume it reads its context from,
 //! where it reads one.
 //!
@@ -31,5 +33,6 @@ pub mod build;
 pub mod delete;
 pub mod get;
 pub mod list;
+pub mod publish;
 pub mod push;
 pub mod read;

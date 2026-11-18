@@ -194,8 +194,9 @@
 //! | `161` | [`identities::get`] |
 //! | `162` | [`images::get`] |
 //! | `163` | [`images::delete`] |
+//! | `164` | [`images::publish`] |
 //!
-//! One hundred and sixty-three, so far, the value `110` standing empty
+//! One hundred and sixty-four, so far, the value `110` standing empty
 //! where an image's document was once its own request. Every one of them carries the optional
 //! member `relay` — see [`Relay`](crate::shared::relay::Relay) — by
 //! which a daemon serves it on another daemon, as an account it holds

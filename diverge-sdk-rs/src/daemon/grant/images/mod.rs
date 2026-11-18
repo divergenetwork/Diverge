@@ -18,7 +18,9 @@
 //! The rules:
 //!
 //! 1. **Every action is judged by the provider.** `build`, `push`,
-//!    `get` and `delete` by the provider the request names; `list` by the provider each
+//!    `get` and `delete` by the provider the request names; `publish`
+//!    by the provider it is done on, named or picked from those the
+//!    grant reaches; `list` by the provider each
 //!    image is on, so the list sends the Stores some grant reaches.
 //! 2. **Nothing of the image is judged**: not its digest, not when it
 //!    came to be owned. A build has no digest when it is judged, and a
