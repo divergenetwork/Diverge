@@ -22,8 +22,9 @@ use crate::serve::reply;
 use crate::store;
 use crate::store::image_icons::Which;
 
-/// Say whether the image is held, and serve it, every ask the caller
-/// opens on it, until the caller cancels.
+/// Say which platforms of the image are held, as each is found, and
+/// serve it, every ask the caller opens on it, until the caller
+/// cancels.
 ///
 /// The rules:
 ///
@@ -33,34 +34,40 @@ use crate::store::image_icons::Which;
 /// 2. **The reach.** The providers asked are those a `providers` grant
 ///    reaches with `read`; the remote daemons, the records a `daemons`
 ///    grant reaches with `relay`, as a list reports them.
-/// 3. **The first held.** The sources are asked as
-///    [`images::locate`] asks them, `ignore` passed on: the first held
-///    is `Held`, every other cancelled; none is `NotFound`. A store
-///    that cannot be read is `Error`.
-/// 4. **Served through it.** Each channel the caller opens is answered
-///    on its own task, through the one source as [`images::manifest`],
-///    [`images::blob`] and [`images::prove`] pull through it: a
+/// 3. **Held, as each is found.** The sources are asked as
+///    [`images::search`] asks them, for the platforms the request
+///    names, `ignore` passed on. Each source that adds platforms is
+///    kept and is one `Held`, carrying what it added; a search that
+///    finds none is `NotFound`. A store that cannot be read is
+///    `Error`.
+/// 3a. **Settled, once.** When the search ends — every platform found,
+///    every source answered, or the caller's `Enough` — `Settled` is
+///    sent, and no `Held` after it. The search runs beside the serving:
+///    a channel opened after the first `Held` is answered while later
+///    sources are still being asked.
+/// 4. **Served through them.** Each channel the caller opens is answered
+///    on its own task, through the sources kept as [`images::manifest`],
+///    [`images::blob`] and [`images::prove`] pull through them: a
 ///    manifest with at most one frame then the finish; a blob with its
 ///    pieces, each split at [`CHUNK_SIZE`], then the finish; a proof
 ///    with one frame of its 32 bytes then the finish — the empty finish
-///    being a part the source did not answer, after which it is let go
-///    and every later ask is answered empty. The image's document is
+///    being a part no source answered. The image's document is
 ///    answered with exactly one frame then the finish, as
 ///    [`images::through`] reads it: from the daemon's record of the
-///    digest, else through the source. Each of the image's three
+///    digest, else through a source. Each of the image's three
 ///    icons is answered the same way, as [`images::icon`] reads it:
 ///    from the daemon's record of the digest and the icon, else
-///    through the source, whose answer is carried as it came. A
+///    through a source, whose answer is carried as it came. A
 ///    channel request that will not decode is finished with nothing.
-/// 5. **The end.** The caller's `Cancel`, the caller gone, the caller
-///    reading no more of the scope, or the source's scope ending ends
-///    the loop; every answer still in flight is finished, save that a
-///    caller reading no more is not waited on, and then the scope. The
-///    source is cancelled after the finish.
+/// 5. **The end.** The caller's `Cancel`, the caller gone, or the
+///    caller reading no more of the scope ends the loop; every answer
+///    still in flight is finished, save that a caller reading no more
+///    is not waited on, and then the scope. The search is stopped and
+///    every source cancelled after the finish.
 pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) {
     let digest = frame.image.digest.clone();
-    let source = match open(&scope, frame, who, daemon).await {
-        Ok(Ok(source)) => source,
+    let mut search = match open(&scope, frame, who, daemon).await {
+        Ok(Ok(search)) => search,
         Ok(Err(answer)) => {
             reply::reply(&scope, &answer).await;
             scope.send_response_finish().await;
@@ -72,27 +79,41 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
             return;
         }
     };
-    let pulls = Arc::new(images::Pulls::new());
-    if !pulls.keep(source).await {
-        scope.send_response_finish().await;
-        return;
-    }
-    let Some(held) = pulls.held().await else {
+    // Rule 3.
+    let Some(first) = search.next().await else {
+        search.stop().await;
+        reply::reply(&scope, &Frame::NotFound).await;
         scope.send_response_finish().await;
         return;
     };
-    reply::reply(&scope, &Frame::Held).await;
+    let pulls = Arc::new(images::Pulls::new());
+    pulls.keep(first.source).await;
+    reply::reply(&scope, &Frame::Held { platforms: first.platforms }).await;
+    let mut settled = false;
     // Rule 4.
     let scope = Arc::new(scope);
     let mut tasks = JoinSet::new();
     loop {
         let bytes = tokio::select! {
+            // Rules 3 and 3a.
+            found = search.next(), if !settled => {
+                match found {
+                    Some(found) => {
+                        pulls.keep(found.source).await;
+                        reply::reply(&scope, &Frame::Held { platforms: found.platforms }).await;
+                    }
+                    None => {
+                        settled = true;
+                        reply::reply(&scope, &Frame::Settled).await;
+                    }
+                }
+                continue;
+            }
             received = scope.recv_channel_request() => match received {
                 Some(bytes) => bytes,
                 None => break,
             },
             () = scope.responses_gone() => break,
-            _ = held.scope.wait() => break,
             Some(_) = tasks.join_next(), if !tasks.is_empty() => continue,
         };
         let Ok(ClientFrame::ChannelRequest { channel, payload, .. }) = ClientFrame::decode(&bytes) else {
@@ -112,6 +133,10 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
                 tasks.spawn(info(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone()));
             }
             Ok(channel_request::Frame::Cancel) => break,
+            Ok(channel_request::Frame::Enough) => {
+                search.enough();
+                scope.send_channel_response_finish(channel).await;
+            }
             Ok(channel_request::Frame::IconSvg) => {
                 tasks.spawn(icon(Arc::clone(&scope), Arc::clone(daemon), Arc::clone(&pulls), channel, digest.clone(), Which::Svg));
             }
@@ -134,11 +159,12 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
         drain(&mut tasks).await;
     }
     scope.send_response_finish().await;
+    search.stop().await;
     pulls.release().await;
 }
 
-/// Rules 1 to 3: the source held, or the answer that ends the scope.
-async fn open(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Result<images::Source, Frame>, store::Error> {
+/// Rules 1 to 3: the search begun, or the answer that ends the scope.
+async fn open(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Result<images::Search, Frame>, store::Error> {
     let mut conn = daemon.store.acquire().await?;
     // Rule 1.
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -161,7 +187,8 @@ async fn open(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc
     drop(conn);
     // Rule 3.
     let reach = images::Reach::Granted { providers, daemons };
-    Ok(images::locate(daemon, &frame.image, &reach, &frame.ignore).await.ok_or(Frame::NotFound))
+    let wanted = frame.platforms.map_or(images::Wanted::Any, images::Wanted::Every);
+    Ok(Ok(images::search(daemon, &frame.image, reach, &frame.ignore, wanted)))
 }
 
 /// Every task of `tasks` waited for, to the last.

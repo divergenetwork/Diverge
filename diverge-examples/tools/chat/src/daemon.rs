@@ -130,7 +130,7 @@ impl Daemon {
         }
         // One read scope, held only as long as the one ask on it: the
         // image's document, then the cancel and the scope's end.
-        let request = read::client::request::Frame { image: image.clone(), ignore: Vec::new(), relay: None };
+        let request = read::client::request::Frame { image: image.clone(), platforms: None, ignore: Vec::new(), relay: None };
         let held = read::client::execute::execute(handle, &request).await.ok()?;
         let answer = held.info().await;
         let _ = held.cancel().await;

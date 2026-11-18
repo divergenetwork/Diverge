@@ -128,7 +128,7 @@ pub async fn candidates(daemon: &Arc<Daemon>, pinned: Option<&Identity>, needs: 
         let image = image.clone();
         tokio::spawn(async move {
             let reach = images::Reach::Full { except: None };
-            let Some(source) = images::locate(&daemon, &image, &reach, &[]).await else {
+            let Some(source) = images::locate(&daemon, &image, reach, &[], images::Wanted::Any).await else {
                 return false;
             };
             // Only the answer was wanted: no scope is pulled through.

@@ -24,8 +24,9 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 #[command(group(ArgGroup::new("ask").args(["info", "icon", "manifest", "blob", "prove_nonce"]).multiple(false)))]
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
-    /// [`request::Frame`] — the image, and the remote daemons not to
-    /// ask; `relay` among its members has another daemon serve it.
+    /// [`request::Frame`] — the image, the `platforms` wanted of it,
+    /// and the remote daemons not to ask; `relay` among its members
+    /// has another daemon serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,
     /// Once held, the image's DIVERGE.md, printed parsed: its name, the
@@ -144,9 +145,11 @@ pub enum Missing {
     NotHeld,
 }
 
-/// The request put and its answer printed; where it is `held`, the one
-/// ask given put and its answer printed, and the scope cancelled and
-/// waited to its end.
+/// The request put and its answer printed; where it is `held`, every
+/// `held` after it printed as the daemon finds more platforms, to its
+/// `settled`; then the one ask given put and its answer printed, and
+/// the scope cancelled and waited to its end. The ask waits for the
+/// `settled`, so that it is put to every source the daemon found.
 pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitter) -> Result<(), Error> {
     match arguments.below {
         Some(Below::RequestSchema(_)) => {
@@ -169,7 +172,17 @@ pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitte
         Err(execute::ExecuteError::Closed | execute::ExecuteError::Send(_)) => return Err(Error::Rejected),
         Err(error) => return Err(Error::Exchange(error.to_string())),
     };
-    emit(emitter, Line::Answer(response::Frame::Held)).await?;
+    emit(emitter, Line::Answer(response::Frame::Held { platforms: held.platforms().to_vec() })).await?;
+    loop {
+        match held.more().await {
+            execute::More::Held(platforms) => emit(emitter, Line::Answer(response::Frame::Held { platforms })).await?,
+            execute::More::Settled => {
+                emit(emitter, Line::Answer(response::Frame::Settled)).await?;
+                break;
+            }
+            execute::More::End(_) => return Err(Error::Rejected),
+        }
+    }
     let outcome = ask(&held, arguments).await;
     let _ = held.cancel().await;
     held.wait().await;

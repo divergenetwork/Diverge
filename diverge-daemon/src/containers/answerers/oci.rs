@@ -11,11 +11,11 @@ use crate::containers::images;
 /// A provider asked whether the caller holds an image is answered
 /// from the other providers connected and the remote daemons recorded:
 /// an `images::read` scope is opened with the image on each, the first
-/// answered held is the run's source, every other is cancelled, and
-/// its manifests, blobs and proof are taken through it — see
-/// [`images`](crate::containers::images), and [`images::held`], which
-/// a push the daemon sources answers with too. A provider asking needs no
-/// grant, and is never asked itself, having looked already. Asked for
+/// answered held for a platform the provider runs is the run's source,
+/// every other is cancelled, and its manifests, blobs and proof are
+/// taken through it — see [`images`](crate::containers::images), and
+/// [`images::held`]. A provider asking needs no grant, and is never
+/// asked itself, having looked already. Asked for
 /// the proof of possession, the daemon relays it from the source, and
 /// hashes nothing itself.
 impl OciStore for Answerer {

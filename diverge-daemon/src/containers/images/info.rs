@@ -9,7 +9,7 @@ use diverge_sdk::shared::containers::info::{Document, MAX_BYTES, response};
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::error::Error;
 
-use super::{Pulls, Reach, locate};
+use super::{Pulls, Reach, Wanted, locate};
 use crate::daemon::Daemon;
 use crate::serve::reply;
 use crate::store;
@@ -43,7 +43,8 @@ pub enum Read {
 ///    whether it holds the image — the daemon asking for itself, so
 ///    its reach is whole — and the first that does is asked for the
 ///    document on the `info` channel of that `images::read` scope, and
-///    the scope cancelled. No source is [`Read::NoSource`]. No
+///    the scope cancelled. Any platform will do: a document is the
+///    image's, whichever platform it is read out of. No source is [`Read::NoSource`]. No
 ///    container is asked, running or not: a document is read of the
 ///    image.
 /// 3. **Only a document is recorded.** An [`Read::Info`] is saved to
@@ -55,7 +56,7 @@ pub async fn info(daemon: &Arc<Daemon>, image: &Image) -> Result<Read, store::Er
         return Ok(Read::Info(found));
     }
     // Rule 2.
-    let Some(source) = locate(daemon, image, &Reach::Full { except: None }, &[]).await else {
+    let Some(source) = locate(daemon, image, Reach::Full { except: None }, &[], Wanted::Any).await else {
         return Ok(Read::NoSource);
     };
     let read = asked(source.scope.info_frame().await);
