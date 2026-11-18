@@ -16,18 +16,26 @@ import { VolumeCapabilities, kept } from "./volume_capabilities.js";
  * a member a reader does not know is ignored.
  */
 export const Capabilities = z.looseObject({
-  /** The provider runs containers: it answers the agents run and the tools run. Absent, `false`, and each answers `Unsupported`. */
-  containers: z.boolean().optional(),
+  /**
+   * The provider runs containers, and for which platforms: an object
+   * of `platforms`, one or more, each `os/architecture`. A run names
+   * no platform; the provider runs one of these that the image has.
+   * Absent, it runs none, and each run answers `Unsupported`.
+   */
+  containers: z.looseObject({ platforms: z.array(z.string()).min(1) }).optional(),
   /**
    * What the provider does with images. `store`: it keeps the Store
-   * for its callers, their images by digest, and the object's `build`
-   * says whether it builds into it; absent, it keeps none, and every
+   * for its callers, their images by digest, and the object's `build`,
+   * an object of the `platforms` it builds for, says whether it builds
+   * into it; absent, it keeps none, and every
    * Store endpoint answers `Unsupported`. `registries`: the registries
    * it pulls from, each a host; absent, none.
    */
   images: z
     .looseObject({
-      store: z.looseObject({ build: z.boolean().optional() }).optional(),
+      store: z
+        .looseObject({ build: z.looseObject({ platforms: z.array(z.string()).min(1) }).optional() })
+        .optional(),
       registries: z.array(z.string()).optional(),
     })
     .optional(),

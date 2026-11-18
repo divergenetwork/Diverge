@@ -28,6 +28,8 @@ export const Frame = z.object({
   /** The directory the build reads from. Absent, none, and a Containerfile that copies from its context fails. */
   context: Context.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
+  /** The platforms to build for: one or more, each once, each `os/architecture` such as `linux/amd64`. Required. */
+  platforms: z.array(z.string()).min(1),
   relay: Relay.optional(),
 });
 export type Frame = z.infer<typeof Frame>;

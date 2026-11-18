@@ -45,6 +45,8 @@ export const Frame = z.union([
   z.literal("not_found"),
   /** A failure, in the daemon's words or the provider's. Tag `10`. */
   z.strictObject({ error: Error }),
+  /** A platform named is not one the image has, and nothing moved. Tag `11`. */
+  z.literal("platform_not_found"),
 ]);
 export type Frame = z.infer<typeof Frame>;
 
@@ -59,6 +61,7 @@ const UNSUPPORTED = 7;
 const FORBIDDEN = 8;
 const NOT_FOUND = 9;
 const ERROR = 10;
+const PLATFORM_NOT_FOUND = 11;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -90,6 +93,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "not_found";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
+    case PLATFORM_NOT_FOUND:
+      return "platform_not_found";
     default:
       throw new DecodeError("unexpected_tag", tag);
   }

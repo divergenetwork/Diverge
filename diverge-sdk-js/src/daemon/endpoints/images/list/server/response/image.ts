@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { Identity } from "../../../../../agent_log/identity.js";
+import { Reference } from "../../../../../../shared/containers/request/reference.js";
 import { Description } from "../../../../../../shared/description.js";
 import type { Keyed } from "../../../../../../shared/listing/keyed.js";
 
@@ -24,6 +25,12 @@ export const Image = z.object({
   bytes: z.number().int().nonnegative(),
   /** When the daemon came to own it, as the provider says: an RFC 3339 timestamp in UTC. */
   created: z.iso.datetime({ offset: true }),
+  /** The platforms the image's manifest names, in the manifest's order: what the digest is for. */
+  manifest_platforms: z.array(z.string()),
+  /** The platforms the daemon holds of it on the provider. Equal to `manifest_platforms`, the image is whole. */
+  platforms: z.array(z.string()),
+  /** Where it was published from that provider. Absent when empty. */
+  references: z.array(Reference).optional(),
 });
 export type Image = z.infer<typeof Image>;
 

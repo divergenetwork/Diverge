@@ -41,6 +41,8 @@ export const Frame = z.union([
   z.literal("not_found"),
   /** A failure, in the daemon's words or the provider's. Tag `8`. */
   z.strictObject({ error: Error }),
+  /** The provider does not build for a platform named, and nothing exists. Tag `9`. */
+  z.literal("platform_unsupported"),
 ]);
 export type Frame = z.infer<typeof Frame>;
 
@@ -53,6 +55,7 @@ const UNSUPPORTED = 5;
 const FORBIDDEN = 6;
 const NOT_FOUND = 7;
 const ERROR = 8;
+const PLATFORM_UNSUPPORTED = 9;
 
 /**
  * A frame out of its payload: the tag byte, then the variant's own
@@ -80,6 +83,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "not_found";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
+    case PLATFORM_UNSUPPORTED:
+      return "platform_unsupported";
     default:
       throw new DecodeError("unexpected_tag", tag);
   }
