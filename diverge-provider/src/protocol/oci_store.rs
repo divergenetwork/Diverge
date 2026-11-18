@@ -80,6 +80,14 @@ pub trait ServedImage: Send + Sync {
     /// handler re-splits at [`CHUNK_SIZE`](diverge_sdk::CHUNK_SIZE).
     type Blob: Stream<Item = Bytes> + Send + 'static;
 
+    /// The platforms of the image this scope can supply, each once,
+    /// each a [platform string](diverge_sdk::shared::platform::of):
+    /// what the scope's held says. The platforms the caller's record
+    /// holds, of an image served from its Store; every platform the
+    /// manifest names, of one served from a registry. None where they
+    /// cannot be read.
+    fn platforms(&self) -> impl Future<Output = Vec<String>> + Send;
+
     /// The manifest under `digest`, which the image reaches, or `None`.
     fn manifest(&self, digest: &str) -> impl Future<Output = Option<Manifest>> + Send;
 

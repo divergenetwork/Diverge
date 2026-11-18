@@ -232,18 +232,16 @@ impl Job {
         } else {
             // The caller owned it, holding other platforms: what it
             // holds grows, and nothing else of its record changes.
-            let wider = match self.store.owned(&self.client_identity, digest).await? {
-                Some(owned) => held(&owned.platforms),
-                None => meta.platforms.clone(),
-            };
+            // The platforms are widened from the record as it is
+            // under the records' lock, so that two pushes of the one
+            // digest ending together each keep the other's; the bytes
+            // only grow, so the larger count stands whichever writes
+            // last.
+            let amended = self.store.amend(&self.client_identity, digest, |record| record.platforms = held(&record.platforms)).await?;
+            let wider = amended.map_or_else(|| meta.platforms.clone(), |record| record.platforms);
             let bytes = self.store.image_bytes(digest, &wider).await;
-            self.store
-                .amend(&self.client_identity, digest, |record| {
-                    record.platforms = wider;
-                    record.bytes = bytes;
-                })
-                .await?;
-            bytes
+            let counted = self.store.amend(&self.client_identity, digest, |record| record.bytes = record.bytes.max(bytes)).await?;
+            counted.map_or(bytes, |record| record.bytes)
         };
         Ok(Pushing::Pushed(Pushed {
             digest: digest.to_string(),

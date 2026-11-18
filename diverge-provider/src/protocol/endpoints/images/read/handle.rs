@@ -50,8 +50,9 @@ use diverge_sdk::shared::error::Error;
 ///    that treated as a no would conclude an image is not held when it
 ///    was never told. Nothing here turns a failure into a no.
 /// 4. **Held.** Otherwise [`Held`](response::Frame::Held) is sent
-///    first, before any channel is answered, and nothing more on the
-///    main stream until the finish. Each channel the caller opens is
+///    first, with every platform of the image the scope can supply —
+///    see [`ServedImage::platforms`] — before any channel is answered,
+///    and nothing more on the main stream until the finish. Each channel the caller opens is
 ///    answered on its own task: a manifest with at most one frame then
 ///    the finish; a blob with its pieces, each split at
 ///    [`CHUNK_SIZE`], then the finish; a proof with one frame of its
@@ -102,7 +103,8 @@ pub async fn handle<O, D>(
             return;
         }
     };
-    send(&scope, &response::Frame::Held).await;
+    let platforms = served.platforms().await;
+    send(&scope, &response::Frame::Held { platforms }).await;
     let scope = Arc::new(scope);
     let served = Arc::new(served);
     let mut tasks = JoinSet::new();
@@ -141,6 +143,8 @@ pub async fn handle<O, D>(
                 tasks.spawn(icon(Arc::clone(&scope), Arc::clone(&deployer), client_identity.clone(), request.0.image.clone(), channel, Which::Png64));
             }
             Ok(channel_request::Frame::Cancel) => break,
+            // A provider looked once and looks no further already.
+            Ok(channel_request::Frame::Enough) => scope.send_channel_response_finish(channel).await,
             Err(_) => scope.send_channel_response_finish(channel).await,
         }
     }

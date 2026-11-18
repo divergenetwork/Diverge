@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 
-use super::manifest::{Descriptor, Parsed};
+use super::manifest::{self, Descriptor, Parsed};
 use super::fetch::{Repository, fill, plan_at};
 use super::{Attempt, Error, Pieces, Store};
 use crate::host::container_deployer::name_ok;
@@ -188,6 +188,13 @@ impl Served {
 impl oci_store::ServedImage for Served {
     type Blob = Pieces;
 
+    async fn platforms(&self) -> Vec<String> {
+        match self {
+            Served::Store(owned) => owned.platforms().await,
+            Served::Registry(through) => through.platforms().await,
+        }
+    }
+
     async fn manifest(&self, digest: &str) -> Option<Manifest> {
         let digest = Digest::parse(digest)?;
         match self {
@@ -223,6 +230,15 @@ impl oci_store::ServedImage for Served {
 }
 
 impl Owned {
+    /// The platforms the caller's record of the image holds: none
+    /// where the record is gone.
+    async fn platforms(&self) -> Vec<String> {
+        match self.store.owned(&self.client_identity, &self.digest).await {
+            Ok(Some(meta)) => meta.platforms,
+            _ => Vec::new(),
+        }
+    }
+
     /// Whether the image reaches `digest`, while the caller owns it: a
     /// record given up mid-scope serves nothing more.
     async fn reaches(&self, digest: &Digest) -> bool {
@@ -294,6 +310,39 @@ impl Through {
                 false
             }
             None => false,
+        }
+    }
+
+    /// Every platform the image's manifest names, which a registry
+    /// serves all of. The rules:
+    ///
+    /// 1. **An index.** Each entry's platform, each once, in the
+    ///    index's order: what a push records as the image's
+    ///    `manifest_platforms`.
+    /// 2. **An image that is not an index.** The one platform its
+    ///    config states, the config fetched through as a blob is,
+    ///    pinned for the scope.
+    /// 3. **None** where the manifest or the config cannot be read, or
+    ///    states no platform.
+    async fn platforms(&self) -> Vec<String> {
+        let Some(body) = self.fetched_manifest(&self.digest).await else {
+            return Vec::new();
+        };
+        match Parsed::parse(&body) {
+            Some(Parsed::Index(entries)) => manifest::named(&entries),
+            Some(Parsed::Image { config, .. }) => {
+                if self.blobs.hold(self.attempt, &config.digest).await.is_none() {
+                    let Ok(Some(pieces)) = self.registries.blob(&self.host, &self.name, &config.digest.to_string()).await else {
+                        return Vec::new();
+                    };
+                    if !matches!(self.blobs.write_stream(self.attempt, &config.digest, pieces).await, Ok(Some(_))) {
+                        return Vec::new();
+                    }
+                }
+                let stated = self.blobs.read_blob(&config.digest).await;
+                stated.and_then(|stated| manifest::config_platform(&stated)).into_iter().collect()
+            }
+            None => Vec::new(),
         }
     }
 
