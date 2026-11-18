@@ -1,0 +1,77 @@
+---
+title: 'Response'
+summary: 'The server sends zero or more responses of the byte 0, each one blob the registry took, then exactly one response: the byte 1 followed by the digest published, one of the bytes 2 to 8 alone as a refusal, or the byte 9 followed by an error as one JSON value; the response finish follows it.'
+order: 2
+draft: false
+---
+
+The server sends zero or more responses, then exactly one, on the
+scope. The response finish follows the last, and no frame follows the
+finish.
+
+```text
+[0][digest_len: varint][digest: utf8 …][bytes: varint]   per blob the registry took
+[1][digest_len: varint][digest: utf8 …]                  once: the registry holds the image
+[2]                                                      once, alone: no image of the digest is in the client's Store
+[3]                                                      once, alone: the image does not hold every platform it names
+[4]                                                      once, alone: the registry is none the server lists
+[5]                                                      once, alone: the name or a tag is not one
+[6]                                                      once: the registry did not take the credential
+[7]                                                      once: the credential may not write to the repository
+[8]                                                      once, alone: the server keeps no Store
+[9][error JSON …]                                        once: an error
+```
+
+- **The sequence.** Zero or more responses of the byte `0`, each one
+  blob; then exactly one response whose first byte is one of `1` to
+  `9`; then the response finish. No response follows that response.
+  No response of the byte `0` precedes a response of the byte `2`,
+  `3`, `4`, `5` or `8`: each is the only response of its scope. A
+  response finish that no response of the byte `1` to `9` precedes
+  states that the request was not served, as
+  [Endpoints](/endpoints/) provides.
+- **Blob.** A payload whose first byte is `0` carries the digest of
+  one blob, UTF-8, preceded by its byte length as a varint, and its
+  size in bytes as a varint. The server sends it after the registry
+  accepted the blob whole. The server sends none for a blob the
+  registry held already.
+- **Published.** A payload whose first byte is `1` carries the digest
+  the registry holds the image by, in the same form: the digest of
+  the request. The registry holds the image under the repository
+  with every tag of the request, and the `references` of the image in
+  the client's Store hold the reference.
+- **The refusals.** A payload that is exactly one of the bytes `2` to
+  `8` states the refusal tabulated above. The bytes `2`, `3`, `4`,
+  `5` and `8` are sent before anything is asked of the registry. The
+  byte `6` states that the registry, or its token service, did not
+  accept the credential, or required one and was given none. The byte
+  `7` states that the credential was accepted and is not permitted to
+  write to the repository. After each, no tag of the request was
+  put.
+- **The error.** A payload whose first byte is `9` carries an error
+  after that byte, running to the end of the payload. The error is
+  exactly one JSON value, in the form defined on the
+  [volumes::list response](/endpoints/volumes-list/response/) page.
+  This revision prescribes nothing about its content. The error
+  states that the image is not published for a reason that is none
+  of the refusals.
+- **Malformed.** A payload with no byte, a payload whose first byte
+  is none of `0` to `9`, a payload whose bytes after `0` do not
+  decode as the digest and the size, a payload whose bytes after `1`
+  do not decode as the digest, and a payload whose bytes after `9`
+  are not one JSON value are malformed.
+
+The response is defined by `diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/frame.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/frame.rs
+```
+
+a blob by `diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/blob.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/blob.rs
+```
+
+and the image published by `diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/published.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/publish/server/response/published.rs
+```

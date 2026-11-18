@@ -1,0 +1,69 @@
+---
+title: 'images::publish'
+summary: 'Tag 19: a client names an image of its Store, a repository at a registry the server lists, the tags to put on it and the credential to write with; the server uploads every platform of the image, sends one response per blob the registry takes, then exactly one response stating that the registry holds the image, a refusal, or an error, and the scope finishes.'
+order: 19
+draft: false
+---
+
+A client opens the scope with a request whose payload is the tag byte
+`19` followed by the digest of an image, a reference, zero or more
+tags, and a credential, or none. The server sends zero or more
+responses, each one blob the registry took, then exactly one response
+which states that the registry holds the image under the repository
+with every tag, a refusal, or an error. The response finish follows
+that response, and no frame follows the finish.
+
+- **The request.** [Request](/endpoints/images-publish/request/)
+  states its form.
+- **The image named.** The server resolves the digest against the
+  Store of the identity under which the connection was authorized, as
+  [Authorization](/authorization/) provides. A digest of no image in
+  the client's Store is answered with the byte `2` alone.
+- **Whole.** The server publishes every platform the manifest of the
+  image names, and the request names none. An image whose `platforms`
+  are not all of its `manifest_platforms`, as the client's
+  [images::list](/endpoints/images-list/) listing gives them, is
+  answered with the byte `3` alone, and the server asks nothing of
+  any registry.
+- **The registry.** The `registry` of the reference is one of the
+  hosts of the server's
+  [`images.registries`](/capabilities/#imagesregistries) capability.
+  Any other is answered with the byte `4` alone. The registries a
+  server publishes to are the registries it pulls from.
+- **As it is held.** The server sends the manifests and the blobs of
+  the image byte for byte. The registry holds the image by the digest
+  the client's Store holds it by.
+- **The order.** For each image manifest of the image — each entry of
+  an index, in the order of the index, or the image itself — the
+  server uploads its config and its layers, each only where the
+  registry does not hold it already. For an index, the server then
+  puts each image manifest under that manifest's own digest. Last,
+  the server puts the manifest of the image under each tag of the
+  request, or, where the request names no tag, under the digest of
+  the image alone. No tag is put before every blob and every
+  manifest it names is in the registry.
+- **The credential.** The server presents the credential of the
+  request to the registry named and to the token service that
+  registry names, and to no other party. The server keeps the
+  credential, and any token obtained with it, for the length of the
+  scope and no longer: it writes neither to any store, and uses
+  neither for any other request of any identity. A request with no
+  credential is made as nobody.
+- **The reference is recorded.** When the server sends the byte `1`,
+  the `references` of the image in the client's Store hold the
+  reference of the request, once. A reference already there is not
+  added again. Every [images::list](/endpoints/images-list/) scope
+  the client holds open that was sent the image as added is sent it
+  as changed.
+- **A publish that does not end in the byte `1`.** No tag of the
+  request was put. Blobs and manifests the registry took before the
+  end remain with the registry. The image in the client's Store is
+  unchanged.
+- **The channels.** Neither the client nor the server opens a channel
+  on the scope. A client that stops reading the scope ends the
+  publish where it is.
+- **No Store.** A server that holds out no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
+  Store and answers every request of this endpoint with exactly one
+  response, the byte `8` alone, and the response finish, before
+  anything is looked up.

@@ -26,6 +26,13 @@ JSON, running to the end of the payload:
   [The description](/endpoints/daemons-announce/request/#the-description) defines it. A
   `description` that does not conform to that definition does not
   parse.
+- **`platforms`.** An array of one or more strings, each a platform
+  in the form the `platforms` of an
+  [images::build request](/endpoints/images-build/request/) has, none
+  appearing twice. It is required: a request without it, with an
+  empty array, with a string that is not a platform, or with a
+  platform twice does not parse. It names the platforms of the image
+  the client's Store is to hold.
 - **No name.** The request names no image other than by its digest.
 - **Malformed.** A payload with no byte, a payload whose first byte
   is not `17`, and a payload whose bytes after the tag do not parse as

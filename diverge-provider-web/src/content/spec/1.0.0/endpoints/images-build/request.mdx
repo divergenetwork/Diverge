@@ -10,10 +10,10 @@ the postcard wire format, as the postcard reading of
 [Notation](/endpoints/#notation) provides:
 
 ```text
-[16][0][containerfile_len: varint][containerfile: utf8 …][0]
-[16][1][description_len: varint][description: utf8 …][containerfile_len: varint][containerfile: utf8 …][0]
-[16][0][containerfile_len: varint][containerfile: utf8 …][1][volume_name_len: varint][volume_name: utf8 …][components: varint][component_len: varint][component: utf8 …]…
-[16][1][description_len: varint][description: utf8 …][containerfile_len: varint][containerfile: utf8 …][1][volume_name_len: varint][volume_name: utf8 …][components: varint][component_len: varint][component: utf8 …]…
+[16][0][containerfile_len: varint][containerfile: utf8 …][0][platforms: varint][platform_len: varint][platform: utf8 …]…
+[16][1][description_len: varint][description: utf8 …][containerfile_len: varint][containerfile: utf8 …][0][platforms: varint][platform_len: varint][platform: utf8 …]…
+[16][0][containerfile_len: varint][containerfile: utf8 …][1][volume_name_len: varint][volume_name: utf8 …][components: varint][component_len: varint][component: utf8 …]…[platforms: varint][platform_len: varint][platform: utf8 …]…
+[16][1][description_len: varint][description: utf8 …][containerfile_len: varint][containerfile: utf8 …][1][volume_name_len: varint][volume_name: utf8 …][components: varint][component_len: varint][component: utf8 …]…[platforms: varint][platform_len: varint][platform: utf8 …]…
 ```
 
 - **`description`.** One byte: `0`, the image has no description; or
@@ -35,10 +35,20 @@ the postcard wire format, as the postcard reading of
   the volume itself. A component that is empty, `.` or `..` is
   answered with an error. The context carries no mode: a build writes
   nothing into it.
+- **`platforms`.** The platforms the image is built for: a varint
+  count, at least `1`, followed by that many platforms, each UTF-8
+  preceded by its byte length as a varint. A platform is a string of
+  two parts, `os/architecture`, or of three, `os/architecture/variant`,
+  each part one or more of the lowercase letters, the digits, `.`,
+  `_` and `-`: `linux/amd64`, `linux/arm64`. No platform appears
+  twice. A request with no platform, a platform that is not of that
+  form, and a platform that appears twice do not decode. One platform
+  builds an image for it; more than one build an index with one image
+  per platform.
 - **No name.** The request names no image. The image is named by the
   digest the build produces.
 - **Bytes after the request.** A server ignores every byte that
-  follows the `context` field. A request whose payload extends past
+  follows the `platforms` field. A request whose payload extends past
   the request is not malformed.
 - **Malformed.** A payload with no byte, a payload whose first byte
   is not `16`, and a payload whose bytes after the tag do not decode

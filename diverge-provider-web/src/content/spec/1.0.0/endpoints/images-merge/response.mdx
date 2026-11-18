@@ -1,0 +1,61 @@
+---
+title: 'Response'
+summary: 'The server sends exactly one response: the byte 0 followed by the digest and the size of the image made, the byte 1 followed by a digest the client owned already, one of the bytes 2 to 6 alone as a refusal, or the byte 7 followed by an error as one JSON value; the response finish follows it.'
+order: 2
+draft: false
+---
+
+The server sends exactly one response on the scope. The response
+finish follows the response, and no frame follows the finish.
+
+```text
+[0][digest_len: varint][digest: utf8 …][bytes: varint]   merged: the image is in the client's Store
+[1][digest_len: varint][digest: utf8 …]                  the client owned the digest already
+[2]                                                      a part names no image of the client's Store
+[3]                                                      a part names a platform its image does not hold
+[4]                                                      a platform is named more than once
+[5]                                                      insufficient capacity
+[6]                                                      the server keeps no Store
+[7][error JSON …]                                        an error
+```
+
+- **The sequence.** Exactly one response precedes the response
+  finish, and nothing follows the finish. A response finish that no
+  response precedes states that the request was not served, as
+  [Endpoints](/endpoints/) provides; whether an image entered the
+  client's Store is then not stated, and the client learns it from an
+  [images::list](/endpoints/images-list/) scope.
+- **Merged.** A payload whose first byte is `0` carries the digest of
+  the new image, UTF-8, preceded by its byte length as a varint, and
+  its size in bytes as a varint. The image is in the client's Store
+  from the moment the server sends it.
+- **Exists.** A payload whose first byte is `1` carries the digest,
+  in the same form, of an image the client's Store held before the
+  request. Nothing was added.
+- **The refusals.** A payload that is exactly one of the bytes `2`,
+  `3`, `4`, `5` and `6` states the refusal tabulated above. After
+  each, the client's Store is as it was before the request. The
+  server sends nothing after the byte, and a client ignores every
+  byte that follows it.
+- **The error.** A payload whose first byte is `7` carries an error
+  after that byte, running to the end of the payload. The error is
+  exactly one JSON value, in the form defined on the
+  [volumes::list response](/endpoints/volumes-list/response/) page.
+  This revision prescribes nothing about its content. The error
+  states that no image entered the client's Store as a result of the
+  request.
+- **Malformed.** A payload with no byte, a payload whose first byte
+  is none of `0` to `7`, a payload whose bytes after `0` do not
+  decode as the digest and the size, a payload whose bytes after `1`
+  do not decode as the digest, and a payload whose bytes after `7`
+  are not one JSON value are malformed.
+
+The response is defined by `diverge-sdk-rs/src/provider/endpoints/images/merge/server/response/frame.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/merge/server/response/frame.rs
+```
+
+and the image made by `diverge-sdk-rs/src/provider/endpoints/images/merge/server/response/merged.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/merge/server/response/merged.rs
+```
