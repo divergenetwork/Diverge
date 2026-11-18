@@ -45,6 +45,7 @@ pub async fn execute(handle: &Handle, request: &request::Frame) -> Result<(), Ex
     match response::Frame::decode(payload).map_err(ExecuteError::Response)? {
         response::Frame::Deleted => Ok(()),
         response::Frame::InUse => Err(ExecuteError::InUse),
+        response::Frame::PlatformNotHeld => Err(ExecuteError::PlatformNotHeld),
         response::Frame::Unsupported => Err(ExecuteError::Unsupported),
         response::Frame::Error(error) => Err(ExecuteError::Provider(error)),
     }
@@ -73,6 +74,10 @@ pub enum ExecuteError {
     /// A running container of the caller runs the image, and the
     /// provider does not delete an image in use. Nothing was changed.
     InUse,
+    /// A platform named is not one the caller holds of the image:
+    /// [`PlatformNotHeld`](response::Frame::PlatformNotHeld). Nothing
+    /// was deleted.
+    PlatformNotHeld,
     /// The provider has no Store. The protocol's defined
     /// refusal, not a failure.
     Unsupported,
@@ -92,6 +97,7 @@ impl fmt::Display for ExecuteError {
             ExecuteError::Unanswered => f.write_str("image deletion finished without an answer"),
             ExecuteError::Response(error) => write!(f, "image deletion answer did not parse: {error}"),
             ExecuteError::InUse => f.write_str("a running container runs the image, and it was not deleted"),
+            ExecuteError::PlatformNotHeld => f.write_str("a platform named is not held of the image, and nothing was deleted"),
             ExecuteError::Unsupported => f.write_str("the provider has no Store"),
             ExecuteError::Provider(_) => f.write_str("the provider could not complete the image deletion"),
         }
@@ -112,6 +118,7 @@ impl std::error::Error for ExecuteError {
             ExecuteError::Closed
             | ExecuteError::Unanswered
             | ExecuteError::InUse
+            | ExecuteError::PlatformNotHeld
             | ExecuteError::Unsupported
             | ExecuteError::Provider(_) => None,
         }

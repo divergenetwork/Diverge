@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The actions over images, each the endpoint of the same name under
 /// [`images`](crate::daemon::endpoints::images). Snake case on the
-/// wire: `"build"`, `"push"`, `"get"`, `"list"`. Reading an image is none of
+/// wire: `"build"`, `"push"`, `"get"`, `"list"`, `"delete"`. Reading an image is none of
 /// them: [`images::read`](crate::daemon::endpoints::images::read) is
 /// held over the providers and the daemons it asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -25,4 +25,9 @@ pub enum Action {
     /// [`images::list`](crate::daemon::endpoints::images::list) does;
     /// the list sends what the grant reaches.
     List,
+    /// Delete an image in a Store of the daemon's, or some of its
+    /// platforms, as
+    /// [`images::delete`](crate::daemon::endpoints::images::delete)
+    /// does.
+    Delete,
 }

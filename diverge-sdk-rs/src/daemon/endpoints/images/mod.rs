@@ -13,7 +13,8 @@
 //! provider uses, or from the client, which the provider asks for it
 //! through the daemon. [`list`] is what the daemon owns in its Stores,
 //! provider by provider, kept open; [`get`] is one of them, as the
-//! list would report it. The four are held by the images
+//! list would report it. [`delete`] takes one out of the
+//! Store, or some of its platforms. The five are held by the images
 //! grant, each reaching the providers its `within` lets through; a
 //! build also takes `mount` over the volume it reads its context from,
 //! where it reads one.
@@ -27,6 +28,7 @@
 //! images grant: see [`grant::images`](crate::daemon::grant::images).
 
 pub mod build;
+pub mod delete;
 pub mod get;
 pub mod list;
 pub mod push;

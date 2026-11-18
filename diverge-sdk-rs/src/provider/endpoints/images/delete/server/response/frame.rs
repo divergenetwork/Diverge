@@ -6,19 +6,23 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
 
-/// The image is gone, or a running container runs it and it stays,
-/// or it is not gone for some other reason.
+/// The image is gone, or the platforms named of it are; or a running
+/// container runs it and it stays; or it is not gone for some other
+/// reason.
 ///
 /// One of these on channel `0`, then the scope finishes. A payload
 /// leads with one byte saying which — `0` for
 /// [`Deleted`](Self::Deleted), `1` for [`InUse`](Self::InUse), `2`
 /// for [`Unsupported`](Self::Unsupported), `3` for
-/// [`Error`](Self::Error) — and for the first three there is nothing
-/// after it, because saying so IS the whole message.
+/// [`Error`](Self::Error), `4` for
+/// [`PlatformNotHeld`](Self::PlatformNotHeld) — and for all but the
+/// error there is nothing after it, because saying so IS the whole
+/// message.
 ///
 /// | the scope ends with | means |
 /// |----------------------|-------|
-/// | [`Deleted`](Self::Deleted), then a finish | the image is gone and a listing will not show it |
+/// | [`Deleted`](Self::Deleted), then a finish | the image is gone and a listing will not show it; or the platforms named are, and a listing shows it holding the rest |
+/// | [`PlatformNotHeld`](Self::PlatformNotHeld), then a finish | a platform named is not one the caller holds of the image, and nothing was changed |
 /// | [`InUse`](Self::InUse), then a finish | a running container of the caller runs it, and nothing was changed |
 /// | [`Unsupported`](Self::Unsupported), then a finish | the provider has no Store, and there was nothing to delete |
 /// | an [`Error`](Self::Error), then a finish | it is not gone, for some other reason, and a caller should assume it is intact |
@@ -39,7 +43,7 @@ use crate::shared::error::Error;
 /// owners still reach.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
-    /// The image is gone. Tag `0`.
+    /// The image is gone, or the platforms named of it are. Tag `0`.
     Deleted,
     /// A running container of the caller runs the image, and it was
     /// not deleted. Tag `1`.
@@ -59,6 +63,9 @@ pub enum Frame {
     /// See [`shared::error::Error`](crate::shared::error::Error) for
     /// why it says so little.
     Error(Error),
+    /// A platform named is not one the caller holds of the image, and
+    /// nothing was deleted. Tag `4`.
+    PlatformNotHeld,
 }
 
 /// Tag for [`Frame::Deleted`].
@@ -72,6 +79,9 @@ const UNSUPPORTED: u8 = 2;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 3;
+
+/// Tag for [`Frame::PlatformNotHeld`].
+const PLATFORM_NOT_HELD: u8 = 4;
 
 /// A tag, and for a failure the JSON after it: an
 /// [`Error`](Frame::Error) is a [`serde_json::Value`], which cannot
@@ -98,6 +108,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[UNSUPPORTED]);
                 Ok(())
             }
+            Frame::PlatformNotHeld => {
+                out.extend_from_slice(&[PLATFORM_NOT_HELD]);
+                Ok(())
+            }
             Frame::Error(error) => {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
@@ -117,6 +131,7 @@ impl Decode<'_> for Frame {
             DELETED => Ok(Frame::Deleted),
             IN_USE => Ok(Frame::InUse),
             UNSUPPORTED => Ok(Frame::Unsupported),
+            PLATFORM_NOT_HELD => Ok(Frame::PlatformNotHeld),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
             tag => Err(FrameError::UnknownTag(tag)),
         }
@@ -128,7 +143,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's four.
+    /// A tag that is none of this frame's five.
     UnknownTag(u8),
     /// The error did not parse.
     Error(serde_json::Error),

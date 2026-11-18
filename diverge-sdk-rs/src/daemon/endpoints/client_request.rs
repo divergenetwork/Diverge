@@ -288,6 +288,9 @@ pub enum ClientRequest<'a> {
     IdentitiesGet(identities::get::client::request::Frame),
     /// Tag `162`. Get one image in a Store of the daemon's.
     ImagesGet(images::get::client::request::Frame),
+    /// Tag `163`. Delete an image in a Store of the daemon's, or some
+    /// of its platforms.
+    ImagesDelete(images::delete::client::request::Frame),
     /// Tag `146`. Hold another daemon's standalone tool under a name.
     ConnectedStandaloneToolsCreate(connected_standalone_tools::create::client::request::Frame),
     /// Tag `147`. Get one connected tool.
@@ -454,6 +457,7 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::ImagesPush(frame) => frame.encode(out),
             ClientRequest::IdentitiesGet(frame) => frame.encode(out),
             ClientRequest::ImagesGet(frame) => frame.encode(out),
+            ClientRequest::ImagesDelete(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsCreate(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsGet(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsList(frame) => frame.encode(out),
@@ -868,6 +872,9 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             162 => images::get::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesGet)
                 .ok(),
+            163 => images::delete::client::request::Frame::decode(bytes)
+                .map(ClientRequest::ImagesDelete)
+                .ok(),
             146 => connected_standalone_tools::create::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ConnectedStandaloneToolsCreate)
                 .ok(),
@@ -1039,6 +1046,7 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::ImagesPush(_) => f.write_str("images push"),
             ClientRequest::IdentitiesGet(_) => f.write_str("identities get"),
             ClientRequest::ImagesGet(_) => f.write_str("images get"),
+            ClientRequest::ImagesDelete(_) => f.write_str("images delete"),
             ClientRequest::ConnectedStandaloneToolsCreate(_) => f.write_str("connected standalone tools create"),
             ClientRequest::ConnectedStandaloneToolsGet(_) => f.write_str("connected standalone tools get"),
             ClientRequest::ConnectedStandaloneToolsList(_) => f.write_str("connected standalone tools list"),
@@ -1189,6 +1197,7 @@ pub fn tag(path: &str) -> Option<u8> {
         "images/push" => Some(160),
         "identities/get" => Some(161),
         "images/get" => Some(162),
+        "images/delete" => Some(163),
         "connected_standalone_tools/create" => Some(146),
         "connected_standalone_tools/get" => Some(147),
         "connected_standalone_tools/list" => Some(148),
@@ -1336,6 +1345,7 @@ impl ClientRequest<'_> {
             ClientRequest::ImagesPush(_) => "images/push",
             ClientRequest::IdentitiesGet(_) => "identities/get",
             ClientRequest::ImagesGet(_) => "images/get",
+            ClientRequest::ImagesDelete(_) => "images/delete",
             ClientRequest::ConnectedStandaloneToolsCreate(_) => "connected_standalone_tools/create",
             ClientRequest::ConnectedStandaloneToolsGet(_) => "connected_standalone_tools/get",
             ClientRequest::ConnectedStandaloneToolsList(_) => "connected_standalone_tools/list",

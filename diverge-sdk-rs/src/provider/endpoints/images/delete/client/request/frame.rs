@@ -5,7 +5,32 @@ use serde::{Deserialize, Serialize};
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
-/// Destroy an image in the caller's Store.
+/// Destroy an image in the caller's Store, or some of its platforms.
+///
+/// # The rules
+///
+/// 1. **No platform named, the whole image.** With
+///    [`platforms`](Self::platforms) empty the caller's ownership of
+///    the image goes, as the sections below state.
+/// 2. **Named, those platforms and no other.** The caller's record of
+///    the image holds the platforms named no longer. The digest is
+///    the image still: its manifest names every platform it did, and
+///    a listing reports fewer
+///    [`platforms`](crate::provider::endpoints::images::list::server::response::Image::platforms)
+///    than
+///    [`manifest_platforms`](crate::provider::endpoints::images::list::server::response::Image::manifest_platforms),
+///    as after a push of some of them.
+/// 3. **All of them, or none.** A platform named that the caller does
+///    not hold of the image is
+///    [`PlatformNotHeld`](crate::provider::endpoints::images::delete::server::response::Frame::PlatformNotHeld),
+///    and nothing is removed. A platform named twice does not decode.
+/// 4. **Every platform held, named, is the whole image.** Naming all
+///    the caller holds of the image is rule 1: an image held for no
+///    platform is no image.
+/// 5. **Nothing shared is lost.** What goes is the caller's record of
+///    the platforms. A blob another platform of the image, another
+///    image, another owner or the provider's cache still reaches
+///    stays.
 ///
 /// # A digest, and the same access model as everything else
 ///
@@ -26,7 +51,8 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// # An image in use is refused
 ///
-/// An image a running container of the caller runs is never deleted:
+/// An image a running container of the caller runs is never deleted,
+/// and neither is a platform of it the provider runs containers for:
 /// a provider answers
 /// [`InUse`](crate::provider::endpoints::images::delete::server::response::Frame::InUse)
 /// and changes nothing. A caller that wants it gone stops the
@@ -35,6 +61,26 @@ use crate::wire::encode::{Encode, Writer};
 pub struct Frame {
     /// Which image, by its manifest digest, `<algorithm>:<hex>`.
     pub digest: String,
+    /// The platforms to delete of it: each once, each a
+    /// [platform string](crate::shared::platform::of). Empty, the
+    /// whole image.
+    #[serde(deserialize_with = "distinct")]
+    pub platforms: Vec<String>,
+}
+
+/// Zero or more platforms, each a platform string and each once: a
+/// string that is none, or one named twice, does not decode.
+fn distinct<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vec<String>, D::Error> {
+    let platforms = Vec::<String>::deserialize(deserializer)?;
+    for (index, platform) in platforms.iter().enumerate() {
+        if !crate::shared::platform::valid(platform) {
+            return Err(serde::de::Error::custom("a platform is `<os>/<architecture>` or `<os>/<architecture>/<variant>`"));
+        }
+        if platforms[..index].contains(platform) {
+            return Err(serde::de::Error::custom("a platform is named once"));
+        }
+    }
+    Ok(platforms)
 }
 
 /// This frame's tag among the scope-opening requests.
