@@ -4,7 +4,7 @@ import { z } from "zod";
 
 /**
  * The actions over images, each the endpoint of the same name under `images`.
- * Snake case on the wire: `"build"`, `"push"`, `"get"`, `"list"`, `"delete"`. Reading an
+ * Snake case on the wire: `"build"`, `"push"`, `"get"`, `"list"`, `"delete"`, `"publish"`. Reading an
  * image is none of them: `images.read` is held over the providers and
  * the daemons it asks.
  *
@@ -13,6 +13,7 @@ import { z } from "zod";
  * - `get`: Get one image in a Store of the daemon's, as `images.get` does.
  * - `list`: List the images in the daemon's Stores, as `images.list` does; the list sends what the grant reaches.
  * - `delete`: Delete an image in a Store of the daemon's, or some of its platforms, as `images.delete` does.
+ * - `publish`: Publish images to a registry from a provider, as `images.publish` does: judged by the provider the publish is done on.
  */
-export const Action = z.enum(["build", "push", "get", "list", "delete"]);
+export const Action = z.enum(["build", "push", "get", "list", "delete", "publish"]);
 export type Action = z.infer<typeof Action>;
