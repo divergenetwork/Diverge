@@ -983,6 +983,76 @@ for a pull it will not serve. A Provider that does not hold out the
 with exactly one Response on the main stream, the byte `0` alone, and
 the Response Finish, and shall answer no Channel on the Scope.
 
+(g) **Platforms.** The Provider shall state, in the `platforms` of
+its `containers` Capability, every platform of the Containers it
+runs, and, in the `platforms` of the `build` of its `images.store`
+Capability, every platform it builds an image for, each as the
+Specification's Capabilities layer states, and shall send neither
+object with no platform. The Provider shall build an image for
+exactly the platforms an `images::build` request names, and shall
+answer a request naming a platform its `build` does not list with
+exactly one Response, the byte `7` alone, and the Response Finish,
+holding nothing and building nothing. The Provider shall take, for
+an `images::push` request, exactly the platforms the request names,
+whether or not it runs them; shall answer a request naming a platform
+the image does not have by the byte `9` alone; and shall add every
+platform named to what it holds for the Identity or none of them. A
+push naming a digest the Identity owns shall add the platforms the
+Identity lacked and change nothing else of the image; the Provider
+shall answer the byte `2` only where the Identity held every platform
+named. The Provider shall report, in every listing and every stat of
+a Client Image, the platforms the image's manifest names as
+`manifest_platforms` and the platforms it holds of the image for the
+Identity as `platforms`, and shall not report as held a platform it
+holds for another Identity alone. No run request names a platform;
+the Provider shall run, of an image that is an index, an image
+manifest whose platform its `containers` lists.
+
+(h) **Merge.** The Provider shall answer every `images::merge`
+request with exactly one Response and the Response Finish. It shall
+answer the byte `2` alone where a part names no Client Image of the
+Identity, the byte `3` alone where a part names a platform the
+Provider does not hold of that part's image for the Identity, the
+byte `4` alone where a platform is named more than once in the
+request, and the byte `5` alone where its store has no room; after
+each, nothing shall have been made. Otherwise it shall write exactly
+one OCI image index whose entries are the image manifests of exactly
+the platforms named, in the one order the Specification states, so
+that the same platforms of the same images yield the same digest on
+every Provider; shall hold the index as a Client Image of the
+Identity, holding every platform it names; and shall answer the byte
+`0` followed by its digest and size, or the byte `1` followed by its
+digest where the Identity owned that digest already. The Provider
+shall change no image the request names.
+
+(i) **Publish.** The Provider shall answer every `images::publish`
+request with zero or more Responses of the byte `0`, each one blob
+the registry took, then exactly one Response and the Response Finish.
+It shall answer, before asking anything of any registry, the byte `2`
+alone where the digest is no Client Image of the Identity, the byte
+`3` alone where it does not hold for the Identity every platform the
+image's manifest names, the byte `4` alone where the registry named
+is not in its `images.registries`, and the byte `5` alone where the
+name or a tag is not of the form the Specification states. Otherwise
+it shall send the image to the registry byte for byte as it holds
+it, every blob and every image manifest before any tag, and shall
+put the image's manifest under every tag of the request, or under
+its digest alone where the request names no tag, before it answers
+the byte `1` followed by the digest. It shall answer the byte `6`
+alone where the registry does not accept the credential and the byte
+`7` alone where the credential may not write to the repository. The
+Provider shall present the credential of the request to the registry
+named and to the token service that registry names and to no other
+party; shall not write the credential, or any token obtained with
+it, to any store or any log; shall not use either for any other
+request of any Identity; and shall hold neither after the Scope
+ends. On the byte `1` the Provider shall record the reference among
+the `references` of the Client Image, once, and shall tell every
+listing it holds open for the Identity of the image as changed. A
+Provider that does not hold out `images.store` shall answer every
+`images::merge` request by the byte `6` alone and every
+`images::publish` request by the byte `8` alone.
+
 ### 5.10 Container Deployment — `containers::agents::run` (tag 0) and `containers::tools::run` (tag 1)
 
 For every container run request the Provider accepts, the Provider

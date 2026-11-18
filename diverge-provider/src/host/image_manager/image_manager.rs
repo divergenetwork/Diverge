@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use futures_util::{future, stream};
 
-use super::{Build, Error, Push, Served, Store, build, push, resolve};
+use super::{Build, Error, Publish, Push, Served, Store, build, merge, publish, push, resolve};
 use crate::host::container_deployer::ContainerDeployer;
 use crate::host::image_registry::Digest;
 use crate::host::registry_client::RegistryClient;
@@ -15,11 +15,14 @@ use crate::protocol::context::Context;
 use crate::protocol::image_manager;
 use crate::protocol::image_source::ImageSource;
 use crate::protocol::oci_store;
-use crate::protocol::progress::{Progress, Pushing};
+use crate::protocol::progress::{Merging, Progress, Publishing, Pushing};
 use diverge_sdk::provider::endpoints::images::delete::server::response::Deletion;
 use diverge_sdk::provider::endpoints::images::list::server::response::Image;
+use diverge_sdk::provider::endpoints::images::merge::client::request::Part;
+use diverge_sdk::provider::endpoints::images::publish::client::request::Credential;
 use diverge_sdk::provider::endpoints::images::stat::server::response::Stat;
 use diverge_sdk::shared::containers::request::Image as Wanted;
+use diverge_sdk::shared::containers::request::Reference;
 use diverge_sdk::shared::description::Description;
 
 /// This provider's image manager: the Store, the blob store an image
@@ -91,12 +94,7 @@ impl image_manager::ImageManager for ImageManager {
             return Ok(None);
         };
         Ok(Some(Stat {
-            image: Image {
-                digest: parsed.to_string(),
-                description: meta.description,
-                bytes: meta.bytes,
-                created: meta.created,
-            },
+            image: meta.image(&parsed),
             containerfile: meta.containerfile,
         }))
     }
@@ -122,10 +120,29 @@ impl image_manager::ImageManager for ImageManager {
     type Push = Push;
 
     /// The push, on a task of its own; with no Store, the one error.
-    async fn push(&self, client_identity: &Identity, image: &Wanted, description: Option<&Description>, source: ImageSource) -> Self::Push {
+    async fn push(&self, client_identity: &Identity, image: &Wanted, description: Option<&Description>, platforms: &[String], source: ImageSource) -> Self::Push {
         match &self.store {
-            Some(store) => push(Arc::clone(store), Arc::clone(&self.registries), client_identity, image, description, source),
+            Some(store) => push(Arc::clone(store), Arc::clone(&self.registries), client_identity, image, description, platforms, source),
             None => Box::pin(stream::once(future::ready(Err::<Pushing, Error>(Error::Absent)))),
+        }
+    }
+
+    /// The merge; with no Store, the one error.
+    async fn merge(&self, client_identity: &Identity, parts: &[Part], description: Option<&Description>) -> Result<Merging, Error> {
+        match &self.store {
+            Some(store) => merge(store, client_identity, parts, description).await,
+            None => Err(Error::Absent),
+        }
+    }
+
+    type Publish = Publish;
+
+    /// The publish, on a task of its own; with no Store, the one
+    /// error.
+    async fn publish(&self, client_identity: &Identity, digest: &str, reference: &Reference, tags: &[String], credential: Option<&Credential>) -> Self::Publish {
+        match &self.store {
+            Some(store) => publish(Arc::clone(store), Arc::clone(&self.registries), client_identity, digest, reference, tags, credential),
+            None => Box::pin(stream::once(future::ready(Err::<Publishing, Error>(Error::Absent)))),
         }
     }
 

@@ -6,8 +6,8 @@ draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
-`16` followed by the description, the Containerfile, and the context
-of the build. The server sends zero or more responses, each one line
+`16` followed by the description, the Containerfile, the context of
+the build, and the platforms it is built for. The server sends zero or more responses, each one line
 of the build's output, then exactly one response which states that
 the image is in the client's Store, that the client owned the
 digest the build produced already, that the server has insufficient
@@ -43,6 +43,14 @@ response, and no frame follows the finish.
   FUSE serve holds beyond what `mount_and_fuse_serve` allows — is
   answered with `ContextHeld`, the byte `4`, which is not an error,
   and nothing is built. The hold ends when the scope ends.
+- **The platforms.** The request names one or more platforms. The
+  server builds the image for exactly those. A platform that is not
+  among the `platforms` of the server's
+  [`images.store.build`](/capabilities/#imagesstore) capability is
+  answered with the byte `7` alone, and nothing is built. For one
+  platform the image is an image manifest for it; for more than one
+  it is an index with one image manifest per platform. The image
+  holds every platform it names.
 - **The output.** The server sends each line the build's tool writes
   as one response, as a string, as the tool writes it. This
   specification prescribes nothing about the lines: a client shows

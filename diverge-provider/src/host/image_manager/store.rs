@@ -14,7 +14,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt as _;
 use tokio::sync::Mutex;
 
-use super::manifest::{Parsed, media_type};
+use super::manifest::{self, Parsed, media_type};
 use super::{Error, Pieces, pieces};
 use crate::config::images;
 use crate::host::image_registry::Digest;
@@ -22,6 +22,7 @@ use crate::protocol::image_source::Manifest;
 use diverge_sdk::identities::path_name;
 use diverge_sdk::provider::endpoints::images::list::server::response::Image;
 use diverge_sdk::shared::containers::oci::prove::proof::Prover;
+use diverge_sdk::shared::containers::request::Reference;
 use diverge_sdk::shared::description::Description;
 
 /// One identity's ownership of one image,
@@ -41,6 +42,18 @@ pub struct Meta {
     /// for one pushed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub containerfile: Option<String>,
+    /// The platforms the image's manifest names, each once, in the
+    /// manifest's order: what the digest is for.
+    pub manifest_platforms: Vec<String>,
+    /// The platforms the owner holds of it: those of
+    /// `manifest_platforms` a build or a push brought in for this
+    /// owner, in the same order. What the record reaches is these
+    /// platforms' images and no other's.
+    pub platforms: Vec<String>,
+    /// Where the owner published it: each a registry and a repository
+    /// path there, each once, in the order they were published.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub references: Vec<Reference>,
 }
 
 /// A cache record, `cache/<algorithm>-<hex>.json`: an image a caller
@@ -93,7 +106,10 @@ struct Attempts {
 ///
 /// 1. An image reaches its manifest; an index, every manifest it
 ///    lists that the Store holds and what each of those reaches; an
-///    image manifest, its config and its layers.
+///    image manifest, its config and its layers. An ownership record
+///    reaches less: of an index, only the manifests of the platforms
+///    its owner holds — see [`Meta::platforms`] — so that a platform
+///    another owner pushed is kept by that owner's record alone.
 /// 2. A blob is kept while an ownership record's image, a cache
 ///    record's image, or an attempt in flight reaches it.
 /// 3. [`prune`](Store::prune) removes every other blob: after a
@@ -334,6 +350,18 @@ impl Store {
     /// `<algorithm>:<hex>` (see [`Store`], reachability rule 1): the
     /// manifest itself always, whether or not the Store holds it.
     pub async fn reach(&self, digest: &Digest) -> HashSet<String> {
+        self.reach_of(digest, None).await
+    }
+
+    /// What an ownership record of `digest` holding `platforms`
+    /// reaches: as [`reach`](Self::reach), but of an index only the
+    /// manifests of those platforms.
+    pub async fn reach_held(&self, digest: &Digest, platforms: &[String]) -> HashSet<String> {
+        self.reach_of(digest, Some(platforms)).await
+    }
+
+    /// The reach, of every platform the Store holds or of `held` only.
+    async fn reach_of(&self, digest: &Digest, held: Option<&[String]>) -> HashSet<String> {
         let mut reached = HashSet::from([digest.to_string()]);
         let Some(body) = self.read_blob(digest).await else {
             return reached;
@@ -341,6 +369,9 @@ impl Store {
         match Parsed::parse(&body) {
             Some(Parsed::Index(entries)) => {
                 for entry in entries {
+                    if held.is_some_and(|held| !held.contains(&entry.platform())) {
+                        continue;
+                    }
                     let Some(platform) = self.read_blob(&entry.descriptor.digest).await else {
                         continue;
                     };
@@ -360,11 +391,11 @@ impl Store {
         reached
     }
 
-    /// The bytes an image reaches, each blob once: what its record's
-    /// `bytes` says.
-    pub async fn image_bytes(&self, digest: &Digest) -> u64 {
+    /// The bytes an image reaches for an owner holding `platforms` of
+    /// it, each blob once: what its record's `bytes` says.
+    pub async fn image_bytes(&self, digest: &Digest, platforms: &[String]) -> u64 {
         let mut total = 0;
-        for blob in self.reach(digest).await {
+        for blob in self.reach_held(digest, platforms).await {
             if let Some(parsed) = Digest::parse(&blob) {
                 total += self.blob_size(&parsed).await.unwrap_or(0);
             }
@@ -372,8 +403,10 @@ impl Store {
         total
     }
 
-    /// Every image an ownership record or a cache record names.
-    async fn roots(&self, with_cache: bool) -> Result<Vec<Digest>, Error> {
+    /// Every image an ownership record or a cache record names, with
+    /// the platforms an ownership record holds of it; `None` for a
+    /// cache record, which reaches whatever the Store holds.
+    async fn roots(&self, with_cache: bool) -> Result<Vec<(Digest, Option<Vec<String>>)>, Error> {
         let mut roots = Vec::new();
         let mut issuers = match fs::read_dir(self.images.join("owners")).await {
             Ok(issuers) => Some(issuers),
@@ -387,12 +420,17 @@ impl Store {
                     Err(_) => continue,
                 };
                 while let Some(subject) = subjects.next_entry().await? {
-                    roots.extend(record_digests(subject.path()).await?);
+                    for digest in record_digests(subject.path()).await? {
+                        // A record that does not read reaches what the
+                        // Store holds: nothing is pruned on a doubt.
+                        let held = read_record::<Meta>(subject.path().join(record_file(&digest))).await.ok().flatten().map(|meta| meta.platforms);
+                        roots.push((digest, held));
+                    }
                 }
             }
         }
         if with_cache {
-            roots.extend(record_digests(self.cache_dir()).await?);
+            roots.extend(record_digests(self.cache_dir()).await?.into_iter().map(|digest| (digest, None)));
         }
         Ok(roots)
     }
@@ -409,8 +447,8 @@ impl Store {
         let files = self.blob_files().await?;
         let attempts = self.attempts.lock().await;
         let mut kept: HashSet<String> = attempts.pins.values().flatten().cloned().collect();
-        for root in self.roots(true).await? {
-            kept.extend(self.reach(&root).await);
+        for (root, held) in self.roots(true).await? {
+            kept.extend(self.reach_of(&root, held.as_deref()).await);
         }
         for (digest, path, _) in files {
             if !kept.contains(&digest) {
@@ -439,8 +477,8 @@ impl Store {
     pub async fn room(&self) -> Result<u64, Error> {
         let files = self.blob_files().await?;
         let mut kept: HashSet<String> = self.attempts.lock().await.pins.values().flatten().cloned().collect();
-        for root in self.roots(false).await? {
-            kept.extend(self.reach(&root).await);
+        for (root, held) in self.roots(false).await? {
+            kept.extend(self.reach_of(&root, held.as_deref()).await);
         }
         let held: u64 = files.iter().filter(|(digest, _, _)| kept.contains(digest)).map(|(_, _, size)| size).sum();
         Ok(self.capacity.saturating_sub(held))
@@ -532,6 +570,32 @@ impl Store {
         Ok(Some(true))
     }
 
+    /// The identity's record of `digest` changed by `change`, and the
+    /// record as it is after: `None` where it owns no such image. The
+    /// reading and the writing are one step under the records' lock.
+    pub async fn amend(&self, client_identity: &Identity, digest: &Digest, change: impl FnOnce(&mut Meta)) -> Result<Option<Meta>, Error> {
+        let _records = self.records.lock().await;
+        let path = self.owner_dir(client_identity).join(record_file(digest));
+        let Some(mut meta) = read_record::<Meta>(path.clone()).await? else {
+            return Ok(None);
+        };
+        change(&mut meta);
+        write_record(&path, &meta).await?;
+        Ok(Some(meta))
+    }
+
+    /// The platforms the manifest under `digest` names: an index's
+    /// entries', or the one an image manifest's config states. `None`
+    /// for a manifest the Store does not hold or cannot read, or an
+    /// image manifest whose config it does not hold.
+    pub async fn manifest_platforms(&self, digest: &Digest) -> Option<Vec<String>> {
+        let body = self.read_blob(digest).await?;
+        match Parsed::parse(&body)? {
+            Parsed::Index(entries) => Some(manifest::named(&entries)),
+            Parsed::Image { config, .. } => Some(vec![manifest::config_platform(&self.read_blob(&config.digest).await?)?]),
+        }
+    }
+
     /// Every image the identity owns, as a listing reports them.
     pub async fn list(&self, client_identity: &Identity) -> Result<Vec<Image>, Error> {
         let dir = self.owner_dir(client_identity);
@@ -540,26 +604,21 @@ impl Store {
             let Some(meta) = read_record::<Meta>(dir.join(record_file(&digest))).await? else {
                 continue;
             };
-            images.push(Image {
-                digest: digest.to_string(),
-                description: meta.description,
-                bytes: meta.bytes,
-                created: meta.created,
-            });
+            images.push(meta.image(&digest));
         }
         Ok(images)
     }
 
     /// Whether any identity owns `digest`.
     pub async fn owned_by_anyone(&self, digest: &Digest) -> Result<bool, Error> {
-        Ok(self.roots(false).await?.contains(digest))
+        Ok(self.roots(false).await?.iter().any(|(root, _)| root == digest))
     }
 
     /// A cache record of `digest` written, unless an identity owns it
     /// — a record of its own keeps its blobs already.
     pub async fn cache(&self, digest: &Digest) -> Result<(), Error> {
         let _records = self.records.lock().await;
-        if self.roots(false).await?.contains(digest) {
+        if self.roots(false).await?.iter().any(|(root, _)| root == digest) {
             return Ok(());
         }
         write_record(&self.cache_dir().join(record_file(digest)), &Cached { created: now() }).await
@@ -615,6 +674,21 @@ impl Store {
             }
         }
         Ok(Some(prover.finish()))
+    }
+}
+
+impl Meta {
+    /// The record as a listing reports the image under `digest`.
+    pub fn image(&self, digest: &Digest) -> Image {
+        Image {
+            digest: digest.to_string(),
+            description: self.description.clone(),
+            bytes: self.bytes,
+            created: self.created,
+            manifest_platforms: self.manifest_platforms.clone(),
+            platforms: self.platforms.clone(),
+            references: self.references.clone(),
+        }
     }
 }
 

@@ -1,12 +1,12 @@
 ---
 title: 'images::read'
-summary: 'Tag 20: a client names exactly one image by digest and by zero or more references and asks whether the server can supply it; the server sends exactly one response stating that it holds the image, that it does not, that it has neither a Store nor any registry, or an error; after the held answer the scope stays open, and the server answers on channels the client opens the manifests and blobs the image reaches, the proof of Possession over it and its /.diverge/DIVERGE.md, until the client cancels or its connection ends and the response finish follows.'
-order: 20
+summary: 'Tag 22: a client names exactly one image by digest and by zero or more references and asks whether the server can supply it; the server sends exactly one response stating that it holds the image, that it does not, that it has neither a Store nor any registry, or an error; after the held answer the scope stays open, and the server answers on channels the client opens the manifests and blobs the image reaches, the proof of Possession over it and its /.diverge/DIVERGE.md, until the client cancels or its connection ends and the response finish follows.'
+order: 22
 draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
-`20` followed by exactly one image, named by its digest and by zero or
+`22` followed by exactly one image, named by its digest and by zero or
 more references. The request is the question whether the server can
 supply that image. The server sends exactly one response on the main
 stream, which states that the server holds the image, that it does

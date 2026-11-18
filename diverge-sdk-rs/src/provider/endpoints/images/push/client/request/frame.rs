@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::shared::containers::request::Image;
 use crate::shared::description::Description;
+use crate::shared::platform;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
@@ -48,9 +49,29 @@ pub struct Frame {
     pub image: Image,
     /// What the caller says of the image, at most 132 characters;
     /// absent for nothing. Not written over an image the caller owns
-    /// already, which is `Exists`.
+    /// already, whose description an edit changes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<Description>,
+    /// The platforms to hold of it: one or more, each once, each a
+    /// [platform string](crate::shared::platform::of). Required, and a
+    /// list that is empty does not decode. The rules:
+    ///
+    /// 1. **Each is in the image.** For an index, each is the platform
+    ///    of one of its entries; for an image that is not an index,
+    ///    the list is exactly the one platform its config states. A
+    ///    platform that is not there is
+    ///    [`PlatformNotFound`](crate::provider::endpoints::images::push::server::response::Frame::PlatformNotFound).
+    /// 2. **All, or none.** Every platform named is fetched and
+    ///    verified, or the push fails and the Store is as it was.
+    /// 3. **Held, runnable or not.** A provider holds a platform it
+    ///    could not run.
+    /// 4. **Added to what is held.** For a digest the caller owns
+    ///    already, the platforms named that are not held yet are
+    ///    fetched, and the image holds them from then on:
+    ///    [`Pushed`](crate::provider::endpoints::images::push::server::response::Frame::Pushed).
+    ///    It is `Exists` only when every platform named was held.
+    #[serde(deserialize_with = "platform::some")]
+    pub platforms: Vec<String>,
 }
 
 /// This frame's tag among the scope-opening requests.

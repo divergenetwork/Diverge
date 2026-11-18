@@ -53,8 +53,8 @@ define.
 
 | Member | Type | Absent | Governs |
 |--------|------|--------|---------|
-| `containers` | boolean | `false` | [containers::agents::run](/endpoints/containers-agents-run/) and [containers::tools::run](/endpoints/containers-tools-run/) |
-| `images` | object, [the images object](#images) | the object of no member: no Store and no registry | the seven image endpoints, and the `Store` and `Registry` sources of a run |
+| `containers` | object, [the containers object](#containers) | no object: the server runs no container | [containers::agents::run](/endpoints/containers-agents-run/) and [containers::tools::run](/endpoints/containers-tools-run/) |
+| `images` | object, [the images object](#images) | the object of no member: no Store and no registry | the nine image endpoints, and the `Store` and `Registry` sources of a run |
 | `volumes_persistent` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the eleven volume endpoints, and the volume mounts of the two runs, for a volume whose `mode` is `persistent` |
 | `volumes_ephemeral` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the same, for a volume whose `mode` is `ephemeral` |
 | `volumes_read_only` | object, [the mode object](#the-mode-object) | every member `false`: no volume of the mode | the same, for a volume whose `mode` is `read_only` |
@@ -67,6 +67,23 @@ The object is defined by
 ```
 
 ## `containers`
+
+The value of `containers` is one JSON object of exactly one member,
+`platforms`. A server holds out `containers` when it sends the
+object. A server that sends no such object does not hold it out.
+
+- **`platforms`.** An array of one or more strings, each a platform
+  in the form the `platforms` of an
+  [images::build request](/endpoints/images-build/request/) has, none
+  appearing twice: the platforms of the containers the server runs.
+  A server that holds out `containers` sends at least one.
+- **A run names no platform.** Neither run request carries a
+  platform. For a run whose image is an index, the server runs an
+  image manifest of the index whose platform is among `platforms`;
+  which one, where the index has more than one, is the server's
+  choice. A run whose image has no platform among `platforms` is
+  refused as the page of the run states for an image the server does
+  not run.
 
 The server runs containers: the agent containers of
 [containers::agents::run](/endpoints/containers-agents-run/) and the
@@ -107,7 +124,7 @@ define.
 | Member | Type | Absent | Governs |
 |--------|------|--------|---------|
 | `store` | object, [the store object](#imagesstore) | no object: the server keeps no Store | [images::list](/endpoints/images-list/), [images::stat](/endpoints/images-stat/), [images::build](/endpoints/images-build/), [images::push](/endpoints/images-push/), [images::edit](/endpoints/images-edit/), [images::delete](/endpoints/images-delete/), the client's Store as a source of [images::read](/endpoints/images-read/), and the `Store` source of a run |
-| `registries` | array of strings | `[]` | the registries as a source of [images::read](/endpoints/images-read/), and the `Registry` source of a run and of an [images::push](/endpoints/images-push/) |
+| `registries` | array of strings | `[]` | the registries as a source of [images::read](/endpoints/images-read/), the `Registry` source of a run and of an [images::push](/endpoints/images-push/), and the registries an [images::publish](/endpoints/images-publish/) writes to |
 
 This page writes `images.store` for the member `store` of the object
 `images`, and `images.registries` for its member `registries`.
@@ -115,22 +132,28 @@ This page writes `images.store` for the member `store` of the object
 ## `images.store`
 
 The value of `images.store` is one JSON object of at most one member,
-`build`, a boolean. A server holds out `images.store` when it sends
+`build`, an object. A server holds out `images.store` when it sends
 the object, whatever the object's members. A server that sends no
 such object does not hold it out.
 
-- **`build`.** A boolean. The value `true` states that the server
-  builds: it serves [images::build](/endpoints/images-build/) as its
-  page states. An absent `build` is `false`.
-- **`build` is `false`.** The server holds out `images.store` and does
+- **`build`.** One JSON object of exactly one member, `platforms`: an
+  array of one or more strings, each a platform in the form the
+  `platforms` of an
+  [images::build request](/endpoints/images-build/request/) has, none
+  appearing twice. The object states that the server builds, and
+  `platforms` states every platform it builds an image for: it
+  serves [images::build](/endpoints/images-build/) as its page
+  states, and answers a request naming any other platform with the
+  byte `7` alone.
+- **`build` is absent.** The server holds out `images.store` and does
   not build. The server answers an
   [images::build](/endpoints/images-build/) request with exactly one
   response, the byte `5` and nothing else, and the response finish; it
   sends no line of output before it, holds no volume and builds
   nothing. Every other requirement of this section holds for the
-  server as it does for one whose `build` is `true`: it serves
-  images::list, images::stat, images::push, images::edit and
-  images::delete, and the client's Store is a source of images::read
+  server as it does for one that sends `build`: it serves
+  images::list, images::stat, images::push, images::merge,
+  images::publish, images::edit and images::delete, and the client's Store is a source of images::read
   and of a run.
 
 The server keeps the Store: for each client, the images the client
@@ -143,8 +166,10 @@ endpoints define.
 
 - **Held out.** The server serves [images::list](/endpoints/images-list/),
   [images::stat](/endpoints/images-stat/),
-  [images::build](/endpoints/images-build/) where `build` is `true`,
+  [images::build](/endpoints/images-build/) where it sends `build`,
   [images::push](/endpoints/images-push/),
+  [images::merge](/endpoints/images-merge/),
+  [images::publish](/endpoints/images-publish/),
   [images::edit](/endpoints/images-edit/),
   and [images::delete](/endpoints/images-delete/) as their pages
   state; the client's Store is a source from which the server answers
@@ -166,6 +191,13 @@ endpoints define.
     one response, the byte `7` and nothing else, and the response
     finish; it sends no blob response before it, opens no channel and
     obtains nothing;
+  - an [images::merge](/endpoints/images-merge/) request with exactly
+    one response, the byte `6` and nothing else, and the response
+    finish; it makes nothing;
+  - an [images::publish](/endpoints/images-publish/) request with
+    exactly one response, the byte `8` and nothing else, and the
+    response finish; it sends no blob response before it and asks
+    nothing of any registry;
   - an [images::edit](/endpoints/images-edit/) request with exactly
     one response, the byte `2` and nothing else, and the response
     finish;

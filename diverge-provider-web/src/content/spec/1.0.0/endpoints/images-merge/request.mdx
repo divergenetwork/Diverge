@@ -1,0 +1,49 @@
+---
+title: 'Request'
+summary: 'The payload is the tag byte 18 followed by the parts, each a digest and one or more platforms, and the optional description, in the postcard wire format.'
+order: 1
+draft: false
+---
+
+The payload of the request is the tag byte followed by the request in
+the postcard wire format, as the postcard reading of
+[Notation](/endpoints/#notation) provides:
+
+```text
+[18][parts: varint][part …]…[0]
+[18][parts: varint][part …]…[1][description_len: varint][description: utf8 …]
+
+part:  [digest_len: varint][digest: utf8 …][platforms: varint][platform_len: varint][platform: utf8 …]…
+```
+
+- **`images`.** A varint count followed by that many parts, in the
+  order the client gives them. The order has no effect on the image
+  made.
+- **`digest`.** Of each part: the manifest digest of an image in the
+  client's Store, UTF-8, of the form `<algorithm>:<hex>`, preceded by
+  its byte length as a varint.
+- **`platforms`.** Of each part: a varint count, at least `1`,
+  followed by that many platforms, each in the form the `platforms`
+  of an [images::build request](/endpoints/images-build/request/)
+  has, none appearing twice within the part. A part with no platform
+  does not decode.
+- **`description`.** One byte: `0`, the new image has no description;
+  or `1`, followed by the description, UTF-8, preceded by its byte
+  length as a varint. The description is a description as
+  [The description](/endpoints/daemons-announce/request/#the-description) defines it.
+- **Bytes after the request.** A server ignores every byte that
+  follows the `description` field.
+- **Malformed.** A payload with no byte, a payload whose first byte
+  is not `18`, and a payload whose bytes after the tag do not decode
+  as the request are malformed. [Endpoints](/endpoints/) states how a
+  server answers a request it cannot read.
+
+The request is defined by `diverge-sdk-rs/src/provider/endpoints/images/merge/client/request/frame.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/merge/client/request/frame.rs
+```
+
+and one part by `diverge-sdk-rs/src/provider/endpoints/images/merge/client/request/part.rs`:
+
+```rust include=diverge-sdk-rs/src/provider/endpoints/images/merge/client/request/part.rs
+```

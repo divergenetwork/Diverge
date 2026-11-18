@@ -87,7 +87,7 @@ pub(crate) async fn run<R, D, V>(
 {
     let scope = Arc::new(scope);
 
-    if !capabilities.containers {
+    if capabilities.containers.is_none() {
         send(&scope, R::unsupported()).await;
         scope.send_response_finish().await;
         return;

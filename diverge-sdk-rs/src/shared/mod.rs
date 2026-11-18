@@ -65,6 +65,7 @@ pub mod listing;
 pub mod mcp;
 pub mod nullable;
 pub mod permission;
+pub mod platform;
 pub mod relay;
 
 mod identity;

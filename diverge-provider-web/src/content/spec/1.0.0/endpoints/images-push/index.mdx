@@ -101,6 +101,31 @@ finish.
     server does not take, and a manifest or a blob whose bytes do not
     match its digest or its declared size are answered by the byte
     `6`.
+- **The platforms.** The request names one or more platforms, and
+  the image in the client's Store holds exactly those and the ones
+  it held before. For an image that is an index, each platform named
+  is the platform of one or more entries of the index, and the server
+  takes the image manifest, the config and the layers of every such
+  entry. For an image that is not an index, the request names
+  exactly the one platform the image's config states. A platform
+  named that the image does not have is answered with the byte `9`
+  alone. The server takes every platform named or none: a request
+  that ends with any response other than the byte `1` adds no
+  platform. The server holds a platform whether or not it is among
+  the `platforms` of its [`containers`](/capabilities/#containers)
+  capability.
+- **An image owned already.** When the client's Store holds the
+  digest and holds every platform the request names, the server
+  answers with the byte `2` and nothing moves. When it holds the
+  digest and lacks a platform the request names, the server takes
+  the platforms it lacks as this page provides and answers with the
+  byte `1`; the image then holds them as well, and every
+  [images::list](/endpoints/images-list/) scope the client holds open
+  that was sent the image as added is sent it as changed. The
+  description of the request is not written over the image's.
+- **The proof.** Where the client supplies the image, the server
+  makes the nonce check once for each image manifest it took, naming
+  that manifest as the proof's platform where the image is an index.
 - **The image is the digest.** The image the server keeps is the
   image the digest of the request names, and the source answered is
   the source from which the server obtained it. A push never has the

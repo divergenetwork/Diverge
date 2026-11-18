@@ -13,15 +13,16 @@ draft: false
 [4]                                                      once, alone: something holds the context volume
 [5]                                                      once, alone: the server keeps no Store
 [6][error JSON …]                                        once: an error
+[7]                                                      once, alone: a platform the server does not build for
 ```
 
 - **The sequence.** Zero or more responses of the byte `0`, each
   followed by one line; then exactly one response whose first byte
-  is `1`, `2`, `3`, `4`, `5` or `6`; then the response finish. No
+  is `1`, `2`, `3`, `4`, `5`, `6` or `7`; then the response finish. No
   response follows that response. No response of the byte `0`
-  precedes a response of the byte `4` or `5`: each is the only
+  precedes a response of the byte `4`, `5` or `7`: each is the only
   response of its scope. A response finish that no response of the
-  byte `1` to `6` precedes states that the request was not served, as
+  byte `1` to `7` precedes states that the request was not served, as
   [Endpoints](/endpoints/) provides; whether an image entered the
   client's Store is then not stated, and the client learns it from an
   [images::list](/endpoints/images-list/) scope.
@@ -62,8 +63,7 @@ draft: false
 - **Unsupported.** A payload that is the byte `5` and nothing else
   states that the server holds out no
   [`images.store`](/capabilities/#imagesstore) capability and keeps
-  no Store, or holds it out with no `build` of the value `true` and
-  does not build, as [Capabilities](/capabilities/) provides. It is the only
+  no Store, or holds it out with no `build` and does not build, as [Capabilities](/capabilities/) provides. It is the only
   response of the scope, sent before anything is looked up; bytes
   after it are not read.
 - **The error.** A payload whose first byte is `6` carries an error
@@ -74,8 +74,15 @@ draft: false
   states that nothing entered the client's Store as a result of the
   request, and that the reason is neither capacity, nor an owned
   digest, nor the context's hold.
+- **Platform unsupported.** A payload that is the byte `7` and
+  nothing else states that a platform the request names is not one
+  the server builds for: it is not among the `platforms` of the
+  server's [`images.store.build`](/capabilities/#imagesstore). It is
+  the only response of the scope, sent before the context is held
+  and before anything is built, and nothing entered the client's
+  Store.
 - **Malformed.** A payload with no byte, a payload whose first byte
-  is none of `0` to `6`, a payload whose bytes after `0` do not
+  is none of `0` to `7`, a payload whose bytes after `0` do not
   decode as one string, a payload whose bytes after `1` do not decode
   as the digest and the size, a payload whose bytes after `2` do not
   decode as the digest, and a payload whose bytes after `6` are not

@@ -47,5 +47,7 @@
 //! through this module and not through the file it lives in.
 
 mod registry_client;
+mod writer;
 
 pub use registry_client::*;
+pub use writer::*;

@@ -83,7 +83,7 @@ fn ratio(room: u64, need: u64) -> u128 {
 /// 2. The provider mounts a volume of every mode in
 ///    [`volume_modes`](Needs::volume_modes).
 pub fn check(info: &Info, needs: &Needs) -> Result<(), String> {
-    if !info.capabilities.containers {
+    if info.capabilities.containers.is_none() {
         return Err("the provider runs no containers".to_string());
     }
     for mode in &needs.volume_modes {

@@ -1,6 +1,6 @@
 ---
 title: 'Endpoints'
-summary: 'A request’s payload begins with one tag byte designating the endpoint; twenty-nine endpoints are defined, and a request the server cannot read is answered by a bare response finish.'
+summary: 'A request’s payload begins with one tag byte designating the endpoint; thirty-one endpoints are defined, and a request the server cannot read is answered by a bare response finish.'
 order: 8
 draft: false
 ---
@@ -30,17 +30,19 @@ endpoint's request content, in the form the endpoint defines.
 | `15` | [images::stat](/endpoints/images-stat/) |
 | `16` | [images::build](/endpoints/images-build/) |
 | `17` | [images::push](/endpoints/images-push/) |
-| `18` | [images::edit](/endpoints/images-edit/) |
-| `19` | [images::delete](/endpoints/images-delete/) |
-| `20` | [images::read](/endpoints/images-read/) |
-| `21` | [info](/endpoints/info/) |
-| `22` | [capacity](/endpoints/capacity/) |
-| `23` | [daemons::accept](/endpoints/daemons-accept/) |
-| `24` | [daemons::connect](/endpoints/daemons-connect/) |
-| `25` | [daemons::list](/endpoints/daemons-list/) |
-| `26` | [daemons::listen](/endpoints/daemons-listen/) |
-| `27` | [daemons::message](/endpoints/daemons-message/) |
-| `28` | [daemons::announce](/endpoints/daemons-announce/) |
+| `18` | [images::merge](/endpoints/images-merge/) |
+| `19` | [images::publish](/endpoints/images-publish/) |
+| `20` | [images::edit](/endpoints/images-edit/) |
+| `21` | [images::delete](/endpoints/images-delete/) |
+| `22` | [images::read](/endpoints/images-read/) |
+| `23` | [info](/endpoints/info/) |
+| `24` | [capacity](/endpoints/capacity/) |
+| `25` | [daemons::accept](/endpoints/daemons-accept/) |
+| `26` | [daemons::connect](/endpoints/daemons-connect/) |
+| `27` | [daemons::list](/endpoints/daemons-list/) |
+| `28` | [daemons::listen](/endpoints/daemons-listen/) |
+| `29` | [daemons::message](/endpoints/daemons-message/) |
+| `30` | [daemons::announce](/endpoints/daemons-announce/) |
 
 The tag values are normative as tabulated. Each endpoint has its own
 section. Every section of this layer states requirements of the

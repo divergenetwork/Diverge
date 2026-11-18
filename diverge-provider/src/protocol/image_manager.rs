@@ -8,11 +8,14 @@ use futures_util::Stream;
 
 use super::context::Context;
 use super::image_source::ImageSource;
-use super::progress::{Progress, Pushing};
+use super::progress::{Merging, Progress, Publishing, Pushing};
 use diverge_sdk::provider::endpoints::images::delete::server::response::Deletion;
 use diverge_sdk::provider::endpoints::images::list::server::response::Image;
+use diverge_sdk::provider::endpoints::images::merge::client::request::Part;
+use diverge_sdk::provider::endpoints::images::publish::client::request::Credential;
 use diverge_sdk::provider::endpoints::images::stat::server::response::Stat;
 use diverge_sdk::shared::containers::request::Image as Wanted;
+use diverge_sdk::shared::containers::request::Reference;
 use diverge_sdk::shared::description::Description;
 
 /// The Store: one per caller, of the images it owns, each by its
@@ -119,15 +122,46 @@ pub trait ImageManager: Send + Sync {
     /// Take the image `image` names into this caller's Store, with
     /// `description`: from a registry the provider uses when one
     /// serves it, else from the caller through `source`, ending with
-    /// the nonce check. The order and the answers are the endpoint's —
+    /// the nonce check, holding the `platforms` named of it. The order and the answers are the endpoint's —
     /// see [`push`](diverge_sdk::provider::endpoints::images::push).
     fn push(
         &self,
         client_identity: &Identity,
         image: &Wanted,
         description: Option<&Description>,
+        platforms: &[String],
         source: ImageSource,
     ) -> impl Future<Output = Self::Push> + Send;
+
+    /// Make one image of the platforms `parts` name, each taken from
+    /// an image the caller holds, with `description`, and own it. How
+    /// it ended is the [`Merging`]; [`Err`] is the Store as it was.
+    /// See [`merge`](diverge_sdk::provider::endpoints::images::merge).
+    fn merge(
+        &self,
+        client_identity: &Identity,
+        parts: &[Part],
+        description: Option<&Description>,
+    ) -> impl Future<Output = Result<Merging, Self::Error>> + Send;
+
+    /// What [`publish`](Self::publish) hands back: every blob the
+    /// registry took, then exactly one end — see [`Publishing`] — or
+    /// the provider's error. `'static`, since the handler polls it for
+    /// the publish's life.
+    type Publish: Stream<Item = Result<Publishing, Self::Error>> + Send + 'static;
+
+    /// Send the caller's image under `digest` to the repository
+    /// `reference` names, with `tags`, writing as `credential`. The
+    /// order and the answers are the endpoint's — see
+    /// [`publish`](diverge_sdk::provider::endpoints::images::publish).
+    fn publish(
+        &self,
+        client_identity: &Identity,
+        digest: &str,
+        reference: &Reference,
+        tags: &[String],
+        credential: Option<&Credential>,
+    ) -> impl Future<Output = Self::Publish> + Send;
 
     /// The description of the caller's image under `digest` set, or
     /// cleared with `None`. [`None`] is a digest the caller owns no

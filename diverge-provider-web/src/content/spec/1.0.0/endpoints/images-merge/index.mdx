@@ -1,0 +1,61 @@
+---
+title: 'images::merge'
+summary: 'Tag 18: a client names images of its Store and, for each, the platforms to take from it; the server writes one new image, an index over exactly those platforms, and sends exactly one response stating that the image is in the client’s Store, that the client owned its digest already, a refusal, or an error, and the scope finishes.'
+order: 18
+draft: false
+---
+
+A client opens the scope with a request whose payload is the tag byte
+`18` followed by one or more parts, each the digest of an image and
+the platforms to take from it, and a description, or none. The server
+sends exactly one response, which states that a new image over
+exactly those platforms is in the client's Store, that the client
+owned the digest of that image already, a refusal, or an error. The
+response finish follows the response, and no frame follows the
+finish.
+
+- **The request.** [Request](/endpoints/images-merge/request/) states
+  its form.
+- **The image made.** The server writes one index. Its entries are
+  exactly the image manifests of the platforms the request names: for
+  a part whose image is an index, every entry of that index whose
+  platform the part names; for a part whose image is not an index,
+  the image itself. Each entry carries the digest, the size and the
+  media type of its image manifest and its platform. The new image is
+  named by the digest of the index and is in the client's Store,
+  holding every platform it names.
+- **One form.** The index is an OCI image index. Its entries are in
+  the order of their platforms and, within one platform, of their
+  digests. The same platforms of the same images produce the same
+  index, and so the same digest, on every server.
+- **Nothing else changes.** The server changes no image the request
+  names and copies no layer: the new image reaches the blobs the
+  images it was made from reach.
+- **Each source is the client's.** The server resolves every digest
+  against the Store of the identity under which the connection was
+  authorized, as [Authorization](/authorization/) provides. A digest
+  of no image in the client's Store is answered with the byte `2`
+  alone, and nothing is made.
+- **Each platform is held.** A platform a part names that the image
+  of that part does not hold — a platform absent from the `platforms`
+  the client's [images::list](/endpoints/images-list/) listing gives
+  for it — is answered with the byte `3` alone, and nothing is made.
+- **Each platform once.** A platform named by two parts is answered
+  with the byte `4` alone, and nothing is made. Two parts may name
+  images that hold the same platform; the platforms each part names
+  state which is taken.
+- **Exists.** When the digest of the index is the digest of an image
+  the client's Store holds, the server answers with the byte `1`
+  followed by the digest, and nothing is added.
+- **Insufficient capacity.** When the Store has no room for the
+  index, the server answers with the byte `5` alone, and nothing is
+  made.
+- **The listing.** From the moment the server sends the byte `0`,
+  every [images::list](/endpoints/images-list/) scope the client opens
+  lists the new image, and every list scope the client holds open is
+  sent it as added.
+- **No Store.** A server that holds out no
+  [`images.store`](/capabilities/#imagesstore) capability keeps no
+  Store and answers every request of this endpoint with exactly one
+  response, the byte `6` alone, and the response finish, before
+  anything is looked up.

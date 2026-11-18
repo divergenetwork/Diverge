@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{ImagesCapabilities, MessagesCapabilities, VolumeCapabilities};
+use super::{ContainersCapabilities, ImagesCapabilities, MessagesCapabilities, VolumeCapabilities};
 use crate::provider::endpoints::volumes::Mode;
 
 /// Which of the specification's optional parts this provider serves.
@@ -21,10 +21,10 @@ use crate::provider::endpoints::volumes::Mode;
 ///
 /// # Flat, and tolerant
 ///
-/// One object, every member at the top, each a boolean, an object of
-/// booleans, or an object of its own: `images`, whose object says
-/// whether there is a Store, what the Store does and which registries
-/// are pulled from; the three volume modes, whose object says what
+/// One object, every member at the top, each an object of booleans
+/// or an object of its own: `containers`, whose object names the
+/// platforms run; `images`, whose object says whether there is a
+/// Store, what the Store does and which registries are pulled from; the three volume modes, whose object says what
 /// may be done with a volume of the mode; and `messages`, whose
 /// object is its rate. A member absent is the capability
 /// absent — `false`, the empty list, the object of every member
@@ -51,15 +51,16 @@ use crate::provider::endpoints::volumes::Mode;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Capabilities {
-    /// The provider runs containers: it answers
+    /// The provider runs containers, and for which platforms: it
+    /// answers
     /// [`containers::agents::run`](crate::provider::endpoints::containers::agents::run)
     /// and
     /// [`containers::tools::run`](crate::provider::endpoints::containers::tools::run).
-    /// Absent — `false` — each answers `Unsupported`, the first and
-    /// only response of its scope, and nothing is fetched and nothing
-    /// is deployed.
-    #[serde(default)]
-    pub containers: bool,
+    /// See [`ContainersCapabilities`]. Absent — no object — each
+    /// answers `Unsupported`, the first and only response of its
+    /// scope, and nothing is fetched and nothing is deployed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub containers: Option<ContainersCapabilities>,
     /// What the provider does with images: whether it keeps a Store,
     /// whether its Store builds, and the registries it pulls from. See
     /// [`ImagesCapabilities`]. Absent — the object of no member — it

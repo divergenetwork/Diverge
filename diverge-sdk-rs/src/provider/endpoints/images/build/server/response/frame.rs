@@ -16,13 +16,16 @@ use crate::shared::error::Error;
 /// tool wrote, as it wrote them; then exactly one of
 /// [`Built`](Self::Built), [`Exists`](Self::Exists),
 /// [`InsufficientCapacity`](Self::InsufficientCapacity),
-/// [`ContextHeld`](Self::ContextHeld), [`Unsupported`](Self::Unsupported)
-/// and [`Error`](Self::Error); then the finish, and nothing after it.
+/// [`ContextHeld`](Self::ContextHeld), [`Unsupported`](Self::Unsupported),
+/// [`Error`](Self::Error) and
+/// [`PlatformUnsupported`](Self::PlatformUnsupported); then the
+/// finish, and nothing after it.
 /// A payload leads with one byte saying which — `0` for `Output`,
 /// `1` for `Built`, `2` for `Exists`, `3` for `InsufficientCapacity`,
-/// `4` for `ContextHeld`, `5` for `Unsupported`, `6` for `Error` — and
-/// the rest is that variant's own bytes; the three bare refusals
-/// carry nothing, and come with no output before them.
+/// `4` for `ContextHeld`, `5` for `Unsupported`, `6` for `Error`, `7`
+/// for `PlatformUnsupported` — and the rest is that variant's own
+/// bytes; the four bare refusals carry nothing, and come with no
+/// output before them.
 ///
 /// | the scope ends with | means |
 /// |----------------------|-------|
@@ -31,6 +34,7 @@ use crate::shared::error::Error;
 /// | [`InsufficientCapacity`](Self::InsufficientCapacity), then a finish | the Store has no room for it, and nothing exists |
 /// | [`ContextHeld`](Self::ContextHeld), then a finish | something holds the context volume, and nothing exists |
 /// | [`Unsupported`](Self::Unsupported), then a finish | the provider has no Store, or does not build, and nothing exists |
+/// | [`PlatformUnsupported`](Self::PlatformUnsupported), then a finish | the provider does not build for a platform named, and nothing exists |
 /// | an [`Error`](Self::Error), then a finish | it does not exist, for some other reason — a build that failed, a context refused — and the output before it says what the build said |
 ///
 /// # The refusals are answers, not errors
@@ -88,6 +92,14 @@ pub enum Frame {
     /// See [`shared::error::Error`](crate::shared::error::Error) for
     /// why it says so little; the output before it says more.
     Error(Error),
+    /// The provider does not build for a platform the request names —
+    /// one its `images.store.build` does not list — and nothing
+    /// exists. Tag `7`.
+    ///
+    /// Carries nothing, and comes with no output before it. A caller
+    /// names the platforms the provider lists, or asks one that
+    /// builds for the others.
+    PlatformUnsupported,
 }
 
 /// Tag for [`Frame::Output`].
@@ -110,6 +122,9 @@ const UNSUPPORTED: u8 = 5;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 6;
+
+/// Tag for [`Frame::PlatformUnsupported`].
+const PLATFORM_UNSUPPORTED: u8 = 7;
 
 /// Two formats, and the tag chooses between them: a line, the image
 /// built and the image owned already are postcard, as the rest of the
@@ -152,6 +167,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out).map_err(FrameEncodeError::Error)
             }
+            Frame::PlatformUnsupported => {
+                out.extend_from_slice(&[PLATFORM_UNSUPPORTED]);
+                Ok(())
+            }
         }
     }
 }
@@ -171,6 +190,7 @@ impl Decode<'_> for Frame {
             CONTEXT_HELD => Ok(Frame::ContextHeld),
             UNSUPPORTED => Ok(Frame::Unsupported),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameDecodeError::Error),
+            PLATFORM_UNSUPPORTED => Ok(Frame::PlatformUnsupported),
             tag => Err(FrameDecodeError::UnknownTag(tag)),
         }
     }
@@ -212,7 +232,7 @@ impl std::error::Error for FrameEncodeError {
 pub enum FrameDecodeError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's seven.
+    /// A tag that is none of this frame's eight.
     UnknownTag(u8),
     /// The line did not parse.
     Output(postcard::Error),

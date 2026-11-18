@@ -98,6 +98,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
             volume_name: context.volume,
             volume_relative_path: context.path,
         }),
+        platforms: frame.platforms,
     };
     let mut said = match execute(&handle, &ask).await {
         Ok(said) => said,
@@ -117,6 +118,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
             Ok(Said::InsufficientCapacity) | Err(ExecuteStreamError::InsufficientCapacity) => return Ok(Frame::InsufficientCapacity),
             Ok(Said::ContextHeld) | Err(ExecuteStreamError::ContextHeld) => return Ok(Frame::ContextHeld),
             Ok(Said::Unsupported) | Err(ExecuteStreamError::Unsupported) => return Ok(Frame::Unsupported),
+            Ok(Said::PlatformUnsupported) | Err(ExecuteStreamError::PlatformUnsupported) => return Ok(Frame::PlatformUnsupported),
             Ok(Said::Error(error)) | Err(ExecuteStreamError::Refused(error)) => return Ok(Frame::Error(error)),
             Err(error) => return Ok(Frame::Error(reply::failure(&error))),
         }

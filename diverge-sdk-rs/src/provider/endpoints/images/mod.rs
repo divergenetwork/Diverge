@@ -9,13 +9,15 @@
 //!
 //! # The Store
 //!
-//! The other six are the Store: the images a caller owns on the
+//! The other eight are the Store: the images a caller owns on the
 //! provider, each by its digest alone, with a description the caller
 //! may give it. [`list`] is the listing, kept open; [`stat`] examines
 //! one; [`build`] makes one from a Containerfile, streaming what the
 //! build says as it goes; [`push`] takes one already built, from a
-//! registry the provider uses or from the caller; [`edit`] changes
-//! its description; [`delete`] destroys one. The rules:
+//! registry the provider uses or from the caller; [`merge`] makes one
+//! of the platforms of several; [`publish`] sends one to a registry;
+//! [`edit`] changes its description; [`delete`] destroys one. The
+//! rules:
 //!
 //! 1. **By digest.** An image in the Store is named by its manifest
 //!    digest and by nothing else. A caller owns a digest once.
@@ -32,6 +34,33 @@
 //!    own, and a blob several owners' images reach is the same blob;
 //!    a caller's delete removes its ownership, and the bytes go when
 //!    nothing reaches them.
+//!
+//! # Platforms
+//!
+//! An image is for one platform or for several, and a
+//! [platform](crate::shared::platform::of) is a string: `linux/amd64`,
+//! `linux/arm64`. The rules:
+//!
+//! 1. **What the manifest names, and what is held.** An image that is
+//!    an index names a platform per entry; one that is not names the
+//!    one its config states. The Store may hold fewer than the
+//!    manifest names, and a listing says both:
+//!    [`manifest_platforms`](list::server::response::Image::manifest_platforms)
+//!    and [`platforms`](list::server::response::Image::platforms).
+//! 2. **Named when an image comes in.** A [`build`] and a [`push`]
+//!    each name the platforms wanted, one or more. A push holds a
+//!    platform whether or not the provider could run it.
+//! 3. **A push adds.** A push of a digest the caller owns already
+//!    fetches the platforms named that are not held yet, and the image
+//!    holds more.
+//! 4. **Joined by a merge.** [`merge`] makes a new image of platforms
+//!    taken from several. Nothing else changes which platforms a
+//!    digest names: that is the digest.
+//! 5. **Whole when it goes out.** [`publish`] sends every platform the
+//!    manifest names, and refuses an image that holds fewer.
+//! 6. **Not named by a run.** A run names an image and no platform;
+//!    the provider runs one of the platforms its `containers`
+//!    capability lists that the image holds.
 //!
 //! # No eviction, and a capacity
 //!
@@ -57,7 +86,7 @@
 //!
 //! # Reading what the provider holds
 //!
-//! The seventh, [`read`], is the question whether the provider can
+//! The ninth, [`read`], is the question whether the provider can
 //! supply one image, and, where it can, everything read of it: a
 //! caller opens a scope on the provider naming one image, is answered
 //! held or not, and asks, on channels, for that image's manifests,
@@ -77,6 +106,8 @@ pub mod build;
 pub mod delete;
 pub mod edit;
 pub mod list;
+pub mod merge;
+pub mod publish;
 pub mod read;
 pub mod push;
 pub mod stat;

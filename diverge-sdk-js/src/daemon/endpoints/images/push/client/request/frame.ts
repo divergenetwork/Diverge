@@ -27,6 +27,8 @@ export const Frame = z.object({
   /** What the image is kept as in the Store, beside its digest: one short line. Absent, none. Not written over an image owned already. */
   description: Description.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
+  /** The platforms to hold of the image; every one must be a platform the image has: one or more, each once, each `os/architecture` such as `linux/amd64`. Required. */
+  platforms: z.array(z.string()).min(1),
   relay: Relay.optional(),
 });
 export type Frame = z.infer<typeof Frame>;

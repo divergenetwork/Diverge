@@ -7,7 +7,7 @@ draft: false
 
 ```text
 [0][image, postcard …]   per image added
-[1][image, postcard …]   per description edited, after the image was added
+[1][image, postcard …]   per image changed, after it was added
 [2][image, postcard …]   per image removed, after it was added
 [3]                      once, when the listing is whole
 [4]                      once, alone: the server keeps no Store
@@ -83,6 +83,26 @@ draft: false
 - **`created`.** The time at which the image entered the client's
   Store — the end of its build or of its push — in seconds since
   `1970-01-01T00:00:00Z`, unsigned.
+- **`manifest_platforms`.** The platforms the manifest of the image
+  names: a varint count followed by that many platforms, each UTF-8
+  preceded by its byte length as a varint. For an image that is an
+  index, the platform of each entry, each once, in the order of the
+  index; the platform of an entry is its `os`, `/`, its
+  `architecture` and, where it has a `variant`, `/` and the variant,
+  and an entry that states no `os` or no `architecture` has
+  `unknown` in its place. For an image that is not an index, the one
+  platform its config states. The value never changes for a digest.
+- **`platforms`.** The platforms of the image the client's Store
+  holds, in the same form and in the order of `manifest_platforms`.
+  Every platform in it is in `manifest_platforms`. The image is whole
+  when the two hold the same platforms.
+- **`references`.** The repositories the client published the image
+  to: a varint count followed by that many references, each two
+  strings, `registry` and `name`, each UTF-8 preceded by its byte
+  length as a varint, in the order of the publishes. No reference
+  appears twice. The count is `0` until an
+  [images::publish](/endpoints/images-publish/) request ends in the
+  byte `1`.
 - **Order.** The order of the images is not prescribed. A client
   reads nothing into the position of an image.
 - **A finish with nothing before it.** The request was not served, as

@@ -42,6 +42,9 @@ Every place that names an image (an agent template, a tool template, a dependenc
 
 ### The rule that trips everyone: references must name a registry the provider lists
 
+A run names no platform. The provider runs the platform of the image that it can run
+(`capabilities.containers.platforms`), and refuses an image that has none of them.
+
 Before the daemon asks a provider to run a container, it checks the provider's capabilities
 (`images.registries`, visible inside a connected record's `status` in `diverge run providers list`,
 under its `info`'s `capabilities`). A provider passes when
@@ -88,7 +91,7 @@ there. This is the only way to build one: the provider's container runtime is th
 an image put into it by any other means is not in the Store.
 
 ```bash
-diverge run images build '{
+diverge run images build --platform linux/amd64 '{
   "provider": {"issuer": "http://127.0.0.1:14981", "subject": "provider"},
   "containerfile": "FROM docker.io/library/alpine\nCOPY .diverge /.diverge\n",
   "description": "my image",
@@ -100,6 +103,10 @@ diverge run images build '{
 
 - **`provider`**: which provider builds and holds the image, by its identity (`diverge run providers list`).
 - **`containerfile`**: the Containerfile's whole text, not a path.
+- **`platforms`**: required, one or more, each `os/architecture` (`linux/amd64`, `linux/arm64`). Give it
+  as `--platform <OS/ARCH>`, once per platform, or as `"platforms":[…]` in the body. It must be a
+  platform the provider builds for: `capabilities.images.store.build.platforms` in
+  `diverge run providers list`. The default provider builds for its own machine's platform only.
 - **`context`**: a directory of a volume on that same provider, as `{"volume":"<name>","path":[…]}`. The
   Containerfile's `COPY` and `ADD` read from it. Omit it for a Containerfile that copies nothing.
 - **`description`**: optional, one short line (132 characters at most), kept beside the image.
@@ -108,6 +115,7 @@ diverge run images build '{
   - `{"exists":{"digest":…}}`: the build produced a digest already in the Store; nothing was added.
   - `"insufficient_capacity"`: the Store is full. `"context_held"`: something has the context volume to
     itself. `"unsupported"`: the provider has no Store (its `images` are not enabled).
+    `"platform_unsupported"`: the provider does not build for a platform named; nothing was built.
   - `"forbidden"`: no `build` grant over images reaching that provider, or no `mount` grant over the
     context volume. The grant is `{"images":{"actions":["build"],"within":"any"}}`, or narrowed to
     providers by identity or tag (see `diverge-access`).
@@ -131,8 +139,9 @@ diverge provider start
 
 The provider needs a Store to build into, and one that builds. In `diverge run providers list`, a
 connected provider's `capabilities.images.store` is an object when it keeps a Store, and that object's
-`build` is `true` when it builds: `"images":{"store":{"build":true},"registries":[…]}`. A provider
-with a Store and `build` absent or `false` takes pushes and refuses builds. If there is no `store`:
+`build` is there when it builds, naming the platforms it builds for:
+`"images":{"store":{"build":{"platforms":["linux/amd64"]}},"registries":[…]}`. A provider with a Store
+and no `build` takes pushes and refuses builds. If there is no `store`:
 
 ```bash
 diverge provider stop
@@ -180,9 +189,13 @@ diverge run images list --watch                            # stays open: added /
   answers `{"found":{…}}` with the same members as a list line, `"not_found"` (no such provider on record,
   or no such digest in its Store), `"forbidden"`, or `{"error":…}` (the provider is not connected now, has
   no Store, or its listing failed). It needs the images grant's `get` action.
-- Each line is `{"added":{"provider":…,"digest":…,"description"?:…,"bytes":…,"created":…}}`, then
-  `"listed"`. With `--watch`, `{"changed":…}` (a description edited) and `{"removed":…}` follow as they
-  happen. Other answers: `"forbidden"`, `{"error":…}`.
+- Each line is `{"added":{"provider":…,"digest":…,"description"?:…,"bytes":…,"created":…,
+  "manifest_platforms":[…],"platforms":[…],"references"?:[…]}}`, then `"listed"`. With `--watch`,
+  `{"changed":…}` (a description edited, a platform added, a reference recorded) and `{"removed":…}`
+  follow as they happen. Other answers: `"forbidden"`, `{"error":…}`.
+- **`manifest_platforms`** is every platform the image is for; **`platforms`** is the ones the daemon
+  holds on that provider. The two equal, the image is whole there. Fewer held, push the missing ones
+  (below). `references` is where the image was published from that provider, absent until it is.
 - What is listed is what the **daemon** owns on each provider: images built with `images build` or pushed
   with `images push`. It is not the provider's pull cache, and not another daemon's Store.
 - A provider that is not connected, that has no Store (its `images` are not enabled), or whose
@@ -192,7 +205,7 @@ diverge run images list --watch                            # stays open: added /
 ## Pushing an image that is already built: `diverge run images push`
 
 ```bash
-diverge run images push '{
+diverge run images push --platform linux/amd64 --platform linux/arm64 '{
   "provider": {"issuer":"…","subject":"github.12345.provider"},
   "image": {"digest":"sha256:…","references":[{"registry":"ghcr.io","name":"acme/worker"}]},
   "source": {"provider": {"issuer":"…","subject":"github.12345.other-provider"}},
@@ -201,12 +214,24 @@ diverge run images push '{
 # {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
 
 # from another daemon, by the route to it (the ids of `daemons list`, hop by hop):
-diverge run images push '{"provider":{…},"image":{"digest":"sha256:…"},"source":{"daemon":["<daemon id>"]}}'
+diverge run images push --platform linux/amd64 '{"provider":{…},"image":{"digest":"sha256:…"},"source":{"daemon":["<daemon id>"]}}'
 ```
 
-Puts an image into the daemon's Store on a provider without building it. Where it comes from, in order:
+Puts an image into the daemon's Store on a provider without building it.
 
-1. The daemon already owns the digest there: `{"exists":{"digest":…}}`, nothing moves.
+**`platforms` is required**: one or more, as `--platform <OS/ARCH>` once per platform or `"platforms":[…]`
+in the body. Those platforms of the image are what the provider takes.
+
+- Every platform named must be one the image has (its `manifest_platforms`). If one is not, the push ends
+  `"platform_not_found"` and nothing is added: it is all of them or none.
+- A provider holds a platform it cannot run. Pushing `linux/arm64` to an amd64 provider is fine.
+- Pushing a digest the daemon already owns there adds the platforms it lacked and answers `{"pushed":…}`.
+  This is how an image held in part becomes whole.
+
+Where it comes from, in order:
+
+1. The daemon already owns the digest there with every platform named: `{"exists":{"digest":…}}`, nothing
+   moves.
 2. A reference names a registry that provider lists, and the registry serves the digest: the provider
    fetches it. `source` is `{"registry":{"reference":…}}`.
 3. Otherwise the provider asks for the manifest, the blobs and a proof, and the request's **`source`**
@@ -229,8 +254,8 @@ the provider's client.
 A source that does not hold the image, cannot be reached, or stops part way ends the push `"unavailable"`.
 
 Last line, one of: `{"pushed":…}`, `{"exists":…}`, `"insufficient_capacity"` (the Store is full),
-`"unavailable"`, `"proof_failed"`, `"malformed"` (not an image the provider takes), `"unsupported"` (the
-provider has no Store), `"forbidden"` (no `push` grant reaching the provider, or no grant reaching the
+`"unavailable"`, `"proof_failed"`, `"malformed"` (not an image the provider takes),
+`"platform_not_found"` (a platform named is not in the image), `"unsupported"` (the provider has no Store), `"forbidden"` (no `push` grant reaching the provider, or no grant reaching the
 source), `"not_found"` (no such provider, pushed to or named as the source), `{"error":…}` (a source route
 that is empty, or whose first id is no record, among others). Before it, one
 `{"blob":{"digest":…,"bytes":…}}` per blob the provider pulled from its caller.

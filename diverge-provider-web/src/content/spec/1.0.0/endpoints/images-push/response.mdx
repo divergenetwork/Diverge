@@ -15,14 +15,15 @@ draft: false
 [6]                       once: the image is malformed
 [7]                       once, alone: the server keeps no Store
 [8][error JSON …]         once: an error
+[9]                       once: a platform named is not in the image
 ```
 
 - **The sequence.** Zero or more responses of the byte `0`, each
   followed by one blob; then exactly one response whose first byte is
-  one of `1` to `8`; then the response finish. No response follows
+  one of `1` to `9`; then the response finish. No response follows
   that response. No response of the byte `0` precedes a response of
   the byte `2` or `7`: each is the only response of its scope. A
-  response finish that no response of the byte `1` to `8` precedes
+  response finish that no response of the byte `1` to `9` precedes
   states that the request was not served, as
   [Endpoints](/endpoints/) provides; whether the image entered the
   client's Store is then not stated, and the client learns it from an
@@ -86,9 +87,15 @@ draft: false
   [`images.store`](/capabilities/#imagesstore) capability and keeps
   no Store, as [Capabilities](/capabilities/) provides. It is the only
   response of the scope, sent before anything is looked up.
-- **No image.** After a response of the byte `3`, `4`, `5`, `6` or
-  `7`, no image entered the client's Store as a result of the
-  request. The server sends nothing after any of those bytes, and a
+- **Platform not found.** A payload that is the byte `9` and nothing
+  else states that a platform the request names is not a platform
+  of the image: no entry of its index is for that platform, or the
+  image is not an index and its config states another platform. The
+  server fetched no layer for the request.
+- **No image.** After a response of the byte `3`, `4`, `5`, `6`, `7`
+  or `9`, the client's Store holds of the image exactly what it held
+  before the request: no image entered it, and no platform was
+  added to an image in it. The server sends nothing after any of those bytes, and a
   client ignores every byte that follows it.
 - **The error.** A payload whose first byte is `8` carries an error
   after that byte, running to the end of the payload. The error is
@@ -98,7 +105,7 @@ draft: false
   states that no image entered the client's Store as a result of the
   request, and that the reason is none of the refusals.
 - **Malformed payloads.** A payload with no byte, a payload whose
-  first byte is none of `0` to `8`, a payload whose bytes after `0`,
+  first byte is none of `0` to `9`, a payload whose bytes after `0`,
   `1` or `2` do not decode as the blob, the pushed image or the
   digest, and a payload whose bytes after `8` are not one JSON value
   are malformed.

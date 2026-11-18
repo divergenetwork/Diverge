@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::shared::containers::request::Reference;
 use crate::shared::description::Description;
 use crate::shared::listing::Keyed;
 
@@ -25,11 +26,13 @@ use crate::shared::listing::Keyed;
 /// a hash and a delete name it by the same digest. There is no other
 /// name: one image is one digest, owned once per identity.
 ///
-/// # Only the description changes
+/// # What changes
 ///
 /// The bytes under a digest never change, so a listing tells an image
 /// added and removed — and [`Changed`](super::Frame::Changed) when the
-/// caller edits its description, and for nothing else.
+/// caller edits its description, when a push adds platforms to what
+/// is held of it, and when a publish adds a reference, and for
+/// nothing else.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Image {
     /// The manifest digest of the image as the provider holds it,
@@ -48,6 +51,26 @@ pub struct Image {
     /// When the caller came to own it — the build or the push ended —
     /// in SECONDS since the Unix epoch.
     pub created: u64,
+    /// The platforms the image's manifest names, each a
+    /// [platform string](crate::shared::platform::of), in the
+    /// manifest's order: one per entry of an index, or the one an
+    /// image that is not an index states in its config. What the
+    /// digest is for, and never changes.
+    pub manifest_platforms: Vec<String>,
+    /// The platforms the caller holds of it: those of
+    /// [`manifest_platforms`](Self::manifest_platforms) whose bytes
+    /// are in the Store for the caller, in the same order. Equal to
+    /// it, the image is whole; fewer, a
+    /// [`push`](crate::provider::endpoints::images::push) adds the
+    /// rest and a
+    /// [`publish`](crate::provider::endpoints::images::publish) is
+    /// refused until it does.
+    pub platforms: Vec<String>,
+    /// Where the caller has published it: each a registry and a
+    /// repository path there, each once, in the order they were
+    /// published. Empty until a
+    /// [`publish`](crate::provider::endpoints::images::publish).
+    pub references: Vec<Reference>,
 }
 
 /// Keyed by the digest: one image is one digest in one caller's
