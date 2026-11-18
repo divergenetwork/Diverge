@@ -52,12 +52,20 @@ jaq-json = { version = "2.0.3", features = ["serde"] }
 # The runtime: the files read and written, stdout, the socket to a
 # daemon, a run's timeout, and the daemon or the provider spawned by
 # `start` as a detached child.
-tokio = { version = "1.54.1", features = ["fs", "io-std", "io-util", "macros", "net", "process", "rt", "rt-multi-thread", "time"] }
+tokio = { version = "1.54.1", features = ["fs", "io-std", "io-util", "macros", "net", "process", "rt", "rt-multi-thread", "signal", "time"] }
 # The socket split into its two halves, and a stream read frame by
 # frame; an upload's content as a stream of one piece.
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 # The bytes of a download's chunk and an upload's piece.
 bytes = "1.12.2"
+# `update`: the releases asked, and an archive downloaded, over
+# HTTPS.
+reqwest = { version = "0.13.5", default-features = false, features = ["charset", "http2", "rustls", "json"] }
+# `update`: a release's archive unpacked — a gzipped tar, or a zip
+# on Windows.
+flate2 = "1.1.11"
+tar = "0.4.46"
+zip = { version = "9.7.0", default-features = false, features = ["deflate"] }
 # The MCP request and result types of the one exchange a connect
 # run puts; `schemars`: the result's schema, for `response-schema`.
 rmcp = { version = "3.11.0", default-features = false, features = ["schemars"] }

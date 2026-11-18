@@ -97,5 +97,6 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         }
         Some(Command::Cli(Own::Daemons(action))) => super::own::daemons::<config::Config>(&root, action).await,
         Some(Command::Cli(Own::Default(action))) => super::own::default::<config::Config>(&root, action).await,
+        Some(Command::Update(asked)) => super::update::update(&root, asked).await,
     }
 }

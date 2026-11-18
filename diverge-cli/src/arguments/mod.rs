@@ -24,6 +24,7 @@ mod identity_diverge_network;
 mod lifecycle;
 mod own;
 mod server;
+mod update;
 mod viewer;
 
 pub use arguments::*;
@@ -34,4 +35,5 @@ pub use identity_diverge_network::*;
 pub use lifecycle::*;
 pub use own::*;
 pub use server::*;
+pub use update::*;
 pub use viewer::*;

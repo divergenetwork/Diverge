@@ -25,6 +25,7 @@ pub mod identity_diverge_network;
 pub mod own;
 pub mod provider;
 pub mod setting;
+pub mod update;
 pub mod viewer;
 
 pub use error::*;

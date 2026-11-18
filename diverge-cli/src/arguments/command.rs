@@ -2,7 +2,7 @@
 
 use clap::Subcommand;
 
-use super::{Daemon, Identities, IdentityDivergeNetwork, Own, Server, Viewer};
+use super::{Daemon, Identities, IdentityDivergeNetwork, Own, Server, Update, Viewer};
 use crate::run::Run;
 
 /// The commands. Every request of the daemon's wire goes under
@@ -50,4 +50,9 @@ pub enum Command {
     /// [`own`](crate::cli::own).
     #[command(subcommand)]
     Cli(Own),
+    /// Replace the Diverge programs on this host with another
+    /// version's: the next one up, or the one named. Refused while
+    /// the daemon, the provider or the viewer is running. See
+    /// [`update`](crate::cli::update).
+    Update(Update),
 }

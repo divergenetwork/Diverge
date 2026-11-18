@@ -572,6 +572,27 @@ every daemon before the provider they share.
 
 There is no `restart`: stop, then start.
 
+## Updating the programs: `diverge update`
+
+```bash
+diverge update                      # one version up from the version installed
+diverge update --version 1.2.0      # that version, newer or older
+diverge update --os linux --arch aarch64   # for another platform than this host's
+```
+
+- With no `--version` it installs the version next after the one installed, never further in one run.
+  Run it again to go up another. When the installed version is the newest it prints
+  `<version> is the newest version` and changes nothing.
+- It replaces every Diverge program on the host, the CLI included, and prints
+  `updated to <version> for <os>/<arch>`.
+- **Stop the daemon, the provider and the viewer first.** While any of them runs the update is refused
+  with the same "is running" error a setting gives, before anything is downloaded.
+- It is safe to interrupt. Until the programs are replaced nothing installed has changed; the replacing
+  itself cannot be interrupted part way, and a failure in it puts the old programs back.
+- `--os` is `linux`, `macos` or `windows`; `--arch` is `x86_64` or `aarch64`. A version that does not
+  exist, or was not built for the platform, is an error and changes nothing.
+- Start the programs again afterwards (`diverge provider start`, `diverge daemon start`).
+
 ## What needs a restart
 
 No server notices a changed setting while it runs, and its settings cannot be changed while it runs anyway.

@@ -45,6 +45,8 @@ pub enum Error {
     Accounts(identity_diverge_network::Error),
     /// A login at `identity.diverge.network` could not be made here.
     Ours(ours::Error),
+    /// The programs could not be replaced by another version's.
+    Update(super::update::Error),
     /// A setting was not written, because the program whose document
     /// it is in is running on the root: the program, and the process
     /// id it left in the lock file, where it left one.
@@ -140,6 +142,7 @@ impl fmt::Display for Error {
             Error::Detach(error) => write!(f, "{error}"),
             Error::Accounts(error) => write!(f, "{error}"),
             Error::Ours(error) => write!(f, "{error}"),
+            Error::Update(error) => write!(f, "{error}"),
             Error::Stop { program, holder } => {
                 let word = program.word();
                 write!(f, "the {word} is running on this root")?;
@@ -204,6 +207,7 @@ impl std::error::Error for Error {
             Error::Detach(error) => Some(error),
             Error::Accounts(error) => Some(error),
             Error::Ours(error) => Some(error),
+            Error::Update(error) => Some(error),
             Error::Relocate(error) | Error::Leftover(error) | Error::Wipe(error) => Some(error),
             Error::Path(error) => Some(error),
             Error::Stop { .. } | Error::NoItem { .. } | Error::Listed { .. } | Error::Disabled { .. } | Error::Capacity { .. } | Error::Measure(_) | Error::Default { .. } | Error::Usage(_) => None,
@@ -220,6 +224,12 @@ impl From<config::Error> for Error {
 impl From<identity_diverge_network::Error> for Error {
     fn from(error: identity_diverge_network::Error) -> Self {
         Error::Accounts(error)
+    }
+}
+
+impl From<super::update::Error> for Error {
+    fn from(error: super::update::Error) -> Self {
+        Error::Update(error)
     }
 }
 
