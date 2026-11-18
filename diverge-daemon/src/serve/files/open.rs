@@ -23,7 +23,7 @@ pub async fn open_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Opened, S
 
 /// The tool's container, started if it was not up, with the file use
 /// held on it for as long as the [`Opened`] lives — a use, not work: it
-/// makes the tool neither active nor busy: a transient
+/// makes the tool neither active nor busy: a lazy
 /// tool's idle clock stops it `idle_seconds` after the operation and
 /// every other use are over. A connected tool is connected to the
 /// same way, and every file operation on it then answers the handle's

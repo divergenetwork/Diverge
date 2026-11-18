@@ -11,7 +11,7 @@ use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
 use crate::serve::reply;
 use crate::database;
-use crate::containers::{ToolKey, services, tool_log};
+use crate::containers::{ToolKey, eager, tool_log};
 use crate::store::tools::template_attachments;
 use crate::store::{self, agents_templates, connected_standalone_tools, dependency_tools};
 use super::in_use;
@@ -30,7 +30,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// for a template the grants do not reach; `InUse` while some agent
 /// was made from it; else the template deleted — every per-template
 /// dependency tool it owns gone with its database scope and its every
-/// table, each service among them retired, every tool attached to it
+/// table, each eager tool among them retired, every tool attached to it
 /// detached and told its hold changed, its row kept, so one made anew
 /// is this one again, with fresh scopes and no attachments.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
@@ -63,12 +63,12 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     agents_templates::delete(&mut tx, &record.id).await?;
     tx.commit().await?;
     let gone: Vec<ToolKey> = removed.iter().map(|tool| ToolKey::Dependency(tool.id)).collect();
-    services::template_deleted(daemon, removed).await;
+    eager::template_deleted(daemon, removed).await;
     for key in gone {
         tool_log::forget(daemon, key).await;
     }
     for tool in detached {
-        services::held(daemon, ToolKey::Record(tool)).await;
+        eager::held(daemon, ToolKey::Record(tool)).await;
     }
     daemon.live.changed(Kind::AgentsTemplates);
     daemon.live.changed(Kind::DependencyTools);

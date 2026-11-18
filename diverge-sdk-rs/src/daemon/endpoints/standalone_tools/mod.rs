@@ -30,12 +30,12 @@
 //! # One container per tool
 //!
 //! However many agents a tool is attached to, one tool container runs,
-//! and what keeps it running is its template's `mode`. A transient
+//! and what keeps it running is its template's `mode`. A lazy
 //! tool's container runs while it is used — an agent's call in
 //! flight, a file operation, a connect scope open on it — and is
 //! stopped `idle_seconds` after the last use; an attachment alone
 //! keeps nothing running, and an agent's loop begins by starting the
-//! tools it is served. A service's container is kept running while
+//! tools it is served. An eager tool's container is kept running while
 //! the tool is attached to any agent or any template, or any connect
 //! is open on it, and retired `idle_seconds` after the last of those
 //! leaves. A tool attached nowhere and connected to by nobody runs

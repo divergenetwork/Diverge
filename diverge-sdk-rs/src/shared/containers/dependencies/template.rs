@@ -19,14 +19,15 @@ use super::super::request::Image;
 /// the agent that spawns the tool binds the same name to, fed at every
 /// activation. The mounts are not the caller's volumes — a volume is
 /// named in the caller's own listing, and a tool that named one would
-/// be dictating the caller's storage — but, for a transient tool alone,
+/// be dictating the caller's storage — but, for a lazy tool of the
+/// `instance` scope alone,
 /// the AGENT's own files and directories, each a path in the agent
 /// container served live at a path in the tool container: the caller
 /// serves the agent container, a `containers::fuse_serve` of the path,
 /// and mounts the tool, a `fuse::mount` answered from it.
 /// [`mode`](Self::mode) says which of the two modes the dependency is —
-/// a transient tool of the agent's run, with those mounts, or a service
-/// the caller keeps, with a scope — see [`Mode`]. What the tool may ask
+/// a lazy tool, run while it is used, or an eager one the caller
+/// keeps, each with a scope — see [`Mode`]. What the tool may ask
 /// of the caller is not here: the tool's own program declares it at its
 /// registration, every time it starts, as a standalone tool's does —
 /// see the `permissions` of the
@@ -49,8 +50,8 @@ use super::super::request::Image;
 /// computes over [`hashed`](Self::hashed). Two declarations with one id
 /// are one dependency, and a list that declares one twice is refused;
 /// the same template deployed for the same agent, on whatever provider,
-/// is the same dependency, and the same service template declared under
-/// the same scope key, by whatever agent, is the same service. The
+/// is the same dependency, and the same template declared under
+/// the same scope key, by whatever agent, is the same tool. The
 /// caller labels the tool's MCP tools by the id when it merges lists,
 /// and the program knows which tool serves each by the keys under
 /// `_meta`, see [`shared::mcp`](crate::shared::mcp).
@@ -81,8 +82,8 @@ pub struct Template {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub secrets: Vec<String>,
     /// Which mode of dependency this is, with that mode's own members
-    /// flat beside the `mode` that names it: a transient tool's mounts,
-    /// or a service's scope. See [`Mode`].
+    /// flat beside the `mode` that names it: the scope, and a lazy
+    /// tool's mounts. See [`Mode`].
     #[serde(flatten)]
     pub mode: Mode,
 }

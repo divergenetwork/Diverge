@@ -636,8 +636,8 @@ impl std::fmt::Display for AskError {
 /// A running tool: the scope held on it, what holds it up — the
 /// connect scopes on it and the exchanges in flight into it — and what
 /// it mounts: a record's container, a connected tool's connection, or
-/// a dependency tool's container, a transient one's for its agent's
-/// run or one run of a service's.
+/// a dependency tool's container, a lazy one's for its agent's
+/// run or one run of an eager tool's.
 pub struct ToolRun {
     /// The record, or the dependency tool's row.
     pub id: ToolKey,
@@ -655,11 +655,11 @@ pub struct ToolRun {
     pub container: Option<String>,
     /// The scope.
     pub handle: ToolHandle,
-    /// Whether the tool is a service: a tool on record whose template's
-    /// mode is, or a dependency tool whose template is. A service is
+    /// Whether the tool is an eager tool: a tool on record whose template's
+    /// mode is, or a dependency tool whose template is. An eager tool is
     /// held by its attachments and its connect scopes and retired by
     /// its clock, never stopped for want of use.
-    pub service: bool,
+    pub eager: bool,
     /// The connect scopes other daemons hold on it now: each a real
     /// connection, holding the run up for the scope's life.
     pub connections: Mutex<HashSet<ConnectionId>>,
@@ -691,7 +691,7 @@ pub struct ToolRun {
     /// two editors adding mounts are served one after the other.
     pub edits: Mutex<()>,
     /// The tasks that are the run's: the pump — a connected tool's
-    /// waiter — and a transient tool's idle clock.
+    /// waiter — and a lazy tool's idle clock.
     pub tasks: Mutex<Vec<AbortHandle>>,
     /// What it is as a dependency tool, when it is one: the row, as
     /// it was when this run started.
@@ -746,7 +746,7 @@ impl ToolRun {
     /// Whether anything holds the run up: a connect scope another
     /// daemon holds on it, or an exchange in flight into it. Exactly
     /// those two — an attachment holds nothing, and an agent merely
-    /// mid-loop nothing — and a transient tool's idle clock ends the
+    /// mid-loop nothing — and a lazy tool's idle clock ends the
     /// run `idle_seconds` after both last became false. Asked under
     /// the connections lock by whoever lets go of a scope.
     pub fn held_now(&self, connections: &HashSet<ConnectionId>) -> bool {

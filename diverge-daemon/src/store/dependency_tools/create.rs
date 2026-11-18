@@ -10,7 +10,7 @@ use crate::store::{AgentId, Error, counters};
 
 /// What a registration declares, checked by the caller: the template
 /// by id, whose body is on record, its scope — `instance` for a
-/// transient template — and the agent registering, whose id and
+/// lazy template — and the agent registering, whose id and
 /// template the scope key is made of.
 #[derive(Debug, Clone)]
 pub struct Declared<'a> {

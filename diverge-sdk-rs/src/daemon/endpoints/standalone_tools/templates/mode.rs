@@ -2,11 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Transient or a service: the `mode` a tool template says beside its
+/// Lazy or eager: the `mode` a tool template says beside its
 /// `type`, which every tool made from it runs by. Snake case on the
-/// wire: `"transient"`, `"service"`; absent is transient.
+/// wire: `"lazy"`, `"eager"`; absent is lazy.
 ///
-/// # A transient tool runs while it is used
+/// # A lazy tool runs while it is used
 ///
 /// Its container is started for the first thing that uses it — an
 /// agent it is attached to beginning a loop, a connect scope opened
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// template says: see
 /// [`connected_standalone_tools`](crate::daemon::endpoints::connected_standalone_tools).
 ///
-/// # A service is kept while anything holds it
+/// # An eager tool is kept while anything holds it
 ///
 /// Its container is kept running for as long as any agent is attached
 /// to it or any connect scope is open on it — started at the attach
@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 /// attached — and once nothing holds it its idle clock runs, and
 /// `idle_seconds` after the last hold left with none since it is
 /// retired: its run stopped, its record kept, to be kept up again by
-/// the next attach or connect. This is the service a dependency
+/// the next attach or connect. This is the eager tool a dependency
 /// template declares, for a tool a caller makes by hand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -32,8 +32,8 @@ use serde::{Deserialize, Serialize};
 pub enum Mode {
     /// Run while used, stopped when the last user leaves: the default.
     #[default]
-    Transient,
+    Lazy,
     /// Kept running while any agent is attached or any connect scope
     /// is open, retired `idle_seconds` after the last leaves.
-    Service,
+    Eager,
 }

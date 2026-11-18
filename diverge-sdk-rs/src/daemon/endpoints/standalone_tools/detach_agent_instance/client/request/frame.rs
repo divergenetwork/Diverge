@@ -17,9 +17,9 @@ use crate::wire::encode::{Encode, Writer};
 /// detach that took a tool off. The agent may be active: the tool
 /// leaves the servers the daemon answers its tool calls with at that
 /// instant, the agent is told its tool list changed, and a call in
-/// flight to the tool is answered still. A transient tool's container
+/// flight to the tool is answered still. A lazy tool's container
 /// is stopped `idle_seconds` after its last use, whoever used it;
-/// a service's runs on while anything is attached to it.
+/// an eager tool's runs on while anything is attached to it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Frame {

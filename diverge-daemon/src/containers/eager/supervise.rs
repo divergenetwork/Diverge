@@ -1,4 +1,4 @@
-//! The supervisor: a service's container kept running while it is
+//! The supervisor: an eager tool's container kept running while it is
 //! held.
 
 use std::sync::Arc;
@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use tokio::sync::watch;
 
-use super::{Outcome, State, start};
+use super::{Outcome, State};
 use crate::containers::lifecycle::End;
 use crate::containers::{ToolKey, ToolRun, stop};
 use crate::daemon::Daemon;
@@ -14,17 +14,17 @@ use crate::store::{DependencyToolId, ToolId, dependency_tools, tools};
 
 /// How long a supervisor waits after a start that failed before it
 /// tries again: long enough not to hammer a provider that is down,
-/// short enough that a service is back soon after one comes up.
+/// short enough that an eager tool is back soon after one comes up.
 const RETRY: Duration = Duration::from_secs(5);
 
-/// Keep the service's container running until the service is
+/// Keep the eager tool's container running until the eager tool is
 /// retired: while nothing holds it the supervisor waits; while
 /// something does, its container is started — on the first candidate
 /// provider that runs it — and waited on to its end, and started
 /// again; a start that fails is tried again after `RETRY`. Each
 /// start's outcome is said on `outcomes` — up once the run is live,
 /// or why it failed — which is what a registration that declared the
-/// service waits on. A row that is gone is a service deleted, and the
+/// eager tool waits on. A row that is gone is an eager tool deleted, and the
 /// supervisor ends. The run's end is taken down here as well as by
 /// its waiter, so that the next start does not find the old run
 /// still live.
@@ -39,7 +39,7 @@ pub async fn supervise(daemon: Arc<Daemon>, key: ToolKey, state: Arc<State>, out
         }
         let started = match key {
             ToolKey::Record(id) => record(&daemon, id).await,
-            // A connected tool is never a service here: nothing to keep.
+            // A connected tool is never an eager tool here: nothing to keep.
             ToolKey::Connected(_) => Started::Gone,
             ToolKey::Dependency(id) => dependency(&daemon, id).await,
         };
@@ -63,7 +63,7 @@ pub async fn supervise(daemon: Arc<Daemon>, key: ToolKey, state: Arc<State>, out
 enum Started {
     /// The run, up, to be waited on.
     Run(Arc<ToolRun>),
-    /// The row is gone: the service is deleted.
+    /// The row is gone: the eager tool is deleted.
     Gone,
     /// The store could not be read, or the container would not start,
     /// in its words: tried again after `RETRY`.
@@ -86,14 +86,14 @@ async fn record(daemon: &Arc<Daemon>, id: ToolId) -> Started {
     }
 }
 
-/// One start of a dependency service's container.
+/// One start of a dependency eager tool's container.
 async fn dependency(daemon: &Arc<Daemon>, id: DependencyToolId) -> Started {
-    let service = match daemon.store.acquire().await {
+    let tool = match daemon.store.acquire().await {
         Ok(mut conn) => dependency_tools::by_id(&mut conn, id, false).await,
         Err(error) => Err(error),
     };
-    match service {
-        Ok(Some(service)) => match start(daemon, &service).await {
+    match tool {
+        Ok(Some(tool)) => match crate::containers::deploy::alone(daemon, &tool).await {
             Ok(run) => Started::Run(run),
             Err(error) => Started::Failed(error.to_string()),
         },

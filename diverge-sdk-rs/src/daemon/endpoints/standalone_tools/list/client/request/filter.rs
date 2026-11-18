@@ -39,7 +39,7 @@ pub struct Filter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub creators: Vec<Creator>,
     /// Made from a template whose `mode` is any one of these,
-    /// transient or a service: see [`Mode`]. Absent when empty, and
+    /// lazy or eager: see [`Mode`]. Absent when empty, and
     /// then either.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modes: Vec<Mode>,

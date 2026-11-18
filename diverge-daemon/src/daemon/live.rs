@@ -18,7 +18,7 @@ use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::reference;
 
 use super::{Capacity, Changes, Kind, Peers, Standing};
-use crate::containers::services::State;
+use crate::containers::eager::State;
 use crate::commands::Commander;
 use crate::containers::lifecycle::RunLog;
 use crate::containers::message::Waiting;
@@ -118,11 +118,11 @@ pub struct Live {
     agents: Mutex<HashMap<AgentId, Arc<AgentRun>>>,
     /// The tools running now, or joined: records and dependency tools.
     tools: Mutex<HashMap<ToolKey, Arc<ToolRun>>>,
-    /// Every service kept since the start, run or no run, by its tool
-    /// — a record whose template's mode is a service, or a dependency
+    /// Every eager tool kept since the start, run or no run, by its tool
+    /// — a record whose template's mode is an eager tool, or a dependency
     /// tool's row whose template is one: whether it is held, and its
     /// supervisor and its clock.
-    services: Mutex<HashMap<ToolKey, Arc<State>>>,
+    eager: Mutex<HashMap<ToolKey, Arc<State>>>,
     /// Every container's database scope touched since the start: its
     /// password, in memory only.
     scopes: Mutex<HashMap<Key, Arc<Scope>>>,
@@ -918,30 +918,30 @@ impl Live {
             .collect()
     }
 
-    /// The service's state, if it is kept.
-    pub async fn service_state(&self, key: ToolKey) -> Option<Arc<State>> {
-        self.services.lock().await.get(&key).cloned()
+    /// The eager tool's state, if it is kept.
+    pub async fn eager_state(&self, key: ToolKey) -> Option<Arc<State>> {
+        self.eager.lock().await.get(&key).cloned()
     }
 
-    /// Keep `state` for the service, unless one is kept already: the
+    /// Keep `state` for the eager tool, unless one is kept already: the
     /// one kept, and whether it is the one handed in.
-    pub async fn keep_service_state(&self, key: ToolKey, state: Arc<State>) -> (Arc<State>, bool) {
-        let mut services = self.services.lock().await;
-        if let Some(kept) = services.get(&key) {
+    pub async fn keep_eager_state(&self, key: ToolKey, state: Arc<State>) -> (Arc<State>, bool) {
+        let mut eager = self.eager.lock().await;
+        if let Some(kept) = eager.get(&key) {
             return (Arc::clone(kept), false);
         }
-        services.insert(key, Arc::clone(&state));
+        eager.insert(key, Arc::clone(&state));
         (state, true)
     }
 
-    /// The service is retired: its state, once.
-    pub async fn remove_service_state(&self, key: ToolKey) -> Option<Arc<State>> {
-        self.services.lock().await.remove(&key)
+    /// The eager tool is retired: its state, once.
+    pub async fn remove_eager_state(&self, key: ToolKey) -> Option<Arc<State>> {
+        self.eager.lock().await.remove(&key)
     }
 
-    /// Every service's state.
-    pub async fn service_states(&self) -> Vec<Arc<State>> {
-        self.services.lock().await.values().cloned().collect()
+    /// Every eager tool's state.
+    pub async fn eager_states(&self) -> Vec<Arc<State>> {
+        self.eager.lock().await.values().cloned().collect()
     }
 
     /// The container's database scope, live: the one there is, or one

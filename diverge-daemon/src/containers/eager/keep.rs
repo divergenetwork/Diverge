@@ -1,4 +1,4 @@
-//! A service kept: its state made, its supervisor and its clock
+//! An eager tool kept: its state made, its supervisor and its clock
 //! started.
 
 use std::sync::Arc;
@@ -9,14 +9,14 @@ use super::{State, clock, supervise};
 use crate::containers::ToolKey;
 use crate::daemon::Daemon;
 
-/// Keep the service: its [`State`] made if it had none, held as of
+/// Keep the eager tool: its [`State`] made if it had none, held as of
 /// now, and its supervisor and its clock started on tasks of their
 /// own, the supervisor saying each start on the state. One kept
 /// already is left as it is. Two keeps racing make one state: the
 /// first in wins, and the second starts nothing.
 pub async fn keep(daemon: &Arc<Daemon>, key: ToolKey) {
     let (outcomes, started) = watch::channel(None);
-    let (state, made) = daemon.live.keep_service_state(key, Arc::new(State::new(started))).await;
+    let (state, made) = daemon.live.keep_eager_state(key, Arc::new(State::new(started))).await;
     if !made {
         return;
     }

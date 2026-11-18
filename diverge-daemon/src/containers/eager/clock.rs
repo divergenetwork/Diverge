@@ -1,4 +1,4 @@
-//! The clock: a service nothing holds, retired.
+//! The clock: an eager tool nothing holds, retired.
 
 use std::sync::Arc;
 
@@ -6,9 +6,9 @@ use super::{State, retire};
 use crate::containers::ToolKey;
 use crate::daemon::Daemon;
 
-/// Run the service's clock until it is retired: while anything holds
-/// the service the clock does not run; otherwise, `idle_seconds` after
-/// the hold last changed with no change since, the service is
+/// Run the eager tool's clock until it is retired: while anything holds
+/// the eager tool the clock does not run; otherwise, `idle_seconds` after
+/// the hold last changed with no change since, the eager tool is
 /// retired. The countdown begins only when nothing holds it, and
 /// begins again from the last change whenever that becomes so, so an
 /// agent attaching and leaving inside the window, or a connect

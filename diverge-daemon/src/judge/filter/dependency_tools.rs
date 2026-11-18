@@ -31,15 +31,15 @@ pub struct Facts<'a> {
 pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
     let tool = facts.tool;
     let (mode, scope) = match &tool.declared.mode {
-        Mode::Transient { .. } => (Which::Transient, None),
-        Mode::Service { scope } => (Which::Service, Some(*scope)),
+        Mode::Lazy { scope, .. } => (Which::Lazy, *scope),
+        Mode::Eager { scope } => (Which::Eager, *scope),
     };
     (filter.tools.is_empty() || filter.tools.iter().any(|key| key.template == tool.template && owned(facts.owner, &key.owner)))
         && (filter.ids.is_empty() || filter.ids.contains(&tool.template))
         && (filter.owners.is_empty() || filter.owners.iter().any(|wanted| owned_by(facts.owner, wanted)))
         && (filter.creators.is_empty() || filter.creators.contains(&tool.creator))
         && (filter.modes.is_empty() || filter.modes.contains(&mode))
-        && (filter.scopes.is_empty() || scope.is_some_and(|scope| filter.scopes.contains(&scope)))
+        && (filter.scopes.is_empty() || filter.scopes.contains(&scope))
         && filter.depended.is_none_or(|wanted| !facts.attached.is_empty() == wanted)
         && filter
             .agents

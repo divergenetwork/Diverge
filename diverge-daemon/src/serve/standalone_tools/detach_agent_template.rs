@@ -9,7 +9,7 @@ use diverge_sdk::daemon::grant::standalone_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::{self, ToolKey, services};
+use crate::containers::{self, ToolKey, eager};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
 use crate::serve::agents::templates::in_use;
@@ -34,7 +34,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// every agent of the template loses it at this instant, unless
 /// attached to it directly as well — a running one's proxy serves it
 /// no more and tells the agent its tool list changed, a call in
-/// flight answered still. A service is told its hold changed.
+/// flight answered still. An eager tool is told its hold changed.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {
@@ -62,7 +62,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     daemon.live.changed(Kind::AgentsTemplates);
     daemon.live.changed(Kind::Agents);
     daemon.live.changed(Kind::StandaloneTools);
-    services::held(daemon, ToolKey::Record(tool.id)).await;
+    eager::held(daemon, ToolKey::Record(tool.id)).await;
     containers::detached(daemon, ToolKey::Record(tool.id), &agents, &keeps).await;
     Ok(Frame::Detached)
 }

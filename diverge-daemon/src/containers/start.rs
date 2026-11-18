@@ -20,7 +20,7 @@ use super::capable::Needs;
 use super::fuse::Mounts;
 use super::lifecycle::{self, End};
 use super::mcp::Served;
-use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, secrets, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, services, stop};
+use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, secrets, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, eager, stop};
 use crate::daemon::{Daemon, Kind};
 use crate::daemons;
 use crate::containers::permissions;
@@ -33,7 +33,7 @@ use crate::store::{agents, agents_templates, connected_standalone_tools as conne
 /// The agent's run, started now if it was not up: the providers it
 /// may run on found, the mounts served, the attached tools served
 /// idle, the run opened on the first provider that runs it — its
-/// dependencies deployed meanwhile, the transient ones stopped again
+/// dependencies deployed meanwhile, the lazy ones stopped again
 /// when that provider does not — its dependencies settled to none
 /// when its program declared none, its secrets taken at its
 /// registration as [`Registrar`](diverge_sdk::provider::client::Registrar)
@@ -78,7 +78,7 @@ pub async fn agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun>,
 /// however the start ends — returned, failed, panicked — and the
 /// lock's entry then forgotten once nobody else holds it. A drop
 /// cannot wait on the live map's lock, so that is a task of its own.
-struct Starting {
+pub(super) struct Starting {
     /// The daemon whose map the entry is in.
     daemon: Arc<Daemon>,
     /// Whose start it is.
@@ -90,7 +90,7 @@ struct Starting {
 
 impl Starting {
     /// The start lock of `key`, waited for and held.
-    async fn hold(daemon: &Arc<Daemon>, key: Key) -> Starting {
+    pub(super) async fn hold(daemon: &Arc<Daemon>, key: Key) -> Starting {
         let lock = daemon.live.starting(key).await;
         let held = lock.lock_owned().await;
         Starting { daemon: Arc::clone(daemon), key, held: Some(held) }
@@ -194,7 +194,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             touched: touched.clone(),
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
-            services: Mutex::new(None),
+            kept: Mutex::new(None),
             declared: template.template.secrets.clone(),
             binding: agent.secrets.clone(),
             secrets: Mutex::new(None),
@@ -208,7 +208,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
                 // Dependencies deployed for this attempt go with it.
                 let deployed = {
                     let mut set = served.lock().await;
-                    let deployed = set.transients();
+                    let deployed = set.lazy();
                     for run in &deployed {
                         set.remove(run.id);
                     }
@@ -220,8 +220,8 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
                 continue;
             }
         };
-        if answerer.services.lock().await.is_none() {
-            services::settle(daemon, agent.id).await;
+        if answerer.kept.lock().await.is_none() {
+            eager::settle(daemon, agent.id).await;
         }
         // The slots the registration took, given back: the provider fed
         // their values, but the proxy's gate stays shut until the first
@@ -304,10 +304,10 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
 /// [`Registrar`](diverge_sdk::provider::client::Registrar) states, and
 /// moved into the run; [`pump_tool`](super::pump_tool) reads the
 /// container's activity to its end and takes the run down; a
-/// transient tool's idle clock ends it `idle_seconds` after the last
+/// lazy tool's idle clock ends it `idle_seconds` after the last
 /// use, nothing in flight and no connect open. A tool declares no
 /// dependencies, so nothing is served to it. Whether the tool is a
-/// service is its template's mode, read here for the run. A start that
+/// eager tool is its template's mode, read here for the run. A start that
 /// fails after its run was made is undone as
 /// [`undo_tool`](stop::undo_tool) states; the start runs in a task of
 /// its own, waited for, as an agent's does. A connected tool's run is
@@ -327,7 +327,7 @@ pub async fn tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, Sta
 async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, StartError> {
     let touched = watch::channel(Instant::now()).0;
     let (template, pinned) = (&tool.template, &tool.provider);
-    let (identity, container, handle, mounts, attestation, service, stream, secrets, permissions) = {
+    let (identity, container, handle, mounts, attestation, eager, stream, secrets, permissions) = {
         let record = {
             let mut conn = daemon.store.acquire().await?;
             tools_templates::by_id(&mut conn, template, false)
@@ -368,7 +368,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 touched: touched.clone(),
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
-                services: Mutex::new(None),
+                kept: Mutex::new(None),
                 declared: record.template.secrets.clone(),
                 binding: tool.secrets.clone(),
                 secrets: Mutex::new(None),
@@ -399,8 +399,8 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             index: tool.index,
             name: tool.name.clone(),
         };
-        let service = record.template.r#type.mode == Mode::Service;
-        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, service, stream, secrets, permissions)
+        let eager = record.template.r#type.mode == Mode::Eager;
+        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, secrets, permissions)
     };
     let run = Arc::new(ToolRun {
         id: ToolKey::Record(tool.id),
@@ -409,7 +409,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
         provider: identity.clone(),
         container,
         handle,
-        service,
+        eager,
         connections: Mutex::new(HashSet::new()),
         held: watch::channel(false).0,
         inflight: Arc::new(Inflight::new()),
@@ -457,7 +457,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             tasks.push(tokio::spawn(pump_tool::pump_tool(Arc::clone(daemon), Arc::clone(&run), stream)).abort_handle());
             // A mount's serve lost is the run's end: see `lost_tool`.
             tasks.push(tokio::spawn(lost::lost_tool(Arc::clone(&run))).abort_handle());
-            if !run.service {
+            if !run.eager {
                 tasks.push(tokio::spawn(idle::idle_tool(Arc::clone(daemon), Arc::clone(&run))).abort_handle());
             }
         }
@@ -475,7 +475,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
 /// when the connect scope ends, which the other daemon finishes when
 /// the tool's run ends there; the idle clock ends it `idle_seconds`
 /// after the last use, nothing in flight. A connected tool is never a
-/// service here. The start runs in a task of its own, waited for, as a
+/// eager tool here. The start runs in a task of its own, waited for, as a
 /// tool's does.
 pub async fn connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<Arc<ToolRun>, StartError> {
     let (daemon, tool) = (Arc::clone(daemon), tool.clone());
@@ -521,7 +521,7 @@ async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<A
         provider: identity.clone(),
         container: None,
         handle: ToolHandle::Connected(connected),
-        service: false,
+        eager: false,
         connections: Mutex::new(HashSet::new()),
         held: watch::channel(false).0,
         inflight: Arc::new(Inflight::new()),

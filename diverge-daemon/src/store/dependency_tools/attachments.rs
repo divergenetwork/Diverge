@@ -3,7 +3,7 @@
 //!
 //! An agent is attached to a tool by a registration that declares the
 //! tool's template, which stamps `declared`, and detached by one that
-//! no longer does; what holds a service up is that some agent is
+//! no longer does; what holds an eager tool up is that some agent is
 //! attached to it. An instance tool has at most one attachment, its
 //! owner's.
 
@@ -45,7 +45,7 @@ pub async fn attached(conn: &mut PgConnection, tool: DependencyToolId) -> Result
 }
 
 /// The attachment whose registration declared the template last: the
-/// agent that spawns the service's next run. `None` when no agent is
+/// agent that spawns the eager tool's next run. `None` when no agent is
 /// attached.
 pub async fn latest(conn: &mut PgConnection, tool: DependencyToolId) -> Result<Option<Attachment>, Error> {
     let row = sqlx::query("SELECT tool, agent, seq, declared FROM diverge.dependency_attachments WHERE tool = $1 ORDER BY declared DESC, seq DESC LIMIT 1")

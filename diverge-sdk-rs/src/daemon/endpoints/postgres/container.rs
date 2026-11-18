@@ -26,7 +26,7 @@ use crate::daemon::reference;
 /// template itself for a dependency tool's, as its owner says — then
 /// the first twenty of the SHA-256 of the scope's part within the
 /// owner: `null` for a container's own scope and for a global
-/// service's, the dependency's template id as a JSON string for any
+/// tool's, the dependency's template id as a JSON string for any
 /// other dependency tool's. Two dependency tools of one template
 /// under one owner reach one scope; under two owners, two. A scope,
 /// once made, is dropped by exactly one delete: a tool's own by the

@@ -30,7 +30,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// for an agent the grants do not reach; `Active` while a loop runs
 /// in it; else the agent gone — its container stopped if it was up,
 /// its attachments with it, the dependency tools it owns gone with
-/// their database scopes and their every table, each service among
+/// their database scopes and their every table, each eager tool among
 /// them retired, every other dependency tool and every tool on record
 /// it was attached to told,
 /// its name free, its MCP session in every tool running forgotten,
@@ -72,7 +72,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         .map(|tool| tool.id)
         .collect();
     let gone: Vec<containers::ToolKey> = removed.iter().map(|tool| containers::ToolKey::Dependency(tool.id)).collect();
-    containers::services::agent_deleted(daemon, removed, left, detached).await;
+    containers::eager::agent_deleted(daemon, removed, left, detached).await;
     for key in gone {
         containers::tool_log::forget(daemon, key).await;
     }

@@ -183,9 +183,9 @@ CREATE TABLE IF NOT EXISTS diverge.template_attachments (
 CREATE INDEX IF NOT EXISTS template_attachments_template ON diverge.template_attachments (template);
 
 -- A dependency tool: a dependency template under one owner, as the
--- template's scope decides — a transient template or an `instance`
--- service one per agent, a `template` service one per agent template,
--- a `global` service one for all — made by the first registration
+-- template's scope decides — an `instance` tool one per agent, a
+-- `template` tool one per agent template, a `global` tool one for
+-- all, lazy or eager alike — made by the first registration
 -- that declares the template under that owner. An instance tool goes
 -- with its agent; a per-template tool with its agent template, by the
 -- template's delete; a global tool with nothing but the dependency

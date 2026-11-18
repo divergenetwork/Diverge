@@ -13,9 +13,11 @@ use crate::store::tools::Tool;
 
 /// One served tool: an attached record, standalone or connected, whose
 /// run — up or not, and a new one after every end — is the live set's
-/// to find; a transient dependency tool, which runs for as long as it
-/// is served; or a service, by its row, whose run is the live set's
-/// likewise.
+/// to find; a lazy dependency tool of the agent's own, which runs for
+/// as long as it is served; a lazy dependency tool shared with other
+/// agents, by its row, whose run is the live set's to find and
+/// started at the first use that finds none; or an eager tool, by its
+/// row, whose run is the live set's and its supervisor's to start.
 pub enum Entry {
     /// A standalone tool the agent has, directly or through its
     /// template: its record. Its run is looked up at every use and
@@ -31,12 +33,21 @@ pub enum Entry {
         /// The record.
         tool: ConnectedTool,
     },
-    /// A transient dependency tool deployed for the agent: running for
-    /// the agent's run.
-    Transient(Arc<ToolRun>),
-    /// A service the agent is attached to: kept by the daemon, its
+    /// A lazy dependency tool deployed for the agent alone, its scope
+    /// `instance`: running for the agent's run.
+    Lazy(Arc<ToolRun>),
+    /// A lazy dependency tool the agent shares with others, its scope
+    /// `template` or `global`: its run looked up at every use and
+    /// started at the first that finds none.
+    Shared {
+        /// The row.
+        id: DependencyToolId,
+        /// The template it was made from, by id.
+        template: String,
+    },
+    /// An eager tool the agent is attached to: kept by the daemon, its
     /// run looked up when it is called.
-    Service {
+    Eager {
         /// The row.
         id: DependencyToolId,
         /// The template it was made from, by id.
@@ -99,24 +110,40 @@ impl Served {
         prefix
     }
 
-    /// Serve the transient dependency tool under `serve_name`, its
+    /// Serve the lazy dependency tool under `serve_name`, its
     /// template's id short; the prefix it gets.
-    pub fn insert_transient(&mut self, run: Arc<ToolRun>, serve_name: &str) -> String {
+    pub fn insert_lazy(&mut self, run: Arc<ToolRun>, serve_name: &str) -> String {
         let key = run.id;
         let prefix = self.registry.assign(key, serve_name);
-        self.entries.insert(key, Entry::Transient(run));
+        self.entries.insert(key, Entry::Lazy(run));
         self.changed();
         prefix
     }
 
-    /// Serve the service under `serve_name`, its template's id short;
-    /// the prefix it gets.
-    pub fn insert_service(&mut self, id: DependencyToolId, template: &str, serve_name: &str) -> String {
+    /// Serve the shared lazy dependency tool under `serve_name`, its
+    /// template's id short, idle; the prefix it gets.
+    pub fn insert_shared(&mut self, id: DependencyToolId, template: &str, serve_name: &str) -> String {
         let key = ToolKey::Dependency(id);
         let prefix = self.registry.assign(key, serve_name);
         self.entries.insert(
             key,
-            Entry::Service {
+            Entry::Shared {
+                id,
+                template: template.to_string(),
+            },
+        );
+        self.changed();
+        prefix
+    }
+
+    /// Serve the eager tool under `serve_name`, its template's id short;
+    /// the prefix it gets.
+    pub fn insert_eager(&mut self, id: DependencyToolId, template: &str, serve_name: &str) -> String {
+        let key = ToolKey::Dependency(id);
+        let prefix = self.registry.assign(key, serve_name);
+        self.entries.insert(
+            key,
+            Entry::Eager {
                 id,
                 template: template.to_string(),
             },
@@ -141,12 +168,12 @@ impl Served {
         entry
     }
 
-    /// The transient dependency tool's run `run` leaves, when it is
+    /// The lazy dependency tool's run `run` leaves, when it is
     /// the one served under its key: a late end of an older run never
     /// takes out the newer one served in its place. Whether it left.
-    pub fn remove_transient(&mut self, run: &Arc<ToolRun>) -> bool {
+    pub fn remove_lazy(&mut self, run: &Arc<ToolRun>) -> bool {
         match self.entries.get(&run.id) {
-            Some(Entry::Transient(served)) if Arc::ptr_eq(served, run) => self.remove(run.id).is_some(),
+            Some(Entry::Lazy(served)) if Arc::ptr_eq(served, run) => self.remove(run.id).is_some(),
             _ => false,
         }
     }
@@ -161,25 +188,25 @@ impl Served {
         self.entries.keys().copied().collect()
     }
 
-    /// Every transient dependency tool, in no order: what is stopped
+    /// Every lazy dependency tool, in no order: what is stopped
     /// with the agent's run.
-    pub fn transients(&self) -> Vec<Arc<ToolRun>> {
+    pub fn lazy(&self) -> Vec<Arc<ToolRun>> {
         self.entries
             .values()
             .filter_map(|entry| match entry {
-                Entry::Transient(run) => Some(Arc::clone(run)),
-                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Service { .. } => None,
+                Entry::Lazy(run) => Some(Arc::clone(run)),
+                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Shared { .. } | Entry::Eager { .. } => None,
             })
             .collect()
     }
 
-    /// Every service, by id, in no order.
-    pub fn services(&self) -> Vec<DependencyToolId> {
+    /// Every eager tool, by id, in no order.
+    pub fn eager(&self) -> Vec<DependencyToolId> {
         self.entries
             .values()
             .filter_map(|entry| match entry {
-                Entry::Service { id, .. } => Some(*id),
-                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Transient(_) => None,
+                Entry::Eager { id, .. } => Some(*id),
+                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Lazy(_) | Entry::Shared { .. } => None,
             })
             .collect()
     }

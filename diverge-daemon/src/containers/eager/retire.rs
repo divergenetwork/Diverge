@@ -1,4 +1,4 @@
-//! A service retired: its keeping ended.
+//! An eager tool retired: its keeping ended.
 
 use std::sync::Arc;
 
@@ -6,17 +6,17 @@ use crate::containers::lifecycle::End;
 use crate::containers::{Key, ToolKey, stop};
 use crate::daemon::{Daemon, Kind};
 
-/// Retire the service: its state taken out of the live set and its
+/// Retire the eager tool: its state taken out of the live set and its
 /// supervisor stilled first, so that nothing starts it again; its
 /// run, if one is up, stopped and taken down; its scope's password
 /// forgotten, since its key is seen again only by a new keeping; and
 /// the clock stilled last, since the clock is what calls this. Its
 /// row stays — a dependency tool's to go with the row's delete, a
 /// tool on record's for its life — and the next attach or connect
-/// that holds it keeps it up again. A service not kept is nothing to
+/// that holds it keeps it up again. An eager tool not kept is nothing to
 /// do.
 pub async fn retire(daemon: &Arc<Daemon>, key: ToolKey) {
-    let state = daemon.live.remove_service_state(key).await;
+    let state = daemon.live.remove_eager_state(key).await;
     if let Some(state) = &state {
         if let Some(supervisor) = state.supervisor.lock().await.take() {
             supervisor.abort();

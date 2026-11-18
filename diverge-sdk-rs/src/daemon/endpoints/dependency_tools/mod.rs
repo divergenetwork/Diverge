@@ -4,15 +4,15 @@
 //!
 //! A dependency template is a
 //! [`Template`](crate::shared::containers::dependencies::Template) an
-//! agent's program declares at its registration — transient, deployed
-//! for the agent's run, or a service, kept under the scope its `scope`
-//! names — held by its id, the hash of its canonical bytes, so the
+//! agent's program declares at its registration — lazy, run while it
+//! is used, or eager, kept while any agent is attached, either under
+//! the scope its `scope` names — held by its id, the hash of its canonical bytes, so the
 //! same template declared twice is one. A DEPENDENCY TOOL is that
 //! template under one OWNER, which the template's scope decides: a
-//! transient template, and a service whose scope is `instance`, is one
-//! tool per agent instance, owned by that agent; a service whose scope
-//! is `template` is one tool per agent template, owned by it; a
-//! service whose scope is `global` is one tool, owned by nobody.
+//! template whose scope is `instance` is one tool per agent instance,
+//! owned by that agent; one whose scope is `template` is one tool per
+//! agent template, owned by it; one whose scope is `global` is one
+//! tool, owned by nobody.
 //! Nothing on this wire makes one: the first registration that
 //! declares the template under that owner does, and every registration
 //! RESETS what the agent depends on — exactly the tools of the
@@ -34,8 +34,9 @@
 //!
 //! # The run
 //!
-//! A tool has at most one run: a transient tool's container, while its
-//! agent's container runs; a service's, while the daemon keeps it up.
+//! A tool has at most one run: a lazy tool's container, while it is
+//! used — for the `instance` scope, while its agent's container runs —
+//! and an eager tool's, while the daemon keeps it up.
 //! It is listed on the tool, by where it runs, and nowhere else —
 //! never among the [`standalone_tools`](super::standalone_tools), whose
 //! endpoints find no dependency tool. A tool is named by its template

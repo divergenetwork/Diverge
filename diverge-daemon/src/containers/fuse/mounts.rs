@@ -336,7 +336,7 @@ impl Mounts {
         self.changed(id, "", true).await;
     }
 
-    /// The mounts for a transient dependency's run: the agent's paths
+    /// The mounts for a lazy dependency's run: the agent's paths
     /// the template names, `files` and `directories`, each served by
     /// the agent's provider from the agent's container — a directory
     /// whole, a file with the directory holding it — and watched for

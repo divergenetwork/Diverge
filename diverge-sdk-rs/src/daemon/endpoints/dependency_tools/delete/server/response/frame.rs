@@ -22,8 +22,8 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// [`NotFound`](Self::NotFound) and [`InUse`](Self::InUse) are
 /// ANSWERS: the daemon looked, and either no tool of the caller's has
-/// the template, or one does and one of them runs, transient or a
-/// service, and in either case nothing was deleted and nothing is
+/// the template, or one does and one of them runs, lazy or
+/// eager, and in either case nothing was deleted and nothing is
 /// retried — the caller has the wrong id, or waits for the runs to
 /// end and asks again. An [`Error`](Self::Error) is the absence of
 /// an answer: the daemon could not delete the tools, for whatever

@@ -11,8 +11,8 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// The id is the template's hash, as each tool's list item carries
 /// it, compared as the daemon compares ids and not read. A template
-/// any tool of which runs — a transient one in an agent's run, or a
-/// service's container, up — is not deleted, and the daemon says so
+/// any tool of which runs, lazy or eager, is not deleted, and the
+/// daemon says so
 /// with a variant of its own, because a caller acts on it differently
 /// from a failure: wait for the runs to end, and ask again. Tools
 /// agents depend on and none of which runs are deleted, and the

@@ -31,16 +31,16 @@ pub struct Key {
 #[schemars(rename = "DependencyToolKeyOwner")]
 #[serde(rename_all = "snake_case")]
 pub enum Owner {
-    /// The one agent, once and for all: a transient tool's, or a
-    /// service's whose template's `scope` is `instance`.
+    /// The one agent, once and for all: a tool's whose
+    /// template's `scope` is `instance`.
     Agent(agents::Key),
-    /// Every agent made from the template: a service's whose
+    /// Every agent made from the template: a tool's whose
     /// template's `scope` is `template`.
     AgentTemplate {
         /// The agent template, by id.
         template: String,
     },
-    /// Every agent that declares the template: a service's whose
+    /// Every agent that declares the template: a tool's whose
     /// template's `scope` is `global`.
     Global,
 }

@@ -7,7 +7,7 @@ use crate::store::{AgentId, Error, ToolId};
 
 /// Every agent that has the tool now: those it is attached to
 /// directly, and every agent of every template it is attached to,
-/// each once, in no order. What a service's hold, a grant's facts and
+/// each once, in no order. What an eager tool's hold, a grant's facts and
 /// a live attach or detach are judged by.
 pub async fn attached_agents(conn: &mut PgConnection, tool: ToolId) -> Result<Vec<AgentId>, Error> {
     let rows = sqlx::query(

@@ -1,21 +1,22 @@
 //! One container per tool on record: started for the first thing that
 //! uses it, held up by what is in flight into it and the connect
-//! scopes on it, and — a transient tool — stopped by its idle clock
-//! `idle_seconds` after the last of those left; a service is kept
+//! scopes on it, and — a lazy tool — stopped by its idle clock
+//! `idle_seconds` after the last of those left; an eager tool is kept
 //! while anything is attached to it and retired by its own clock.
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use super::{ConnectionId, StartError, ToolKey, ToolRun, services, start};
+use super::{ConnectionId, StartError, ToolKey, ToolRun, deploy, eager, start};
 use crate::daemon::Daemon;
 use crate::store::connected_standalone_tools::ConnectedTool;
 use crate::store::tools::Tool;
+use crate::store::{DependencyToolId, dependency_tools};
 
 /// The tool's run: started now if it was not running, and touched if
 /// it was. Nothing is held by this: whoever uses the run takes an
 /// [`Inflight`](super::Inflight) guard for the use, and a connect
-/// scope [`connect`]s. A service's run is kept from here on — its
+/// scope [`connect`]s. An eager tool's run is kept from here on — its
 /// supervisor and its clock started if they were not — and told what
 /// holds it.
 pub async fn use_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, StartError> {
@@ -26,17 +27,37 @@ pub async fn use_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>,
         }
         None => start::tool(daemon, tool).await?,
     };
-    if run.service {
-        services::keep(daemon, run.id).await;
-        services::held(daemon, run.id).await;
+    if run.eager {
+        eager::keep(daemon, run.id).await;
+        eager::held(daemon, run.id).await;
     }
     Ok(run)
+}
+
+/// The shared lazy dependency tool's run: started now if it was not
+/// running, and touched if it was — a lazy standalone tool's rule,
+/// for a dependency tool that is many agents'. Nothing is held by
+/// this, as for [`use_tool`]: its idle clock ends it once nothing
+/// uses it. A row that is gone is a tool deleted, and the error.
+pub async fn use_shared(daemon: &Arc<Daemon>, id: DependencyToolId) -> Result<Arc<ToolRun>, StartError> {
+    if let Some(run) = daemon.live.tool_run(ToolKey::Dependency(id)).await {
+        run.touch();
+        return Ok(run);
+    }
+    let tool = {
+        let mut conn = daemon.store.acquire().await?;
+        dependency_tools::by_id(&mut conn, id, false).await?
+    };
+    let Some(tool) = tool else {
+        return Err(StartError::Run("the tool is deleted".to_string()));
+    };
+    deploy::alone(daemon, &tool).await
 }
 
 /// The connected tool's run — this daemon's connect on the other
 /// daemon's tool: opened now if it was not held, and touched if it was.
 /// Nothing is held by this, as for [`use_tool`]; a connected tool is
-/// never a service here, and never served onward to another daemon.
+/// never an eager tool here, and never served onward to another daemon.
 pub async fn use_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<Arc<ToolRun>, StartError> {
     match daemon.live.tool_run(ToolKey::Connected(tool.id)).await {
         Some(run) => {
@@ -93,7 +114,7 @@ impl Drop for Hold {
 }
 
 /// The connect scope is over: the run is told whether anything holds
-/// it still, and a service told its hold changed. A transient tool
+/// it still, and an eager tool told its hold changed. A lazy tool
 /// whose last scope left is the idle clock's: stopped `idle_seconds`
 /// after its last use, unless something uses it meanwhile.
 pub async fn disconnect(daemon: &Daemon, run: &ToolRun, connection: ConnectionId) {
@@ -102,8 +123,8 @@ pub async fn disconnect(daemon: &Daemon, run: &ToolRun, connection: ConnectionId
         connections.remove(&connection);
         held(run, &connections);
     }
-    if run.service {
-        services::held(daemon, run.id).await;
+    if run.eager {
+        eager::held(daemon, run.id).await;
     }
 }
 

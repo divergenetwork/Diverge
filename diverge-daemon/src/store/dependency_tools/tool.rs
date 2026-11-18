@@ -22,8 +22,8 @@ pub struct DependencyTool {
     pub index: u64,
     /// The template, whole.
     pub declared: Template,
-    /// How far it is shared: what its scope key is made of. A
-    /// transient template's is `instance`.
+    /// How far it is shared: what its scope key is made of, as its
+    /// template's `scope` says.
     pub scope: Scope,
     /// The one agent it is for, when its scope is per agent.
     pub owner_agent: Option<AgentId>,
@@ -47,10 +47,19 @@ pub struct DependencyTool {
 }
 
 impl DependencyTool {
-    /// Whether it is a service, kept by the daemon, rather than a
-    /// transient tool of its agent's run.
-    pub fn is_service(&self) -> bool {
-        matches!(self.declared.mode, Mode::Service { .. })
+    /// Whether it is an eager tool, kept by the daemon, rather than a
+    /// lazy tool, run while it is used.
+    pub fn is_eager(&self) -> bool {
+        matches!(self.declared.mode, Mode::Eager { .. })
+    }
+
+    /// Whether its run is one agent's run's: a lazy tool whose scope
+    /// is `instance`, deployed with its agent's container and stopped
+    /// with it. Every other tool's run stands alone — an eager
+    /// tool's, kept by the daemon, and a lazy tool's that is many
+    /// agents', started by its first use.
+    pub fn runs_with_agent(&self) -> bool {
+        !self.is_eager() && self.scope == Scope::Instance
     }
 
     /// Whose it is, as the wire names it: the owner agent, handed in

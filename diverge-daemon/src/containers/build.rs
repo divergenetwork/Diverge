@@ -1,6 +1,6 @@
 //! The request a run is: the template and the record's mounts, a
-//! transient dependency's template and the agent's paths, or a
-//! service's template alone, as the provider protocol states a
+//! lazy dependency's template and the agent's paths, or a
+//! eager tool's template alone, as the provider protocol states a
 //! container. No secret rides it: a container's values are fed at its
 //! registration's answer and at every activation after.
 
@@ -41,7 +41,7 @@ pub async fn container<T>(template_id: &str, template: &Template<T>, volumes: &[
     }
 }
 
-/// The container a transient dependency is: its template's image,
+/// The container a lazy dependency of one agent is: its template's image,
 /// limits and arguments, with the template's id, no volume — a
 /// dependency names none — and every mount of the agent's paths under
 /// the id the daemon serves it by.
@@ -59,10 +59,12 @@ pub async fn dependency(template_id: &str, template: &dependencies::Template, mo
     }
 }
 
-/// The container a service is: its template's image, limits and
-/// arguments, with the template's id, and no mount of any kind — a
-/// service is many agents' and names no volume.
-pub fn service(template_id: &str, template: &dependencies::Template) -> request::Container {
+/// The container a dependency tool that stands alone of any agent's
+/// run is — an eager tool, or a lazy one shared by many agents: its
+/// template's image, limits and arguments, with the template's id,
+/// and no mount of any kind — it is not one agent's, and names no
+/// volume.
+pub fn alone(template_id: &str, template: &dependencies::Template) -> request::Container {
     request::Container {
         image: template.image.clone(),
         template: template_id.to_string(),

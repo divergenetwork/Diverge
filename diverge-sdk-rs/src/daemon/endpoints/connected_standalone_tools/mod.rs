@@ -34,7 +34,7 @@
 //! # One connect per tool
 //!
 //! However many agents a connected tool is attached to, the daemon
-//! holds at most one connect on it, as a transient standalone tool's
+//! holds at most one connect on it, as a lazy standalone tool's
 //! container is held: opened for the first use — an agent's call in
 //! flight — and let go `idle_seconds` after the last. An attachment
 //! alone holds nothing open, and a create connects nothing. Whether

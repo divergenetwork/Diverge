@@ -11,12 +11,12 @@
 //! end it; [`pump`] reads the agent's conversation off the run into
 //! its log and keeps whether a loop runs; [`idle`] is the clock,
 //! running only while the agent is not active — no loop, and nothing
-//! [`Inflight`] — and [`idle_tool`] a transient tool's, running only
+//! [`Inflight`] — and [`idle_tool`] a lazy tool's, running only
 //! while nothing holds it; [`message`] is the one way into an agent;
 //! [`use_tool`] is "one container per tool", started for the first
 //! thing that uses it and held up by what is in flight into it and
 //! the connect scopes on it — [`connect`] and [`disconnect`] — a
-//! transient one stopped by its clock `idle_seconds` after the last
+//! lazy one stopped by its clock `idle_seconds` after the last
 //! use; [`use_connected`] is the same for a connected tool, whose run
 //! is this daemon's connect on another daemon's tool, opened by
 //! [`connected`]; [`attached`], [`attached_connected`] and
@@ -27,10 +27,10 @@
 //! [`mcp`] is the one tool list an agent sees and the routing of its
 //! calls; [`deploy`] records a container's declared dependencies as
 //! dependency tools under their owners and deploys them then and there
-//! — a transient tool of the agent's own for the agent's run, a
-//! service kept by [`services`] for as long as any agent is attached
+//! — a lazy tool of the agent's own for the agent's run, a
+//! eager tool kept by [`eager tools`] for as long as any agent is attached
 //! to it and stopped after, as a tool on record whose template's mode
-//! is a service is kept while any agent is attached or any connect
+//! is an eager tool is kept while any agent is attached or any connect
 //! is open;
 //! [`fuse`] serves the mounts — another provider's volume bridged, or
 //! an agent's path into its dependency; [`images`] answers a
@@ -87,7 +87,7 @@ pub mod lifecycle;
 pub mod mcp;
 pub mod message;
 pub mod permissions;
-pub mod services;
+pub mod eager;
 pub mod tool_log;
 
 pub use activate::*;

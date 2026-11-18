@@ -8,7 +8,7 @@ use diverge_sdk::daemon::grant::dependency_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::load;
-use crate::containers::{ToolKey, services, tool_log};
+use crate::containers::{ToolKey, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::database;
 use crate::judge::{self, Standing, Who};
@@ -28,8 +28,8 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// `Forbidden` with no `delete` grant at all; `NotFound` for a
 /// template no tool is of and no body is on record for; `Forbidden`
 /// for any tool of it the grants do not reach; `InUse` while any tool
-/// of it runs, transient or a service; else every tool of the template
-/// gone — each service among them retired, no agent attached to any,
+/// of it runs, lazy or eager; else every tool of the template
+/// gone — each eager tool among them retired, no agent attached to any,
 /// each tool's database scope dropped with its every table — and the
 /// template's body with them, so that a registration declaring it
 /// anew makes it anew, with new scopes.
@@ -71,7 +71,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     dependencies::delete(&mut tx, &frame.id).await?;
     tx.commit().await?;
     let gone: Vec<ToolKey> = removed.iter().map(|tool| ToolKey::Dependency(tool.id)).collect();
-    services::template_deleted(daemon, removed).await;
+    eager::template_deleted(daemon, removed).await;
     for key in gone {
         tool_log::forget(daemon, key).await;
     }

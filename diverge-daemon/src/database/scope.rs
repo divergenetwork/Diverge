@@ -35,7 +35,7 @@ pub enum Owner {
         /// The template.
         template: String,
     },
-    /// A global service's template, by id.
+    /// A global eager tool's template, by id.
     Global {
         /// The dependency template.
         template: String,
@@ -60,7 +60,7 @@ pub fn owner_of(container: &Container) -> Owner {
 }
 
 /// The scope's part within its owner: none for a container's own
-/// scope and for a global service's, whose owner is its template
+/// scope and for a global eager tool's, whose owner is its template
 /// itself; the dependency's template id for every other dependency's.
 fn part_of(container: &Container) -> Option<&str> {
     match container {
@@ -84,7 +84,7 @@ fn twenty<T: Serialize + ?Sized>(value: &T) -> String {
 /// The role, and the schema, of the container's scope: `diverge_`,
 /// the first twenty hex digits of the SHA-256 of the owner's
 /// canonical bytes, then the first twenty of the SHA-256 of the part's
-/// — `null` for a container's own scope and a global service's, the
+/// — `null` for a container's own scope and a global eager tool's, the
 /// dependency's template id as a JSON string for any other
 /// dependency's. Forty-eight bytes of `[a-z0-9_]`, stable across
 /// restarts and providers, never reused because the identity is never

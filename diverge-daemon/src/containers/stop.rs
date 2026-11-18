@@ -7,7 +7,7 @@ use diverge_sdk::daemon::lifecycle::Reason;
 use futures_util::future;
 
 use super::lifecycle::{self, End};
-use super::{AgentRun, Key, ToolHandle, ToolKey, ToolRun, secrets, services, tool_log};
+use super::{AgentRun, Key, ToolHandle, ToolKey, ToolRun, secrets, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::store::{AgentId, agents, connected_standalone_tools as connected_records, tools as tool_records};
 
@@ -49,10 +49,10 @@ pub fn end_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>) {
 /// tasks ended — never the task this runs in: see [`end_agent`] — the
 /// log told it went down, with the reason the run's [`End`] gives and
 /// whether it was working, before anything else; the vault slots it
-/// held released with their values unchanged, its transient
+/// held released with their values unchanged, its lazy
 /// dependencies stopped as the agent ended — all at once, every
 /// container told at the same time; its attached tools left to their
-/// own use and their idle clocks, its services to their attachments
+/// own use and their idle clocks, its eager tools to their attachments
 /// — its mounts let go, and the provider's capacity asked again,
 /// since the run's reservation is freed. Done once, and only for the
 /// run live under the agent: a second call for one run, or a late one
@@ -98,7 +98,7 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     if let Some(mut held) = run.gate.lock().await.secrets.take() {
         let _ = secrets::release(daemon, &mut held, &run.sender).await;
     }
-    let dependencies = run.served.lock().await.transients();
+    let dependencies = run.served.lock().await.lazy();
     stop_dependencies(daemon, dependencies, end).await;
     run.mounts.stop().await;
     if let Ok(mut conn) = daemon.store.acquire().await {
@@ -109,7 +109,7 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     run.ended.send_replace(true);
 }
 
-/// Every transient dependency tool stopped at once, ending as `end`
+/// Every lazy dependency tool stopped at once, ending as `end`
 /// says — its agent's end, or a deploy's undoing: each told to stop,
 /// each waited for, each taken down.
 pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>, end: End) {
@@ -131,10 +131,10 @@ pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>,
 /// was; the vault slots it held released with their values unchanged, the
 /// word that it ended said — which finishes every connect scope on it
 /// — its mounts let go; a record's told where and when it last ran; a
-/// transient dependency tool's taken out of its agent's served set,
+/// lazy dependency tool's taken out of its agent's served set,
 /// which tells the agent its tools changed, and its scope's password
 /// forgotten, since its row is next run from a new agent run; a
-/// service's scope and its place in every served set kept for the
+/// eager tool's scope and its place in every served set kept for the
 /// next run, which its supervisor starts while any agent is attached.
 /// Every session's notifications reader is ended, and the tool marked
 /// working no more, whatever its log said. Done once, and only for the
@@ -192,10 +192,10 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
                 let _ = connected_records::set_deployed(&mut conn, id, Utc::now()).await;
             }
         }
-        (ToolKey::Dependency(_), Some(tool)) if !tool.is_service() => {
+        (ToolKey::Dependency(_), Some(tool)) if !tool.is_eager() => {
             if let Some(agent) = tool.owner_agent {
                 if let Some(agent) = daemon.live.agent_run(agent).await {
-                    agent.served.lock().await.remove_transient(&run);
+                    agent.served.lock().await.remove_lazy(&run);
                 }
             }
             daemon.live.forget_scope(Key::Tool(run.id)).await;
@@ -212,11 +212,11 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
     }
 }
 
-/// The daemon stops: every service's supervisor stilled first, so
+/// The daemon stops: every eager tool's supervisor stilled first, so
 /// that no run comes back, then every run told to stop and taken
 /// down now, without waiting on the provider.
 pub async fn stop_all(daemon: &Daemon) {
-    services::stop_all(daemon).await;
+    eager::stop_all(daemon).await;
     for run in daemon.live.agent_runs().await {
         run.end_as(End::Unexpected(Reason::DaemonStopped)).await;
         let _ = run.handle.cancel().await;

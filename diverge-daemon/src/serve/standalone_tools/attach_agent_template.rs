@@ -10,7 +10,7 @@ use diverge_sdk::daemon::grant::standalone_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::{self, ToolKey, services};
+use crate::containers::{self, ToolKey, eager};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
 use crate::serve::agents::templates::in_use;
@@ -35,7 +35,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// attached already left in its place: every agent made from the
 /// template has it from now on — a running one's proxy serves it from
 /// this instant and tells the agent its tool list changed. A tool
-/// whose template's mode is a service is kept from the attach on.
+/// whose template's mode is an eager tool is kept from the attach on.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {
@@ -57,15 +57,15 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         return Ok(Frame::Forbidden);
     }
     template_attachments::attach(&mut tx, tool.id, &record.id).await?;
-    let service = tools::mode(&mut tx, &tool).await? == Some(Mode::Service);
+    let eager = tools::mode(&mut tx, &tool).await? == Some(Mode::Eager);
     let agents = tools::agents_of_template(&mut tx, &record.id).await?;
     tx.commit().await?;
     daemon.live.changed(Kind::AgentsTemplates);
     daemon.live.changed(Kind::Agents);
     daemon.live.changed(Kind::StandaloneTools);
-    if service {
-        services::keep(daemon, ToolKey::Record(tool.id)).await;
-        services::held(daemon, ToolKey::Record(tool.id)).await;
+    if eager {
+        eager::keep(daemon, ToolKey::Record(tool.id)).await;
+        eager::held(daemon, ToolKey::Record(tool.id)).await;
     }
     containers::attached(daemon, &tool, &agents).await;
     Ok(Frame::Attached)

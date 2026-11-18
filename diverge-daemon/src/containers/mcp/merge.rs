@@ -64,25 +64,29 @@ enum Next {
     /// An attached connected tool, whose connect is the live set's to
     /// find.
     Connected(ConnectedTool),
-    /// A service, whose run the live set holds.
-    Service(DependencyToolId),
+    /// An eager tool, whose run the live set holds.
+    Eager(DependencyToolId),
+    /// A shared lazy dependency tool, whose run is the live set's to
+    /// find.
+    Shared(DependencyToolId),
     /// Nothing is served under the key.
     Missing,
 }
 
-/// The served tool's run: a transient dependency tool's; an attached
+/// The served tool's run: a lazy dependency tool's; an attached
 /// tool's — a standalone tool's run or a connected tool's connect — as
 /// the live set holds it now, started now if it holds none; or a
-/// service's as the live set holds it now, which is an error
-/// while the service's container is not up.
+/// eager tool's as the live set holds it now, which is an error
+/// while the eager tool's container is not up.
 pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, String> {
     let next = {
         let served = context.served.lock().await;
         match served.entry(key) {
-            Some(Entry::Transient(run)) => Next::Run(Arc::clone(run)),
+            Some(Entry::Lazy(run)) => Next::Run(Arc::clone(run)),
             Some(Entry::Attached { tool }) => Next::Attached(tool.clone()),
             Some(Entry::Connected { tool }) => Next::Connected(tool.clone()),
-            Some(Entry::Service { id, .. }) => Next::Service(*id),
+            Some(Entry::Eager { id, .. }) => Next::Eager(*id),
+            Some(Entry::Shared { id, .. }) => Next::Shared(*id),
             None => Next::Missing,
         }
     };
@@ -93,15 +97,16 @@ pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, St
     }
     let run = match next {
         Next::Run(run) => return Ok(run),
-        Next::Service(id) => {
+        Next::Eager(id) => {
             return context
                 .daemon
                 .live
                 .tool_run(ToolKey::Dependency(id))
                 .await
-                .ok_or_else(|| "the service is not running now".to_string());
+                .ok_or_else(|| "the eager tool is not running now".to_string());
         }
         Next::Missing => return Err("no tool is served under that prefix".to_string()),
+        Next::Shared(id) => tools::use_shared(&context.daemon, id).await.map_err(|error| error.to_string())?,
         Next::Attached(tool) => tools::use_tool(&context.daemon, &tool).await.map_err(|error| error.to_string())?,
         Next::Connected(tool) => tools::use_connected(&context.daemon, &tool).await.map_err(|error| error.to_string())?,
     };
@@ -110,14 +115,14 @@ pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, St
 }
 
 /// The served tool's run as the live set holds it now, for the relay
-/// of its notifications: a transient dependency tool's own, an
-/// attached tool's or a service's by key; `None` while it has none.
+/// of its notifications: a lazy dependency tool's own, an
+/// attached tool's or an eager tool's by key; `None` while it has none.
 async fn relayed(served: &Mutex<Served>, daemon: &Daemon, key: ToolKey) -> Option<Arc<ToolRun>> {
     let next = {
         let served = served.lock().await;
         match served.entry(key) {
-            Some(Entry::Transient(run)) => return Some(Arc::clone(run)),
-            Some(Entry::Attached { .. }) | Some(Entry::Connected { .. }) | Some(Entry::Service { .. }) => true,
+            Some(Entry::Lazy(run)) => return Some(Arc::clone(run)),
+            Some(Entry::Attached { .. }) | Some(Entry::Connected { .. }) | Some(Entry::Shared { .. }) | Some(Entry::Eager { .. }) => true,
             None => false,
         }
     };

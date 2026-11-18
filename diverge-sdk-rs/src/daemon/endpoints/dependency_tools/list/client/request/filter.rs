@@ -45,13 +45,12 @@ pub struct Filter {
     /// made by anybody.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub creators: Vec<Creator>,
-    /// Of any one of these modes, transient or a service: see
+    /// Of any one of these modes, lazy or eager: see
     /// [`Mode`]. Absent when empty, and then either.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modes: Vec<Mode>,
-    /// A service whose `scope` is any one of these: see [`Scope`]. A
-    /// transient tool has no scope and matches none of them. Absent
-    /// when empty, and then any scope, or none.
+    /// A tool whose `scope` is any one of these: see [`Scope`]. Absent
+    /// when empty, and then any scope.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub scopes: Vec<Scope>,
     /// Whether some agent's last registration declared it — the tool

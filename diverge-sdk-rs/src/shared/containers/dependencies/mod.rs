@@ -5,10 +5,10 @@
 //! it depends on — each a [`Template`]: a tool container the caller
 //! runs, by its image — a digest, and where its bytes may be fetched —
 //! its limits, its arguments and the secrets it needs, by name; which
-//! of two modes it is, a transient tool of the agent's run or a service
-//! the caller keeps, with the mode's own members — the agent's files
-//! and directories the caller serves live into a transient tool, how
-//! far a service is shared — and named by
+//! of two modes it is, a lazy tool run while it is used or an eager
+//! one the caller keeps, with the mode's own members — how far the
+//! tool is shared, and the agent's files and directories the caller
+//! serves live into a lazy tool of one agent — and named by
 //! its id, the hash of its canonical bytes, which the caller serves it
 //! to the program under. The proxy carries the list on the agents
 //! begin's `Begun`, beside the secrets the program declared; the

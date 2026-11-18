@@ -2,8 +2,8 @@
 //!
 //! The shape and the id are the daemon's one
 //! [`template`](crate::daemon::template), typed `"tool"` here, with
-//! the [`Mode`] its tools are kept by beside — transient, run while
-//! used, or a service, kept while any agent is attached or any
+//! the [`Mode`] its tools are kept by beside — lazy, run while
+//! used, or eager, kept while any agent is attached or any
 //! connect is open: everything about a tool that is not its name, not
 //! the provider it runs on and not its own mounts. A caller makes one
 //! with [`create`] and names it afterwards by its id, so the same

@@ -1,4 +1,4 @@
-//! What one start of a service's container came to.
+//! What one start of an eager tool's container came to.
 
 /// The supervisor's last start: up, or why not, in a sentence.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -8,7 +8,7 @@ use diverge_sdk::daemon::grant::standalone_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::{Key, ToolKey, services, tool_log};
+use crate::containers::{Key, ToolKey, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::database;
 use crate::judge::{self, Standing, Who};
@@ -28,10 +28,10 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// `Forbidden` with no `delete` grant at all; `NotFound`; `Forbidden`
 /// for a tool the grants do not reach; `Attached` while it is
 /// attached to any agent or any agent template; else the tool gone — its own database scope
-/// dropped with its every table, its name free, and, a service, its
+/// dropped with its every table, its name free, and, an eager tool, its
 /// keeping ended: held by no agent, it may still be held by a connect
 /// or be waiting on its clock, and that run is stopped with it. A
-/// transient tool attached nowhere runs nowhere, so nothing is
+/// lazy tool attached nowhere runs nowhere, so nothing is
 /// stopped.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut tx = daemon.store.begin().await?;
@@ -55,7 +55,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     let role = database::role_of(&database::container_of_tool(&tool));
     database::provision::drop(&mut tx, &role).await?;
     tx.commit().await?;
-    services::tool_deleted(daemon, tool.id).await;
+    eager::tool_deleted(daemon, tool.id).await;
     tool_log::forget(daemon, ToolKey::Record(tool.id)).await;
     daemon.live.forget_scope(Key::Tool(ToolKey::Record(tool.id))).await;
     daemon.live.changed(Kind::StandaloneTools);

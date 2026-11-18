@@ -57,19 +57,19 @@ pub struct Answerer {
     pub pulls: Arc<Pulls>,
     /// Where a use is noted.
     pub touched: watch::Sender<Instant>,
-    /// The MCP exchanges in flight: the agent's own, which a transient
+    /// The MCP exchanges in flight: the agent's own, which a lazy
     /// dependency shares with its agent.
     pub inflight: Arc<Inflight>,
     /// The file uses in progress: the agent's own, which a dependency
     /// deployed for it shares, so that a use on the dependency holds
     /// the agent — with which the dependency stops — up.
     pub files: Arc<Inflight>,
-    /// The services an agent's registration declared, once its
+    /// The eager tools an agent's registration declared, once its
     /// dependencies were deployed: `None` until then, and still
     /// `None` for a program that declared nothing, which is never
     /// asked about. What the start settles the agent's attachments
     /// by.
-    pub services: Mutex<Option<Vec<DependencyToolId>>>,
+    pub kept: Mutex<Option<Vec<DependencyToolId>>>,
     /// The names the container's template declares: what its
     /// registration may take.
     pub declared: Vec<String>,

@@ -1,4 +1,4 @@
-//! One run of a service's container.
+//! One run of a dependency tool that stands alone of any agent's run.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -16,39 +16,58 @@ use crate::containers::images::Pulls;
 use crate::containers::fuse::Mounts;
 use crate::containers::capable::Needs;
 use crate::containers::mcp::Served;
-use crate::containers::{Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, secrets, undo_tool};
+use crate::containers::start::Starting;
+use crate::containers::{Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, secrets, undo_tool};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::ToolRef;
 use crate::store::agents;
 use crate::store::dependency_tools::{DependencyTool, attachments};
 
-/// The service's run, started now if it was not up: its container —
-/// the template's image, limits and arguments, no mount, since a
-/// service is many agents' and mounts nothing of any one's, and its
-/// secrets bound by name through the agent that spawns the run, taken
-/// at the service's own registration and held under the dependency
-/// tool as holder — run on the first candidate provider that will,
-/// under the grants its program declared at its registration, kept on
-/// its row, with every attached agent as its `attached`, its run entered as live under its row with its pump. The
-/// agent that spawns the run is the service's owner, for an
-/// `instance` scope, and otherwise the attached agent whose
-/// registration declared the template last — so the binding may
-/// differ from run to run, and a vault key bound anew is taken at the
-/// next. A per-agent service whose agent is gone cannot be named and
-/// is not started; a service that declares secrets with no agent
-/// attached is not started either, and the supervisor tries again; a
-/// provider that refuses after the registration gives back what it
-/// took, and a failure once the run is made undoes it as
-/// [`undo_tool`](crate::containers::undo_tool) states. The start runs
-/// in a task of its own, waited for: a caller cancelled midway neither
-/// tears it nor orphans what it opened.
-pub async fn start(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<ToolRun>, StartError> {
+/// The run of a dependency tool that is no one agent's run's — an
+/// eager tool, of any scope, or a lazy tool whose scope is `template`
+/// or `global` — started now if it was not up.
+///
+/// The rules:
+///
+/// 1. One start at a time per tool: a second, meanwhile, waits and
+///    finds the run the first made.
+/// 2. The container is the template's image, limits and arguments,
+///    with no mount: the tool is not one agent's, and mounts nothing
+///    of any one's.
+/// 3. Its secrets are bound by name through the agent that spawns the
+///    run, taken at the tool's own registration and held under the
+///    dependency tool as holder. That agent is the tool's owner, for
+///    an `instance` scope, and otherwise the attached agent whose
+///    registration declared the template last — so the binding may
+///    differ from run to run, and a vault key bound anew is taken at
+///    the next.
+/// 4. It runs on the first candidate provider that will, under the
+///    grants its program declared at its registration, kept on its
+///    row, its run entered as live under its row with its pump.
+/// 5. A lazy tool's run has the idle clock a lazy standalone tool's
+///    has — [`idle_tool`](crate::containers::idle::idle_tool) — and
+///    ends `idle_seconds` after its last use with nothing in flight.
+///    An eager tool's has none: its keeping is its supervisor's.
+/// 6. A per-agent tool whose agent is gone cannot be named and is not
+///    started; one that declares secrets with no agent attached is
+///    not started either. A provider that refuses after the
+///    registration gives back what it took, and a failure once the
+///    run is made undoes it as
+///    [`undo_tool`](crate::containers::undo_tool) states.
+///
+/// The start runs in a task of its own, waited for: a caller
+/// cancelled midway neither tears it nor orphans what it opened.
+pub async fn alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<ToolRun>, StartError> {
     let (daemon, tool) = (Arc::clone(daemon), tool.clone());
-    let started = tokio::spawn(async move { start_service(&daemon, &tool).await });
+    let started = tokio::spawn(async move {
+        // Rule 1.
+        let _starting = Starting::hold(&daemon, Key::Tool(ToolKey::Dependency(tool.id))).await;
+        start_alone(&daemon, &tool).await
+    });
     started.await.unwrap_or_else(|error| Err(StartError::Unfinished(error.to_string())))
 }
 
-async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<ToolRun>, StartError> {
+async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<ToolRun>, StartError> {
     let key = ToolKey::Dependency(tool.id);
     if let Some(run) = daemon.live.tool_run(key).await {
         return Ok(run);
@@ -73,12 +92,12 @@ async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Ar
         (owner_agent, source)
     };
     let Some(owner) = tool.owner(owner_agent.as_ref()) else {
-        return Err(StartError::Run("the service's agent is gone".to_string()));
+        return Err(StartError::Run("the tool's agent is gone".to_string()));
     };
     let binding = match source {
         Some(source) => secrets::bind(&tool.declared.secrets, &source.secrets).map_err(StartError::Unbound)?,
         None if tool.declared.secrets.is_empty() => IndexMap::new(),
-        None => return Err(StartError::Run("no agent attached to the service spawns it".to_string())),
+        None => return Err(StartError::Run("no agent attached to the tool spawns it".to_string())),
     };
     let sender = Creator::Tool(creator::Tool::Dependency {
         template: tool.template.clone(),
@@ -91,7 +110,7 @@ async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Ar
         ..Needs::default()
     };
     let candidates = provider::candidates(daemon, None, &needs).await.map_err(StartError::Provider)?;
-    let container = build::service(&tool.template, &tool.declared);
+    let container = build::alone(&tool.template, &tool.declared);
     let attestation = attestation::Tool::Dependency {
         image: container.image.clone(),
         template: tool.template.clone(),
@@ -115,7 +134,7 @@ async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Ar
             touched: touched.clone(),
             inflight: Arc::new(Inflight::new()),
             files: Arc::new(Inflight::new()),
-            services: Mutex::new(None),
+            kept: Mutex::new(None),
             declared: tool.declared.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
@@ -139,7 +158,7 @@ async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Ar
             provider: identity,
             container: Some(id.id),
             handle: ToolHandle::Run(handle),
-            service: true,
+            eager: tool.is_eager(),
             connections: Mutex::new(HashSet::new()),
             held: watch::channel(false).0,
             inflight: Arc::new(Inflight::new()),
@@ -175,6 +194,10 @@ async fn start_service(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Ar
             let mut tasks = run.tasks.lock().await;
             if daemon.live.is_tool_run(&run).await {
                 tasks.push(tokio::spawn(pump_tool::pump_tool(Arc::clone(daemon), Arc::clone(&run), stream)).abort_handle());
+                // Rule 5.
+                if !run.eager {
+                    tasks.push(tokio::spawn(idle::idle_tool(Arc::clone(daemon), Arc::clone(&run))).abort_handle());
+                }
             }
         }
         return Ok(run);

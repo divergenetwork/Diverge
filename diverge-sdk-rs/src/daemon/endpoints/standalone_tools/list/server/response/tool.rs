@@ -42,7 +42,7 @@ pub struct Tool {
     /// name is free again once the tool is deleted.
     pub index: u64,
     /// How the tool is kept running, as its template's `mode` says:
-    /// transient, run while used, or a service, kept while any agent is
+    /// lazy, run while used, or eager, kept while any agent is
     /// attached or any connect is open. See [`Mode`].
     pub mode: Mode,
     /// The provider the container runs on, if it runs, or last ran on;

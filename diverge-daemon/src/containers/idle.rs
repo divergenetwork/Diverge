@@ -100,7 +100,7 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
     }
 }
 
-/// Run a transient tool's idle clock until the run ends: while
+/// Run a lazy tool's idle clock until the run ends: while
 /// anything holds the tool — an exchange in flight into it, a file
 /// use in progress on it (a watch, a download, an upload, a transfer),
 /// a connect scope open on it — the clock does not
@@ -110,8 +110,8 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
 /// holds it, and begins again from the last touch whenever that
 /// becomes so. An attachment holds nothing, and an agent merely
 /// mid-loop nothing: what holds is real use and real connections. The
-/// waiter hears the end and does the rest. A service has no clock
-/// here: its keeping is the services' own.
+/// waiter hears the end and does the rest. An eager tool has no clock
+/// here: its keeping is the eager tools' own.
 pub async fn idle_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>) {
     let mut held = run.held.subscribe();
     let mut inflight = run.inflight.subscribe();

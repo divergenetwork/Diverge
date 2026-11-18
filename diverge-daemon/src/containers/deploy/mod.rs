@@ -15,7 +15,7 @@
 //! registration; served to the agent under
 //! its template's id, short. A template declared twice, or one naming
 //! a secret the agent does not bind, is refused. The first that
-//! cannot be deployed — a service whose start fails included — is the
+//! cannot be deployed — an eager tool whose start fails included — is the
 //! run's error, and the rest are stopped. A dependency lives for as
 //! long as the agent's container does, and no longer. A tool
 //! container declares no dependencies and is never deployed for.
@@ -23,6 +23,8 @@
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
+mod alone;
 mod deploy;
 
+pub use alone::*;
 pub use deploy::*;

@@ -29,7 +29,8 @@ use crate::shared::permission::Tags;
 /// tool, those it is attached to directly, and every agent of every
 /// template it is attached to. For a dependency tool, those attached
 /// to it by a registration that declared its template, and still so:
-/// for a transient tool the one agent it was deployed for. A tool that
+/// for a tool of the `instance` scope the one agent it was deployed
+/// for. A tool that
 /// may `message` within `attached` may message its own agents and no
 /// other, whatever their tags, which is what a tool that answers to
 /// its agents asks for.

@@ -1,4 +1,4 @@
-//! A service's hold, recomputed from what holds it.
+//! An eager tool's hold, recomputed from what holds it.
 
 use std::time::Instant;
 
@@ -8,15 +8,15 @@ use sqlx::PgConnection;
 
 use crate::store::{self, ToolId, dependency_tools, tools};
 
-/// What holds the service changed: whether anything does read anew —
+/// What holds the eager tool changed: whether anything does read anew —
 /// any agent attached, from the records, for either kind of tool, a
 /// tool on record's to an agent or to an agent template; and for a
 /// tool on record, any connect scope open on its run as well —
 /// its state told, and the moment noted as the last change, which
-/// its clock counts from. A service with no state — never kept, or
+/// its clock counts from. An eager tool with no state — never kept, or
 /// retired — is left as it is.
 pub async fn held(daemon: &Daemon, key: ToolKey) {
-    let Some(state) = daemon.live.service_state(key).await else {
+    let Some(state) = daemon.live.eager_state(key).await else {
         return;
     };
     let attached = match key {
@@ -28,11 +28,11 @@ pub async fn held(daemon: &Daemon, key: ToolKey) {
             Ok(mut conn) => dependency_tools::attachments::attached(&mut conn, id).await.map(|agents| !agents.is_empty()),
             Err(error) => Err(error),
         },
-        // A connected tool is never a service, and has no state.
+        // A connected tool is never an eager tool, and has no state.
         ToolKey::Connected(_) => return,
     };
     // A store that cannot be read says nothing: the hold is left as it
-    // was, rather than a service retired for want of an answer.
+    // was, rather than an eager tool retired for want of an answer.
     let Ok(mut held) = attached else {
         return;
     };

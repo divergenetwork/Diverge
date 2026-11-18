@@ -1,11 +1,11 @@
-//! Services: the tools the daemon keeps.
+//! Eager tools: the tools the daemon keeps.
 //!
-//! A service is a tool the daemon keeps running for as long as
+//! An eager tool is a tool the daemon keeps running for as long as
 //! anything holds it, and retires once nothing has for `idle_seconds`:
-//! a dependency tool whose template is a service — one row under its
+//! a dependency tool whose template is an eager tool — one row under its
 //! scope key, the agent, the agent's template, or the template alone,
 //! made by the first registration that declares it there — or a tool
-//! on record whose template's `mode` is a service. What holds its
+//! on record whose template's `mode` is an eager tool. What holds its
 //! container up is not any run: for either, the agents ATTACHED to it
 //! — a dependency tool's by the registrations that declare its
 //! template, a tool on record's by `attach` — and for a tool on
@@ -25,17 +25,17 @@
 //!
 //! [`settle`] is what a start does when the program declared nothing,
 //! the agent detached from every dependency tool; [`keep`] is a
-//! service kept up — its [`State`] made, its [`supervise`] task,
+//! eager tool kept up — its [`State`] made, its [`supervise`] task,
 //! which says each start's [`Outcome`] on the state, and its
 //! [`clock`] started — and [`held`] its hold recomputed from what
-//! holds it; [`start`] is one run of a dependency service's container
+//! holds it; [`alone`](crate::containers::deploy::alone) is one run of a dependency eager tool's container
 //! (a tool on record's is the one every tool has); [`retire`] is the
-//! end of its keeping; [`boot`] is every service brought up at the
+//! end of its keeping; [`boot`] is every eager tool brought up at the
 //! daemon's start; [`stop_all`] is the daemon stopping, the
 //! supervisors stilled before the runs are stopped so that none comes
 //! back; and [`agent_deleted`], [`template_deleted`] and
 //! [`tool_deleted`] are what the deletes — an agent's, an agent
-//! template's, a dependency template's, a tool's — do to the services
+//! template's, a dependency template's, a tool's — do to the eager tools
 //! whose rows went with them and those they held up.
 //!
 //! Its own files are flattened into it, so everything is named
@@ -49,7 +49,6 @@ mod keep;
 mod outcome;
 mod retire;
 mod settle;
-mod start;
 mod state;
 mod stop_all;
 mod supervise;
@@ -62,7 +61,6 @@ pub use keep::*;
 pub use outcome::*;
 pub use retire::*;
 pub use settle::*;
-pub use start::*;
 pub use state::*;
 pub use stop_all::*;
 pub use supervise::*;

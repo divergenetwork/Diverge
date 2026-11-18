@@ -9,8 +9,8 @@ use crate::store::{AgentId, ConnectedToolId, DependencyToolId, ToolId};
 
 /// One tool run of the daemon's: a standalone tool's, a connected
 /// tool's — the connect this daemon holds on another daemon's tool —
-/// or a dependency tool's, by its row — a transient tool's for its
-/// agent's run, a service's for as long as the daemon keeps it up; at
+/// or a dependency tool's, by its row — a lazy tool's for its
+/// agent's run, an eager tool's for as long as the daemon keeps it up; at
 /// most one run per row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ToolKey {

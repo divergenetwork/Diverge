@@ -34,7 +34,7 @@
 //!
 //! What a container reaches is one schema of its own, made at its
 //! first connection — a dependency tool's the scope its owner names,
-//! a transient tool's one per agent, a service's as far as its
+//! shared as far as its
 //! template's `scope` says, see [`Container`] — and dropped by the
 //! delete of what owns it, a tool's or a dependency template's, and
 //! by no other: one login role and one

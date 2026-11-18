@@ -12,7 +12,7 @@
 //! by the role, in the one database: `diverge_`, twenty hex of the
 //! hash of the scope's OWNER — the agent or the tool it is the own
 //! scope of, the agent or the agent template a dependency's scope is
-//! shared under, or a global service's template — then twenty of the
+//! shared under, or a global eager tool's template — then twenty of the
 //! hash of the scope's part within the owner. Made at the container's
 //! first connection, in one transaction under an advisory lock, by
 //! statements every Postgres since 10 takes — the role with a

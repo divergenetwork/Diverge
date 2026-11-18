@@ -110,7 +110,7 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
     ));
     tokio::spawn(crate::listings::idle(Arc::clone(&daemon)));
     providers::dial_all(&daemon).await;
-    if let Err(error) = containers::services::boot(&daemon).await {
+    if let Err(error) = containers::eager::boot(&daemon).await {
         postgres.stop().await;
         return Err(Error::Store(error));
     }
@@ -131,7 +131,7 @@ pub async fn run(config: Config, root: PathBuf) -> Result<(), Error> {
 }
 
 /// Resolves on Ctrl-C, and on Unix on SIGTERM too, which is what a
-/// service manager sends.
+/// eager tool manager sends.
 async fn shutdown() {
     #[cfg(unix)]
     {

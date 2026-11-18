@@ -1,5 +1,6 @@
 //! Deploying every dependency, at once: each on record under its
-//! owner, the transient tools started, the services kept.
+//! owner, the agent's own lazy tools started, the shared lazy tools
+//! served idle, the eager tools kept.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -10,7 +11,7 @@ use diverge_sdk::daemon::creator::{self, Creator};
 use diverge_sdk::daemon::key;
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
 use diverge_sdk::shared::containers::dependencies;
-use diverge_sdk::shared::containers::dependencies::{Scope, Template};
+use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::Identity;
 use diverge_sdk::shared::error::Error;
 use futures_util::future;
@@ -22,7 +23,7 @@ use crate::containers::fuse::Mounts;
 use crate::containers::lifecycle::End;
 use crate::containers::capable::Needs;
 use crate::containers::mcp::Served;
-use crate::containers::services;
+use crate::containers::eager;
 use crate::containers::{Inflight, Key, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, secrets, stop};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::ToolRef;
@@ -32,29 +33,41 @@ use crate::store::dependency_tools::{self, DependencyTool};
 use crate::store::{self, AgentId, DependencyToolId, hash};
 
 /// Deploy every template for the agent `answerer` answers for, whose
-/// container runs under `id` on the answerer's provider: every
-/// template's body on record, every tool of it under the agent's
-/// owner — the agent itself for a transient template and an
-/// `instance` service, its agent template or nobody for the other
-/// scopes — made or found made, the agent attached to each as of now,
-/// and detached from every tool it no longer declares, in one
-/// transaction before anything starts; then every transient tool
-/// started at once, each served to the agent under its template's id
-/// once every one is up; then every service kept up, its hold
-/// recomputed, and its run waited for — live already, or its
-/// supervisor's next start up — every tool left told its
-/// attachments changed, and the services served the same way. A
-/// template declared twice — one id twice — or one whose secrets are
-/// not names, or not names the agent binds, or one whose image has no
-/// document the daemon can read, a tool container asking,
-/// an agent gone, a store that refuses the records, no provider to
-/// run on, a path of the agent's that cannot be served, or a provider
-/// that will not run one — every candidate tried — or a service whose
-/// start fails, is the
-/// error, naming the dependency by its id where there is one, and
-/// every transient tool started is stopped. The transient tools are
-/// started, and served, in a task of their own, waited for (see
-/// [`start_all`]): a registration cancelled midway orphans none.
+/// container runs under `id` on the answerer's provider.
+///
+/// The rules:
+///
+/// 1. Every template is checked before anything is recorded or
+///    started: one declared twice — one id twice — one that names a
+///    mount under a scope that is not `instance`, one whose secrets
+///    are not names, or not names the agent binds, and one whose
+///    image has no document the daemon can read, or an agent's, is
+///    refused.
+/// 2. In one transaction: every template's body on record, every
+///    tool of it under the owner its `scope` names — the agent
+///    itself, its agent template, or nobody — made or found made, the
+///    agent attached to each as of now, and detached from every tool
+///    it no longer declares.
+/// 3. A lazy tool whose scope is `instance` is the agent's run's:
+///    every one is started at once, in a task of its own, waited for
+///    (see [`start_all`]), and served to the agent under its
+///    template's id once every one is up. A registration cancelled
+///    midway orphans none.
+/// 4. An eager tool is kept up, its hold recomputed, and its run
+///    waited for — live already, or its supervisor's next start up —
+///    and served the same way.
+/// 5. A lazy tool whose scope is `template` or `global` is many
+///    agents': it is not started here. It is served idle, and the
+///    first use starts it — see
+///    [`use_shared`](crate::containers::tools::use_shared).
+/// 6. Every tool the agent left is told its attachments changed.
+///
+/// A tool container asking, an agent gone, a store that refuses the
+/// records, no provider to run on, a path of the agent's that cannot
+/// be served, a provider that will not run one — every candidate
+/// tried — or an eager tool whose start fails, is the error, naming
+/// the dependency by its id where there is one, and every tool
+/// started under rule 3 is stopped.
 pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -> Result<(), Error> {
     let (Key::Agent(agent), Some(attestation::Caller::Agent(caller))) = (answerer.key, &answerer.caller) else {
         return Err(error("", "a tool container declares no dependencies"));
@@ -79,6 +92,11 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         let template_id = hash::template_id(&template.hashed()).map_err(|failure| error("", &failure.to_string()))?;
         if !ids.insert(template_id.clone()) {
             return Err(error(&template_id, "declared twice"));
+        }
+        // A mount under a scope that is not one agent's: see
+        // `Mode::check`.
+        if let Err(reason) = template.mode.check() {
+            return Err(error(&template_id, reason));
         }
         if let Err(reason) = inner::declared(&template.secrets) {
             return Err(error(&template_id, &reason));
@@ -117,25 +135,25 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         key: agent_key.clone(),
         container: id,
     };
-    let transients: Vec<DependencyTool> = tools.iter().filter(|tool| !tool.is_service()).cloned().collect();
-    let runs = match tokio::spawn(start_all(owner, transients)).await {
+    let own: Vec<DependencyTool> = tools.iter().filter(|tool| tool.runs_with_agent()).cloned().collect();
+    let runs = match tokio::spawn(start_all(owner, own)).await {
         Ok(Ok(runs)) => runs,
         Ok(Err((template_id, reason))) => return Err(error(&template_id, &reason)),
         Err(failure) => return Err(error("", &failure.to_string())),
     };
     let mut kept = Vec::new();
     for tool in &tools {
-        if !tool.is_service() {
+        if !tool.is_eager() {
             continue;
         }
         let key = ToolKey::Dependency(tool.id);
-        services::keep(daemon, key).await;
-        services::held(daemon, key).await;
+        eager::keep(daemon, key).await;
+        eager::held(daemon, key).await;
         if let Err(reason) = up(daemon, key).await {
             {
                 let mut served = answerer.served.lock().await;
                 for run in &runs {
-                    served.remove_transient(run);
+                    served.remove_lazy(run);
                 }
             }
             stop::stop_dependencies(daemon, runs, End::Expected).await;
@@ -144,13 +162,17 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         kept.push(tool.id);
     }
     for id in left {
-        services::held(daemon, ToolKey::Dependency(id)).await;
+        eager::held(daemon, ToolKey::Dependency(id)).await;
     }
-    *answerer.services.lock().await = Some(kept);
+    *answerer.kept.lock().await = Some(kept);
     let mut served = answerer.served.lock().await;
     for tool in &tools {
-        if tool.is_service() {
-            served.insert_service(tool.id, &tool.template, &short(&tool.template));
+        if tool.is_eager() {
+            served.insert_eager(tool.id, &tool.template, &short(&tool.template));
+        } else if !tool.runs_with_agent() {
+            // A lazy tool shared with other agents: served idle, and
+            // started by the first use.
+            served.insert_shared(tool.id, &tool.template, &short(&tool.template));
         }
     }
     daemon.live.changed(Kind::DependencyTools);
@@ -170,7 +192,7 @@ struct Owner {
     inflight: Arc<Inflight>,
     /// The agent's file uses: a dependency's hold the agent up.
     files: Arc<Inflight>,
-    /// The agent's served set, the transient tools served into it.
+    /// The agent's served set, the lazy tools served into it.
     served: Arc<Mutex<Served>>,
     /// The agent's record: its secrets' binding.
     agent: Agent,
@@ -180,14 +202,14 @@ struct Owner {
     container: String,
 }
 
-/// Every transient tool started at once, then every one served to the
+/// Every lazy tool started at once, then every one served to the
 /// agent under its template's id, all in the one task: the first that
 /// could not start is the error — its template's id and the reason —
 /// and every one started is stopped. Served before the deploy goes on,
 /// a run is the agent's from here: the agent's start stops it with an
 /// attempt that fails, and the agent's end with the run.
-async fn start_all(owner: Owner, transients: Vec<DependencyTool>) -> Result<Vec<Arc<ToolRun>>, (String, String)> {
-    let started = future::join_all(transients.iter().map(|tool| async {
+async fn start_all(owner: Owner, own: Vec<DependencyTool>) -> Result<Vec<Arc<ToolRun>>, (String, String)> {
+    let started = future::join_all(own.iter().map(|tool| async {
         let outcome = start(&owner, tool).await;
         (tool.template.clone(), outcome)
     }))
@@ -207,7 +229,7 @@ async fn start_all(owner: Owner, transients: Vec<DependencyTool>) -> Result<Vec<
     let mut served = owner.served.lock().await;
     for run in &runs {
         if let Some(tool) = &run.dependency {
-            served.insert_transient(Arc::clone(run), &short(&tool.template));
+            served.insert_lazy(Arc::clone(run), &short(&tool.template));
         }
     }
     Ok(runs)
@@ -232,10 +254,7 @@ async fn record(
         store::dependencies::create(&mut tx, template_id, template)
             .await
             .map_err(|error| error.to_string())?;
-        let scope = match &template.mode {
-            dependencies::Mode::Transient { .. } => Scope::Instance,
-            dependencies::Mode::Service { scope } => *scope,
-        };
+        let scope = template.mode.scope();
         let tool = dependency_tools::find_or_create(
             &mut tx,
             &dependency_tools::Declared {
@@ -261,7 +280,7 @@ async fn record(
     Ok((tools, left))
 }
 
-/// One transient tool started: its secrets bound through the agent's
+/// One lazy tool started: its secrets bound through the agent's
 /// binding, to be taken at its own registration and held under the
 /// dependency tool as holder, its mounts served from the agent, its
 /// container run on the first candidate provider that will, what its
@@ -275,12 +294,13 @@ async fn record(
 async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, String> {
     let daemon = &owner.daemon;
     let agent_key = &owner.key;
-    let dependencies::Mode::Transient {
+    let dependencies::Mode::Lazy {
         fuse_file_mounts,
         fuse_directory_mounts,
+        ..
     } = &tool.declared.mode
     else {
-        return Err("a service is kept, not started here".to_string());
+        return Err("only a lazy tool of the `instance` scope is started with its agent".to_string());
     };
     let key = ToolKey::Dependency(tool.id);
     if let Some(stale) = daemon.live.tool_run(key).await {
@@ -327,7 +347,7 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             touched: touched.clone(),
             inflight: Arc::clone(&owner.inflight),
             files: Arc::clone(&owner.files),
-            services: Mutex::new(None),
+            kept: Mutex::new(None),
             declared: tool.declared.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
@@ -351,7 +371,7 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             provider: identity,
             container: Some(container_id.id),
             handle: ToolHandle::Run(handle),
-            service: false,
+            eager: false,
             connections: Mutex::new(HashSet::new()),
             held: watch::channel(false).0,
             inflight: Arc::new(Inflight::new()),
@@ -396,9 +416,9 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
     Err(format!("no provider ran it; the last said: {last}"))
 }
 
-/// The service up: its run live now, or its supervisor's next start
+/// The eager tool up: its run live now, or its supervisor's next start
 /// waited for and up. Why it is not, in a sentence: the start's own
-/// words, or a service not kept. The last word the supervisor said
+/// words, or an eager tool not kept. The last word the supervisor said
 /// is marked read before the run is looked for, so a start that came
 /// up between the two is seen live — a run is live before its
 /// outcome is said — and an outcome said before this registration,
@@ -406,8 +426,8 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
 /// the start this registration causes, its attachment now the
 /// latest, under the binding that counts.
 async fn up(daemon: &Daemon, key: ToolKey) -> Result<(), String> {
-    let Some(state) = daemon.live.service_state(key).await else {
-        return Err("the service is not kept".to_string());
+    let Some(state) = daemon.live.eager_state(key).await else {
+        return Err("the eager tool is not kept".to_string());
     };
     let mut started = state.started.clone();
     started.borrow_and_update();
@@ -415,11 +435,11 @@ async fn up(daemon: &Daemon, key: ToolKey) -> Result<(), String> {
         return Ok(());
     }
     if started.changed().await.is_err() {
-        return Err("the service is not kept any more".to_string());
+        return Err("the eager tool is not kept any more".to_string());
     }
     let outcome = (*started.borrow_and_update()).clone();
     match outcome {
-        Some(services::Outcome::Failed(reason)) => Err(reason),
+        Some(eager::Outcome::Failed(reason)) => Err(reason),
         _ => Ok(()),
     }
 }

@@ -26,7 +26,7 @@
 //!    and no `inactive` of a run is ever kept after its `undeployed`,
 //!    and no ask of a run is kept or answered after it.
 //! 4. **Expected or not.** A run taken down because it was asked to
-//!    be — gone idle, its record deleted, its template's service
+//!    be — gone idle, its record deleted, its template's eager tool
 //!    retired — carries no `reason`. A run that ended unexpectedly
 //!    carries exactly one [`Reason`], and that `reason` is the only
 //!    place a log says so: a plain `error` never records a drop.

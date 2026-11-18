@@ -22,7 +22,7 @@ use crate::store::{self, AgentId, dependency_tools, tools};
 /// as of the request: a standalone tool's, those it is attached to
 /// directly and every agent of every template it is attached to; a
 /// dependency tool's, those attached to its row — its one agent for a
-/// transient tool, every agent attached to a service.
+/// lazy tool, every agent attached to an eager tool.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Standing {
     /// The account's identity, for an account; none for a tool, which
