@@ -2,7 +2,7 @@
 // connected standalone tool, dependency tool, volume, provider and
 // daemon, and who has sent to whom.
 
-import type { daemon } from "@diverge/sdk";
+import { type daemon, provider } from "@diverge/sdk";
 import type { Snapshot } from "./snapshot";
 
 /** The eight kinds of entity. */
@@ -32,7 +32,22 @@ export type Files =
  * daemon's account there and whether the daemon is connected to it. A
  * daemon's `daemon` is its record's ID: the hop a route to it takes.
  */
-export type Entity = { key: string; kind: Kind; label: string; detail: string; agent?: { template: string; index: number }; subject?: Subject; files?: Files; frontend?: Frontend; live?: Live; line?: string; daemon?: { id: string } };
+export type Entity = { key: string; kind: Kind; label: string; detail: string; agent?: { template: string; index: number }; subject?: Subject; files?: Files; frontend?: Frontend; live?: Live; line?: string; daemon?: { id: string }; capacity?: Capacity };
+
+/**
+ * A provider's capacity, as its list has it now: whether the daemon
+ * is connected to it; the four amounts the provider last said the
+ * daemon could still use, absent until it has answered once and
+ * whenever it is not connected; and which of them mean anything —
+ * `offers`, by what the provider's capabilities hold out: volumes
+ * with a volume mode, images with a Store, containers with containers.
+ * A provider that states no capabilities is taken to offer all three.
+ */
+export type Capacity = {
+  connected: boolean;
+  amounts?: { volumes_disk: number; images_disk: number; container_memory: number; container_disk: number };
+  offers: { volumes: boolean; images: boolean; containers: boolean };
+};
 
 /** Whose frontend an entity serves: an agent's, a standalone tool's or a dependency tool's, as the daemon's `frontend` names it. */
 export type Frontend = { agent: daemon.reference.Agent } | { tool: daemon.reference.Tool } | { dependency: daemon.reference.Dependency };
@@ -162,13 +177,19 @@ const STANDING: Record<Provider["status"]["type"], string> = { disconnected: "di
  * The entity a provider is — the record the daemon keeps of one: named
  * by its description, else by its subject; its line its direction —
  * outgoing to its address, or incoming — and where the daemon stands
- * with it. It has no log, no files and no container of its own.
+ * with it. It has no log, no files and no container of its own; what
+ * it has is its `capacity`.
  */
 function providerEntity(p: Provider): Entity {
   const { issuer, subject } = p.identity;
   const way = p.direction === "outgoing" ? `outgoing to ${p.address}` : "incoming";
   const line = `${way} · ${STANDING[p.status.type]}`;
-  return { key: providerKey(p), kind: "provider", label: p.description || subject, detail: `${issuer} ${subject} — ${line}`, line };
+  const said = "info" in p.status ? p.status.info.capabilities : undefined;
+  const offers = said
+    ? { volumes: provider.endpoints.info.server.response.volumes(said), images: said.images?.store !== undefined, containers: said.containers !== undefined }
+    : { volumes: true, images: true, containers: true };
+  const capacity: Capacity = { connected: p.status.type === "connected", amounts: p.capacity, offers };
+  return { key: providerKey(p), kind: "provider", label: p.description || subject, detail: `${issuer} ${subject} — ${line}`, line, capacity };
 }
 
 /**

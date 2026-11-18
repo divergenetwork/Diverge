@@ -211,6 +211,53 @@
   display: none;
 }
 
+/* Rule 13: the capacity tab: a line saying what the amounts are, then a name and an amount a row, the amounts in a
+   column of their own so they stand under one another, in figures that do not shift as they change. */
+.sheet .capacity {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+.sheet .capacity[hidden] {
+  display: none;
+}
+.sheet .capacity .note,
+.sheet .capacity .none {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.sheet .capacity .none {
+  margin-top: var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.sheet .capacity dl {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: var(--space-2) var(--space-6);
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+}
+.sheet .capacity dl[hidden],
+.sheet .capacity .none[hidden] {
+  display: none;
+}
+.sheet .capacity dt {
+  color: var(--text-2);
+}
+.sheet .capacity dd {
+  margin: 0;
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* An amount the provider does not offer: said, and quiet. */
+.sheet .capacity dd.off {
+  color: var(--text-3);
+}
+
 /* The primary button: open the daemon, send. The accent filled, lighter under the mouse. */
 .sheet .daemon button,
 .sheet .composer .send {
@@ -347,11 +394,12 @@
   cursor: auto;
 }
 /* The theme makes the page's words unselectable; the words worth copying are selectable again, as they were before it:
-   the header's name and detail, the file tree's cells and notes, the frontend's address, each transfer's name and
+   the header's name and detail, the file tree's cells and notes, a provider's capacity, the frontend's address, each transfer's name and
    state. Buttons stay as they are. */
 .sheet .title,
 .sheet .sub,
 .sheet .files,
+.sheet .capacity,
 .sheet .frontend .where,
 .transfers .what,
 .transfers .said { user-select: text; }

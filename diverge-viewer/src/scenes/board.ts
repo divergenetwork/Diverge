@@ -269,6 +269,9 @@ export class Board extends Phaser.Scene {
     this.edges = edges(read, made);
     links.setEdges(this.edges);
     this.light(read, made);
+    // The open provider's capacity, as this world has it: its sheet follows it.
+    const open = this.selected ? now.get(this.selected) : undefined;
+    if (open?.capacity) this.sheet?.capacity(open.key, open.capacity);
     this.moved();
     this.refocus();
     this.count(read, made);

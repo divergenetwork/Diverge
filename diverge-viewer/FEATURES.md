@@ -326,8 +326,7 @@ The keys are not printed.
 ### Opening and closing
 
 - **Open:** click any node. Gold corners mark it, and its
-  sheet opens along the bottom of the window — for a provider, which
-  has no tabs, its header alone.
+  sheet opens along the bottom of the window.
 - **Swap:** click another node to switch the sheet to it.
 - **Through the sheet:** a click on the sheet never selects a node
   beneath it.
@@ -365,8 +364,19 @@ The keys are not printed.
 - A connected tool's files, container and image are the other
   daemon's, so its sheet holds its log alone: every call and read this
   daemon routed into it.
-- A provider has no tab at all: it has no log, files or container of
-  its own here, so its sheet is its header alone.
+- **A provider's tab** is **capacity**: it has no log, files or
+  container of its own here. It shows what this daemon could still use
+  on that provider right now, a row each for volumes, images, container
+  memory and container disk.
+  - The amounts follow the provider: the daemon asks it every ten
+    seconds, and at once after anything that changes them, and the tab
+    changes as the answer does. Nothing is reloaded.
+  - A row the provider does not offer says **Not offered**.
+  - A provider that is not connected says **Not connected**; one that
+    has not answered yet says it is waiting.
+  - The provider reports what is free, never a total, so there are no
+    bars and no percentages.
+  - The amounts can be selected and copied.
 - **A daemon's tab** holds one button, **Open <name>**, which opens
   that daemon in a tab of the window (see
   [Daemon tabs](#daemon-tabs)).

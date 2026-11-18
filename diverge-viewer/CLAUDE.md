@@ -48,7 +48,9 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   closed with the sheet, on a swap, and on every page load. An account
   and a connected standalone tool (another daemon's, its own kind: `connected_standalone_tools list`, the
   `connected_standalone_tool` log subject) have only logs, a volume only its files, a provider (`providers list`, the
-  record the daemon keeps of one; no log subject) no tab at all, and a daemon (`daemons list`, the record of one account
+  record the daemon keeps of one; no log subject) one tab of its own, `capacity` (`sheet/capacity.ts`: the four
+  amounts of its list's `capacity`, `Entity.capacity`, which the board hands the open sheet on every later world —
+  `Sheet.capacity`), and a daemon (`daemons list`, the record of one account
   of ours on another daemon; no log subject; `Entity.daemon` its record's ID) one tab of its own, `daemon`, a single
   button "Open <name>" that opens that daemon's tab of the window — a provider's header's second line its direction and
   status, a daemon's `as <our subject> · connected|disconnected`; each tab starts reading the first time it is shown, and

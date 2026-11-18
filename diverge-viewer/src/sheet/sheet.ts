@@ -1,7 +1,8 @@
 // The bottom sheet: one entity's log, files and console, in HTML over the map.
 
 import type { Route } from "../lib/wire";
-import type { Entity, Subject } from "../world/model";
+import type { Capacity, Entity, Subject } from "../world/model";
+import { CapacityPane } from "./capacity";
 import { Composer } from "./composer";
 import { type Container, Console } from "./console";
 import { FrontendPane } from "./frontend";
@@ -19,15 +20,19 @@ const MOST = 90;
 /** What the sheet is opened on: the entity, the image names for an agent's tools, and the route to the daemon it is on. */
 export type Opened = { entity: Entity; images: Map<string, string>; route: Route };
 
-/** The sheet's five tabs. */
-type Tab = "logs" | "files" | "console" | "frontend" | "daemon";
+/** The sheet's six tabs. */
+type Tab = "logs" | "files" | "console" | "frontend" | "daemon" | "capacity";
+
+/** Every tab, in the order the header shows them. */
+const TABS = ["logs", "files", "console", "frontend", "daemon", "capacity"] as const;
 
 /**
  * The tabs an entity has, in order: logs with a log, a filesystem with
- * files, a console with a container, a frontend with one, and a daemon
- * tab for a daemon. A connected tool has its log alone: its files and
- * its container are the other daemon's. A provider has none: no log,
- * no files, no container of its own; a daemon has its own tab alone.
+ * files, a console with a container, a frontend with one, a daemon
+ * tab for a daemon, and a capacity tab for a provider. A connected
+ * tool has its log alone: its files and its container are the other
+ * daemon's. A provider has its capacity alone: no log, no files, no
+ * container of its own; a daemon has its own tab alone.
  */
 function tabsOf(entity: Entity): Tab[] {
   const tabs: Tab[] = [];
@@ -36,6 +41,7 @@ function tabsOf(entity: Entity): Tab[] {
   if (container(entity)) tabs.push("console");
   if (entity.frontend) tabs.push("frontend");
   if (entity.daemon) tabs.push("daemon");
+  if (entity.capacity) tabs.push("capacity");
   return tabs;
 }
 
@@ -91,7 +97,7 @@ function subline(subject: Subject): string {
  *    (`bright`, then `told`): an agent or a tool deployed, an account,
  *    a provider or a daemon connected, a volume mounted into a
  *    deployed container;
- *    its tabs, `logs`, `filesystem`, `console`, `frontend` and `daemon`, those it has, shown
+ *    its tabs, `logs`, `filesystem`, `console`, `frontend`, `daemon` and `capacity`, those it has, shown
  *    however many it has, one among them; the fill button; and ✕, which
  *    closes it and tells `closed`.
  * 3. An entity with a log (`subject`) has the logs tab, one with files
@@ -99,8 +105,8 @@ function subline(subject: Subject): string {
  *    standalone tool, a dependency tool — never a connected tool, whose
  *    container is the other daemon's) the console tab, an agent or a tool whose
  *    image declares a frontend (`frontend`) the frontend tab, a daemon
- *    (`daemon`) the daemon tab alone (`tabsOf`); a provider has none of
- *    them. It opens on
+ *    (`daemon`) the daemon tab alone, a provider (`capacity`) the
+ *    capacity tab alone (`tabsOf`). It opens on
  *    the tab last chosen (`chosen`) if it has it, else on the first it
  *    has. A tab's read starts the first time it is shown and runs until
  *    the sheet closes; closing stops every one and empties every one.
@@ -141,6 +147,10 @@ function subline(subject: Subject): string {
  *    It is made on open, with the opened route and the agent, and
  *    disposed of on close or a swap; the messages stay in the outbox,
  *    and show again when the agent's sheet next opens.
+ * 13. The capacity tab is `CapacityPane`: what the daemon could still
+ *    use on the provider, as its list last had it. The board hands
+ *    the sheet each later one the list brings (`capacity`), which the
+ *    open provider's pane follows; one for any other node is dropped.
  */
 export class Sheet {
   private readonly root: HTMLElement;
@@ -156,6 +166,7 @@ export class Sheet {
   private readonly shell: HTMLElement;
   private readonly site: HTMLElement;
   private readonly door: HTMLElement;
+  private readonly room: HTMLElement;
   private readonly enter: HTMLButtonElement;
   private opened: Opened | null = null;
   private following: Following | null = null;
@@ -163,6 +174,7 @@ export class Sheet {
   private files: Files | null = null;
   private console: Console | null = null;
   private frontend: FrontendPane | null = null;
+  private meter: CapacityPane | null = null;
   private composer: Composer | null = null;
   private readonly fill: HTMLButtonElement;
   private height = HEIGHT;
@@ -199,8 +211,8 @@ export class Sheet {
       });
       return button;
     };
-    this.tab = { logs: tab("logs", "logs"), files: tab("files", "filesystem"), console: tab("console", "console"), frontend: tab("frontend", "frontend"), daemon: tab("daemon", "daemon") };
-    this.tabs.append(this.tab.logs, this.tab.files, this.tab.console, this.tab.frontend, this.tab.daemon);
+    this.tab = { logs: tab("logs", "logs"), files: tab("files", "filesystem"), console: tab("console", "console"), frontend: tab("frontend", "frontend"), daemon: tab("daemon", "daemon"), capacity: tab("capacity", "capacity") };
+    this.tabs.append(...TABS.map((which) => this.tab[which]));
     // Rule 9.
     this.fill = document.createElement("button");
     this.fill.className = "fill";
@@ -245,7 +257,10 @@ export class Sheet {
       if (entity?.daemon) this.opening(entity.daemon.id, entity.label);
     });
     this.door.append(this.enter);
-    this.root.append(handle, head, this.thread, this.pane, this.shell, this.site, this.door);
+    // Rule 13.
+    this.room = document.createElement("div");
+    this.room.className = "capacity";
+    this.root.append(handle, head, this.thread, this.pane, this.shell, this.site, this.door, this.room);
     this.drag(handle);
     this.filled(false);
     document.body.append(this.root);
@@ -261,7 +276,7 @@ export class Sheet {
     this.live.classList.toggle("on", this.bright(entity.key));
     const tabs = tabsOf(entity);
     this.tabs.hidden = tabs.length === 0;
-    for (const which of ["logs", "files", "console", "frontend", "daemon"] as const) this.tab[which].hidden = !tabs.includes(which);
+    for (const which of TABS) this.tab[which].hidden = !tabs.includes(which);
     // Rule 12.
     const subject = entity.subject;
     if (subject?.type === "agent") {
@@ -280,6 +295,18 @@ export class Sheet {
     if (this.opened?.entity.key === key) this.live.classList.toggle("on", on);
   }
 
+  /**
+   * Rule 13: a provider's capacity, as its list has it now. The open
+   * provider's is kept for the tab's first showing and handed to its
+   * pane once shown; any other node's is dropped.
+   */
+  capacity(key: string, capacity: Capacity): void {
+    const opened = this.opened;
+    if (opened?.entity.key !== key) return;
+    this.opened = { ...opened, entity: { ...opened.entity, capacity } };
+    this.meter?.set(capacity);
+  }
+
   /** Rule 3: stop, empty and hide. Closing a closed sheet does nothing. */
   close(): void {
     this.following?.stop();
@@ -293,6 +320,8 @@ export class Sheet {
     this.console = null;
     this.frontend?.dispose();
     this.frontend = null;
+    this.meter?.dispose();
+    this.meter = null;
     this.composer?.dispose();
     this.composer = null;
     this.opened = null;
@@ -319,16 +348,13 @@ export class Sheet {
   private show(which: Tab): void {
     const opened = this.opened;
     if (!opened) return;
-    this.tab.logs.classList.toggle("on", which === "logs");
-    this.tab.files.classList.toggle("on", which === "files");
-    this.tab.console.classList.toggle("on", which === "console");
-    this.tab.frontend.classList.toggle("on", which === "frontend");
-    this.tab.daemon.classList.toggle("on", which === "daemon");
+    for (const tab of TABS) this.tab[tab].classList.toggle("on", which === tab);
     this.thread.hidden = which !== "logs";
     this.pane.hidden = which !== "files";
     this.shell.hidden = which !== "console";
     this.site.hidden = which !== "frontend";
     this.door.hidden = which !== "daemon";
+    this.room.hidden = which !== "capacity";
     const { subject, files } = opened.entity;
     const { route } = opened;
     if (which === "logs" && subject && !this.following) this.logs(subject, route, opened.images);
@@ -342,6 +368,9 @@ export class Sheet {
     if (which === "frontend" && site && !this.frontend) this.frontend = new FrontendPane(this.site, site, route);
     // Rule 10.
     if (which === "daemon") this.enter.textContent = `Open ${opened.entity.label}`;
+    // Rule 13.
+    const capacity = opened.entity.capacity;
+    if (which === "capacity" && capacity && !this.meter) this.meter = new CapacityPane(this.room, capacity);
   }
 
   /** Rule 4. */
