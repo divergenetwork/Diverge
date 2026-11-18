@@ -12,6 +12,7 @@ pub mod build;
 pub mod delete;
 pub mod get;
 pub mod list;
+pub mod publish;
 pub mod push;
 pub mod read;
 
@@ -27,6 +28,10 @@ pub enum Images {
     Get(get::Arguments),
     /// List the images in the daemon's Stores, and keep the list.
     List(list::Arguments),
+    /// Publish one or more images to a registry as one image: what
+    /// the provider lacks is brought onto it, the images are merged
+    /// where there are several, and the result is sent.
+    Publish(publish::Arguments),
     /// Push an image into the daemon's Store on a provider, from a
     /// registry that provider uses.
     Push(push::Arguments),
@@ -44,6 +49,7 @@ pub async fn run(command: Images, target: &Target<'_>, emitter: &mut Emitter) ->
         Images::Delete(arguments) => delete::run(arguments, target, emitter).await,
         Images::Get(arguments) => get::run(arguments, target, emitter).await,
         Images::List(arguments) => list::run(arguments, target, emitter).await,
+        Images::Publish(arguments) => publish::run(arguments, target, emitter).await,
         Images::Push(arguments) => push::run(arguments, target, emitter).await,
         Images::Read(arguments) => read::run(arguments, target, emitter).await,
     }

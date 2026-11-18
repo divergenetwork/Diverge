@@ -24,10 +24,12 @@ mod icon;
 mod info;
 mod locate;
 mod name;
+mod platforms;
 mod pull;
 
 pub use icon::*;
 pub use info::*;
 pub use locate::*;
 pub use name::*;
+pub use platforms::*;
 pub use pull::*;
