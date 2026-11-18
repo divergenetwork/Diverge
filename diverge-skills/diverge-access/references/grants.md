@@ -192,6 +192,7 @@ decodes.**
 | `push` | `images push` to a provider the grant reaches. Its `source` needs no grant: `daemon` has the daemon find the image as itself, as it does for a run |
 | `get` | `images get` of an image in the Store on a provider the grant reaches |
 | `delete` | `images delete` of an image, or some of its platforms, in the Store on a provider the grant reaches |
+| `publish` | `images publish` done on a provider the grant reaches: the one named, or one the daemon picks from those reached. Where the parts are brought from needs no grant |
 | `list` | `images list`: only the Stores on reached providers are listed |
 
 Every action is judged by the provider alone, never by the image's digest. The Store on a provider is the

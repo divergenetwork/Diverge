@@ -309,6 +309,95 @@ the daemon owns no image of that digest there), `"unsupported"` (the provider ha
 
 Grant: `delete` over images, reaching the provider.
 
+## Publishing to a registry: `diverge run images publish`
+
+```bash
+# one image, as it is, with two tags
+diverge run images publish '{
+  "images": [{"digest": "sha256:…"}],
+  "reference": {"registry": "ghcr.io", "name": "acme/worker"},
+  "tags": ["1.4", "latest"],
+  "credential": {"username": "…", "password": "…"}
+}'
+
+# two single-platform images, published as one multi-platform image
+diverge run images publish '{
+  "images": [
+    {"digest": "sha256:aaa…", "platforms": ["linux/amd64"]},
+    {"digest": "sha256:bbb…", "platforms": ["linux/arm64"]}
+  ],
+  "reference": {"registry": "ghcr.io", "name": "acme/worker"},
+  "tags": ["1.4"],
+  "credential": {"username": "…", "password": "…"},
+  "description": "worker 1.4"
+}'
+```
+
+Sends one or more images to a registry as one image. The images do not have to be on any one provider,
+or on any provider you name: the daemon gathers them.
+
+| member | required | what it is |
+|---|---|---|
+| `images` | yes, one or more | each `{"digest":…}`, with optional `platforms`. Absent `platforms` means every platform that image's manifest names |
+| `reference` | yes | `{"registry":…,"name":…}`: the registry host and the repository path. No tag here |
+| `tags` | no | tags to put on it. None, and it is published by digest alone |
+| `credential` | no | `{"username":…,"password":…}`; the password is whatever the registry takes: a password, a token. Absent, the registry is asked as nobody |
+| `description` | no | what an image this request makes is kept as in the Store |
+| `provider` | no | the provider to do it on. Absent, the daemon picks |
+
+What the daemon does, in order:
+
+1. **Works out the platforms.** A part with no `platforms` takes all its image has. A platform named by
+   two parts ends the request `"platform_repeated"` before anything moves.
+2. **Picks a provider** (unless you named one): connected, with a Store, that lists the target registry,
+   and reached by your `publish` grant. Among those, the one already holding the most of what is needed.
+3. **Brings in what that provider lacks**, from any provider or remote daemon that has it, every part at
+   the same time. This is the same as `images push` with `"source":"daemon"`.
+4. **Merges**, unless the request is exactly one image taking all its platforms. A merge makes a new
+   image with a new digest; the same parts give the same digest every time.
+5. **Publishes** it with the tags and the credential.
+
+Lines printed, as they happen:
+
+| line | meaning |
+|---|---|
+| `{"blob":{"digest":…,"bytes":N}}` | a blob pulled onto the provider |
+| `{"added":{"platforms":[…],…}}` | a group of platforms landed on the provider |
+| `{"merged":{"digest":…,"created":true,"bytes":N}}` | the parts are one image; `created` false means that merge was there already |
+| `{"uploaded":{"digest":…,"bytes":N}}` | a blob the registry took |
+
+Last line when it works:
+
+```json
+{"published":{"provider":{"issuer":"…","subject":"…"},"digest":"sha256:…","created":true,"reference":{"registry":"ghcr.io","name":"acme/worker"},"tags":["1.4"]}}
+```
+
+- **`provider`** is where it was done, and where the image now is in the daemon's Store.
+- **`digest`** is what the registry holds: the image's own digest when one whole image was published,
+  the merged digest otherwise. Use this digest in templates.
+- **`created`** says whether this request made that image on the provider (`true`) or it was already in
+  the daemon's Store there (`false`). When it was already there, your `description` is **not used**: the
+  image keeps the description it had.
+
+Other last lines: `"forbidden"`, `"not_found"` (the provider named is unknown), `"no_provider"` (nobody
+reachable can do it), `"registry_unlisted"` and `"unsupported"` (the provider named does not use that
+registry, or has no Store), `"unavailable"` (a platform has no source), `"platform_repeated"`,
+`"platform_not_found"`, `"insufficient_capacity"`, `"proof_failed"`, `"malformed"` (also a bad repository
+path or tag), `"unauthorized"` (the registry refused the credential), `"denied"` (the credential may not
+write there), `{"error":…}`.
+
+Things to know:
+
+- **What was brought in stays** in the daemon's Store on that provider, after a success and after a
+  failure. Remove it with `images delete` if you do not want it.
+- **A failure part way does not undo** the `added` and `merged` lines before it. Running the same request
+  again picks up from there: what is already held is not moved again.
+- **The credential is not kept.** It is passed to the provider for that one publish. The daemon's record
+  of the request has the password replaced.
+- A publish cannot be cancelled.
+
+Grant: `publish` over images, reaching the provider it is done on.
+
 ## `/.diverge/DIVERGE.md`: the image's own word on what it takes
 
 Every image ships one file in the folder `.diverge` at the root of its filesystem, `/.diverge/DIVERGE.md`.
