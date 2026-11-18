@@ -91,8 +91,9 @@ there. This is the only way to build one: the provider's container runtime is th
 an image put into it by any other means is not in the Store.
 
 ```bash
-diverge run images build --platform linux/amd64 '{
+diverge run images build '{
   "provider": {"issuer": "http://127.0.0.1:14981", "subject": "provider"},
+  "platforms": ["linux/amd64"],
   "containerfile": "FROM docker.io/library/alpine\nCOPY .diverge /.diverge\n",
   "description": "my image",
   "context": {"volume": "my-source", "path": ["tool"]}
@@ -103,9 +104,8 @@ diverge run images build --platform linux/amd64 '{
 
 - **`provider`**: which provider builds and holds the image, by its identity (`diverge run providers list`).
 - **`containerfile`**: the Containerfile's whole text, not a path.
-- **`platforms`**: required, one or more, each `os/architecture` (`linux/amd64`, `linux/arm64`). Give it
-  as `--platform <OS/ARCH>`, once per platform, or as `"platforms":[…]` in the body. It must be a
-  platform the provider builds for: `capabilities.images.store.build.platforms` in
+- **`platforms`**: required, one or more, each `os/architecture` (`linux/amd64`, `linux/arm64`). Each
+  must be a platform the provider builds for: `capabilities.images.store.build.platforms` in
   `diverge run providers list`. The default provider builds for its own machine's platform only.
 - **`context`**: a directory of a volume on that same provider, as `{"volume":"<name>","path":[…]}`. The
   Containerfile's `COPY` and `ADD` read from it. Omit it for a Containerfile that copies nothing.
@@ -205,8 +205,9 @@ diverge run images list --watch                            # stays open: added /
 ## Pushing an image that is already built: `diverge run images push`
 
 ```bash
-diverge run images push --platform linux/amd64 --platform linux/arm64 '{
+diverge run images push '{
   "provider": {"issuer":"…","subject":"github.12345.provider"},
+  "platforms": ["linux/amd64","linux/arm64"],
   "image": {"digest":"sha256:…","references":[{"registry":"ghcr.io","name":"acme/worker"}]},
   "source": {"provider": {"issuer":"…","subject":"github.12345.other-provider"}},
   "description": "worker 1.4"
@@ -214,13 +215,13 @@ diverge run images push --platform linux/amd64 --platform linux/arm64 '{
 # {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
 
 # from another daemon, by the route to it (the ids of `daemons list`, hop by hop):
-diverge run images push --platform linux/amd64 '{"provider":{…},"image":{"digest":"sha256:…"},"source":{"daemon":["<daemon id>"]}}'
+diverge run images push '{"provider":{…},"platforms":["linux/amd64"],"image":{"digest":"sha256:…"},"source":{"daemon":["<daemon id>"]}}'
 ```
 
 Puts an image into the daemon's Store on a provider without building it.
 
-**`platforms` is required**: one or more, as `--platform <OS/ARCH>` once per platform or `"platforms":[…]`
-in the body. Those platforms of the image are what the provider takes.
+**`platforms` is required**: one or more, each `os/architecture`. Those platforms of the image are what
+the provider takes.
 
 - Every platform named must be one the image has (its `manifest_platforms`). If one is not, the push ends
   `"platform_not_found"` and nothing is added: it is all of them or none.

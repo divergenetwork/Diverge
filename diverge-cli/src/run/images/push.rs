@@ -15,7 +15,7 @@ use diverge_sdk::shared::containers::request::Image;
 use futures_util::StreamExt as _;
 use futures_util::stream::Empty;
 
-use crate::run::{Below, Emitter, Error, Target, body_with, request_schema, response_schema, shape};
+use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_schema, shape};
 
 /// Pushing an image into the daemon's Store on a provider.
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
@@ -29,12 +29,6 @@ pub struct Arguments {
     /// serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,
-    /// A platform to hold of the image, as `os/architecture`: `linux/amd64`,
-    /// `linux/arm64`. Given more than once, each of them. Added to the
-    /// body's `platforms`, which the request requires: at least one,
-    /// here or in the body.
-    #[arg(long = "platform", value_name = "OS/ARCH")]
-    pub platforms: Vec<String>,
     /// What is beneath the request: `request-schema`, the JSON Schema
     /// of the body it takes, or `response-schema`, the JSON Schema of
     /// every line it prints — printed in place of putting any request.
@@ -65,7 +59,7 @@ pub async fn run(arguments: Arguments, target: &Target<'_>, emitter: &mut Emitte
         }
         None => {}
     }
-    let request: request::Frame = body_with(arguments.body.as_deref(), "platforms", arguments.platforms)?;
+    let request: request::Frame = body(arguments.body.as_deref())?;
     // Rule 1.
     if request.source == Source::Client {
         return Err(Error::Unsupported("a push whose `source` is `client`: this program holds no image; name a provider or a daemon as the source"));
