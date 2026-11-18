@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { bytewise, sha256 } from "../../canonical/index.js";
 import { Image, hashed as hashedImage } from "../request/image.js";
-import { Service, Transient } from "./mode.js";
+import { Eager, Lazy, refusal } from "./mode.js";
 
 const members = {
   /** The image: a digest and its references. */
@@ -23,13 +23,16 @@ const members = {
  * caller needs to deploy it, as fields and not as words. The image,
  * the limits and the arguments; beside them the secrets the image
  * needs, by name alone; the `mode`, flat with that mode's own
- * members — a transient tool's mounts of the agent's own paths, or a
- * service's scope. What the tool may ask of the caller is not here:
+ * members — the scope, and a lazy tool's mounts of the agent's own
+ * paths. What the tool may ask of the caller is not here:
  * its own program declares it at its registration, every time it
  * starts. There is no name: a dependency is named by its
  * id, the SHA-256 of its canonical bytes over `hashed`.
  */
-export const Template = z.discriminatedUnion("mode", [Transient.extend(members), Service.extend(members)]);
+export const Template = z.discriminatedUnion("mode", [Lazy.extend(members), Eager.extend(members)]).superRefine((template, context) => {
+  const reason = refusal(template);
+  if (reason !== undefined) context.addIssue({ code: "custom", message: reason });
+});
 export type Template = z.infer<typeof Template>;
 
 /**

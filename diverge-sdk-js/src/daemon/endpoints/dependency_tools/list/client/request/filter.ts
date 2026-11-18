@@ -24,9 +24,9 @@ export const Filter = z.object({
   owners: z.array(Owner).optional(),
   /** Made by any one of these, directly. Absent when empty, and then made by anybody. */
   creators: z.array(Creator).optional(),
-  /** Of any one of these modes, transient or a service. Absent when empty, and then either. */
+  /** Of any one of these modes, lazy or eager. Absent when empty, and then either. */
   modes: z.array(Mode).optional(),
-  /** A service whose `scope` is any one of these; a transient tool matches none. Absent when empty. */
+  /** A tool whose `scope` is any one of these. Absent when empty, and then any scope. */
   scopes: z.array(Scope).optional(),
   /** Whether some agent's last registration declared it: `true`, or none did, `false`; absent, either. */
   depended: z.boolean().optional(),

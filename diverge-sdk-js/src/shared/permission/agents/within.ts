@@ -15,7 +15,7 @@ import { Listed } from "./listed.js";
  * nothing and reaches, for a standalone tool, the agents it is
  * attached to directly and every agent of every template it is
  * attached to; for a dependency tool, the agents attached to it — for
- * a transient tool the one agent it was deployed for. `"never_active"` reaches every
+ * a tool of the `instance` scope the one agent it was deployed for. `"never_active"` reaches every
  * agent no container has ever been started for, judged at each
  * request, so an agent leaves it the moment it first runs.
  * `{"agents":[…]}` reaches exactly the agents listed, each by its

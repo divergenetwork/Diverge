@@ -4,7 +4,7 @@
 // agent, an agent template, or nobody, as the template's scope
 // decides — made by the first registration that declared it there,
 // never by a request. Its container runs with its agent's, or as a
-// service the daemon keeps; the file operations find it running or
+// eager tool the daemon keeps; the file operations find it running or
 // answer `not_found`, and start nothing. A delete is of the template
 // and every tool of it.
 
