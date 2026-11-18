@@ -1,10 +1,13 @@
-//! The two tools: one that lists, one that logs in.
+//! The three tools: one that lists, one that logs in, one that
+//! publishes.
 //!
-//! [`list_accounts`] lists the accounts the tool holds, and [`login`]
-//! signs a subject of one in on the daemon's host.
+//! [`list_accounts`] lists the accounts the tool holds, [`login`]
+//! signs a subject of one in on the daemon's host, and [`publish`]
+//! publishes images to Diverge's registry as one.
 
 mod list_accounts;
 mod login;
+mod publish;
 
 use std::sync::Arc;
 
@@ -17,11 +20,15 @@ use crate::failure::Failure;
 use crate::server::Call;
 
 /// Every tool's name, in the order they are listed.
-pub const NAMES: [&str; 2] = [list_accounts::NAME, login::NAME];
+pub const NAMES: [&str; 3] = [list_accounts::NAME, login::NAME, publish::NAME];
 
 /// Every tool, as `tools/list` states them.
 pub fn all() -> Vec<Tool> {
-    vec![tool::<list_accounts::Parameters>(list_accounts::NAME, list_accounts::DESCRIPTION), tool::<login::Parameters>(login::NAME, login::DESCRIPTION)]
+    vec![
+        tool::<list_accounts::Parameters>(list_accounts::NAME, list_accounts::DESCRIPTION),
+        tool::<login::Parameters>(login::NAME, login::DESCRIPTION),
+        tool::<publish::Parameters>(publish::NAME, publish::DESCRIPTION),
+    ]
 }
 
 /// Call the tool `name` with `arguments`; its structured answer.
@@ -29,6 +36,7 @@ pub async fn call(name: &str, call: Call<'_>, arguments: JsonObject) -> Result<V
     match name {
         list_accounts::NAME => list_accounts::call(call, parameters(arguments)?).await,
         login::NAME => login::call(call, parameters(arguments)?).await,
+        publish::NAME => publish::call(call, parameters(arguments)?).await,
         _ => Err(Failure::Parameters(format!("no tool named {name}"))),
     }
 }

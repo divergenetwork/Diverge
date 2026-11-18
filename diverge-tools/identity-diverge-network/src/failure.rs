@@ -35,6 +35,8 @@ pub enum Failure {
     Ended,
     /// The daemon could not be reached, or answered with an error.
     Daemon(String),
+    /// A publish ended without the image published: why.
+    Unpublished(String),
     /// The database could not be reached, or refused a statement.
     Store(String),
     /// An account's issuer, or `identity.diverge.network`, could not
@@ -57,6 +59,7 @@ impl fmt::Display for Failure {
             Failure::OtherSubject(subject) => write!(f, "the login was approved as `{subject}`, another subject; nothing was signed in"),
             Failure::Ended => f.write_str("the daemon's login ended with no outcome; nothing is known to be signed in"),
             Failure::Daemon(why) => write!(f, "the daemon could not be asked: {why}; nothing was signed in"),
+            Failure::Unpublished(why) => write!(f, "nothing was published: {why}"),
             Failure::Store(why) => write!(f, "the accounts could not be read or written: {why}"),
             Failure::Identity(why) => write!(f, "{why}"),
         }

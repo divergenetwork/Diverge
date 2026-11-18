@@ -1,4 +1,4 @@
-//! The MCP server: the tool's state, and the two tools served.
+//! The MCP server: the tool's state, and the three tools served.
 
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ pub struct State {
     pub client: Client,
     /// The accounts.
     pub store: Store,
-    /// The daemon, for the login.
+    /// The daemon, for the login and the publish.
     pub daemon: Daemon,
     /// The HTTP client. It follows no redirect, so no answer can send
     /// a request, and the token it carries, elsewhere.
@@ -70,7 +70,9 @@ impl Server {
 const INSTRUCTIONS: &str = "Signs identities in on the daemon's host at Diverge's own issuer, https://identity.diverge.network, with nobody entering a code. \
 See which accounts this tool holds with `list_accounts`: each is `<issuer>.<id>`, a GitHub or Google sign-in, and owns every subject that begins with it. \
 Sign a subject in with `login`, giving the account's `issuer` and `id` and the subject's name as `subject`: the whole subject is `<issuer>.<id>.<subject>`. \
-A name never used before begins a new subject. Accounts are added by a person at this tool's page, never by a tool call: if `list_accounts` answers none, ask a person to open the page and sign one in.";
+A name never used before begins a new subject. \
+Publish images to Diverge's registry, registry.diverge.network, with `publish`, giving the account's `issuer` and `id`, a `repository` name and the `images` by digest: they go to `<issuer>.<id>/<repository>`, and the tool supplies the account's own credential, so no username, password or registry is given. \
+Accounts are added by a person at this tool's page, never by a tool call: if `list_accounts` answers none, ask a person to open the page and sign one in.";
 
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {

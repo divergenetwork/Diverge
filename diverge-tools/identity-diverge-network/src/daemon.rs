@@ -1,5 +1,5 @@
-//! The daemon, as the tool reaches it: for the one thing it asks, a
-//! login.
+//! The daemon, as the tool reaches it: for the two things it asks, a
+//! login and a publish.
 
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use crate::failure::Failure;
 
 /// The connection to the daemon, through the proxy, served under the
-/// tool's own grants — the two logins: dialled on the first use, kept,
+/// tool's own grants — the two logins and the publish: dialled on the first use, kept,
 /// and dialled again when an ask finds it gone.
 #[derive(Default)]
 pub struct Daemon {
