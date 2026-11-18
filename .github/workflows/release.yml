@@ -55,13 +55,15 @@ name: Release
 #
 # RUNNERS (looked up 2026-11-16; github.com/actions/runner-images)
 #
-#   • Linux archives are built on Ubuntu 22.04, the oldest image there
-#     is, on purpose: a binary runs on its build host's glibc and newer,
-#     so the oldest host reaches the most machines. Move it only when
-#     22.04 is retired.
-#   • macOS archives are built on macOS 15 (`macos-15` is ARM,
-#     `macos-15-intel` is Intel), one behind `macos-latest`, for the same
-#     reason. macOS 14 was retired on 2026-11-02.
+#   • Each platform builds on the image GitHub's `-latest` label names
+#     today, written out so that it changes by a commit and not by
+#     itself: Ubuntu 24.04, macOS 26, Windows Server 2025. A Linux binary
+#     runs on its build host's glibc and newer, so these archives need
+#     Ubuntu 24.04's (2.39) or later; an older image would reach older
+#     distributions, and is not worth it here.
+#   • The image's version does not change the speed: every image of a
+#     platform runs on the same machines (4 cores and 16 GB for Linux and
+#     Windows, 4 and 14 for Intel macOS, 3 and 7 for ARM macOS).
 #   • Windows is pinned to `windows-2025`, which is what `windows-latest`
 #     names today, so that it changes by a commit and not by itself.
 #     Windows on ARM is `windows-11-arm`, the only image there is for it.
@@ -183,7 +185,7 @@ jobs:
     name: container proxy (x86_64)
     needs: check
     if: needs.check.outputs.release == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -203,7 +205,7 @@ jobs:
     name: container proxy (aarch64)
     needs: check
     if: needs.check.outputs.release == 'true'
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -230,8 +232,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: linux,   runs-on: ubuntu-22.04 }
-          - { os: macos,   runs-on: macos-15-intel }
+          - { os: linux,   runs-on: ubuntu-24.04 }
+          - { os: macos,   runs-on: macos-26-intel }
           - { os: windows, runs-on: windows-2025 }
     steps:
       - uses: actions/checkout@v7
@@ -274,8 +276,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: linux,   runs-on: ubuntu-22.04-arm }
-          - { os: macos,   runs-on: macos-15 }
+          - { os: linux,   runs-on: ubuntu-24.04-arm }
+          - { os: macos,   runs-on: macos-26 }
           - { os: windows, runs-on: windows-11-arm }
     steps:
       - uses: actions/checkout@v7
