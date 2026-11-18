@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, first: exactly the byte 0 when it holds the image, exactly the byte 1 when it does not, exactly the byte 2 when it has neither a Store nor any registry, or the byte 3 followed by an error as one JSON value; the response finish follows the byte 1, the byte 2 or the error at once, and follows the byte 0 when the client cancels or its connection ends.'
+summary: 'The server sends exactly one response, first: the byte 0 followed by the platforms it can supply as one JSON array when it holds the image, exactly the byte 1 when it does not, exactly the byte 2 when it has neither a Store nor any registry, or the byte 3 followed by an error as one JSON value; the response finish follows the byte 1, the byte 2 or the error at once, and follows the byte 0 when the client cancels or its connection ends.'
 order: 2
 draft: false
 ---
@@ -10,7 +10,7 @@ frame of the main stream. No further response follows it. The response
 finish follows it, and no frame follows the finish.
 
 ```text
-[0]                    once, first: the server holds the image; the scope stays open
+[0][platforms JSON …]  once, first: the server holds the image; the scope stays open
 [1]                    once, alone: the server does not hold the image
 [2]                    once, alone: the server has neither a Store nor any registry
 [3][error JSON …]      once, alone: no answer
@@ -25,15 +25,26 @@ finish follows it, and no frame follows the finish.
   [cancel](/endpoints/images-read/client/cancel/), after the last
   answer of every channel still open when the server receives it, or
   the end of the client's connection.
-- **Held.** A payload that is the byte `0` and nothing else states
-  that the server can supply the image the digest names from the
-  client's Store, where the client owns the digest, or otherwise from
-  a registry in its
-  [`images.registries`](/capabilities/#imagesregistries) that a
+- **Held.** A payload whose first byte is `0` states that the server
+  can supply the image the digest names from the client's Store,
+  where the client owns the digest, or otherwise from a registry in
+  its [`images.registries`](/capabilities/#imagesregistries) that a
   reference of the request names, as
   [images::read](/endpoints/images-read/) states. It states what the
   server determined at the time of the answer, names no source, and
   reserves nothing.
+- **The platforms.** The bytes after the byte `0`, running to the end
+  of the payload, are exactly one JSON array of strings. Each string
+  is one platform of the image that the server can supply, in the
+  form that [Capabilities](/capabilities/) defines for a platform,
+  and no string occurs twice. Where the server supplies the image
+  from the client's Store, the array holds exactly the platforms the
+  server holds of the image for the client, the `platforms` that
+  [images::list](/endpoints/images-list/) reports. Where the server
+  supplies the image from a registry, the array holds every platform
+  the manifest of the image names. The array is empty where the
+  server cannot determine the platforms. The request names no
+  platform, and the server sends the platforms exactly once.
 - **Not found.** A payload that is the byte `1` and nothing else
   states that the server cannot supply the image from either source.
   It states no reason and names no source.
@@ -44,8 +55,8 @@ finish follows it, and no frame follows the finish.
   empty, as [Capabilities](/capabilities/) provides. The server sends
   it before anything is looked up.
 - **No bytes after the answer.** The server sends nothing after the
-  byte `0`, the byte `1` or the byte `2`, and a client ignores every
-  byte that follows any of them.
+  byte `1` or the byte `2`, and a client ignores every byte that
+  follows either of them.
 - **The error.** A payload whose first byte is `3` carries an error
   after that byte, running to the end of the payload. The error is
   exactly one JSON value, in the form defined on the
@@ -58,7 +69,8 @@ finish follows it, and no frame follows the finish.
   [Endpoints](/endpoints/) provides for a request not served. The
   server serves no channel after it.
 - **Malformed.** A payload with no byte, a payload whose first byte is
-  none of `0`, `1`, `2` and `3`, and a payload whose bytes after `3`
+  none of `0`, `1`, `2` and `3`, a payload whose bytes after `0` are
+  not one JSON array of strings, and a payload whose bytes after `3`
   are not one JSON value are malformed.
 
 The response is defined by `diverge-sdk-rs/src/provider/endpoints/images/read/server/response/frame.rs`:

@@ -35,7 +35,7 @@ No frame follows the response finish.
   [containers::agents::run](/endpoints/containers-agents-run/server/)
   and [containers::tools::run](/endpoints/containers-tools-run/server/)
   with the client and the server exchanged; the oci-prove ask; the
-  cancel; the info ask; and the three icon asks. The server opens no
+  cancel; the info ask; the three icon asks; and the enough ask. The server opens no
   channel on the scope.
 - **The sources.** The server supplies the image from exactly the
   following sources, in the following order. The first is the
@@ -64,7 +64,10 @@ No frame follows the response finish.
   image held only on that account is not held.
 - **Held.** The byte `0` states that the server can supply the image
   the digest names from one of the two sources, as determined at the
-  time of the answer. The answer names no source. The answer reserves
+  time of the answer. The platforms of the image that the server can
+  supply follow the byte, as
+  [Response](/endpoints/images-read/response/) states. The answer
+  names no source. The answer reserves
   nothing: a channel the client opens after it may be answered with a
   channel response finish that no channel response precedes, where the
   server can no longer supply the bytes it asks for.

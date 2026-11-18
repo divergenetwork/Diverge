@@ -1004,7 +1004,14 @@ named. The Provider shall report, in every listing and every stat of
 a Client Image, the platforms the image's manifest names as
 `manifest_platforms` and the platforms it holds of the image for the
 Identity as `platforms`, and shall not report as held a platform it
-holds for another Identity alone. No run request names a platform;
+holds for another Identity alone. The Provider shall send, after
+the byte `0` of the held answer of every `images::read` Scope, exactly
+one JSON array of the platforms of the image it can supply to the
+Identity — the platforms it holds of the image for the Identity,
+where it supplies the image from what it holds for the Identity, and
+every platform the image's manifest names, where it supplies the
+image from a registry — each once, and shall send them exactly once.
+No run request names a platform;
 the Provider shall run, of an image that is an index, an image
 manifest whose platform its `containers` lists.
 

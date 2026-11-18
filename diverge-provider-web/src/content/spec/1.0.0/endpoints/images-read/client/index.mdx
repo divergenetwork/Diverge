@@ -1,6 +1,6 @@
 ---
 title: 'Client Channels'
-summary: 'The eight channels the client opens on an images::read scope, by tag: the manifest and blob asks of a run scope with the client and the server exchanged, the proof of Possession over the scope’s image, the cancel that ends the scope, the image’s /.diverge/DIVERGE.md, and its three icons.'
+summary: 'The nine channels the client opens on an images::read scope, by tag: the manifest and blob asks of a run scope with the client and the server exchanged, the proof of Possession over the scope’s image, the cancel that ends the scope, the image’s /.diverge/DIVERGE.md, its three icons, and the word that the client needs no more looked for.'
 order: 3
 draft: false
 ---
@@ -18,7 +18,8 @@ byte for byte, the `prove` ask that [Possession](/shared/possession/#the-ask)
 defines, with the client asking and the server answering. Tag `4`
 asks for the [document](/shared/document/) of the image of the scope.
 Tags `5`, `6` and `7` each ask for one [icon](/shared/icon/) of the
-image of the scope. The server answers
+image of the scope. Tag `8` states that the client needs nothing more
+looked for. The server answers
 each on its channel as its section states, and answers a channel
 request that does not decode by a channel response finish that no
 channel response precedes.
@@ -33,6 +34,7 @@ channel response precedes.
 | `5` | [icon-svg](/endpoints/images-read/client/icon-svg/) |
 | `6` | [icon-512](/endpoints/images-read/client/icon-512/) |
 | `7` | [icon-64](/endpoints/images-read/client/icon-64/) |
+| `8` | [enough](/endpoints/images-read/client/enough/) |
 
 The channel request is defined by `diverge-sdk-rs/src/provider/endpoints/images/read/client/channel_request/frame.rs`:
 

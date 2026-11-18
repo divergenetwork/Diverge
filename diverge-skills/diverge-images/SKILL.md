@@ -212,7 +212,8 @@ diverge run images push '{
   "source": "daemon",
   "description": "worker 1.4"
 }'
-# {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
+# {"added":{"platforms":["linux/amd64","linux/arm64"],"bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
+# {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}},"platforms":["linux/amd64","linux/arm64"]}}
 ```
 
 Puts an image into the daemon's Store on a provider without building it.
@@ -239,10 +240,21 @@ Where it comes from, in order:
 
 | `source` | The bytes come from |
 |---|---|
-| `"daemon"` | Wherever the daemon finds the image. It asks every other connected provider and every remote daemon it has a record of, all at once, and the first that can supply the image does. This is the same search it makes for the image of a container it runs. The provider pushed to is not asked. |
+| `"daemon"` | Wherever the daemon finds the image. It asks every connected provider and every remote daemon it has a record of, all at once, which platforms each can supply. |
 | `"client"` | The client that sent the request, which must hold the bytes |
 
 Neither needs a grant beyond `push`.
+
+**With `"daemon"`, the platforms can come from different places.** One provider holding `linux/amd64` and a
+remote daemon holding `linux/arm64` together satisfy a push of both:
+
+- The daemon looks first and moves nothing until every platform named has a source. A platform nobody
+  holds ends the push `"unavailable"` with nothing added.
+- Then each source's platforms are pushed at the same time, each from its own source.
+- Each group that lands prints one `{"added":{"platforms":[…],"bytes":N,"source":…}}` line as it lands.
+  Platforms the provider already held print `{"added":{"platforms":[…],"source":"store"}}`, with no `bytes`.
+- If one group fails, the last line is that failure, but every `added` line printed before it is true:
+  those platforms are held. Push again naming only the rest.
 
 **The CLI refuses `"source":"client"`** before dialing anything (`not supported from the command line`): the
 `diverge` program holds no image bytes. A client that has the bytes pushes through the SDK (`images.push`
@@ -250,13 +262,14 @@ with a store that answers the asks). In the answer, `pushed.source` is the *prov
 got the image, so a push the daemon sourced still reads `"client"` there: the daemon was the provider's
 client.
 
-A client that does not answer, a daemon that finds nobody holding the image, or a source that stops part
-way ends the push `"unavailable"`.
+A client that does not answer, a daemon that finds no source for a platform named, or a source that stops
+part way ends the push `"unavailable"`.
 
-Last line, one of: `{"pushed":…}`, `{"exists":…}`, `"insufficient_capacity"` (the Store is full),
+Last line, one of: `{"pushed":…}` (with `platforms`, every one named), `{"exists":…}`, `"insufficient_capacity"` (the Store is full),
 `"unavailable"`, `"proof_failed"`, `"malformed"` (not an image the provider takes),
 `"platform_not_found"` (a platform named is not in the image), `"unsupported"` (the provider has no Store), `"forbidden"` (no `push` grant reaching the provider), `"not_found"` (no such provider), `{"error":…}`. Before it, one
-`{"blob":{"digest":…,"bytes":…}}` per blob the provider pulled from its caller.
+`{"blob":{"digest":…,"bytes":…}}` per blob the provider pulled from its caller, and one `{"added":…}` per
+group of platforms that landed.
 A push cannot be cancelled.
 
 ## `/.diverge/DIVERGE.md`: the image's own word on what it takes
@@ -384,13 +397,19 @@ diverge run images read --info --jq '.info? // empty | .body'   '{"image":{…}}
 # only the question: can it be supplied?
 diverge run images read '{"image":{"digest":"sha256:…","references":[{"registry":"docker.io","name":"library/alpine"}]}}'
 
+# which of these platforms can be supplied, and is the set whole?
+diverge run images read '{"image":{"digest":"sha256:…"},"platforms":["linux/amd64","linux/arm64"]}'
+# {"held":{"platforms":["linux/amd64"]}}
+# {"held":{"platforms":["linux/arm64"]}}
+# "settled"
+
 # the image's parts
 diverge run images read --manifest sha256:… '{"image":{…}}'
 diverge run images read --blob sha256:… --out layer.bin '{"image":{…}}'
 diverge run images read --prove-nonce <64 hex chars> [--platform sha256:…] '{"image":{…}}'
 ```
 
-Body: `image` (required), `ignore` (optional list of `{issuer, subject}` identities of remote daemons
+Body: `image` (required), `platforms` (optional: the platforms wanted, each `os/architecture`), `ignore` (optional list of `{issuer, subject}` identities of remote daemons
 not to ask), `relay` (optional). The body is required here; there is no `{}` default that makes sense.
 Run `diverge run images read request-schema` for the exact shape. Flags, at most one ask per invocation:
 
@@ -402,28 +421,39 @@ Run `diverge run images read request-schema` for the exact shape. Flags, at most
 | `--prove-nonce <HEX>` | prints the proof over the image under that 64-hex-character nonce |
 | `--platform <DIGEST>` | only with `--prove-nonce`: which manifest of an image index is meant |
 
-Lines printed: first the daemon's answer, then (only after `"held"` and only when an ask was given) the
-ask's answer. So `--info` prints two lines, `"held"` and the document; the `--jq` filters above skip the
-first.
+Lines printed: first the daemon's answer; after a `{"held":…}`, any further `{"held":…}` lines and then
+`"settled"`; then (only when an ask was given) the ask's answer. So `--info` prints `{"held":…}`,
+`"settled"` and the document; the `--jq` filters above skip all but the last.
+
+**Reading the `held` lines:**
+
+- Each `{"held":{"platforms":[…]}}` is what one source added: platforms you asked for that no earlier line
+  carried. No platform appears twice, and none you did not ask for.
+- `"settled"` means the daemon has stopped looking. Add up the `held` lines: if every platform you named is
+  there, the image can be supplied whole; if some are missing, nobody the daemon reaches holds them.
+- The daemon stops the moment every platform is found, without waiting for slower sources.
+- With no `platforms` in the body, any platform will do: one `{"held":…}` listing everything the first
+  source holds, then `"settled"`.
 
 | line | meaning |
 |---|---|
-| `"held"` | a source can supply the image; the scope is served through that one source |
-| `"not_found"` | no source the daemon asked holds the image |
+| `{"held":{"platforms":[…]}}` | a source can supply these platforms; the scope is served through every source found |
+| `"settled"` | the daemon looks no further; no `held` line follows |
+| `"not_found"` | no source the daemon asked holds any platform wanted |
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
-| `{"error":…}` | a failure; after `"held"`, the source could not read the document, or it is not one |
+| `{"error":…}` | a failure; after a `held`, the source could not read the document, or it is not one |
 | `{"info":{"type":"agent","name":…,"schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent` or `tool`; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
 | `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
 | `{"proof":"<64 hex>"}` | the proof asked for |
-| `"not_held"` | the source did not answer the ask: a digest the image does not reach, or a proof it would not give |
+| `"not_held"` | no source answered the ask: a digest the image does not reach, or a proof none would give |
 
 Rules:
 
 - **The daemon holds no image itself.** It opens the question on every connected provider that keeps a
-  Store or lists a registry, and on every remote daemon it records, all at once; the first to answer
-  held is the source and the rest are cancelled.
+  Store or lists a registry, and on every remote daemon it records, all at once. Each source that adds a
+  platform wanted is kept; the rest are cancelled as soon as every platform is found.
 - **A provider holds an image by the rules it deploys one by**: the image is in the asking daemon's
   Store there, or a registry the provider lists serves it under one of the image's references. An image
   that is only in a provider's cache is not held, and has no readable document.

@@ -1,0 +1,26 @@
+---
+title: 'Enough'
+summary: 'Tag 8: the client states that it needs nothing more looked for; the server, which determines what it holds exactly once and looks no further, changes nothing and answers with the channel response finish alone.'
+order: 8
+draft: false
+---
+
+The client states, by opening this channel, that it needs nothing more
+looked for on the scope. The server sends exactly one frame on the
+channel, the channel response finish, and the scope stays open.
+
+- **The request.** The payload is the tag byte `8` and nothing more.
+  [Request](/endpoints/images-read/client/enough/request/) states its form.
+- **The response.** The server sends the channel response finish, and
+  no channel response precedes it.
+  [Response](/endpoints/images-read/client/enough/response/) states the sequence.
+- **No effect on the server.** The server determines what it holds
+  exactly once, before it sends the held answer, and looks for nothing
+  after it. The channel therefore changes nothing: the scope stays
+  open, every ask still open is answered, and every later ask is
+  answered as it would have been.
+- **Whom it is for.** A party that answers this scope from sources it
+  asks in turn, and that goes on asking after its first answer, stops
+  asking when it receives this channel. This revision defines no such
+  party among servers. A client sends the channel to any server of
+  this endpoint alike.

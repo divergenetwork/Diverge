@@ -1,0 +1,17 @@
+---
+title: 'Response'
+summary: 'The server sends the channel response finish on the channel, and no channel response precedes it.'
+order: 2
+draft: false
+---
+
+The server sends exactly one frame on the channel: the channel
+response finish.
+
+- **No channel response.** The server sends no channel response on
+  the channel. The channel response finish states that the server
+  received the channel request.
+- **The scope stays open.** The server sends no response and no
+  response finish on the main stream on account of the channel. The
+  scope ends as [cancel](/endpoints/images-read/client/cancel/)
+  states, or when the client's connection ends.
