@@ -27,7 +27,7 @@ One record per provider identity. The record says which end dials, whether the d
 
 | Field | Default | What it does |
 |---|---|---|
-| `announcement` | absent | One line of text. Present: the daemon **announces itself** on that provider with it, so other parties connected there see it in `providers daemons list`. Absent: the daemon is not listed there. |
+| `announcement` | none: required on `add` | `true` or a line of text: the daemon **announces itself** on that provider (with the text, if one is given), so other parties connected there see it in `providers daemons list`. `false`: the daemon is not listed there. |
 | `accept_daemons` | `true` | Whether the daemon **accepts connections from other daemons** through that provider (relay into it, connected tools from it). |
 | `messageable` | `false` | Whether the daemon **listens for direct messages** on that provider. |
 
@@ -45,18 +45,27 @@ diverge run providers add '{"identity":{"issuer":"https://identity.diverge.netwo
 
 # Incoming: the provider dials the daemon; admitted only from these source IPs (absent = any, [] = none).
 diverge run providers add '{"identity":{"issuer":"https://issuer.example","subject":"edge-provider"},
+  "announcement":false,
   "direction":"incoming","ips":[{"type":"cidr","cidr":"10.0.0.0/24"},{"type":"ip","ip":"203.0.113.7"}]}'
 # -> "added" | "exists" | "forbidden" | {"error":…}
 ```
 
 Members: `identity` (required), `direction` with its own members beside it (`address` for `outgoing`: a
-`host:port` dialled as `ws://host:port/`, or a full URL; `ips` for `incoming`), `announcement` (default
-absent: not announced), `accept_daemons` (default `true`), `messageable` (default `false`), `enabled`
+`host:port` dialled as `ws://host:port/`, or a full URL; `ips` for `incoming`), `announcement` (**required**, see
+below), `accept_daemons` (default `true`), `messageable` (default `false`), `enabled`
 (default `true`), `description` (your own note about the provider; the provider never sees it), `tags`.
 Grant: `{"providers":["add"]}`.
 
-An `announcement` is one line of plain text, 1 to 132 characters, no control characters, no leading or
-trailing whitespace. It is per provider: the same daemon may announce itself differently on each.
+`announcement` says whether the daemon announces itself on that provider, and it must be given on `add`:
+
+| Value | Meaning |
+|---|---|
+| `false` | The daemon does not announce itself there. **No other daemon can find or reach it through this provider.** |
+| `true` | It announces itself with no text. It is listed and reachable. |
+| `"text"` | It announces itself with that text: one line of plain text, 1 to 132 characters, no control characters, no leading or trailing whitespace. An empty string is refused; use `true`. |
+
+It is per provider: the same daemon may announce itself differently on each. On `providers edit` it is
+optional (absent = unchanged); `false` stops announcing, and `null` is refused.
 
 Rules:
 
@@ -81,8 +90,8 @@ diverge run providers get '{"identity":{"issuer":"https://identity.diverge.netwo
 diverge run providers list --jq '.added? | {subject: .identity.subject, status: .status.type, enabled, announcement, accept_daemons, messageable}'
 ```
 
-A provider item: `identity`, `direction` (+ `address` or `ips`), `announcement` (absent when the daemon
-does not announce itself there), `accept_daemons`, `messageable`, `enabled`, `description`, `tags`,
+A provider item: `identity`, `direction` (+ `address` or `ips`), `announcement` (`false`, `true` or the text;
+always present), `accept_daemons`, `messageable`, `enabled`, `description`, `tags`,
 `created`, `creator`, `status`, `capacity`.
 
 - `status.type` is `disconnected`, `connected` (with `info`), or `different_version` (with `info`).
@@ -118,7 +127,7 @@ diverge run providers edit '{"identity":{"issuer":"…","subject":"github.12345.
 diverge run providers edit '{"identity":{"issuer":"…","subject":"github.12345.provider"},
   "announcement":"daemon A, staging","accept_daemons":false,"messageable":true}'
 # Stop announcing (null clears; leaving the member out would leave it as it is).
-diverge run providers edit '{"identity":{"issuer":"…","subject":"github.12345.provider"},"announcement":null}'
+diverge run providers edit '{"identity":{"issuer":"…","subject":"github.12345.provider"},"announcement":false}'
 # An incoming provider's source IPs: a value replaces them, null admits any IP.
 diverge run providers edit '{"identity":{"issuer":"…","subject":"edge-provider"},"ips":[{"type":"cidr","cidr":"10.0.1.0/24"}]}'
 # -> "edited" | "not_found" | "forbidden" | {"error":…}
@@ -135,8 +144,8 @@ What `edit` takes: `identity` (names the record), `announcement`, `ips`, `accept
 `description`. Nothing else: a body naming any other member, `direction` and `address` included, fails
 to parse.
 
-- **Three-way members.** `announcement` and `ips`: member absent = leave as is, `null` = clear (not
-  announced; any IP), a value = set. `accept_daemons`, `messageable` and `description`: absent = leave,
+- **`announcement`**: absent = leave as is; `false`, `true` or a text = set. `null` is refused.
+- **`ips`**: absent = leave as is, `null` = clear (any IP), a value = set. `accept_daemons`, `messageable` and `description`: absent = leave,
   a value = set.
 - **Fixed for the record's life:** the identity, the direction (incoming or outgoing) and an outgoing
   record's `address`. A provider reached another way is a `disable`, a `delete` and an `add`.
@@ -147,8 +156,8 @@ to parse.
 
   | Changed | What happens on the live connection |
   |---|---|
-  | `announcement` set or replaced | The daemon stops announcing and announces again with the new text. Watchers of `providers daemons list` see it `removed`, then `added`. |
-  | `announcement` cleared (`null`) | The daemon stops announcing; it leaves the provider's listing. |
+  | `announcement` changed between `true` and a text, or to another text | The daemon stops announcing and announces again as the record now says. Watchers of `providers daemons list` see it `removed`, then `added`. |
+  | `announcement` set to `false` | The daemon stops announcing; it leaves the provider's listing. |
   | `messageable` → `true` / `false` | The daemon starts / stops listening for messages on that provider. |
   | `accept_daemons` → `true` | The daemon starts accepting other daemons through that provider. |
   | `accept_daemons` → `false` | The daemon stops accepting; **every daemon connection that came in through that provider is dropped at once** (relays into this daemon and connected tools held from it fail until it accepts again). The provider's own connection stays. |
@@ -174,10 +183,10 @@ Pitfalls, all of which stop running work:
 
 Each is a setting of one provider's record, and each is independent of the other two.
 
-- **Announced** (`announcement` present): the provider lists this daemon, with that text, to every party
-  connected to it, for as long as the daemon is connected and the record has an announcement. It is what
+- **Announced** (`announcement` is `true` or a text): the provider lists this daemon, with the text if
+  there is one, to every party connected to it, for as long as the daemon is connected and the record says so. It is what
   lets another daemon **find** this one there (`providers daemons list`), and so what a remote daemon
-  record or a `providers daemons message` reaches it by. Without an announcement the daemon uses the
+  record or a `providers daemons message` reaches it by. With `announcement` `false` the daemon uses the
   provider but is not in its listing.
 - **Accepting** (`accept_daemons: true`, the default): other daemons may connect to this daemon through
   that provider. `false`: no daemon reaches it, or the tools it serves, through that provider.
@@ -316,7 +325,8 @@ Rules:
 ### What daemon B needs before A can reach it
 
 1. A and B are connected to a **common provider**, at the daemon's own version.
-2. On **B**, that provider's record has an **`announcement`** (so `providers daemons list` on A shows B).
+2. On **B**, that provider's record has `announcement` `true` or a text (so `providers daemons list` on A
+   shows B). `false` hides B there.
 3. On **B**, that provider's record has `accept_daemons: true` (the default).
 4. The identity A presents (the record's `identity`) is an **account on B**: a stored account, with roles
    for exactly what A should be able to do on B, or one of B's administrators (an identity in B's `admins`
@@ -533,7 +543,7 @@ Template and tool bodies are covered in `diverge-tools`; image digests in `diver
 | Provider is `different_version` | Daemon and provider builds differ; the provider is held but unused. Reinstall so both match. |
 | Containers died after a provider edit | The edit set `ips` that no longer admit the incoming provider's source address: the connection was closed (`undeployed` with `provider_edited`). No other edit closes it. They start again on next use, once the provider is connected again. |
 | `providers edit` answers a parse error | The body names a member `edit` does not take: `direction`, `address`, `listable`, `enabled`, `tags`. Only `identity`, `announcement`, `ips`, `accept_daemons`, `messageable`, `description`. |
-| `providers daemons list` is empty on A | B's record of the shared provider has no `announcement`; A and B share no connected provider; A's grant reaches no provider. A never lists itself. |
+| `providers daemons list` is empty on A | B's record of the shared provider has `announcement` `false`; A and B share no connected provider; A's grant reaches no provider. A never lists itself. |
 | Relayed request answers `{"error":…}` | No record of that ID; B not announced on a provider A is connected to by a route the record allows; B has no **account** for the identity presented (admins do not count); B's record of that provider has `accept_daemons: false`; the account is already held by another daemon connection; the identity is not signed in on A's host. |
 | Relayed request answers `"forbidden"` | Caller lacks `relay` over the record on A, or the account on B lacks the grant for the request itself. |
 | Connected tool never `deployed`, agent's calls fail | Wrong tool name on B; B's account lacks `connect` over that tool; B unreachable. Check with a relayed `standalone-tools get`. |

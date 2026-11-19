@@ -1,13 +1,14 @@
 ---
 title: 'daemons::announce'
-summary: 'Tag 30: a client asks to be listed with one announcement; the server lists the client’s identity in every daemons::list listing for exactly as long as the scope is open, sends no response while it is, and finishes when the client cancels.'
+summary: 'Tag 30: a client asks to be listed, with at most one announcement; the server lists the client’s identity in every daemons::list listing for exactly as long as the scope is open, sends no response while it is, and finishes when the client cancels.'
 order: 30
 draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
-`30` followed by the announcement. The server lists the identity of
-the connection, with that announcement, in every
+`30`, followed by at most one announcement. The server lists the
+identity of the connection, with that announcement where the request
+carries one, in every
 [daemons::list](/endpoints/daemons-list/) listing it keeps, for
 exactly as long as the scope is open, and sends no response while the
 scope is open. The scope ends at the client's cancel or at the
@@ -16,7 +17,7 @@ and no frame follows the finish. A connection holds at most one
 daemons::announce scope open at a time, as
 [One open at a time](/endpoints/#one-open-at-a-time) provides.
 
-- **The request.** The request carries exactly one announcement.
+- **The request.** The request carries at most one announcement.
   [Request](/endpoints/daemons-announce/request/) states its form.
 - **The response.** [Response](/endpoints/daemons-announce/response/)
   states the one response and the sequence of the main stream.

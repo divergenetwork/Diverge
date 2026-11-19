@@ -36,10 +36,11 @@ draft: false
   UTF-8.
 - **`announcement`.** The announcement the request of the identity's
   open [daemons::announce](/endpoints/daemons-announce/request/)
-  scope carried, byte for byte: a varint byte length followed by that
-  many bytes of UTF-8. Every item carries exactly one announcement.
-  No byte states its absence, because an identity is listed only
-  while it holds an announce scope open.
+  scope carried, when it carried one. The byte `0` states that the
+  request carried no announcement, and nothing follows it. The byte
+  `1` states that it carried one, and is followed by the
+  announcement, byte for byte: a varint byte length followed by that
+  many bytes of UTF-8. Every item carries at most one announcement.
 - **`ip`.** The IP of the other end of the identity's connection to
   the server: the IP the client dialled the server from, when the
   client is the connector, and the IP the server dialled the client
