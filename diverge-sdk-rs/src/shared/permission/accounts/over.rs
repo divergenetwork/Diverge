@@ -31,4 +31,9 @@ pub enum Over {
     /// [`accounts::disconnect`](crate::daemon::endpoints::accounts::disconnect)
     /// does.
     Disconnect,
+    /// Make a request of them, as
+    /// [`requests::create`](crate::daemon::endpoints::requests::create)
+    /// does: an account the grant reaches may be named by a request,
+    /// or by a tag of one, and is sent a request made of all.
+    Request,
 }

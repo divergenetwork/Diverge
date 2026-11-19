@@ -6,7 +6,7 @@ use std::fmt;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
-use super::{accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, roles, standalone_tools, vault, volumes};
+use super::{accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, vault, volumes};
 
 /// The payload of a
 /// [`Request`](crate::wire::frame::client::ClientFrame::Request).
@@ -294,6 +294,11 @@ pub enum ClientRequest<'a> {
     /// Tag `164`. Publish one or more images to a registry as one
     /// image.
     ImagesPublish(images::publish::client::request::Frame),
+    /// Tag `165`. Hear the requests made of the caller, and answer
+    /// them.
+    RequestsListen(requests::listen::client::request::Frame),
+    /// Tag `166`. Make a request of others, and wait for its answer.
+    RequestsCreate(requests::create::client::request::Frame),
     /// Tag `146`. Hold another daemon's standalone tool under a name.
     ConnectedStandaloneToolsCreate(connected_standalone_tools::create::client::request::Frame),
     /// Tag `147`. Get one connected tool.
@@ -462,6 +467,8 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::ImagesGet(frame) => frame.encode(out),
             ClientRequest::ImagesDelete(frame) => frame.encode(out),
             ClientRequest::ImagesPublish(frame) => frame.encode(out),
+            ClientRequest::RequestsListen(frame) => frame.encode(out),
+            ClientRequest::RequestsCreate(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsCreate(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsGet(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsList(frame) => frame.encode(out),
@@ -882,6 +889,12 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             164 => images::publish::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesPublish)
                 .ok(),
+            165 => requests::listen::client::request::Frame::decode(bytes)
+                .map(ClientRequest::RequestsListen)
+                .ok(),
+            166 => requests::create::client::request::Frame::decode(bytes)
+                .map(ClientRequest::RequestsCreate)
+                .ok(),
             146 => connected_standalone_tools::create::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ConnectedStandaloneToolsCreate)
                 .ok(),
@@ -1055,6 +1068,8 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::ImagesGet(_) => f.write_str("images get"),
             ClientRequest::ImagesDelete(_) => f.write_str("images delete"),
             ClientRequest::ImagesPublish(_) => f.write_str("images publish"),
+            ClientRequest::RequestsListen(_) => f.write_str("requests listen"),
+            ClientRequest::RequestsCreate(_) => f.write_str("requests create"),
             ClientRequest::ConnectedStandaloneToolsCreate(_) => f.write_str("connected standalone tools create"),
             ClientRequest::ConnectedStandaloneToolsGet(_) => f.write_str("connected standalone tools get"),
             ClientRequest::ConnectedStandaloneToolsList(_) => f.write_str("connected standalone tools list"),
@@ -1207,6 +1222,8 @@ pub fn tag(path: &str) -> Option<u8> {
         "images/get" => Some(162),
         "images/delete" => Some(163),
         "images/publish" => Some(164),
+        "requests/listen" => Some(165),
+        "requests/create" => Some(166),
         "connected_standalone_tools/create" => Some(146),
         "connected_standalone_tools/get" => Some(147),
         "connected_standalone_tools/list" => Some(148),
@@ -1356,6 +1373,8 @@ impl ClientRequest<'_> {
             ClientRequest::ImagesGet(_) => "images/get",
             ClientRequest::ImagesDelete(_) => "images/delete",
             ClientRequest::ImagesPublish(_) => "images/publish",
+            ClientRequest::RequestsListen(_) => "requests/listen",
+            ClientRequest::RequestsCreate(_) => "requests/create",
             ClientRequest::ConnectedStandaloneToolsCreate(_) => "connected_standalone_tools/create",
             ClientRequest::ConnectedStandaloneToolsGet(_) => "connected_standalone_tools/get",
             ClientRequest::ConnectedStandaloneToolsList(_) => "connected_standalone_tools/list",

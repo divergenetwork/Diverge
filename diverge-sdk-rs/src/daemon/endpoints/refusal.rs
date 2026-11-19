@@ -1,6 +1,6 @@
 //! A request refused in its own words, whichever request it is.
 
-use super::{ClientRequest, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, roles, standalone_tools, vault, volumes};
+use super::{ClientRequest, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, vault, volumes};
 use crate::shared::error::Error;
 use crate::wire::encode::{Encode, Writer};
 
@@ -141,6 +141,8 @@ impl ClientRequest<'_> {
             ClientRequest::ImagesGet(_) => bytes(&images::get::server::response::Frame::Forbidden),
             ClientRequest::ImagesDelete(_) => bytes(&images::delete::server::response::Frame::Forbidden),
             ClientRequest::ImagesPublish(_) => bytes(&images::publish::server::response::Frame::Forbidden),
+            ClientRequest::RequestsListen(_) => bytes(&requests::listen::server::response::Frame::Forbidden),
+            ClientRequest::RequestsCreate(_) => bytes(&requests::create::server::response::Frame::Forbidden),
             ClientRequest::ConnectedStandaloneToolsCreate(_) => bytes(&connected_standalone_tools::create::server::response::Frame::Forbidden),
             ClientRequest::ConnectedStandaloneToolsGet(_) => bytes(&connected_standalone_tools::get::server::response::Frame::Forbidden),
             ClientRequest::ConnectedStandaloneToolsList(_) => bytes(&connected_standalone_tools::list::server::response::Frame::Forbidden),
@@ -290,6 +292,8 @@ impl ClientRequest<'_> {
             ClientRequest::ImagesGet(_) => bytes(&images::get::server::response::Frame::Error(error)),
             ClientRequest::ImagesDelete(_) => bytes(&images::delete::server::response::Frame::Error(error)),
             ClientRequest::ImagesPublish(_) => bytes(&images::publish::server::response::Frame::Error(error)),
+            ClientRequest::RequestsListen(_) => bytes(&requests::listen::server::response::Frame::Error(error)),
+            ClientRequest::RequestsCreate(_) => bytes(&requests::create::server::response::Frame::Error(error)),
             ClientRequest::ConnectedStandaloneToolsCreate(_) => bytes(&connected_standalone_tools::create::server::response::Frame::Error(error)),
             ClientRequest::ConnectedStandaloneToolsGet(_) => bytes(&connected_standalone_tools::get::server::response::Frame::Error(error)),
             ClientRequest::ConnectedStandaloneToolsList(_) => bytes(&connected_standalone_tools::list::server::response::Frame::Error(error)),
