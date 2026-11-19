@@ -4,6 +4,45 @@
 
 Diverge is a system that runs superintelligence agents, and the tools those agents use, in containers on machines the operator selects, and that connects those machines into one network. Each agent is one container. Each agent has its own set of tools, its own permissions and its own log. An agent communicates with other agents, with persons, and with agents on machines operated by other parties, and the system records every such communication.
 
+## Installation by an agent
+
+The following prompt instructs a superintelligence agent to install Diverge on the machine it runs on and to assist the operator in bringing the system into use. The operator gives the prompt to the agent in full.
+
+```text
+Install Diverge on this machine, and then assist me in bringing it into use.
+
+1. Determine this machine's operating system, which is one of `linux`, `macos`
+   and `windows`, and its architecture, which is one of `x86_64` and `aarch64`.
+2. Download https://releases.diverge.network/latest/<os>/<arch>, substituting
+   the two values. The file is a `.tar.gz` archive on Linux and macOS and a
+   `.zip` archive on Windows. The archive contains exactly one folder, and that
+   folder contains the programs.
+3. Create the directory `~/.diverge/bin` if it does not exist. Place every file
+   of that folder directly in `~/.diverge/bin`, with no folder between them.
+   On Linux and macOS, confirm that each file is executable. Do not create,
+   read or modify anything else under `~/.diverge`.
+4. Add `~/.diverge/bin` to my PATH for this session and for future sessions.
+   Run `diverge --version` and confirm that it prints a version.
+5. Download https://releases.diverge.network/latest/skills. The file is a
+   `.zip` archive that contains one folder for each skill. Extract it into the
+   directory from which you load skills, so that each skill's folder is
+   directly in that directory. If you do not know that directory, ask me.
+6. Load the skill named `diverge`. It states which further skill to load for
+   each task. Follow it from this point onward, and load each skill before
+   you perform the task it covers.
+7. Assist me, in this order: sign me in; configure and start the provider;
+   configure and start the daemon; and make my account an administrator of
+   the daemon. Ask me for each decision that is mine to make, and do not
+   choose on my behalf where a skill states that the choice is the operator's.
+```
+
+## Manual installation
+
+1. **Programs.** Download the archive for the platform from the table below. The archive contains exactly one folder, which contains the programs. Place every file of that folder directly in `~/.diverge/bin`, creating that directory if it does not exist.
+2. **Path.** Add `~/.diverge/bin` to the `PATH` environment variable. The command `diverge --version` prints the installed version when the installation is correct.
+3. **Skills.** Download the skills archive from the link below the table. Extract it into the skills directory of the agent that is to operate Diverge, so that each skill's folder is directly in that directory.
+4. **First use.** Instruct the agent to load the skill named `diverge`. That skill is the index of the others and states which skill governs each task, beginning with signing in and starting the provider and the daemon.
+
 ## Download
 
 Each archive contains every program for one platform. Each link below resolves to the most recent release.
