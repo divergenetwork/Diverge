@@ -38,4 +38,8 @@ pub enum Action {
     /// [`images::merge`](crate::daemon::endpoints::images::merge)
     /// does: judged by the provider the image is made on.
     Merge,
+    /// Change the description of an image in a Store of the daemon's,
+    /// as [`images::edit`](crate::daemon::endpoints::images::edit)
+    /// does.
+    Edit,
 }

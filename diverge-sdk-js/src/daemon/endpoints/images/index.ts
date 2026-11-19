@@ -11,6 +11,7 @@
 
 export * as build from "./build/index.js";
 export * as delete from "./delete/index.js";
+export * as edit from "./edit/index.js";
 export * as get from "./get/index.js";
 export * as list from "./list/index.js";
 export * as merge from "./merge/index.js";
