@@ -32,6 +32,7 @@ pub async fn container<T>(template_id: &str, template: &Template<T>, volumes: &[
                 volume_name: mount.volume_name.clone(),
                 volume_relative_path: mount.volume_relative_path.clone(),
                 mode: mount.volume_mode,
+                overlay_disk: mount.overlay_disk,
                 container_path: mount.container_path.clone(),
             })
             .collect(),

@@ -37,10 +37,18 @@ pub struct Needs {
     /// measures the provider's `container_memory` against. `0` asks
     /// nothing of it.
     pub memory: u64,
-    /// The overlay disk the run reserves, in bytes: what
-    /// [`headroom`] measures the provider's `container_disk` against.
-    /// `0` asks nothing of it.
+    /// The overlay the run reserves, in bytes — its own `disk` and
+    /// the `overlay_disk` of every ephemeral volume it mounts, see
+    /// [`overlay`] — what [`headroom`] measures the provider's
+    /// `overlay_disk` against. `0` asks nothing of it.
     pub disk: u64,
+}
+
+/// The overlay a run reserves on its provider: the container's own
+/// `disk`, and the `overlay_disk` of each of its ephemeral volume
+/// mounts, which the provider takes from the one cap together.
+pub fn overlay(disk: u64, mounts: &[diverge_sdk::daemon::endpoints::agents::create::client::request::VolumeMount]) -> u64 {
+    mounts.iter().filter_map(|mount| mount.overlay_disk).fold(disk, u64::saturating_add)
 }
 
 /// What a headroom ratio is scaled by: one is a run's worth of room
@@ -49,7 +57,7 @@ const SCALE: u128 = 1_000_000;
 
 /// How many runs' worth of room the provider's last capacity holds
 /// for a run of these needs, in millionths: the smaller of its
-/// `container_memory` over the run's memory and its `container_disk`
+/// `container_memory` over the run's memory and its `overlay_disk`
 /// over the run's disk — the scarcer of the two is what the run
 /// comes up against — with a need of `0` counting as unbounded. The
 /// chooser tries the greatest first: see
@@ -59,7 +67,7 @@ const SCALE: u128 = 1_000_000;
 /// be stale.
 pub fn headroom(capacity: &Capacity, needs: &Needs) -> u128 {
     let memory = ratio(capacity.container_memory, needs.memory);
-    let disk = ratio(capacity.container_disk, needs.disk);
+    let disk = ratio(capacity.overlay_disk, needs.disk);
     memory.min(disk)
 }
 

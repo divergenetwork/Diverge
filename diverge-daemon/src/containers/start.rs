@@ -148,7 +148,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
         volume_modes: volumes.iter().map(|mount| mount.volume_mode).collect(),
         image: Some(build::image(&template.template.image)),
         memory: template.template.memory,
-        disk: template.template.disk,
+        disk: super::capable::overlay(template.template.disk, volumes),
     };
     let candidates = provider::candidates(daemon, agent.provider.as_ref().map(|provider| &provider.identity), &needs)
         .await
@@ -339,7 +339,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             volume_modes: volumes.iter().map(|mount| mount.volume_mode).collect(),
             image: Some(build::image(&record.template.image)),
             memory: record.template.memory,
-            disk: record.template.disk,
+            disk: super::capable::overlay(record.template.disk, volumes),
         };
         let candidates = provider::candidates(daemon, pinned.as_ref().map(|provider| &provider.identity), &needs)
             .await

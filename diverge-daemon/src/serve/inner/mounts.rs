@@ -7,6 +7,7 @@ use diverge_sdk::daemon::endpoints::daemons::DaemonId;
 use diverge_sdk::daemon::grant::daemons::Over as DaemonsOver;
 use diverge_sdk::daemon::grant::volumes::Over;
 use diverge_sdk::daemon::reference;
+use diverge_sdk::provider::endpoints::volumes::Mode;
 use diverge_sdk::provider::endpoints::volumes::list::server::response::Volume;
 use sqlx::PgConnection;
 
@@ -16,6 +17,21 @@ use crate::daemon::Daemon;
 use crate::judge::{self, Standing};
 use crate::store::{self, volumes as volume_tags};
 use crate::volumes::{self, Listed};
+
+/// Why a mount's `overlay_disk` is not one its mode takes, in a
+/// sentence, or `None` where it is. The rule, a volume mount's and a
+/// FUSE mount's alike: the number is there exactly when the mode is
+/// `ephemeral`, the one mode with a layer of its own — the bytes the
+/// provider sets aside for what is written into the volume and
+/// discarded after. An ephemeral mount with none reserves nothing it
+/// could be held to, and any other mode's has nothing to reserve.
+fn layered(name: &str, mode: Mode, overlay_disk: Option<u64>) -> Option<String> {
+    match (mode, overlay_disk) {
+        (Mode::Ephemeral, None) => Some(format!("the mount of the volume {name} is ephemeral and states no `overlay_disk`")),
+        (Mode::Persistent | Mode::ReadOnly, Some(_)) => Some(format!("the mount of the volume {name} states an `overlay_disk`, which only an ephemeral mount has")),
+        _ => None,
+    }
+}
 
 /// Every volume named — in the pinned provider's volume mounts, and
 /// by each cross-provider mount — must be one its provider lists, else
@@ -27,6 +43,10 @@ use crate::volumes::{self, Listed};
 /// grant of the standing, else `Forbidden`: naming a volume in a
 /// container's mounts takes `mount` over it, beside the grant over
 /// the container.
+///
+/// Before any of it, every mount's `overlay_disk` is read against its
+/// mode — [`layered`] — and one stated the wrong way round is `Error`:
+/// that is the request's own shape, and nobody is asked about it.
 ///
 /// A mount of a volume on ANOTHER daemon is none of that. It is
 /// judged first, and by one thing: the record its `daemon` names must
@@ -44,6 +64,14 @@ pub async fn mounts(
     file_mounts: &[FuseMount],
     directory_mounts: &[FuseMount],
 ) -> Result<Mounted, store::Error> {
+    // The request's own shape, first.
+    let stated = pinned.iter().flat_map(|provider| &provider.volume_mounts).map(|mount| (&mount.volume_name, mount.volume_mode, mount.overlay_disk));
+    let served = file_mounts.iter().chain(directory_mounts).map(|mount| (&mount.volume_name, mount.volume_mode, mount.overlay_disk));
+    for (name, mode, overlay_disk) in stated.chain(served) {
+        if let Some(why) = layered(name, mode, overlay_disk) {
+            return Ok(Mounted::Error(why));
+        }
+    }
     // The mounts of volumes on other daemons, judged by `relay` over
     // each record named, once each.
     let mut records: Vec<DaemonId> = Vec::new();
