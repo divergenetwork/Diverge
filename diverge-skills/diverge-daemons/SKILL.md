@@ -95,6 +95,10 @@ always present), `accept_daemons`, `messageable`, `enabled`, `description`, `tag
 `created`, `creator`, `status`, `capacity`.
 
 - `status.type` is `disconnected`, `connected` (with `info`), or `different_version` (with `info`).
+- A `disconnected` provider that the daemon dials (an outgoing record) carries `status.reason`: why the last
+  attempt failed, or that the connection ended. Read it first. The daemon retries every five seconds for as
+  long as the record is enabled, so a `reason` that keeps saying the same thing is a problem to fix on the
+  provider's side or the network, not something a restart of the daemon cures.
   `info` is what the provider answered: `version` and `capabilities`. A provider counts as `connected`
   only once that answer is cached. **`different_version`** means the socket is held but the provider is
   used for nothing (no container, volume, image, or daemon reached through it) until daemon and provider
