@@ -1,0 +1,120 @@
+/* The requests panel: the outliner's look — the theme's ground, the
+   strong edge, square, no shadow — over the canvas, under the tab strip
+   (9) and the sheets (10). Every value comes from the theme. */
+.requests {
+  position: fixed;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  max-height: 60vh;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.3;
+  overflow: hidden;
+}
+/* Something stands: the edge lights up. */
+.requests.some { border-color: var(--line-hover); }
+/* One came in: the whole card flashes, then settles. */
+.requests.flash { animation: requests-flash 0.4s ease-in-out 4; }
+@keyframes requests-flash {
+  50% { background: var(--surface-2, var(--surface)); border-color: var(--text); }
+}
+
+.requests .head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  cursor: grab;
+  touch-action: none;
+}
+.requests .title { color: var(--text); font-weight: 600; }
+.requests .count { flex: 1; color: var(--text); font-size: var(--text-xs); }
+.requests .fold,
+.requests .away {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+}
+:root:not([data-input="keys"]) .requests .fold:hover,
+:root:not([data-input="keys"]) .requests .away:hover { color: var(--text); }
+
+.requests[data-open="false"] .list,
+.requests[data-open="false"] .said { display: none; }
+
+.requests .list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--line-strong) transparent;
+  border-top: 1px solid var(--line);
+}
+.requests .none { margin: 0; padding: var(--space-3); color: var(--text-3); }
+.requests .row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.requests .row.on { background: var(--surface); }
+:root:not([data-input="keys"]) .requests .row:hover { background: var(--surface); }
+.requests .who { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.requests .where { color: var(--text-3); font-size: var(--text-xs); white-space: nowrap; }
+.requests .begins {
+  grid-column: 1 / -1;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.requests .said {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  white-space: pre-line;
+}
+.requests .said[hidden] { display: none; }
+
+/* The sheet a request opens in: the sheet's own look, over a node's
+   sheet where one is open, a fixed share of the window tall. */
+.sheet.request-sheet {
+  z-index: 11;
+  height: 40vh;
+}
+.sheet.request-sheet .thread {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sheet.request-sheet .body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  user-select: text;
+  cursor: auto;
+}
+.sheet.request-sheet .note {
+  flex: none;
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  min-height: 1.3em;
+}

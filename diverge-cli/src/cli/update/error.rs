@@ -34,6 +34,8 @@ pub enum Error {
         /// The architecture.
         arch: String,
     },
+    /// The version's release holds no skills: nothing was changed.
+    NoSkills(String),
     /// A file or a folder could not be read, written, made or
     /// removed.
     Io {
@@ -66,6 +68,7 @@ impl fmt::Display for Error {
             Error::Status { url, status } => write!(f, "{url} answered {status}"),
             Error::NoVersion(version) => write!(f, "there is no version {version}"),
             Error::NoPlatform { version, os, arch } => write!(f, "version {version} was not built for {os}/{arch}"),
+            Error::NoSkills(version) => write!(f, "version {version} was released with no skills; nothing was changed — update with `--skip-updating-skills`"),
             Error::Io { path, source } => write!(f, "{}: {source}", path.display()),
             Error::Archive(reason) => write!(f, "the archive could not be read: {reason}"),
             Error::Incomplete(file) => write!(f, "the archive does not hold {file}; nothing was replaced"),
@@ -82,7 +85,7 @@ impl std::error::Error for Error {
         match self {
             Error::Http { source, .. } => Some(source),
             Error::Io { source, .. } | Error::Swap { source, .. } => Some(source),
-            Error::Status { .. } | Error::NoVersion(_) | Error::NoPlatform { .. } | Error::Archive(_) | Error::Incomplete(_) => None,
+            Error::Status { .. } | Error::NoVersion(_) | Error::NoPlatform { .. } | Error::NoSkills(_) | Error::Archive(_) | Error::Incomplete(_) => None,
         }
     }
 }

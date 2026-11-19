@@ -5,6 +5,7 @@
 import type * as Phaser from "phaser";
 import type { Route } from "../lib/wire";
 import { Board } from "../scenes/board";
+import { listen, unlisten } from "../requests/hub";
 import { ACTIVE, OPEN, type Opening } from "../scenes/status";
 import "./tabs.css";
 
@@ -98,6 +99,8 @@ export function tabs(game: Phaser.Game): void {
     const key = keyOf(opening.route);
     if (opened.some((t) => t.key === key)) return show(key);
     opened.push({ key, ...opening });
+    // The requests made of us on the daemon it shows are listened for, for as long as it is open.
+    listen(key, opening.labels.join(" › "), opening.route);
     game.scene.sleep(shown());
     game.registry.set(ACTIVE, key);
     game.scene.add(key, new Board(key), true, opening);
@@ -110,10 +113,13 @@ export function tabs(game: Phaser.Game): void {
     if (at === -1) return;
     if (shown() === tab.key) show(at === 0 ? HOME : opened[at - 1].key);
     opened.splice(at, 1);
+    unlisten(tab.key);
     game.scene.stop(tab.key);
     game.scene.remove(tab.key);
     draw();
   };
   game.events.on(OPEN, open);
+  // Home's, on our own daemon, from the start.
+  listen(HOME, "Home", []);
   draw();
 }

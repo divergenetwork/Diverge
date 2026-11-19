@@ -265,7 +265,8 @@ diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{
 
 # Listen. Prints each request made of this account; answers are read from standard input, one JSON object a line.
 diverge run requests listen
-#   {"request":{"id":"7c0e…","request":[{"type":"text","text":"Deploy to production?"}]}}
+#   {"request":{"id":"7c0e…","request":[{"type":"text","text":"Deploy to production?"}],
+#               "from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.bob"}}}}
 # type on standard input:   {"id":"7c0e…","response":[{"type":"text","text":"yes"}]}
 #   {"delivered":{"id":"7c0e…"}}
 ```
