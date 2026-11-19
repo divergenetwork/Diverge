@@ -33,6 +33,7 @@ use tauri::Manager;
 mod config;
 mod frontend;
 mod stop;
+mod theme;
 mod transfer;
 
 fn main() {

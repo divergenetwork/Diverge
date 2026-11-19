@@ -38,6 +38,9 @@
 //!    ends its daemon request — so a container the frontend held up is
 //!    held no more. The page closes it when its tab goes, and a page
 //!    that starts loading closes every one (`close_all`).
+//! 7. `/diverge/theme.css` and `/diverge/theme.js` are the app's own
+//!    (`theme.rs`): answered here once rule 2 lets the request in, and
+//!    never sent on.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -289,6 +292,10 @@ async fn forward(State(served): State<Arc<Served>>, mut request: Request) -> Res
         if !keyed {
             return page(StatusCode::FORBIDDEN, "this frontend is opened from the world's frontend tab");
         }
+    }
+    // Rule 7.
+    if let Some(answer) = crate::theme::theme(request.method(), request.uri().path()) {
+        return answer;
     }
     // Rule 3.
     let upgrade = headers.contains_key(header::UPGRADE);

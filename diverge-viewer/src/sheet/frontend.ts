@@ -25,12 +25,25 @@ type Opened = { id: number; url: string };
  *    frontend (`frontend_close`): every request and connection it had
  *    open ends, and so does what they held up. One disposed before it
  *    finished opening is ended as soon as it has.
+ * 5. The frame is told the person's theme. A page that took
+ *    `/diverge/theme.js` asks `{ diverge: "theme?" }`; it is answered
+ *    `{ diverge: "theme", theme }` — the root's `data-theme`, or null for
+ *    the default — at the frontend's own origin, and again whenever the
+ *    root's `data-theme` changes. Only the frame's own window is heard.
  */
 export class FrontendPane {
   private readonly frame: HTMLIFrameElement;
   private readonly where: HTMLElement;
   private opened: Opened | null = null;
   private disposed = false;
+  /** Rule 5: a question from the frame. */
+  private readonly heard = (event: MessageEvent): void => {
+    if (!this.opened || event.source !== this.frame.contentWindow || event.origin !== new URL(this.opened.url).origin) return;
+    const said: unknown = event.data;
+    if (said !== null && typeof said === "object" && (said as { diverge?: unknown }).diverge === "theme?") this.tell();
+  };
+  /** Rule 5: the root's theme, watched. */
+  private readonly watching = new MutationObserver(() => this.tell());
 
   constructor(
     private readonly pane: HTMLElement,
@@ -57,6 +70,9 @@ export class FrontendPane {
     // A frontend may put text on the clipboard: its copy buttons work.
     this.frame.allow = "clipboard-write";
     this.pane.append(bar, this.frame);
+    // Rule 5.
+    window.addEventListener("message", this.heard);
+    this.watching.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     void invoke<Opened>("frontend_open", { target, ...relayed(route) })
       .then((opened) => {
         // Rule 4: disposed while it opened.
@@ -75,9 +91,17 @@ export class FrontendPane {
       });
   }
 
+  /** Rule 5: the theme on the root, sent to the frame's own origin. */
+  private tell(): void {
+    if (!this.opened) return;
+    this.frame.contentWindow?.postMessage({ diverge: "theme", theme: document.documentElement.dataset.theme ?? null }, new URL(this.opened.url).origin);
+  }
+
   /** Rule 4. */
   dispose(): void {
     this.disposed = true;
+    window.removeEventListener("message", this.heard);
+    this.watching.disconnect();
     if (this.opened) void invoke("frontend_close", { id: this.opened.id });
     this.opened = null;
     this.pane.replaceChildren();
