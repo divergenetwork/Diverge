@@ -13,6 +13,16 @@ body,
   background: var(--bg);
 }
 
+/* The game's canvas fills the window, whatever size the window is: how
+   big it is shown is this rule's alone. `!important`, because the
+   game's library writes a size on the canvas itself when it starts,
+   and that size is not to win. How many pixels it draws is `main.ts`'s. */
+#world > canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 body {
   font-family: var(--font-ui);
   font-size: var(--text-md);

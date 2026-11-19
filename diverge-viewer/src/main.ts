@@ -39,45 +39,38 @@ const world = document.getElementById("world") as HTMLElement;
 /** The window's size in the screen's own pixels. */
 const size = () => ({ width: Math.round(world.clientWidth * density()), height: Math.round(world.clientHeight * density()) });
 /**
- * The game is the window's size in the screen's pixels, shown at the
- * page's: one of its pixels is one of the screen's, so nothing it draws
- * is stretched. Its smaller copies of each texture (mipmaps) keep the
- * nodes' shapes steady zoomed out.
+ * How the game is sized. Two sizes, each owned by one side.
+ *
+ * 1. **How big the canvas is shown is the page's.** The canvas fills
+ *    `#world` by a rule of `main.css`, as any element fills its box:
+ *    nothing here sets it, so a window resized, maximised, restored
+ *    or snapped is followed by the page laying itself out, with no
+ *    code run. The game is told no zoom, so the library writes no
+ *    size on the canvas of its own.
+ * 2. **How many pixels it draws is the game's.** A canvas does not
+ *    change its own resolution: `fit` gives it `#world`'s size in the
+ *    screen's own pixels, so one of its pixels is one of the screen's
+ *    and nothing it draws is stretched. It is told by an observer of
+ *    `#world`, after the page is laid out, and when the screen's
+ *    density changes.
+ * 3. Its smaller copies of each texture (mipmaps) keep the nodes'
+ *    shapes steady zoomed out.
  */
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: world,
   backgroundColor: int("bg"),
-  scale: { mode: Phaser.Scale.NONE, ...size(), zoom: 1 / density() },
+  scale: { mode: Phaser.Scale.NONE, ...size() },
   render: { mipmapFilter: "LINEAR_MIPMAP_LINEAR" },
   scene: [Backdrop, Board, Ui],
 });
-/**
- * The window resized, or moved to a screen of another density: the game
- * follows.
- *
- * The rules:
- *
- * 1. The game is fitted to `#world` as `#world` is laid out, not to the
- *    window as the window says it changed: the size is read from the
- *    element, by an observer of the element, which is told after the
- *    page has been laid out at the new size. A window `resize` can
- *    arrive before that — a maximise, a restore, a snap to half the
- *    screen change the window in one step — and reading the element
- *    then reads the size it had, which left the game the size of the
- *    window before, in the corner of the new one.
- * 2. A fit to the size the game already is does nothing.
- */
+/** Rule 2: the game's resolution, as `#world` is now. A fit to the size it already is does nothing. */
 const fit = () => {
   const { width, height } = size();
   if (width === 0 || height === 0) return;
-  const zoom = 1 / density();
-  // Rule 2.
-  if (game.scale.width === width && game.scale.height === height && game.scale.zoom === zoom) return;
-  game.scale.setZoom(zoom);
+  if (game.scale.width === width && game.scale.height === height) return;
   game.scale.resize(width, height);
 };
-// Rule 1.
 new ResizeObserver(fit).observe(world);
 watchDensity();
 onDensity(fit);
