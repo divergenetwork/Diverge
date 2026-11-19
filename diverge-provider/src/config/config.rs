@@ -115,8 +115,12 @@ impl Config {
     /// - an `images` section: podman builds an image into the Store,
     ///   and reads a file out of one for an `images::read`;
     /// - neither: no podman. Nothing the provider then does — its
-    ///   volumes, its messages, its daemons — runs it, the `podman`
-    ///   section is not read, and the host needs no podman installed.
+    ///   volumes, its FUSE serves, its messages, its daemons — runs
+    ///   it, and the host needs no podman installed. Two settings of
+    ///   the `podman` section are read all the same, by the volumes:
+    ///   `storage_path`, under which an ephemeral FUSE serve keeps its
+    ///   layer, and `overlay_disk`, the cap that layer is reserved
+    ///   from. Neither is handed to podman.
     pub fn podman_in_use(&self) -> bool {
         self.containers.is_some() || self.images.is_some()
     }
