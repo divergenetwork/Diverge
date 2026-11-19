@@ -132,12 +132,14 @@
     color: var(--text);
     font-weight: 600;
   }
-  /* A tab with a message not yet seen: a small accent dot after its name. */
+  /* A tab with a message not yet seen: a small round accent dot after its name. Round like the
+     viewer's own status dot (sheet.css), the one shape the square theme keeps. */
   nav.tabs .unseen::after {
     content: "";
     width: 6px;
     height: 6px;
     margin-left: var(--space-2);
+    border-radius: 50%;
     background: var(--accent);
   }
 
