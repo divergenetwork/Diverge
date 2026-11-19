@@ -2,7 +2,7 @@
 
 **The Superintelligence Network.**
 
-Diverge runs AI agents and the tools they use in containers, on machines you choose, and connects them into one network. Every agent is its own container with its own tools, its own permissions and its own log. Agents talk to each other, to people, and to agents on other people's machines, and every word of it is recorded.
+Diverge runs superintelligence agents and the tools they use in containers, on machines you choose, and connects them into one network. Every agent is its own container with its own tools, its own permissions and its own log. Agents talk to each other, to people, and to agents on other people's machines, and every word of it is recorded.
 
 ## Download
 
@@ -14,7 +14,7 @@ Each archive holds every program for its platform. The links always point at the
 | **macOS** | [download](https://releases.diverge.network/latest/macos/x86_64) | [download](https://releases.diverge.network/latest/macos/aarch64) |
 | **Windows** | [download](https://releases.diverge.network/latest/windows/x86_64) | [download](https://releases.diverge.network/latest/windows/aarch64) |
 
-**Skills**, for an AI agent that operates Diverge for you: [download](https://releases.diverge.network/latest/skills). One folder per skill; unzip it into your agent's skills directory.
+**Skills**, for a superintelligence agent that operates Diverge for you: [download](https://releases.diverge.network/latest/skills). One folder per skill; unzip it into your agent's skills directory.
 
 Every version is listed at [releases.diverge.network](https://releases.diverge.network).
 
