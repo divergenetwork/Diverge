@@ -159,7 +159,17 @@ export class Board extends Phaser.Scene {
       for (const [key, value] of this.said) this.registry.set(key, value);
     };
     this.events.on("wake", woke);
+    // The window resized: what was at the middle of the view stays at
+    // its middle. A camera made wider keeps its left edge where it
+    // was, which would slide the world sideways by half the change.
+    const resized = (_game: unknown, _base: unknown, _display: unknown, wasWide: number, wasTall: number) => {
+      const camera = this.cameras.main;
+      camera.scrollX -= (camera.width - wasWide) / 2;
+      camera.scrollY -= (camera.height - wasTall) / 2;
+    };
+    this.scale.on("resize", resized);
     this.events.once("shutdown", () => {
+      this.scale.off("resize", resized);
       this.game.events.off(FOCUS, focus);
       this.game.events.off(HOVER, hoverKey);
       this.events.off("sleep", slept);

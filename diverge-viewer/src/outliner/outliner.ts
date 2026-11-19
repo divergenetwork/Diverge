@@ -503,7 +503,27 @@ export function outliner(game: Phaser.Game): void {
     later();
   };
   new MutationObserver(watch).observe(document.body, { childList: true });
-  window.addEventListener("resize", later);
+  // The window resized: a floating card keeps its gap to whichever
+  // side edge it is nearer, and to whichever of the top and the bottom
+  // it is nearer — so one at the far right stays at the far right of a
+  // window made wider, and one low down stays low — and is then placed,
+  // which keeps it inside the window.
+  let wide = window.innerWidth;
+  let tall = window.innerHeight;
+  window.addEventListener("resize", () => {
+    const [nowWide, nowTall] = [window.innerWidth, window.innerHeight];
+    if (!docked && left !== null) {
+      const across = root.offsetWidth;
+      const down = root.offsetHeight;
+      const right = wide - (left + across);
+      if (right < left) left = nowWide - across - right;
+      const below = tall - (top + down);
+      if (below < top - TABS) top = nowTall - down - below;
+    }
+    wide = nowWide;
+    tall = nowTall;
+    later();
+  });
   // A key set for the first time is `setdata`; every change after, `changedata-<key>`.
   const keys = [OUTLINE, SELECTED, KINDS, LINES, STATUS];
   for (const key of keys) registry.events.on(`changedata-${key}`, render);
