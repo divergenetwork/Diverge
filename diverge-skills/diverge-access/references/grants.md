@@ -101,7 +101,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `frontend` | `standalone-tools frontend` |
 | Over | `connect` | `standalone-tools connect …`: serving the tool's MCP exchanges to a client, **including another daemon that holds it as a connected tool** |
 | Over | `logs` | `logs` with `of.type` = `standalone_tool` |
-| Over | `request` | being asked by `requests create`: the record may be named in `to`, by itself or by a tag, and is sent a request made of `"all"` |
+| Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `standalone-tools tag` / `untag` |
 
 `within`: `tools` (exact), `names`, `templates`, `creators`, `modes`, `active`, `deployed`, `attached_agent_instances`,
@@ -145,7 +145,7 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Over | `exec` | `dependency-tools exec` and `terminal` |
 | Over | `frontend` | `dependency-tools frontend` |
 | Over | `logs` | `logs` with `of.type` = `dependency_tool` |
-| Over | `request` | being asked by `requests create`: the record may be named in `to`, by itself or by a tag, and is sent a request made of `"all"` |
+| Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `dependency-tools tag` / `untag` |
 
 `within`: `tools` (exact), `ids` (of these templates), `owners`, `creators`, `modes`, `scopes`, `depended`, `agents`, `in_use`, `all_tags`,
@@ -230,7 +230,7 @@ the account the record names is the remote's own to judge.
 | Over | `edit` | `accounts edit` (plus, when the roles change, `grant` over every role in the resulting list) |
 | Over | `logs` | `logs` with `of.type` = `account`: the account's command log |
 | Over | `disconnect` | `accounts disconnect` |
-| Over | `request` | being asked by `requests create`: the record may be named in `to`, by itself or by a tag, and is sent a request made of `"all"` |
+| Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `accounts tag` / `untag` |
 
 `within`: `identities`, `roles`, `connected`, `creators`, `all_tags`, `any_tags`, `created_from`,

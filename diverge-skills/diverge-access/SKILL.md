@@ -111,8 +111,6 @@ A request naming several things is allowed only when every one is:
   `fuse_serve` grant for the account the record names.
 - Binding a vault key in `secrets`: the container's grant **and** `use` over the key.
 - A transfer: `transfer` over the source **and** `upload` over where it lands.
-- `requests create` naming accounts and tools: `request` over **every** account and tool named, each by
-  its own kind's grant, and over every record carrying a tag named. See [Requests](#requests-diverge-run-requests-).
 - Any request with `relay`: `relay` over the daemons record that is the first ID, on this daemon; the
   request itself is then judged on the remote daemon, as the account the record names.
 
@@ -246,7 +244,7 @@ diverge run requests create '{"request":{"question":"Deploy to production?"},"to
 #   {"delivered":{"to":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
 #   {"responded":{"response":{"answer":"yes"},"from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
 
-# Ask only some. Every member is optional; at least one must name somebody.
+# Ask only some. Every member is optional.
 diverge run requests create '{"request":"ready?","to":{"only":{
   "accounts":[{"issuer":"…","subject":"github.12345.alice"}],
   "account_tags":["oncall"],
@@ -281,13 +279,13 @@ diverge run requests listen
   three kinds, each with its own `within` and its own tags: `accounts`, `standalone_tools`,
   `dependency_tools`. A tag in `account_tags` names accounts only; a tool carrying the same tag is not
   addressed by it.
-  - `"to":"all"` is never refused for reach: it goes to exactly the accounts and tools the three grants
-    reach.
-  - An account or tool named that does not exist: `"not_found"`. One the grant for its kind does not
-    reach: `"forbidden"`.
-  - A tag named is `"forbidden"` unless the grant reaches **every** record carrying it now.
+  - A request goes to **everything it names that you may ask**, and silently skips the rest: an account
+    or tool the grant for its kind does not reach, the unreached members of a tag, a name that names
+    nothing. `"to":"all"` is the same with nothing narrowed. The `delivered` lines say who was sent it.
+  - It is refused only when it would go to nobody: `"no_recipient"` when no existing account or tool is
+    both named and reachable (also `{"only":{}}`, and `"all"` with nothing reachable).
+  - Recipients that exist but are not listening do not refuse it: the request is created and waits.
   - No `request` grant of any of the three kinds: `"forbidden"`.
-  - `{"only":{}}` with nothing named: an `error`.
 - **Tools.** A standalone tool and a dependency tool can each listen and create, as itself, with the
   grants its image declares. A connected standalone tool (another daemon's) does neither.
 - An administrator with no account is addressed only by its identity in `accounts`, never by a tag.
