@@ -270,6 +270,22 @@ diverge provider messages seconds set 30
 - Messages are direct messages between the daemons connected to the provider. Disabled, none is relayed.
 - `messages` is the count and `seconds` the window; each is 1 or more.
 
+### logging
+
+```bash
+diverge provider logging enabled                            # true or false; true by default
+diverge provider logging enable
+diverge provider logging disable
+```
+
+- On, the provider keeps a small log of who connected, whether the handshake was accepted (and why not, when
+  it was refused), which requests each connection opened, and when it disconnected. It is the first thing to
+  check when a daemon's provider record stays `disconnected`.
+- It records a request only by its number, never its contents, so it holds no secret and no file data.
+- It is bounded: old entries are dropped, and it never grows past a few tens of megabytes. Identical
+  consecutive entries are counted instead of repeated.
+- Off, nothing is written. What was written before stays.
+
 ## The CLI's settings
 
 The CLI keeps a list of daemons it may dial, each with a list of accounts to dial it as.
