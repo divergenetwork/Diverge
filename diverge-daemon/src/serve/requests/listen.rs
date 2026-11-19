@@ -90,7 +90,7 @@ async fn listening(scope: &ScopeHandle, daemon: &Arc<Daemon>, party: &Party, tol
             // Rule 4.
             word = told.recv() => {
                 let frame = match word {
-                    Some(Told::Request { id, request }) => Frame::Request(Asked { id, request: (*request).clone() }),
+                    Some(Told::Request { id, request, from }) => Frame::Request(Asked { id, request: (*request).clone(), from }),
                     Some(Told::Withdrawn(id)) => Frame::Withdrawn(Withdrawn { id }),
                     None => return Ok(()),
                 };

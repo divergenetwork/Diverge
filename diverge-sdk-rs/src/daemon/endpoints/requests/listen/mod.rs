@@ -7,7 +7,8 @@
 //! 1. **What is heard.** Every request whose creator addressed the
 //!    caller and may ask it: each is one
 //!    [`Request`](server::response::Frame::Request) on the main
-//!    stream, with its id and its content as the creator wrote it. The
+//!    stream, with its id, its content as the creator wrote it, and
+//!    who the creator is. The
 //!    ones pending when the scope opens come first, in no order of
 //!    their own; each later one as it is created, or as the caller
 //!    comes to be addressed by it.

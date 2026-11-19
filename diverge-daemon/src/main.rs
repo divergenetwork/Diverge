@@ -11,7 +11,13 @@ use diverge_daemon::config;
 use diverge_daemon::serve;
 
 fn main() -> Result<(), serve::Error> {
+    // The workers' stacks are sixteen mebibytes each, eight times the
+    // runtime's own two: a build with no optimisation keeps a request's
+    // whole future on the stack as it is polled, and the largest of
+    // them overflowed two on macOS. The memory is reserved, not used,
+    // until a stack grows into it.
     let runtime = tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(16 * 1024 * 1024)
         .enable_all()
         .build()
         .map_err(serve::Error::Runtime)?;

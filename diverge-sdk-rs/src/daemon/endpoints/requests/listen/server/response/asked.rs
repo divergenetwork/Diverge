@@ -3,6 +3,7 @@
 use rmcp::model::ContentBlock;
 use serde::{Deserialize, Serialize};
 
+use crate::daemon::creator::Creator;
 use crate::daemon::endpoints::requests::RequestId;
 
 /// One request made of the listener.
@@ -15,4 +16,8 @@ pub struct Asked {
     /// The request: its content, in order, as its creator wrote it.
     /// The daemon reads none of it.
     pub request: Vec<ContentBlock>,
+    /// Who made the request: an account, by its identity, or a tool,
+    /// as the daemon names a party — see [`Creator`]. Whom an answer
+    /// goes to.
+    pub from: Creator,
 }

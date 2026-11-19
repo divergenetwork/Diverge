@@ -16,7 +16,7 @@ use crate::judge::Standing;
 #[derive(Debug, Clone)]
 pub enum Told {
     /// A request made of it.
-    Request { id: RequestId, request: Arc<Vec<ContentBlock>> },
+    Request { id: RequestId, request: Arc<Vec<ContentBlock>>, from: Creator },
     /// A request it was sent is wanted no more.
     Withdrawn(RequestId),
 }
@@ -189,6 +189,7 @@ impl Requests {
         let _ = listener.told.send(Told::Request {
             id: id.clone(),
             request: Arc::clone(&pending.request),
+            from: pending.standing.creator.clone(),
         });
         let _ = pending.creator.send(Became::Delivered(listener.named.clone()));
     }
