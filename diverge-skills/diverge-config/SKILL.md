@@ -192,7 +192,7 @@ diverge provider volumes stores add --path /mnt/volumes --capacity 107374182400
 diverge provider volumes stores edit 0 --capacity 214748364800
 diverge provider volumes stores edit 0 --path /mnt/big/volumes    # MOVES the store and every volume in it
 diverge provider volumes stores delete 0                    # DELETES the store and every volume in it
-diverge provider volumes ephemeral_fuse get                 # {"path":"/mnt/fuse-scratch","capacity":34359738368}, or null
+diverge provider volumes ephemeral_fuse get                 # {"path":"…/provider/ephemeral_fuse","capacity":34359738368} by default; null once deleted
 diverge provider volumes ephemeral_fuse set --path /mnt/fuse-scratch --capacity 34359738368
 diverge provider volumes ephemeral_fuse delete              # the provider serves no ephemeral volume over FUSE
 diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/srv/datasets","bytes":…,"mode":"read_only","authorized":"all"}

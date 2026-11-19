@@ -210,7 +210,9 @@ pub enum Volumes {
     /// Read, set or delete where a FUSE serve of an ephemeral volume
     /// keeps what is written through it, and how much,
     /// `volumes.ephemeral_fuse`. With it set the provider serves
-    /// ephemeral volumes over FUSE; without it, it serves none.
+    /// ephemeral volumes over FUSE; deleted, it serves none. It is set
+    /// from the moment the `volumes` section is enabled, to
+    /// `provider/ephemeral_fuse` under the root and 32 GiB.
     #[command(name = "ephemeral_fuse", subcommand)]
     EphemeralFuse(EphemeralFuse),
 }
@@ -220,7 +222,7 @@ pub enum Volumes {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum EphemeralFuse {
     /// Print it, one line: `{"path":"…","capacity":…}`, the path
-    /// resolved, absolute. `null` where it is not set, or the
+    /// resolved, absolute. `null` where it was deleted, or the
     /// `volumes` section is absent.
     Get,
     /// Set it, both members at once. Refused where the `volumes`

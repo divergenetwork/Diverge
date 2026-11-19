@@ -13,8 +13,10 @@ use serde::{Deserialize, Serialize};
 /// 1. **Present, the capability.** With the member there, the
 ///    provider holds out `fuse_serve`, `fuse_serve_many` and
 ///    `mount_and_fuse_serve` for the `ephemeral` mode, where it keeps
-///    volumes of the mode at all. Absent, it holds out none of the
-///    three: a FUSE serve of an ephemeral volume is answered
+///    volumes of the mode at all. A `volumes` section that leaves the
+///    member out has it, at its defaults: `provider/ephemeral_fuse`
+///    under the root, and 32 GiB. Written as `null`, it holds out
+///    none of the three: a FUSE serve of an ephemeral volume is answered
 ///    `Unsupported`, no directory is made, and nothing is reserved.
 ///    Whether the provider runs containers has no say in it.
 /// 2. **A layer for each serve.** What is written through a FUSE
@@ -46,4 +48,16 @@ pub struct EphemeralFuse {
     /// every open serve's `overlay_disk` never exceeds it. `0` is
     /// refused at the provider's start.
     pub capacity: u64,
+}
+
+/// `provider/ephemeral_fuse` under the root, and 32 GiB: what a
+/// `volumes` section has where it does not say.
+impl Default for EphemeralFuse {
+    fn default() -> Self {
+        EphemeralFuse {
+            path: PathBuf::from("provider/ephemeral_fuse"),
+            // 32 GiB.
+            capacity: 32 * 1024 * 1024 * 1024,
+        }
+    }
 }

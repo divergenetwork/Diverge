@@ -241,7 +241,8 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
         // resolved as the provider resolves it, or `null`; a `set`
         // takes both the path and the capacity, and a capacity of `0`
         // is refused here as the provider refuses it at its start; a
-        // `delete` removes the member and leaves the folder.
+        // `delete` turns it off — the member written as `null`, since
+        // one left out is on at its defaults — and leaves the folder.
         Volumes::EphemeralFuse(EphemeralFuse::Get) => {
             let config = read::<Config>(root, Which::Provider).await?;
             let set = config.volumes.as_ref().and_then(|section| section.ephemeral_fuse.as_ref());
