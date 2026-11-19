@@ -15,7 +15,7 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// ```json
 /// {"volumes_disk":107374182400,"images_disk":53687091200,
-/// "container_memory":4294967296,"container_disk":17179869184}
+/// "container_memory":4294967296,"overlay_disk":17179869184}
 /// ```
 ///
 /// # Each number is the caller's, as of now
@@ -32,11 +32,13 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// # Reckoned by reservation
 ///
-/// The two container numbers count against what the provider's
-/// running containers RESERVED — the `memory` and `disk` their
-/// requests stated — and not against what the host has free: a run
-/// whose `memory` and `disk` are within them is one the provider's
-/// caps admit.
+/// `container_memory` and `overlay_disk` count against what was
+/// RESERVED — the `memory` and `disk` the running containers'
+/// requests stated, and the `overlay_disk` of every ephemeral volume
+/// a container mounts or a FUSE serve holds — and not against what
+/// the host has free: a run whose `memory`, and whose `disk` and
+/// mounts' `overlay_disk` together, are within them is one the
+/// provider's caps admit.
 ///
 /// # Every member is sent; a caller reads what the capabilities allow
 ///
@@ -44,8 +46,9 @@ use crate::wire::encode::{Encode, Writer};
 /// [`Capabilities`](crate::provider::endpoints::info::server::response::Capabilities)
 /// do not hold out carries any number, and a caller does not read it:
 /// `volumes_disk` where no volume mode object is held out,
-/// `images_disk` where `images.store` is not, `container_memory` and
-/// `container_disk` where `containers` is not.
+/// `images_disk` where `images.store` is not, `container_memory`
+/// where `containers` is not, and `overlay_disk` where neither
+/// `containers` nor an ephemeral volume's `fuse_serve` is.
 ///
 /// # There is no failure
 ///
@@ -67,11 +70,15 @@ pub struct Frame {
     /// could still reserve: what remains of the provider's memory cap
     /// after every running container's `memory`.
     pub container_memory: u64,
-    /// The number of BYTES of overlay disk a container run of the
-    /// caller could still reserve: what remains of the provider's
-    /// overlay cap after every running container's `disk`, and
-    /// whatever else the provider counts against the same cap.
-    pub container_disk: u64,
+    /// The number of BYTES of overlay the caller could still reserve:
+    /// what remains of the provider's one overlay cap after every
+    /// running container's `disk`, the `overlay_disk` of every
+    /// ephemeral volume a running container mounts, and the
+    /// `overlay_disk` of every FUSE serve of an ephemeral volume. A
+    /// run's `disk` and its ephemeral mounts' `overlay_disk` together,
+    /// and a FUSE serve's `overlay_disk`, are each what it is measured
+    /// against.
+    pub overlay_disk: u64,
 }
 
 /// The struct as JSON, and nothing in front of it.

@@ -73,6 +73,30 @@ pub struct VolumeMount {
     /// `ephemeral` or `read_only`. A volume in another mode refuses
     /// the run; nothing changes a volume's mode but an edit.
     pub mode: Mode,
+    /// The most bytes the mount's own layer may hold, for an ephemeral
+    /// volume. The rules:
+    ///
+    /// 1. **Present exactly when [`mode`](Self::mode) is `ephemeral`**,
+    ///    and absent otherwise: only an ephemeral volume has a layer
+    ///    of its own, which holds what the container writes into the
+    ///    volume and is discarded with the container. A mount that has
+    ///    it or lacks it the other way round refuses the run.
+    /// 2. **Reserved.** The provider sets the bytes aside for the
+    ///    container's life, out of the one capacity a run's `disk` and
+    ///    an ephemeral
+    ///    [`fuse_serve`](crate::provider::endpoints::volumes::fuse_serve)'s
+    ///    `overlay_disk` are set aside from — what its
+    ///    [`capacity`](crate::provider::endpoints::capacity) answers
+    ///    as `overlay_disk` — and refuses the run when it cannot, as
+    ///    it refuses one whose `disk` it cannot set aside.
+    /// 3. **Held to it.** A write inside the container that would take
+    ///    the layer past the bytes fails there, as a write to a full
+    ///    disk does, and the container goes on. `0` is a layer nothing
+    ///    can be written into.
+    /// 4. **One layer for each mount.** A volume named at several
+    ///    paths is a layer, and a number, for each.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlay_disk: Option<u64>,
     /// Where it appears inside the container, as path components from
     /// the container's root.
     ///

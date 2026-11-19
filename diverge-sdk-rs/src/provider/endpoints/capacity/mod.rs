@@ -2,8 +2,9 @@
 //!
 //! One question, one answer: a client asks, a provider says four
 //! numbers of bytes — the room for a new volume, the room in the
-//! client image store, the memory and the overlay disk a container
-//! run could still reserve — and the scope finishes. The exchange is
+//! client image store, the memory a container run could still
+//! reserve, and the overlay a run, an ephemeral volume's mount or an
+//! ephemeral volume's FUSE serve could — and the scope finishes. The exchange is
 //! shaped as [`info`](super::info) is: an empty request, one JSON
 //! response, no failure defined.
 //!
@@ -25,9 +26,10 @@
 //! [`Capabilities`](super::info::server::response::Capabilities)
 //! hold out: a member whose resource the provider does not hold out —
 //! `volumes_disk` without a volume mode object, `images_disk` without
-//! `images.store`, `container_memory` and `container_disk` without
-//! `containers` — carries any number, and a caller does not read
-//! it.
+//! `images.store`, `container_memory` without `containers`,
+//! `overlay_disk` without `containers` and without an ephemeral
+//! volume's `fuse_serve` — carries any number, and a caller does not
+//! read it.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the
 //! question is in [`client`] — and a provider answers, so the answer

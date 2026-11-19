@@ -65,6 +65,20 @@ pub struct VolumeMount {
     /// which is the agent's or tool's start error; nothing changes a
     /// volume's mode but a `volumes edit`.
     pub volume_mode: Mode,
+    /// The most bytes the mount's own layer may hold, for an
+    /// ephemeral volume: present exactly when
+    /// [`volume_mode`](Self::volume_mode) is `ephemeral`, absent
+    /// otherwise, and a mount that has it or lacks it the other way
+    /// round is the create's error, as a
+    /// [`FuseMount`](super::FuseMount)'s is. The daemon carries it
+    /// into the mount of the run it asks of the provider, so it is
+    /// that mount's rule: the provider sets the bytes aside for the
+    /// container's life, out of the one capacity the container's
+    /// `disk` is set aside from, and refuses the run when it cannot;
+    /// and a write inside the container that would take the layer
+    /// past them fails. `0` is a volume nothing can be written into.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlay_disk: Option<u64>,
     /// Where it appears inside the container, as path components from
     /// the container's root.
     ///
