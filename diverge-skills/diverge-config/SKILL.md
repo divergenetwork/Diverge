@@ -607,16 +607,30 @@ There is no `restart`: stop, then start.
 ## Updating the programs: `diverge update`
 
 ```bash
-diverge update                      # one version up from the version installed
-diverge update --version 1.2.0      # that version, newer or older
-diverge update --os linux --arch aarch64   # for another platform than this host's
+diverge update ~/.claude/skills                 # one version up, and that version's skills installed there
+diverge update --skip-updating-skills           # one version up, the programs only
+diverge update ~/.claude/skills --version 1.2.0 # that version, newer or older
+diverge update --skip-updating-skills --os linux --arch aarch64   # for another platform than this host's
 ```
+
+- **It must be told about skills, one way or the other.** Give it the directory to install the release's
+  skills in, or `--skip-updating-skills`. With neither, or both, it is refused before anything is
+  downloaded. Ask the user where their skills are kept if you do not know; do not guess.
+- Each skill is a folder named for it (`diverge`, `diverge-access`, …). A folder of that name already in
+  the directory is **replaced whole**; anything else in the directory is left alone. The directory is made
+  if it does not exist.
+- The skills installed are the ones released with the version being installed, so the programs and the
+  skills always match. **After an update that installed skills, load the skills again**: what you read
+  before may describe the old version.
+- A version released before skills were shipped has none: naming a directory for it is refused with
+  nothing changed, saying to pass `--skip-updating-skills`.
 
 - With no `--version` it installs the version next after the one installed, never further in one run.
   Run it again to go up another. When the installed version is the newest it prints
   `<version> is the newest version` and changes nothing.
 - It replaces every Diverge program on the host, the CLI included, and prints
-  `updated to <version> for <os>/<arch>`.
+  `updated to <version> for <os>/<arch>`, followed by `, and <n> skills installed in <dir>` when it
+  installed them.
 - **Stop the daemon, the provider and the viewer first.** While any of them runs the update is refused
   with the same "is running" error a setting gives, before anything is downloaded.
 - It is safe to interrupt. Until the programs are replaced nothing installed has changed; the replacing
