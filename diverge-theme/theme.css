@@ -2,7 +2,9 @@
    by the viewer (diverge-viewer/src/main.ts). Nothing else in the app names
    a colour; it names one of these roles. Copy this file, change the values,
    and the app follows. The app keeps its own page rules beside it
-   (src/main.css).
+   (src/main.css). The viewer also serves it, with theme.js, to every
+   agent's and tool's own page at /diverge/theme.css (src-tauri/src/theme.rs);
+   a page that links both wears the person's theme.
 
    A theme is five colours, and nothing else:
      --ground   the background
