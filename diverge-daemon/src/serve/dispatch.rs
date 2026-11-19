@@ -6,7 +6,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use std::sync::Arc;
 
-use super::{Turn, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, relay, roles, standalone_tools, vault, volumes};
+use super::{Turn, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, relay, requests, roles, standalone_tools, vault, volumes};
 use crate::daemon::Daemon;
 use crate::judge::Who;
 
@@ -182,6 +182,8 @@ pub async fn dispatch(scope: ScopeHandle, payload: &[u8], mut turn: Turn, who: W
         ClientRequest::ImagesGet(frame) => images::get::handle(scope, frame, who, daemon).await,
         ClientRequest::ImagesDelete(frame) => images::delete::handle(scope, frame, who, daemon).await,
         ClientRequest::ImagesPublish(frame) => images::publish::handle(scope, frame, who, daemon).await,
+        ClientRequest::RequestsListen(frame) => requests::listen::handle(scope, frame, who, daemon).await,
+        ClientRequest::RequestsCreate(frame) => requests::create::handle(scope, frame, who, daemon).await,
         ClientRequest::Info(_) => info::handle(scope).await,
         ClientRequest::Logs(frame) => logs::handle(scope, frame, who, daemon).await,
         ClientRequest::Invalid(_) => scope.send_response_finish().await,

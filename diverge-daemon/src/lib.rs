@@ -110,6 +110,7 @@ pub mod logs;
 pub mod messaging;
 pub mod postgres;
 pub mod providers;
+pub mod requests;
 pub mod serve;
 pub mod store;
 pub mod transfers;

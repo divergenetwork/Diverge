@@ -55,7 +55,7 @@ pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
 /// Whether the owner is the one the reference names: an agent by its
 /// name as it is called now or by its template and index, an agent
 /// template by id, or nobody.
-fn owned_by(owner: &key::Owner, reference: &reference::Owner) -> bool {
+pub fn owned_by(owner: &key::Owner, reference: &reference::Owner) -> bool {
     match (owner, reference) {
         (key::Owner::Agent(agent), reference::Owner::Agent(reference::Agent::Name { name })) => agent.name.as_ref() == Some(name),
         (key::Owner::Agent(agent), reference::Owner::Agent(reference::Agent::TemplateIndex { template, index })) => {

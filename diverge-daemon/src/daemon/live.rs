@@ -154,6 +154,9 @@ pub struct Live {
     /// The ring every messageable provider's listen feeds: see
     /// [`Listening`].
     pub listening: Listening,
+    /// Every pending request and every open listen for them: see
+    /// [`Requests`](crate::requests::Requests).
+    pub requests: crate::requests::Requests,
     /// Each provider's send lane and rate window, for the daemon's own
     /// direct messages: see [`Messaging`].
     pub messaging: Messaging,

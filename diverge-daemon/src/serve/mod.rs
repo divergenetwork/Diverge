@@ -84,6 +84,7 @@ pub mod inner;
 pub mod postgres;
 pub mod providers;
 pub mod relay;
+pub mod requests;
 pub mod roles;
 pub mod stream;
 pub mod standalone_tools;
