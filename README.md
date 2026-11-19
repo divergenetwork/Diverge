@@ -2,11 +2,11 @@
 
 **The Superintelligence Network.**
 
-Diverge runs superintelligence agents and the tools they use in containers, on machines you choose, and connects them into one network. Every agent is its own container with its own tools, its own permissions and its own log. Agents talk to each other, to people, and to agents on other people's machines, and every word of it is recorded.
+Diverge is a system that runs superintelligence agents, and the tools those agents use, in containers on machines the operator selects, and that connects those machines into one network. Each agent is one container. Each agent has its own set of tools, its own permissions and its own log. An agent communicates with other agents, with persons, and with agents on machines operated by other parties, and the system records every such communication.
 
 ## Download
 
-Each archive holds every program for its platform. The links always point at the newest release.
+Each archive contains every program for one platform. Each link below resolves to the most recent release.
 
 | | x86_64 | ARM64 |
 |---|---|---|
@@ -14,71 +14,71 @@ Each archive holds every program for its platform. The links always point at the
 | **macOS** | [download](https://releases.diverge.network/latest/macos/x86_64) | [download](https://releases.diverge.network/latest/macos/aarch64) |
 | **Windows** | [download](https://releases.diverge.network/latest/windows/x86_64) | [download](https://releases.diverge.network/latest/windows/aarch64) |
 
-**Skills**, for a superintelligence agent that operates Diverge for you: [download](https://releases.diverge.network/latest/skills). One folder per skill; unzip it into your agent's skills directory.
+**Skills.** The skills are the instructions by which a superintelligence agent operates Diverge on the operator's behalf. They are distributed as one archive: [download](https://releases.diverge.network/latest/skills). The archive contains one folder for each skill and is extracted into the skills directory of the agent that is to use them.
 
-Every version is listed at [releases.diverge.network](https://releases.diverge.network).
+Every released version is listed at [releases.diverge.network](https://releases.diverge.network).
 
-Once installed, `diverge update <skills directory>` moves the programs and the skills to the next version together.
+After installation, the command `diverge update <skills directory>` replaces the programs and the skills with those of the next version in a single operation.
 
-## What it is
+## Description of the system
 
-**Agents and tools run in containers.** An agent is a container that takes messages and answers them: a model harness, a script, or a person at a web page. A tool is a container that serves the [Model Context Protocol](https://modelcontextprotocol.io). Neither is installed on your system. A container starts when there is work for it and stops when there is none.
+**Containers.** An agent is a container that receives messages and answers them. The program inside an agent's container is a model harness, a script, or a web page at which a person answers. A tool is a container that serves the [Model Context Protocol](https://modelcontextprotocol.io). Neither an agent nor a tool is installed on the host system. A container is started when there is work for it and is stopped when there is none.
 
-**Images make everything disposable.** An agent or a tool is an OCI image, named by its digest. Trying a new one is one command; nothing on the host is modified, and removing it leaves nothing behind. Whatever an agent does, it does inside its own container, with the memory and disk it was given and the volumes it was handed.
+**Images.** Each agent and each tool is an OCI image, identified by its digest. An agent or a tool is put into use by one command, and no file of the host system is modified by doing so. An agent or a tool is removed by deleting it, and no part of it remains on the host system after its removal. Everything that an agent does, it does inside its own container, within the memory and disk allotted to that container and the volumes mounted into it.
 
-**Tool control.** An agent can do exactly what its tools let it do, and no two agents need the same tools. One agent reads a codebase, another holds the deploy key, a third can only send messages. You build a system out of specialists, each given the least it needs, instead of one agent that can do everything.
+**Tool control.** An agent is able to perform exactly those actions that its tools permit, and no others. Different agents are given different tools. One agent reads a codebase; a second agent holds the credential that deploys it; a third agent is able only to send messages. A system is therefore composed of specialised agents, each of which holds the minimum set of tools its task requires, and not of a single agent that holds every tool.
 
-**Agents talk through tools.** Messaging between agents is not built into the agents: it is a tool, served to the agents you attach it to, running through the daemon. So who can talk to whom is the same question as who has which tool, and every message is an event the daemon records.
+**Communication between agents.** The capacity of one agent to send a message to another is not a property of the agent. It is a tool, which is served to the agents to which it is attached and which operates through the daemon. Whether one agent is able to communicate with another is accordingly determined by which tools each agent holds. Each message so sent is recorded by the daemon as an event.
 
-**Providers supply the machines.** A provider runs the containers, keeps the volumes and stores the images. A daemon works with as many providers as you connect to it and places each container on one that can run it. Anything that speaks the [Diverge Provider Protocol](https://protocol.diverge.network) is a provider: the one in this repository runs containers with podman, and you can write your own.
+**Providers.** A provider runs containers, holds volumes and stores images. A daemon operates with every provider connected to it and places each container on a provider that is able to run that container. Any program that conforms to the [Diverge Provider Protocol](https://protocol.diverge.network) is a provider. The provider in this repository runs containers by means of podman. A party may implement a provider of its own.
 
-**A network, not a server.** Two daemons connected to the same provider can reach each other through it. A daemon can run a request on another daemon, mount another daemon's volume, and hand its own agents a tool that lives on someone else's machine. The provider carries the connection and cannot read it.
+**The network.** Two daemons that are connected to the same provider are able to reach one another through that provider. A daemon is able to have a request served by another daemon, to mount a volume held by another daemon, and to supply to its own agents a tool that runs on a machine operated by another party. The provider carries the connection between the two daemons and is not able to read its contents.
 
-**Accounts, roles and grants.** Everyone who connects is an account: a person, another daemon, or a tool acting for itself. An account holds roles, a role is a list of grants, and a grant names an action and how far it reaches: every agent, these agents, or the agents carrying a tag. Nothing is allowed that a grant does not allow.
+**Accounts, roles and grants.** Every party that connects to a daemon is an account. An account is a person, another daemon, or a tool acting in its own name. An account holds one or more roles. A role is a list of grants. A grant names an action and the extent of the records the action may be applied to: every record of a kind, specified records, or the records that bear a specified tag. No action is permitted that no grant permits.
 
-**Identity that cannot be replayed.** Every connection is a mutual handshake between two identities signed in at an OpenID Connect issuer. Each end proves it holds the private key its token is bound to, and the connection is encrypted between the two ends from then on. A token copied off the wire is useless.
+**Identity.** Every connection begins with a mutual handshake between two identities, each of which is signed in at an OpenID Connect issuer. Each party proves possession of the private key to which its token is bound. The connection is encrypted between the two parties from the completion of the handshake. A token obtained by a third party cannot be used by that party, because the third party does not hold the private key.
 
-**Logs, and an audit trail.** Every agent has its whole conversation on record. Every tool has every call made to it, by whom, with the answer. Every account has every request it put to the daemon, marked allowed or refused. The daemon keeps a graph of who sent what to whom. When something happens, you can find out what, who asked for it, and whether they were allowed to.
+**Logs and audit.** The daemon retains, for every agent, the entirety of its conversation. It retains, for every tool, every call made to that tool, the identity of the caller, and the answer returned. It retains, for every account, every request that the account made of the daemon, together with whether the request was permitted or refused. It retains a graph of which party sent what to which party. From these records it is possible to establish what occurred, which party requested it, and whether that party was permitted to request it.
 
-**Secrets stay out of sight.** Keys live in the daemon's vault. A template names the secrets it needs; an agent is bound to them when it is created. They are never arguments, and the record the daemon keeps of each request has them blanked out.
+**Secrets.** Secret values are stored in the daemon's vault. A template states the names of the secrets that its image requires. Each name is bound to a value in the vault when an agent or a tool is created from the template. A secret value is never passed as an argument, and the daemon's record of each request has every secret value removed from it.
 
-**Requests.** An agent, a tool or a person can put a question to accounts and tools and wait for one answer. It is how an agent asks a person for a decision.
+**Requests.** An agent, a tool or a person is able to address a question to specified accounts and tools and to wait for exactly one answer. A request is the means by which an agent obtains a decision from a person.
 
 ## The programs
 
-| Program | What it does |
+| Program | Function |
 |---|---|
-| `diverge` | The command line. Every setting and every request, one command each, with JSON in and out. |
-| `diverge-daemon` | The hub: accounts, roles, agents, tools, templates, the vault, events and logs, in its own Postgres. Starts and stops containers on providers. |
-| `diverge-provider` | Runs containers with podman, and serves volumes and an image store. |
-| `diverge-viewer` | A desktop app that draws a daemon's whole world live: every agent, tool, account, volume and provider, the lines between them, their logs, files and consoles. |
-| `diverge-container-proxy` | The small program the provider puts in every container, carrying messages, tools, the database and secrets in and out. |
-| `diverge-postgres` | The supervisor of the daemon's own Postgres. |
+| `diverge` | The command-line program. Each setting and each request is one command, which accepts and returns JSON. |
+| `diverge-daemon` | The daemon. It holds accounts, roles, agents, tools, templates, the vault, events and logs in a Postgres database of its own, and it starts and stops containers on providers. |
+| `diverge-provider` | The provider. It runs containers by means of podman, serves volumes and maintains an image store. |
+| `diverge-viewer` | A desktop application. It displays the current state of one daemon: every agent, tool, account, volume and provider, the relations between them, and their logs, files and consoles. |
+| `diverge-container-proxy` | The program that the provider places in every container. It carries messages, tool calls, database connections and secrets between the provider and the program inside the container. |
+| `diverge-postgres` | The supervisor of the daemon's Postgres database. |
 
-## Getting started
+## Documentation
 
-- **Set up from this repository:** [reports/SETUP_INSTRUCTIONS_1.md](reports/SETUP_INSTRUCTIONS_1.md)
-- **Operate a running installation:** the skills under [diverge-skills](diverge-skills), starting with [diverge-skills/diverge/SKILL.md](diverge-skills/diverge/SKILL.md). They are written for an agent to read, and they are the manual.
-- **Write a provider:** [protocol.diverge.network](https://protocol.diverge.network), the specification of the protocol a daemon speaks to one.
-- **Build on it:** the SDKs, [`diverge-sdk`](https://crates.io/crates/diverge-sdk) for Rust and [`@diverge/sdk`](https://www.npmjs.com/package/@diverge/sdk) for TypeScript.
+- **Installation from this repository:** [reports/SETUP_INSTRUCTIONS_1.md](reports/SETUP_INSTRUCTIONS_1.md).
+- **Operation of an installed system:** the skills in [diverge-skills](diverge-skills), beginning with [diverge-skills/diverge/SKILL.md](diverge-skills/diverge/SKILL.md). The skills are written to be read by an agent and constitute the operating manual.
+- **Implementation of a provider:** [protocol.diverge.network](https://protocol.diverge.network), which is the specification of the protocol by which a daemon communicates with a provider.
+- **Development against the system:** the software development kits, [`diverge-sdk`](https://crates.io/crates/diverge-sdk) for Rust and [`@diverge/sdk`](https://www.npmjs.com/package/@diverge/sdk) for TypeScript.
 
-## In this repository
+## Contents of this repository
 
-| Folder | What it is |
+| Folder | Contents |
 |---|---|
-| `diverge-daemon` | the daemon |
-| `diverge-provider` | the provider |
-| `diverge-container-proxy` | the proxy inside every container |
-| `diverge-postgres` | the supervisor of the daemon's Postgres |
-| `diverge-cli` | the `diverge` command line |
-| `diverge-viewer` | the desktop app |
-| `diverge-sdk-rs`, `diverge-sdk-js` | the SDKs |
-| `diverge-agents` | the agent images: `cc`, `codex`, `hermes`, `lone`, `openrouter`, `python` |
-| `diverge-tools` | the tool images: `identity-diverge-network` |
-| `diverge-examples` | example images: an agent a person answers as, and tools for chat, mail between agents, memory, a task board and alarms |
-| `diverge-skills` | the skills |
-| `diverge-provider-web` | the provider protocol's specification, as served at [protocol.diverge.network](https://protocol.diverge.network) |
+| `diverge-daemon` | The daemon. |
+| `diverge-provider` | The provider. |
+| `diverge-container-proxy` | The program placed in every container. |
+| `diverge-postgres` | The supervisor of the daemon's Postgres database. |
+| `diverge-cli` | The `diverge` command-line program. |
+| `diverge-viewer` | The desktop application. |
+| `diverge-sdk-rs`, `diverge-sdk-js` | The software development kits. |
+| `diverge-agents` | The agent images: `cc`, `codex`, `hermes`, `lone`, `openrouter` and `python`. |
+| `diverge-tools` | The tool images: `identity-diverge-network`. |
+| `diverge-examples` | Example images: one agent that a person answers as, and tools for chat, for mail between agents, for memory, for a task board and for alarms. |
+| `diverge-skills` | The skills. |
+| `diverge-provider-web` | The specification of the provider protocol, as published at [protocol.diverge.network](https://protocol.diverge.network). |
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+This software is licensed under the MIT License. The terms are stated in [LICENSE](LICENSE).
