@@ -309,6 +309,54 @@ the daemon owns no image of that digest there), `"unsupported"` (the provider ha
 
 Grant: `delete` over images, reaching the provider.
 
+## Joining images into one: `diverge run images merge`
+
+Two images built for two platforms are two different images, each with its own digest. A push cannot join
+them: a push names one digest. `images merge` makes one new multi-platform image out of several, in the
+daemon's Store on a provider, without sending it anywhere.
+
+```bash
+# An amd64 image built on one provider and an arm64 image built on another, joined on the first.
+diverge run images merge '{
+  "provider": {"issuer": "https://identity.diverge.network", "subject": "github.12345.provider"},
+  "images": [
+    {"digest": "sha256:aaaa…"},
+    {"digest": "sha256:bbbb…", "platforms": ["linux/arm64"]}
+  ],
+  "description": "python agent loop, amd64 and arm64"
+}' > merge.log
+# {"blob":{"digest":"sha256:…","bytes":…}}          one line per blob pulled onto the provider
+# {"added":{"platforms":["linux/arm64"]}}             one line per group of platforms that landed
+# {"merged":{"digest":"sha256:cccc…","created":true,"bytes":…}}
+```
+
+- **`provider`** (required): where the merged image is made and kept.
+- **`images`** (required, one or more): each a `digest`, and optionally the `platforms` taken of it. With
+  `platforms` left out, every platform that image has is taken.
+- **`description`** (required): one short line (132 characters at most) kept beside the merged image.
+- **Where the images come from is not yours to say.** Whatever the provider's Store lacks is fetched from
+  wherever the daemon finds it: every provider it is connected to, and every remote daemon it has a record
+  of. An image already in that provider's Store is not fetched.
+- **The last line is the result.**
+  - `{"merged":{"digest":…,"created":…}}`: the image is in the Store; the digest is what a template names.
+    `"created":false` means the daemon already owned that exact image there; its description is unchanged.
+    The same images merged on any provider give the same digest.
+  - `"unavailable"`: an image named, or a platform taken of it, was found on no source. Check the digest,
+    that the provider or daemon holding it is connected, and that it holds that platform
+    (`diverge run images list`).
+  - `"platform_repeated"`: two entries take the same platform. One image holds a platform once: name
+    `platforms` on the entries so they do not overlap.
+  - `"platform_not_found"`: a platform named is not one that image has.
+  - `"insufficient_capacity"`: the provider's Store is full. `"unsupported"`: it keeps no Store.
+  - `"forbidden"`: no `merge` grant over images reaching that provider
+    (`{"images":{"actions":["merge"],"within":"any"}}`). `"not_found"`: no such provider.
+  - `"proof_failed"`, `"malformed"`, `{"error":…}`: a source did not prove it holds what it sent; bytes
+    that are not an image; anything else.
+- What was fetched before a failure stays in the Store.
+- **One image with all its platforms** has nothing to join: it is brought in and reported as `merged` with
+  its own digest. That is the same as a push.
+- A merge cannot be cancelled.
+
 ## Publishing to a registry: `diverge run images publish`
 
 ```bash
