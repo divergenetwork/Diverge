@@ -74,23 +74,20 @@ impl Source for Listed<'_> {
                 accounts::all(&mut conn).await?
             };
             let connected = self.daemon.live.connected().await;
-            let authenticator = &self.daemon.authenticator;
             let mut listed: Vec<(Identity, Account)> = all
                 .iter()
                 .map(|account| (account, connected.contains(&account.id)))
                 .filter(|(account, connected)| judge::accounts::over(self.standing, Over::List, account, *connected))
                 .filter(|(account, connected)| filter::accounts::test(self.filter, account, *connected))
                 .map(|(account, connected)| {
-                    // Admins rule 2: an account the configuration also
-                    // names an administrator says so.
-                    let mut reported = account.report(connected);
-                    reported.admin = authenticator.is_admin(&account.identity);
-                    (account.identity.clone(), reported)
+                    // Admins rule 2: a stored account is no
+                    // administrator, whatever the configuration names.
+                    (account.identity.clone(), account.report(connected))
                 })
                 .collect();
             // Admins rules 1 to 4: the administrators with no account of
             // their own, after the accounts.
-            for entry in admins::entries(self.daemon, self.standing, Over::List, Some(self.filter), &all).await {
+            for entry in admins::entries(self.daemon, self.standing, Over::List, Some(self.filter), &all).await? {
                 listed.push((entry.identity.clone(), entry));
             }
             Ok(listed)

@@ -59,6 +59,7 @@ pub use schema::*;
 pub use store::*;
 
 pub mod accounts;
+pub mod admins;
 pub mod agents;
 pub mod agents_templates;
 pub mod connected_standalone_tools;

@@ -33,6 +33,19 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         return Ok(Frame::Forbidden);
     }
     let Some(account) = accounts::by_identity(&mut tx, &frame.account, true).await? else {
+        // An administrator is an account that is not stored: its tags
+        // are kept by its identity, and changed as an account's are.
+        if daemon.authenticator.is_admin(&frame.account) {
+            let now = store::admins::tags(&mut tx, &frame.account, true).await?;
+            let connected = daemon.live.admins_connected().await.contains(&frame.account);
+            if !judge::accounts::tagging_admin(&standing, Tagging::Untag, &frame.account, &now, connected, &frame.tags) {
+                return Ok(Frame::Forbidden);
+            }
+            store::admins::set_tags(&mut tx, &frame.account, &tags::without(&now, &frame.tags)).await?;
+            tx.commit().await?;
+            daemon.live.changed(Kind::Accounts);
+            return Ok(Frame::Untagged);
+        }
         return Ok(Frame::NotFound);
     };
     let connected = daemon.live.is_connected(account.id).await;

@@ -436,3 +436,17 @@ CREATE INDEX IF NOT EXISTS events_sender_tool ON diverge.events (sender_tool);
 CREATE INDEX IF NOT EXISTS events_receiver_tool ON diverge.events (receiver_tool);
 CREATE INDEX IF NOT EXISTS events_sender_dependency ON diverge.events (sender_dependency);
 CREATE INDEX IF NOT EXISTS events_receiver_dependency ON diverge.events (receiver_dependency);
+
+-- The tags of an administrator: an identity the daemon's configuration
+-- names that is no account's. An administrator is an account that is
+-- not stored, so this is all of it there is here, and a row is there
+-- only once its tags were asked for to be changed. An identity that
+-- has an account is that account, whose tags are its own row's, and a
+-- row of it here is read by nothing.
+CREATE TABLE IF NOT EXISTS diverge.admin_tags (
+    issuer  TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    -- Sorted bytewise, deduplicated, rewritten whole.
+    tags    TEXT[] NOT NULL DEFAULT '{}',
+    PRIMARY KEY (issuer, subject)
+);

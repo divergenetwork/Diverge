@@ -81,7 +81,8 @@ impl Acceptor for DaemonAcceptor {
             // Rule 3.
             let hold = Hold::new(&daemon.authenticator, Expected::Relayed, peer.clone());
             let Ok(Some(Admitted::Client(who))) = daemon.authenticator.account(&peer).await else {
-                // The account went between the handshake and here.
+                // The account went between the handshake and here. An
+                // administrator is one, as `account` reads it.
                 hold.release().await;
                 return;
             };

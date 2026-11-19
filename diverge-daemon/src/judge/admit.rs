@@ -76,11 +76,15 @@ pub enum Expected {
 ///    neither is the daemon's own identity. A handshake that fails
 ///    after taking an identity gives it back; the connection gives it
 ///    back when it ends, with [`release`](Self::release).
-/// 5. **Administrators.** An identity `admins` names is admitted on an
-///    accepted socket as a client, account or not, and holds every
-///    grant there is; it is on no list, and is never held. What makes a
-///    fresh daemon, with no account, reachable: its administrators make
-///    the first accounts.
+/// 5. **Administrators.** An identity `admins` names that no account
+///    is, is an account that is not stored: it is admitted wherever an
+///    account is — on an accepted socket as a client, and as the
+///    account a daemon reaches this one as, held as one then — and
+///    holds every grant there is. What makes a fresh daemon, with no
+///    account, reachable: its administrators make the first accounts.
+///    **A stored account wins**: an identity that is an account's is
+///    that account and nothing else, with its roles' grants alone, and
+///    `admins` naming it too says nothing.
 /// 6. **Refusing.** Anyone else is refused inside the handshake, which
 ///    closes the connection with no frame. A daemon with no account, no
 ///    administrator and empty lists admits nothing at all.
@@ -148,27 +152,32 @@ impl DaemonAuthenticator {
     }
 
     /// Whether the configuration names `identity` an administrator.
+    /// One it names that an account is, is that account and no
+    /// administrator — rule 5 — which is the caller's to have ruled
+    /// out: this is asked of an identity no account was found for.
     pub fn is_admin(&self, identity: &Identity) -> bool {
         self.admins.contains(identity)
     }
 
     /// What `identity` is to this daemon on an accepted socket, past
-    /// its handshake: a provider on the list, else an administrator on
-    /// `admins`, else the account it is, else `None`.
+    /// its handshake: a provider on the list, else the account it is —
+    /// see [`account`](Self::account) — else `None`.
     pub async fn admit(&self, identity: &Identity) -> Result<Option<Admitted>, store::Error> {
         if self.providers.accepts(identity) {
             return Ok(Some(Admitted::Provider(identity.clone())));
         }
-        if self.admins.contains(identity) {
-            return Ok(Some(Admitted::Client(Who::Admin(identity.clone()))));
-        }
         self.account(identity).await
     }
 
-    /// The account `identity` is, as a client, or `None`.
+    /// The account `identity` is, as a client, or `None` — rule 5: the
+    /// stored account it is, where there is one; else the
+    /// administrator `admins` names it; else none.
     pub async fn account(&self, identity: &Identity) -> Result<Option<Admitted>, store::Error> {
         let mut conn = self.store.acquire().await?;
-        Ok(accounts::by_identity(&mut conn, identity, false).await?.map(|account| Admitted::Client(Who::Account(account.id))))
+        if let Some(account) = accounts::by_identity(&mut conn, identity, false).await? {
+            return Ok(Some(Admitted::Client(Who::Account(account.id))));
+        }
+        Ok(self.admins.contains(identity).then(|| Admitted::Client(Who::Admin(identity.clone()))))
     }
 
     /// The identity this daemon is, if its configuration names one:

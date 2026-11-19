@@ -34,6 +34,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
     if !judge::accounts::create(&standing) {
         return Ok(Frame::Forbidden);
     }
+    // An administrator is an account that is not stored: it is there
+    // already, and no row is made of it.
+    if daemon.authenticator.is_admin(&frame.identity) {
+        return Ok(Frame::Exists);
+    }
     let roles = match named_roles(&mut tx, &standing, &frame.roles).await? {
         NamedRoles::Roles(roles) => roles,
         NamedRoles::NoRole => return Ok(Frame::NoRole),

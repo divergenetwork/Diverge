@@ -35,6 +35,16 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         return Ok(Frame::Forbidden);
     }
     let Some(account) = accounts::by_identity(&mut tx, &frame.account, true).await? else {
+        // An administrator is an account that is not stored: it is
+        // there, judged as an account is, and not deleteed.
+        if daemon.authenticator.is_admin(&frame.account) {
+            let tags = store::admins::tags(&mut tx, &frame.account, false).await?;
+            let connected = daemon.live.admins_connected().await.contains(&frame.account);
+            return Ok(match judge::accounts::over_admin(&standing, Over::Delete, &frame.account, &tags, connected) {
+                true => Frame::Administrator,
+                false => Frame::Forbidden,
+            });
+        }
         return Ok(Frame::NotFound);
     };
     let connected = daemon.live.is_connected(account.id).await;

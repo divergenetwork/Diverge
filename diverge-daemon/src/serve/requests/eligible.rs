@@ -36,8 +36,8 @@ fn names(reference: &reference::Tool, tool: &tools::Tool) -> bool {
 ///    is named by itself — an account by its identity, a standalone
 ///    tool by its name or its template and index, a dependency tool by
 ///    its template and its owner — or carries a tag its own kind's
-///    member names. An administrator with no account carries no tag,
-///    and is addressed by its identity alone.
+///    member names. An administrator is an account, addressed by its
+///    identity and by the tags it carries.
 /// 2. **Reached.** The creator's `request` grant for the party's kind
 ///    reaches it, as that grant's reach is read everywhere else: an
 ///    account by `accounts`, a standalone tool by `standalone_tools`,
@@ -59,11 +59,12 @@ pub async fn eligible(conn: &mut PgConnection, daemon: &Arc<Daemon>, party: &Par
             addressed && judge::accounts::over(standing, grant::accounts::Over::Request, &account, true)
         }
         Party::Admin(identity) => {
+            let tags = store::admins::tags(conn, identity, false).await?;
             let addressed = match to {
                 To::All => true,
-                To::Only(only) => only.accounts.contains(identity),
+                To::Only(only) => only.accounts.contains(identity) || tagged(&only.account_tags, &tags),
             };
-            addressed && judge::accounts::over_admin(standing, grant::accounts::Over::Request, identity, true)
+            addressed && judge::accounts::over_admin(standing, grant::accounts::Over::Request, identity, &tags, true)
         }
         Party::Standalone(id) => {
             let Some(tool) = tools::by_id(conn, *id, false).await? else {

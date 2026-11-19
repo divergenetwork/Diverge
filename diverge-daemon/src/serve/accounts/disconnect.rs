@@ -51,11 +51,12 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         let closed = daemon.live.disconnect(&Connected::Account(account.id)).await;
         return Ok(Frame::Disconnected(closed as u64));
     }
-    drop(conn);
     // Rule 3.
     if daemon.authenticator.is_admin(&frame.account) {
+        let tags = store::admins::tags(&mut conn, &frame.account, false).await?;
+        drop(conn);
         let connected = daemon.live.admins_connected().await.contains(&frame.account);
-        if !judge::accounts::over_admin(&standing, Over::Disconnect, &frame.account, connected) {
+        if !judge::accounts::over_admin(&standing, Over::Disconnect, &frame.account, &tags, connected) {
             return Ok(Frame::Forbidden);
         }
         let closed = daemon.live.disconnect(&Connected::Admin(frame.account.clone())).await;

@@ -145,7 +145,34 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Da
                 return Ok(());
             }
             let Some(account) = store::accounts::by_identity(&mut conn, identity, false).await? else {
-                reply::reply(scope, &Frame::Error(reply::failure(&"the account named is none the daemon has"))).await;
+                // An administrator is an account that is not stored:
+                // its log is read as an account's, judged as one, and
+                // kept by its identity.
+                if !daemon.authenticator.is_admin(identity) {
+                    reply::reply(scope, &Frame::Error(reply::failure(&"the account named is none the daemon has"))).await;
+                    return Ok(());
+                }
+                let tags = store::admins::tags(&mut conn, identity, false).await?;
+                drop(conn);
+                let connected = daemon.live.admins_connected().await.contains(identity);
+                if !judge::accounts::over_admin(&standing, grant::accounts::Over::Logs, identity, &tags, connected) {
+                    reply::reply(scope, &Frame::Forbidden).await;
+                    return Ok(());
+                }
+                let key = match store::hash::identity_key(identity) {
+                    Ok(key) => AdminKey(key),
+                    Err(error) => {
+                        reply::reply(scope, &Frame::Error(reply::failure(&error))).await;
+                        return Ok(());
+                    }
+                };
+                scope.allowed().await;
+                let commander = Commander::Admin(key);
+                let latest = daemon.live.command_log(commander).await.latest.subscribe();
+                let keep = |item: &command_log::ItemWrapper| crate::logs::matches(r#type, from, to, command_log::ItemType::of(&item.item).name(), item.created);
+                let sent = send(scope, daemon, key, latest, &span, keep, |item| Frame::Item(Entry::Account(item)), Frame::Watch, is_cancel).await;
+                daemon.live.release_command_log(commander).await;
+                sent?;
                 return Ok(());
             };
             drop(conn);

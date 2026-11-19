@@ -53,11 +53,12 @@ pub fn over(standing: &Standing, action: Over, account: &Account, connected: boo
     })
 }
 
-/// Whether the standing may do `action` to an administrator the
-/// configuration names with no account of its own, given whether a
-/// client is connected as it: as [`over`], the grant's `within` read by
+/// Whether the standing may do `action` to an administrator — an
+/// account the configuration names and the store holds no row of —
+/// given its `tags` and whether a client is connected as it: as
+/// [`over`], the grant's `within` read by
 /// [`filter::accounts::test_admin`].
-pub fn over_admin(standing: &Standing, action: Over, identity: &Identity, connected: bool) -> bool {
+pub fn over_admin(standing: &Standing, action: Over, identity: &Identity, tags: &[String], connected: bool) -> bool {
     if standing.admin() {
         return true;
     }
@@ -66,8 +67,33 @@ pub fn over_admin(standing: &Standing, action: Over, identity: &Identity, connec
             actions.contains(&action)
                 && match within {
                     Within::Any => true,
-                    Within::Only(filter) => filter::accounts::test_admin(filter, identity, connected),
+                    Within::Only(filter) => filter::accounts::test_admin(filter, identity, tags, connected),
                 }
+        }
+        _ => false,
+    })
+}
+
+/// Whether the standing may put `tags` on an administrator, or take
+/// them off, as `action` says: as [`tagging`], the grant's `within`
+/// read by [`filter::accounts::test_admin`] against the tags the
+/// administrator carries `now`.
+pub fn tagging_admin(standing: &Standing, action: Tagging, identity: &Identity, now: &[String], connected: bool, tags: &[String]) -> bool {
+    if standing.admin() {
+        return true;
+    }
+    standing.accounts().any(|permission| match permission {
+        Permission::Tags {
+            actions,
+            within,
+            tags: scope,
+        } => {
+            actions.contains(&action)
+                && match within {
+                    Within::Any => true,
+                    Within::Only(filter) => filter::accounts::test_admin(filter, identity, now, connected),
+                }
+                && covers(scope, tags)
         }
         _ => false,
     })

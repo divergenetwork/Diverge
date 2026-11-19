@@ -40,11 +40,12 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         // Admins rule 1: an administrator with no account of its own is
         // found as its entry.
         if daemon.authenticator.is_admin(&frame.account) {
+            let tags = store::admins::tags(&mut conn, &frame.account, false).await?;
             let connected = daemon.live.admins_connected().await.contains(&frame.account);
-            if !judge::accounts::over_admin(&standing, Over::Get, &frame.account, connected) {
+            if !judge::accounts::over_admin(&standing, Over::Get, &frame.account, &tags, connected) {
                 return Ok(Frame::Forbidden);
             }
-            return Ok(Frame::Found(admins::entry(&frame.account, connected, daemon.live.admin_last_connected(&frame.account).await)));
+            return Ok(Frame::Found(admins::entry(&frame.account, tags, connected, daemon.live.admin_last_connected(&frame.account).await)));
         }
         return Ok(Frame::NotFound);
     };
@@ -53,7 +54,5 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
         return Ok(Frame::Forbidden);
     }
     // Admins rule 2.
-    let mut reported = account.report(connected);
-    reported.admin = daemon.authenticator.is_admin(&account.identity);
-    Ok(Frame::Found(reported))
+    Ok(Frame::Found(account.report(connected)))
 }
