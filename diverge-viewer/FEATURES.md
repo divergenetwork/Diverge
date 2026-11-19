@@ -305,6 +305,20 @@ The keys are not printed.
 
 ---
 
+### What is remembered
+
+- **Where you put each node.** A node stays where you dragged it, across
+  reloads and restarts. It is saved once you let go, not while you drag.
+  A node you never moved, or a new one, is placed automatically.
+- **What the outliner shows:** which kinds and which line types are on.
+  All three line types, creators included, are on until you turn one off.
+- **How the outliner stands:** open or folded, floating or docked, where
+  it floats, its size, and which of its groups are folded.
+- It is kept in the viewer's own storage on this machine, separately
+  for a development viewer and an installed one.
+
+---
+
 ## The sheet
 
 `src/sheet/`

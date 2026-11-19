@@ -100,10 +100,10 @@ const shortened = (label: string) => (label.length > LABEL ? `${label.slice(0, L
  * 5. Nodes come and go as the world does: `add` makes one, `remove`
  *    destroys it — its shape, its name and every handler on them — and
  *    `update` gives it its entity as it is now, relabelled.
- * 6. Where nodes stand lives only here, for as long as the page: a
- *    reload stands them at their first places again.
+ * 6. Where nodes stand lives here; `dropped` is told each time a
+ *    drag ends, which is when whoever keeps the places keeps them.
  */
-export function makeNodes(scene: Phaser.Scene, entities: Entity[], at: Map<string, Point>, moved: () => void, select: (entity: Entity) => void, over: (node: Node) => void, out: (node: Node) => void): Nodes {
+export function makeNodes(scene: Phaser.Scene, entities: Entity[], at: Map<string, Point>, moved: () => void, dropped: () => void, select: (entity: Entity) => void, over: (node: Node) => void, out: (node: Node) => void): Nodes {
   const byKey = new Map<string, Node>();
   let dragging: string | null = null;
   const slack = () => (scene.input.dragDistanceThreshold = CLICK * density());
@@ -133,6 +133,7 @@ export function makeNodes(scene: Phaser.Scene, entities: Entity[], at: Map<strin
     image.on("dragend", () => {
       dragging = null;
       image.setDepth(5);
+      dropped();
     });
     // Rule 3.
     image.on("pointerup", (pointer: Phaser.Input.Pointer) => {

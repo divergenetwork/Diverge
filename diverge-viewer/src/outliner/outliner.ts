@@ -5,6 +5,7 @@
 import type * as Phaser from "phaser";
 import { type EdgeType, TYPES } from "../grid/edges";
 import { FAMILY } from "../grid/palette";
+import { keep, kept } from "../lib/keep";
 import { KIND_ORDER } from "../scenes/kinds";
 import { type Bounds, FOCUS, HOVER, KINDS, type Kinds, LINES, type Lines, OUTLINE, OUTLINER, type Outline, SELECTED, STATUS, type Status } from "../scenes/status";
 import { TABS } from "../tabs/tabs";
@@ -53,12 +54,14 @@ const kindName = (kind: Kind) => KIND_ORDER.find(([k]) => k === kind)?.[2] ?? ki
 export function flipKind(registry: Phaser.Data.DataManager, kind: Kind): void {
   const kinds = registry.get(KINDS) as Kinds;
   registry.set(KINDS, { ...kinds, [kind]: !kinds[kind] } satisfies Kinds);
+  keep("kinds", () => registry.get(KINDS));
 }
 
 /** Show a hidden type of line, or hide a shown one. */
 export function flipLine(registry: Phaser.Data.DataManager, type: EdgeType): void {
   const lines = registry.get(LINES) as Lines;
   registry.set(LINES, { ...lines, [type]: !lines[type] } satisfies Lines);
+  keep("lines", () => registry.get(LINES));
 }
 
 /** What the world has to say, or `null` when nothing. */
@@ -85,6 +88,9 @@ type Form = "open" | "header" | "shapes" | "button";
 
 /** The window's edge a floating card was last let go nearest. */
 type Edge = "left" | "right" | "top" | "bottom";
+
+/** How the outliner stands, as it is kept from one run to the next. */
+type Stood = { form: Form; docked: boolean; left: number | null; top: number; edge: Edge; size: { w: number; h: number } | null; folded: string[] };
 
 /**
  * Start the outliner over `game`.
@@ -147,6 +153,20 @@ export function outliner(game: Phaser.Game): void {
   let edge: Edge = "right";
   let size: { w: number; h: number } | null = null;
   const folded = new Set<string>();
+  // How it stood when the viewer was last open: its form, whether it
+  // is docked, where it floats, the edge it was let go nearest, its
+  // size and its folded groups. Kept whenever it is placed (`place`),
+  // which is whenever any of them changes.
+  const was = kept<Partial<Stood>>("outliner");
+  if (was) {
+    if (was.form === "open" || was.form === "header" || was.form === "shapes" || was.form === "button") form = was.form;
+    if (typeof was.docked === "boolean") docked = was.docked;
+    if (typeof was.left === "number") left = was.left;
+    if (typeof was.top === "number") top = was.top;
+    if (was.edge === "left" || was.edge === "right" || was.edge === "top" || was.edge === "bottom") edge = was.edge;
+    if (was.size && typeof was.size.w === "number" && typeof was.size.h === "number") size = { w: was.size.w, h: was.size.h };
+    if (Array.isArray(was.folded)) for (const group of was.folded) if (typeof group === "string") folded.add(group);
+  }
   // Rule 1.
   const root = document.createElement("aside");
   root.className = "outliner";
@@ -168,6 +188,9 @@ export function outliner(game: Phaser.Game): void {
     if (form === "button") return null;
     return form === "open" && !docked && size ? size.w : WIDTH;
   };
+
+  // How it stands, kept: asked for wherever any of it changes.
+  const remember = () => keep("outliner", () => ({ form, docked, left, top, edge, size, folded: [...folded] }) satisfies Stood);
 
   // Rules 6 and 7: where it stands, and how tall it may be.
   const place = () => {
@@ -192,6 +215,7 @@ export function outliner(game: Phaser.Game): void {
     }
     const box = root.getBoundingClientRect();
     registry.set(OUTLINER, { x: box.left, y: box.top, width: box.width, height: box.height, held } satisfies Bounds);
+    remember();
   };
 
   // Rule 9: what was last drawn, so a world that changes nothing it shows draws nothing.
@@ -315,6 +339,7 @@ export function outliner(game: Phaser.Game): void {
           group.addEventListener("click", () => {
             if (shut) folded.delete(name);
             else folded.add(name);
+            remember();
             render();
           });
           list.append(group);

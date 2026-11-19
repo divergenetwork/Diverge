@@ -5,6 +5,7 @@
 // along a route.
 
 import * as Phaser from "phaser";
+import { keep, kept } from "../lib/keep";
 import { type Edge, edges } from "../grid/edges";
 import { type Links, makeLinks } from "../grid/links";
 import { type Here, makeHere } from "../grid/here";
@@ -57,7 +58,11 @@ const PAN = 400;
  *    none: a provider's or a daemon's is its header alone — and puts the gold corners round it (`makeHere`); clicking another swaps the sheet and the corners;
  *    clicking the same one again, or the sheet's ✕, closes it.
  * 6. A node stands where it was put, and is moved by dragging it and
- *    by nothing else: the board never arranges itself.
+ *    by nothing else: the board never arranges itself. Where it was put
+ *    is kept (`keep`), by the board's own key and the node's: written
+ *    once a drag has ended, never while one goes on, and read when the
+ *    board is first drawn and when a node comes later. A node with no
+ *    place kept stands where `place` and `placeOne` stand it.
  * 7. The hovered node, else the one whose sheet is open, is focused:
  *    its lines stay bright, its made-by lines show — who made it and
  *    what it made — and the rest are faint (`Links.focus`), and every
@@ -103,6 +108,8 @@ export class Board extends Phaser.Scene {
   /** Rule 9: the route to the daemon this board shows, and each daemon's name along it. */
   private route: Route = [];
   private labels: string[] = [];
+  /** Rule 6: where each node was last put, by its key: what was kept, and what this run has added. */
+  private places = new Map<string, [number, number]>();
   /** Rule 10: the last of each value the board would tell the outliner, by registry key. */
   private readonly said = new Map<string, unknown>();
 
@@ -119,8 +126,8 @@ export class Board extends Phaser.Scene {
   create() {
     this.say(STATUS, { kind: "waiting", reason: null } satisfies Status);
     // Rule 10: set by the first board, shared by the rest.
-    if (this.registry.get(LINES) === undefined) this.registry.set(LINES, { call: true, attachment: true, creator: false } satisfies Lines);
-    if (this.registry.get(KINDS) === undefined) this.registry.set(KINDS, { account: true, agent: true, standalone_tool: true, connected_standalone_tool: true, dependency_tool: true, volume: true, provider: true, daemon: true } satisfies Kinds);
+    if (this.registry.get(LINES) === undefined) this.registry.set(LINES, { call: true, attachment: true, creator: true, ...(kept<Partial<Lines>>("lines") ?? {}) } satisfies Lines);
+    if (this.registry.get(KINDS) === undefined) this.registry.set(KINDS, { account: true, agent: true, standalone_tool: true, connected_standalone_tool: true, dependency_tool: true, volume: true, provider: true, daemon: true, ...(kept<Partial<Kinds>>("kinds") ?? {}) } satisfies Kinds);
     this.say(OUTLINE, [] satisfies Outline);
     this.say(SELECTED, null);
     if (this.route.length === 0) this.scene.launch("ui");
@@ -180,13 +187,35 @@ export class Board extends Phaser.Scene {
     if (this.awake()) this.registry.set(key, value);
   }
 
+  /**
+   * Rule 6: a drag ended. Every node's place now is taken over what
+   * was kept — to the whole pixel, which is all a place needs — and
+   * kept: a node that is gone keeps the place it had, for when it is
+   * back.
+   */
+  private dropped() {
+    const nodes = this.nodes;
+    if (!nodes) return;
+    for (const node of nodes.byKey.values()) {
+      const at = where(node);
+      this.places.set(node.entity.key, [Math.round(at.x), Math.round(at.y)]);
+    }
+    keep(`places:${this.scene.key}`, () => Object.fromEntries(this.places));
+  }
+
   /** Rule 2: the first world. */
   private draw(read: Snapshot) {
     const made = model(read);
     this.images = made.images;
     const placed = place(made.entities);
+    // Rule 6: a node with a place kept stands there.
+    this.places = new Map(Object.entries(kept<Record<string, [number, number]>>(`places:${this.scene.key}`) ?? {}));
+    for (const key of placed.at.keys()) {
+      const at = this.places.get(key);
+      if (at) placed.at.set(key, { x: at[0], y: at[1] });
+    }
     this.here = makeHere(this);
-    const nodes = makeNodes(this, made.entities, placed.at, () => this.moved(), (entity) => this.select(entity), (node) => this.hover(node), (node) => this.unhover(node));
+    const nodes = makeNodes(this, made.entities, placed.at, () => this.moved(), () => this.dropped(), (entity) => this.select(entity), (node) => this.hover(node), (node) => this.unhover(node));
     this.nodes = nodes;
     this.edges = edges(read, made);
     this.links = makeLinks(this, nodes, this.edges);
@@ -252,7 +281,9 @@ export class Board extends Phaser.Scene {
         nodes.update(entity);
         continue;
       }
-      const at = placeOne(entity.kind, standing);
+      // Rule 6: where it was put before, if it was; else its own place.
+      const was = this.places.get(entity.key);
+      const at = was ? { x: was[0], y: was[1] } : placeOne(entity.kind, standing);
       standing.push({ kind: entity.kind, at });
       setShown(nodes.add(entity, at), kinds[entity.kind]);
     }
