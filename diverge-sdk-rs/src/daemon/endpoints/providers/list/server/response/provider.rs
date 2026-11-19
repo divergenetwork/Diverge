@@ -7,7 +7,7 @@ use crate::daemon::creator::Creator;
 use crate::daemon::endpoints::providers::{Direction, Status};
 use crate::provider::endpoints::capacity;
 use crate::shared::Identity;
-use crate::shared::description::Description;
+use crate::shared::announcement::Announcement;
 use crate::shared::listing::Keyed;
 
 /// One provider the daemon keeps a record of: its identity, the
@@ -27,12 +27,11 @@ pub struct Provider {
     /// How the connection is made: see [`Direction`].
     #[serde(flatten)]
     pub direction: Direction,
-    /// What the daemon announces itself with on it: the text of the
-    /// `daemons::announce` the daemon holds open there while connected,
-    /// by which its `daemons::list` lists the daemon. Absent, the
-    /// daemon does not announce itself there.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub announcement: Option<Description>,
+    /// Whether the daemon announces itself on it, and with what: see
+    /// [`Announcement`]. `true` or a text, the daemon holds its
+    /// `daemons::announce` open there while connected, by which its
+    /// `daemons::list` lists the daemon. `false`, it does not.
+    pub announcement: Announcement,
     /// Whether the daemon accepts connections from other daemons
     /// through it: holds its `daemons::accept` open while connected.
     pub accept_daemons: bool,

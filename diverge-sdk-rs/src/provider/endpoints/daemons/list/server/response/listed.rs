@@ -34,14 +34,14 @@ use crate::shared::listing::Keyed;
 ///    identity alone — see [`Frame`](super::Frame).
 /// 5. **The announcement.** `announcement` is the text of the
 ///    identity's open announce scope, exactly as its request carried
-///    it. An identity is listed only while it holds that scope, so an
-///    item always has one.
+///    it, and absent where the request carried none. An identity is
+///    listed only while it holds that scope, with a text or without.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Listed {
     /// The identity, `(iss, sub)`.
     pub identity: Identity,
-    /// The text it announced itself with: rule 5.
-    pub announcement: Description,
+    /// The text it announced itself with, if any: rule 5.
+    pub announcement: Option<Description>,
     /// The other end of its connection's socket: rule 2.
     pub ip: IpAddr,
     /// Where the provider dialled it, when it did: rule 3.

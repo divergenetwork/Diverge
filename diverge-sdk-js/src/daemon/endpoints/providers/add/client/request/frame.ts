@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { json, tagged } from "../../../../../../wire/encode.js";
 import { Direction } from "../../../direction.js";
-import { Description } from "../../../../../../shared/description.js";
+import { Announcement } from "../../../../../../shared/announcement.js";
 import { Identity } from "../../../../../../shared/identity.js";
 import { Relay } from "../../../../../../shared/relay.js";
 
@@ -28,8 +28,8 @@ export const Frame = z.intersection(
   z.object({
     /** The provider, by the identity its token establishes. */
     identity: Identity,
-    /** What the daemon announces itself with on the provider: rule 1. Absent, the daemon does not announce itself there. */
-    announcement: Description.optional(),
+    /** Whether the daemon announces itself on the provider, and with what: rule 1. Required: `false`, `true`, or a text. */
+    announcement: Announcement,
     /** Whether the daemon accepts connections from other daemons through the provider: rule 2. Absent, `true`. */
     accept_daemons: z.boolean().optional(),
     /** Whether the daemon listens for messages on the provider: rule 3. Absent, `false`. */

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { json, tagged } from "../../../../../../wire/encode.js";
 import { Ip } from "../../../ip.js";
-import { Description } from "../../../../../../shared/description.js";
+import { Announcement } from "../../../../../../shared/announcement.js";
 import { Identity } from "../../../../../../shared/identity.js";
 import { Relay } from "../../../../../../shared/relay.js";
 
@@ -37,8 +37,8 @@ import { Relay } from "../../../../../../shared/relay.js";
 export const Frame = z.strictObject({
   /** The provider, by the identity its token establishes. */
   identity: Identity,
-  /** What the daemon announces itself with on the provider, in place of the record's: rule 2. `null`, the daemon stops announcing itself there. */
-  announcement: Description.nullable().optional(),
+  /** Whether the daemon announces itself on the provider, and with what, in place of the record's: `false`, `true`, or a text. Absent, the record's is kept; `false`, the daemon stops announcing itself there. */
+  announcement: Announcement.optional(),
   /** The source IPs an incoming provider may dial from, in place of the record's: rules 2 and 5. `null`, any IP. */
   ips: z.array(Ip).nullable().optional(),
   /** Whether the daemon accepts connections from other daemons through the provider, in place of the record's. */

@@ -5,7 +5,7 @@ import { Creator } from "../../../../../creator/creator.js";
 import { Direction } from "../../../direction.js";
 import { Status } from "../../../status.js";
 import { Frame as Capacity } from "../../../../../../provider/endpoints/capacity/server/response/frame.js";
-import { Description } from "../../../../../../shared/description.js";
+import { Announcement } from "../../../../../../shared/announcement.js";
 import { Identity } from "../../../../../../shared/identity.js";
 import type { Keyed } from "../../../../../../shared/listing/keyed.js";
 
@@ -23,7 +23,7 @@ export const Provider = z.intersection(
     /** The provider's identity: the `(issuer, subject)` its token establishes in the handshake. */
     identity: Identity,
     /** What the daemon announces itself with on it: the text of the `daemons::announce` the daemon holds open there while connected, by which its `daemons::list` lists the daemon. Absent, the daemon does not announce itself there. */
-    announcement: Description.optional(),
+    announcement: Announcement,
     /** Whether the daemon accepts connections from other daemons through it: holds its `daemons::accept` open while connected. */
     accept_daemons: z.boolean(),
     /** Whether the daemon listens for messages on it: holds its `daemons::listen` open while connected. */

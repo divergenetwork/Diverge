@@ -39,7 +39,8 @@ pub struct Listed {
     pub subject: String,
     /// Every route to it, in order of provider.
     pub providers: Vec<Via>,
-    /// Every distinct announcement it is listed with, in order.
+    /// Every distinct announcement text it is listed with, in order.
+    /// Empty where it announced itself with no text everywhere.
     pub announcements: Vec<Description>,
 }
 

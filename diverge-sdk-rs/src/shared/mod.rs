@@ -58,6 +58,7 @@ pub mod base64;
 pub mod canonical;
 pub mod containers;
 pub mod daemons;
+pub mod announcement;
 pub mod description;
 pub mod error;
 pub mod filetree;

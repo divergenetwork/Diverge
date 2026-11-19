@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::daemon::endpoints::providers::Direction;
 use crate::shared::Identity;
-use crate::shared::description::Description;
+use crate::shared::announcement::Announcement;
 use crate::shared::relay::Relay;
 
 /// Ask the daemon to keep a provider's record, and to work with it from
@@ -14,10 +14,11 @@ use crate::shared::relay::Relay;
 /// What the daemon holds open on the provider while it is connected is
 /// three members' word, each independent of the other two:
 ///
-/// 1. **`announcement`.** Present, the daemon announces itself on the
-///    provider with that text — it holds the provider's
-///    `daemons::announce` open, and is in its `daemons::list`. Absent,
-///    it does not announce itself there.
+/// 1. **`announcement`.** Required: see [`Announcement`]. `true`, or
+///    a text, the daemon announces itself on the provider — it holds
+///    the provider's `daemons::announce` open, with the text where
+///    there is one, and is in its `daemons::list`. `false`, it does
+///    not announce itself there, and no other daemon finds it there.
 /// 2. **`accept_daemons`.** `true`, the daemon accepts connections from
 ///    other daemons through the provider — it holds the provider's
 ///    `daemons::accept` open. Absent, `true`.
@@ -33,10 +34,9 @@ pub struct Frame {
     /// beside the request's own, under `direction`.
     #[serde(flatten)]
     pub direction: Direction,
-    /// What the daemon announces itself with on the provider: rule 1.
-    /// Absent, the daemon does not announce itself there.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub announcement: Option<Description>,
+    /// Whether the daemon announces itself on the provider, and with
+    /// what: rule 1. `false`, `true`, or a text.
+    pub announcement: Announcement,
     /// Whether the daemon accepts connections from other daemons
     /// through the provider: rule 2. Absent, `true`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

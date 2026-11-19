@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::daemon::endpoints::providers::Ip;
 use crate::shared::Identity;
-use crate::shared::description::Description;
+use crate::shared::announcement::Announcement;
 use crate::shared::nullable;
 use crate::shared::relay::Relay;
 
@@ -45,12 +45,12 @@ use crate::shared::relay::Relay;
 pub struct Frame {
     /// The provider, by the identity its token establishes.
     pub identity: Identity,
-    /// What the daemon announces itself with on the provider, in place
-    /// of the record's: rule 2. `null`, the daemon stops announcing
-    /// itself there.
-    #[serde(default, deserialize_with = "nullable::deserialize", skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<Description>")]
-    pub announcement: Option<Option<Description>>,
+    /// Whether the daemon announces itself on the provider, and with
+    /// what, in place of the record's: `false`, `true`, or a text —
+    /// see [`Announcement`]. Absent, the record's is kept. `false`,
+    /// the daemon stops announcing itself there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub announcement: Option<Announcement>,
     /// The source IPs an incoming provider may dial from, in place of
     /// the record's: rules 2 and 5. `null`, any IP.
     #[serde(default, deserialize_with = "nullable::deserialize", skip_serializing_if = "Option::is_none")]

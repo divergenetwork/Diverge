@@ -8,7 +8,8 @@ use crate::wire::encode::{Encode, Writer};
 
 /// Ask a provider to list the caller's identity in its
 /// [`daemons::list`](crate::provider::endpoints::daemons::list), with
-/// this announcement, for as long as the scope is open.
+/// this announcement where it carries one, for as long as the scope
+/// is open.
 ///
 /// The identity announced is the one the connection was authorized
 /// under, and nothing else names it.
@@ -18,14 +19,16 @@ use crate::wire::encode::{Encode, Writer};
 /// 1. **The tag.** The first byte, `29`.
 /// 2. **The announcement.** Every byte after the tag: the
 ///    [`Description`] as UTF-8, and nothing else — no length, since the
-///    payload already ends where the announcement does.
-/// 3. **Malformed.** No bytes after the tag, bytes that are not UTF-8,
-///    and text that breaks a rule of `Description` — one line of plain
-///    text, 1 to 132 characters, trimmed.
+///    payload already ends where the announcement does. No byte after
+///    the tag is an announce with no text: the caller is listed, and
+///    its item carries no announcement.
+/// 3. **Malformed.** Bytes that are not UTF-8, and text that breaks a
+///    rule of `Description` — one line of plain text, 1 to 132
+///    characters, trimmed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Frame {
-    /// The text the caller is listed with.
-    pub announcement: Description,
+    /// The text the caller is listed with, if it gives one.
+    pub announcement: Option<Description>,
 }
 
 /// This frame's tag among the scope-opening requests. See the table
@@ -40,7 +43,9 @@ impl Encode for Frame {
 
     fn encode(&self, out: &mut Writer<'_>) -> Result<(), Self::Error> {
         out.extend_from_slice(&[TAG]);
-        out.extend_from_slice(self.announcement.as_str().as_bytes());
+        if let Some(announcement) = &self.announcement {
+            out.extend_from_slice(announcement.as_str().as_bytes());
+        }
         Ok(())
     }
 }
@@ -54,9 +59,12 @@ impl Decode<'_> for Frame {
         if *tag != TAG {
             return Err(FrameError::UnexpectedTag(*tag));
         }
+        if rest.is_empty() {
+            return Ok(Frame { announcement: None });
+        }
         let text = str::from_utf8(rest).map_err(FrameError::Utf8)?;
         let announcement = Description::new(text).map_err(FrameError::Announcement)?;
-        Ok(Frame { announcement })
+        Ok(Frame { announcement: Some(announcement) })
     }
 }
 
@@ -69,8 +77,7 @@ pub enum FrameError {
     UnexpectedTag(u8),
     /// The announcement was not UTF-8.
     Utf8(Utf8Error),
-    /// The announcement broke a rule of [`Description`]: empty among
-    /// them.
+    /// The announcement broke a rule of [`Description`].
     Announcement(DescriptionError),
 }
 
