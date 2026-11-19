@@ -1,6 +1,6 @@
 ---
 name: diverge-access
-description: Who may do what on a Diverge daemon. Covers accounts (an (issuer, subject) identity the daemon admits), the daemon's administrators, roles and grants (every grant kind, every action, the make / over / tagging shapes, `within` and tags), creators, the host's identities as the daemon lists them, and how to diagnose a `forbidden` answer or a connection the daemon closes. Load it before running any `diverge run accounts …`, `diverge run roles …` or `diverge run identities …` command, when creating an account or a role for a person, an agent host or another daemon, when writing or narrowing a grant, when tagging records so grants can reach them, when disconnecting an account, or whenever a Diverge request answers `forbidden`.
+description: Who may do what on a Diverge daemon. Covers accounts (an (issuer, subject) identity the daemon admits), the daemon's administrators, roles and grants (every grant kind, every action, the make / over / tagging shapes, `within` and tags), creators, requests (a question put to accounts and tools, and the one answer it gets), the host's identities as the daemon lists them, and how to diagnose a `forbidden` answer or a connection the daemon closes. Load it before running any `diverge run accounts …`, `diverge run roles …`, `diverge run requests …` or `diverge run identities …` command, when creating an account or a role for a person, an agent host or another daemon, when writing or narrowing a grant, when tagging records so grants can reach them, when disconnecting an account, when asking an account or a tool a question and waiting for its answer, when listening for the questions asked of this account, or whenever a Diverge request answers `forbidden`.
 ---
 
 # Diverge access: accounts, roles, grants
@@ -111,6 +111,8 @@ A request naming several things is allowed only when every one is:
   `fuse_serve` grant for the account the record names.
 - Binding a vault key in `secrets`: the container's grant **and** `use` over the key.
 - A transfer: `transfer` over the source **and** `upload` over where it lands.
+- `requests create` naming accounts and tools: `request` over **every** account and tool named, each by
+  its own kind's grant, and over every record carrying a tag named. See [Requests](#requests-diverge-run-requests-).
 - Any request with `relay`: `relay` over the daemons record that is the first ID, on this daemon; the
   request itself is then judged on the remote daemon, as the account the record names.
 
@@ -231,6 +233,66 @@ What to know:
 - List filter members for accounts: `identities`, `roles`, `connected`, `creators`, `all_tags`, `any_tags`,
   `created_from`, `created_to`, plus `count`. `accounts list` takes `--watch` (an account's `connected`
   flipping arrives as `changed`).
+
+## Requests (`diverge run requests …`)
+
+A request is a question one party puts to others, and the one answer it gets. The question and the answer
+are any JSON value; the daemon reads neither.
+
+```bash
+# Ask. Prints `created`, a `delivered` for each listener sent it, then `responded`, and ends.
+diverge run requests create '{"request":{"question":"Deploy to production?"},"to":"all"}'
+#   {"created":{"id":"7c0e…"}}
+#   {"delivered":{"to":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
+#   {"responded":{"response":{"answer":"yes"},"from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
+
+# Ask only some. Every member is optional; at least one must name somebody.
+diverge run requests create '{"request":"ready?","to":{"only":{
+  "accounts":[{"issuer":"…","subject":"github.12345.alice"}],
+  "account_tags":["oncall"],
+  "standalone_tools":[{"name":"reviewer"}],
+  "standalone_tool_tags":[],
+  "dependency_tools":[{"template":"<dependency template id>","owner":"global"}],
+  "dependency_tool_tags":[]}}}'
+
+# Listen. Prints each request made of this account; answers are read from standard input, one JSON object a line.
+diverge run requests listen
+#   {"request":{"id":"7c0e…","request":{"question":"Deploy to production?"}}}
+# type on standard input:   {"id":"7c0e…","response":{"answer":"yes"}}
+#   {"delivered":{"id":"7c0e…"}}
+```
+
+- **One answer.** The first listener whose answer the daemon takes has answered the request. Its line is
+  `{"delivered":{"id":…}}`; the creator's `responded` names it. Every other listener that was sent the
+  request gets `{"withdrawn":{"id":…}}`, and an answer from one of them is `{"not_delivered":{"id":…}}`.
+  The listener that answered gets no `withdrawn` for its own answer.
+- **A request lives exactly as long as the `create` command.** Ending the command (or its connection
+  dropping) withdraws the request from everyone it was sent to. The daemon stores no request and sets no
+  time limit: `create` waits until somebody answers. Use `--timeout` to bound the wait.
+- **Late listeners are sent it.** A party that starts listening while a request is pending is sent it then,
+  and the creator gets its `delivered` then. Each listener is sent a request once, and the creator is told
+  of each delivery once.
+- **One `listen` per account or tool**, across all its connections. A second answers `"already_open"`.
+- **`listen` never ends by itself.** Do not run it in the foreground of a task that must return: run it in
+  the background and write lines to its standard input. Standard input ending does not end the listen. A
+  line that is not `{"id":…,"response":…}` ends the command with an error.
+- **Ignore a `withdrawn` for an ID you never saw.**
+- **Who may be asked.** Listening needs no grant. Creating needs the `request` action, which exists in
+  three kinds, each with its own `within` and its own tags: `accounts`, `standalone_tools`,
+  `dependency_tools`. A tag in `account_tags` names accounts only; a tool carrying the same tag is not
+  addressed by it.
+  - `"to":"all"` is never refused for reach: it goes to exactly the accounts and tools the three grants
+    reach.
+  - An account or tool named that does not exist: `"not_found"`. One the grant for its kind does not
+    reach: `"forbidden"`.
+  - A tag named is `"forbidden"` unless the grant reaches **every** record carrying it now.
+  - No `request` grant of any of the three kinds: `"forbidden"`.
+  - `{"only":{}}` with nothing named: an `error`.
+- **Tools.** A standalone tool and a dependency tool can each listen and create, as itself, with the
+  grants its image declares. A connected standalone tool (another daemon's) does neither.
+- An administrator with no account is addressed only by its identity in `accounts`, never by a tag.
+- `from` and `to` name a party as a creator is named: `{"type":"client","identity":{…}}` for an account,
+  `{"type":"tool","record":{…}}` or `{"type":"tool","dependency":{…}}` for a tool.
 
 ## The host's identities (`diverge run identities …`)
 
