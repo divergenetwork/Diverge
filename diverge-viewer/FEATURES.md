@@ -367,7 +367,9 @@ The keys are not printed.
 - **A provider's tab** is **capacity**: it has no log, files or
   container of its own here. It shows what this daemon could still use
   on that provider right now, a row each for volumes, images, container
-  memory and container disk.
+  memory and overlay disk. Overlay disk is the one room a container's
+  own disk, an ephemeral volume it mounts, and an ephemeral volume
+  served over FUSE all come out of.
   - The amounts follow the provider: the daemon asks it every ten
     seconds, and at once after anything that changes them, and the tab
     changes as the answer does. Nothing is reloaded.

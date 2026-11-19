@@ -40,13 +40,14 @@ export type Entity = { key: string; kind: Kind; label: string; detail: string; a
  * daemon could still use, absent until it has answered once and
  * whenever it is not connected; and which of them mean anything —
  * `offers`, by what the provider's capabilities hold out: volumes
- * with a volume mode, images with a Store, containers with containers.
- * A provider that states no capabilities is taken to offer all three.
+ * with a volume mode, images with a Store, containers with containers,
+ * overlay with containers or with an ephemeral volume's FUSE serve.
+ * A provider that states no capabilities is taken to offer all four.
  */
 export type Capacity = {
   connected: boolean;
-  amounts?: { volumes_disk: number; images_disk: number; container_memory: number; container_disk: number };
-  offers: { volumes: boolean; images: boolean; containers: boolean };
+  amounts?: { volumes_disk: number; images_disk: number; container_memory: number; overlay_disk: number };
+  offers: { volumes: boolean; images: boolean; containers: boolean; overlay: boolean };
 };
 
 /** Whose frontend an entity serves: an agent's, a standalone tool's or a dependency tool's, as the daemon's `frontend` names it. */
@@ -186,8 +187,13 @@ function providerEntity(p: Provider): Entity {
   const line = `${way} · ${STANDING[p.status.type]}`;
   const said = "info" in p.status ? p.status.info.capabilities : undefined;
   const offers = said
-    ? { volumes: provider.endpoints.info.server.response.volumes(said), images: said.images?.store !== undefined, containers: said.containers !== undefined }
-    : { volumes: true, images: true, containers: true };
+    ? {
+        volumes: provider.endpoints.info.server.response.volumes(said),
+        images: said.images?.store !== undefined,
+        containers: said.containers !== undefined,
+        overlay: said.containers !== undefined || said.volumes_ephemeral?.fuse_serve === true,
+      }
+    : { volumes: true, images: true, containers: true, overlay: true };
   const capacity: Capacity = { connected: p.status.type === "connected", amounts: p.capacity, offers };
   return { key: providerKey(p), kind: "provider", label: p.description || subject, detail: `${issuer} ${subject} — ${line}`, line, capacity };
 }

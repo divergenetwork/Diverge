@@ -9,7 +9,7 @@ const ROWS = [
   { member: "volumes_disk", name: "Volumes", offer: "volumes" },
   { member: "images_disk", name: "Images", offer: "images" },
   { member: "container_memory", name: "Container memory", offer: "containers" },
-  { member: "container_disk", name: "Container disk", offer: "containers" },
+  { member: "overlay_disk", name: "Overlay disk", offer: "overlay" },
 ] as const;
 
 /**
@@ -22,7 +22,9 @@ const ROWS = [
  *    for every ten seconds, and at once after anything it does that
  *    changes it; `set` is handed each one the list brings.
  * 2. Four rows, a name and an amount: volumes, images, container
- *    memory, container disk. Each amount is what the daemon could
+ *    memory, overlay disk — the one room a container's own disk, an
+ *    ephemeral volume it mounts and an ephemeral volume's FUSE serve
+ *    are all set aside from. Each amount is what the daemon could
  *    still use of it now, in words (`bytes`). The provider says what
  *    is free and never a total, so no row draws a share of anything.
  * 3. A row whose resource the provider does not offer says so in
