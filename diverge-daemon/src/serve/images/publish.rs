@@ -6,21 +6,18 @@ use diverge_sdk::daemon::endpoints::images::publish::client::request;
 use diverge_sdk::daemon::endpoints::images::publish::server::response::{Frame, Merged, Published, Uploaded};
 use diverge_sdk::daemon::grant::images::Action;
 use diverge_sdk::provider::endpoints::images::list::server::response::Image as Listed;
-use diverge_sdk::provider::endpoints::images::merge::client::execute as merge;
-use diverge_sdk::provider::endpoints::images::merge::client::request::{Frame as Merge, Part};
 use diverge_sdk::provider::endpoints::images::publish::client::execute as publish;
 use diverge_sdk::provider::endpoints::images::publish::client::request::{Credential, Frame as Publish};
 use diverge_sdk::provider::endpoints::images::publish::server::response::Frame as Sent;
 use diverge_sdk::shared::Identity;
-use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::wire::client::handle::Handle;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use futures_util::StreamExt as _;
 use futures_util::future::join_all;
 use tokio::sync::mpsc;
 
-use super::bring::{self, Brought, Failure, Step};
-use crate::containers::images;
+use super::bring::{Failure, Step};
+use super::join::{self, Stopped, Taken};
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::serve::reply;
@@ -36,18 +33,6 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
     };
     reply::reply(&scope, &answer).await;
     scope.send_response_finish().await;
-}
-
-/// One part of the request, its platforms known.
-struct Taken {
-    /// The image, by its digest.
-    digest: String,
-    /// The platforms taken of it.
-    platforms: Vec<String>,
-    /// Whether they are every platform its manifest names. Known for
-    /// the one part of a request of one, where it decides whether
-    /// anything is merged; not asked for otherwise, and `false`.
-    whole: bool,
 }
 
 /// The answer that ends the publish, everything that happened before
@@ -100,19 +85,15 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     // Rule 3. What every connected provider's Store holds for the
     // daemon, read once: what a manifest names where a Store has the
     // digest, and what each candidate holds already.
-    let held = stores(daemon).await;
+    let held = join::stores(daemon).await;
     let alone = frame.images.len() == 1;
-    let resolved = join_all(frame.images.iter().map(|part| taken(daemon, &held, part, alone))).await;
+    let resolved = join_all(frame.images.iter().map(|part| join::taken(daemon, &held, &part.digest, part.platforms.as_ref(), alone))).await;
     let Some(parts) = resolved.into_iter().collect::<Option<Vec<Taken>>>() else {
         return Ok(Frame::Unavailable);
     };
     // Rule 4.
-    let mut seen: Vec<&String> = Vec::new();
-    for platform in parts.iter().flat_map(|part| &part.platforms) {
-        if seen.contains(&platform) {
-            return Ok(Frame::PlatformRepeated);
-        }
-        seen.push(platform);
+    if join::repeated(&parts) {
+        return Ok(Frame::PlatformRepeated);
     }
     // Rule 5.
     let provider = most(&able, &held, &parts);
@@ -120,78 +101,26 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         Ok(handle) => handle,
         Err(fail) => return Ok(Frame::Error(fail.error())),
     };
-    let there = |digest: &str| held.iter().find(|(identity, _)| identity == &provider).and_then(|(_, images)| images.iter().find(|image| image.digest == digest));
-    // Rule 7, decided before anything moves: what is merged is not
-    // kept as the request's description part by part.
-    let merges = !(alone && parts[0].whole);
-    let owned = !merges && there(&parts[0].digest).is_some();
-    // Rule 6.
+    // Rules 6, 7 and 9, by `join::join`.
     let (steps, said) = mpsc::unbounded_channel();
-    let bringing = async {
-        let brought = join_all(parts.iter().map(|part| {
-            let lacking: Vec<String> = match there(&part.digest) {
-                Some(image) => part.platforms.iter().filter(|platform| !image.platforms.contains(platform)).cloned().collect(),
-                None => part.platforms.clone(),
-            };
-            let (handle, steps) = (&handle, &steps);
-            let description = if merges { None } else { frame.description.as_ref() };
-            async move {
-                if lacking.is_empty() {
-                    return Brought::Exists;
-                }
-                let image = Image {
-                    digest: part.digest.clone(),
-                    references: Vec::new(),
-                };
-                bring::bring(daemon, handle, &image, description, &lacking, steps).await
-            }
-        }))
-        .await;
-        drop(steps);
-        brought
+    let (joined, ()) = tokio::join!(join::join(daemon, &provider, &handle, &held, &parts, frame.description.as_ref(), steps), tell(scope, said));
+    let joined = match joined {
+        Ok(joined) => joined,
+        Err(Stopped::Brought(failure)) => return Ok(refusal(failure)),
+        Err(Stopped::PlatformRepeated) => return Ok(Frame::PlatformRepeated),
+        Err(Stopped::InsufficientCapacity) => return Ok(Frame::InsufficientCapacity),
+        Err(Stopped::Unsupported) => return Ok(Frame::Unsupported),
+        Err(Stopped::Error(error)) => return Ok(Frame::Error(error)),
     };
-    let (brought, ()) = tokio::join!(bringing, tell(scope, said));
-    for ended in brought {
-        if let Brought::Failed(failure) = ended {
-            return Ok(refusal(failure));
-        }
-    }
-    // Rule 7.
-    let (digest, created) = if merges {
-        let ask = Merge {
-            images: parts
-                .iter()
-                .map(|part| Part {
-                    digest: part.digest.clone(),
-                    platforms: part.platforms.clone(),
-                })
-                .collect(),
-            description: frame.description.clone(),
+    if let Some(bytes) = joined.merged {
+        let merged = Merged {
+            digest: joined.digest.clone(),
+            created: joined.created,
+            bytes,
         };
-        let merged = match merge::execute(&handle, &ask).await {
-            Ok(merge::Outcome::Merged(merged)) => Merged {
-                digest: merged.digest,
-                created: true,
-                bytes: Some(merged.bytes),
-            },
-            Ok(merge::Outcome::Exists(digest)) => Merged {
-                digest,
-                created: false,
-                bytes: None,
-            },
-            Err(merge::ExecuteError::PlatformRepeated) => return Ok(Frame::PlatformRepeated),
-            Err(merge::ExecuteError::InsufficientCapacity) => return Ok(Frame::InsufficientCapacity),
-            Err(merge::ExecuteError::Unsupported) => return Ok(Frame::Unsupported),
-            Err(merge::ExecuteError::Provider(error)) => return Ok(Frame::Error(error)),
-            Err(error) => return Ok(Frame::Error(reply::failure(&error))),
-        };
-        let made = (merged.digest.clone(), merged.created);
         reply::reply(scope, &Frame::Merged(merged)).await;
-        made
-    } else {
-        // Rule 9.
-        (parts[0].digest.clone(), !owned)
-    };
+    }
+    let (digest, created) = (joined.digest, joined.created);
     // Rule 8.
     let ask = Publish {
         digest: digest.clone(),
@@ -280,67 +209,6 @@ async fn candidates(daemon: &Daemon, standing: &Standing, named: Option<&Identit
         return Err(Frame::NoProvider);
     }
     Ok(able)
-}
-
-/// What the daemon's Store on every connected provider holds, as the
-/// daemon mirrors it now: each provider that keeps one, with its
-/// images. Read at once, and not waited for: a listing still arriving
-/// is what has arrived.
-async fn stores(daemon: &Daemon) -> Vec<(Identity, Vec<Listed>)> {
-    let connected = daemon.live.connected_providers().await;
-    let read = join_all(connected.into_iter().map(|identity| async move {
-        let mirror = daemon.live.store(&identity).await?;
-        Some((identity, mirror.images().await))
-    }))
-    .await;
-    read.into_iter().flatten().collect()
-}
-
-/// Rule 3 of [`serve`]: `part` with its platforms known, or `None`
-/// where they cannot be. The rules:
-///
-/// 1. **What the manifest names is asked only where it is needed**:
-///    where the part names no platform, and where it is the request's
-///    one part, `alone`, whose being whole decides whether anything is
-///    merged.
-/// 2. **From a Store first.** A Store the daemon mirrors that holds
-///    the digest says what its manifest names, and nobody is asked.
-/// 3. **Else through a source.** The first source that can supply the
-///    image, of any platform, is read for the manifest, as
-///    [`images::platforms`] reads it, and let go. No source, or a
-///    manifest that states no platform, is `None`.
-async fn taken(daemon: &Arc<Daemon>, held: &[(Identity, Vec<Listed>)], part: &request::Part, alone: bool) -> Option<Taken> {
-    // Rule 1.
-    if let (Some(platforms), false) = (&part.platforms, alone) {
-        return Some(Taken {
-            digest: part.digest.clone(),
-            platforms: platforms.clone(),
-            whole: false,
-        });
-    }
-    // Rule 2.
-    let listed = held.iter().flat_map(|(_, images)| images).find(|image| image.digest == part.digest && !image.manifest_platforms.is_empty());
-    let named = match listed {
-        Some(image) => image.manifest_platforms.clone(),
-        // Rule 3.
-        None => {
-            let image = Image {
-                digest: part.digest.clone(),
-                references: Vec::new(),
-            };
-            let source = images::locate(daemon, &image, images::Reach::Full { except: None }, &[], images::Wanted::Any).await?;
-            let named = images::platforms(&source, &part.digest).await;
-            images::let_go(source);
-            named?
-        }
-    };
-    let platforms = part.platforms.clone().unwrap_or_else(|| named.clone());
-    let whole = named.iter().all(|platform| platforms.contains(platform));
-    Some(Taken {
-        digest: part.digest.clone(),
-        platforms,
-        whole,
-    })
 }
 
 /// Rule 5 of [`serve`]: of `able`, which is never empty, the provider
