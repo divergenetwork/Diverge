@@ -72,6 +72,7 @@ pub mod info;
 pub mod logs;
 pub mod postgres;
 pub mod providers;
+pub mod requests;
 pub mod roles;
 pub mod standalone_tools;
 pub mod vault;
@@ -157,6 +158,10 @@ pub enum Command {
     /// announced on them.
     #[command(subcommand)]
     Providers(providers::Providers),
+    /// The requests over requests: making one of accounts and tools,
+    /// and hearing and answering the ones made of this account.
+    #[command(subcommand)]
+    Requests(requests::Requests),
     /// The requests over roles.
     #[command(subcommand)]
     Roles(roles::Roles),
@@ -214,6 +219,7 @@ async fn dispatch(
         Command::Logs(arguments) => logs::run(arguments, target, emitter).await,
         Command::Postgres(command) => postgres::run(command, target, emitter).await,
         Command::Providers(command) => providers::run(command, target, emitter).await,
+        Command::Requests(command) => requests::run(command, target, emitter).await,
         Command::Roles(command) => roles::run(command, target, emitter).await,
         Command::StandaloneTools(command) => standalone_tools::run(command, target, emitter).await,
         Command::Vault(command) => vault::run(command, target, emitter).await,
