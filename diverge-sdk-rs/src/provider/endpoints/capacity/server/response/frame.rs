@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
-/// How much the caller may still use: four counts of bytes, each the
+/// How much the caller may still use: five counts of bytes, each the
 /// most of its resource the caller could use up as of the instant of
 /// the answer, as the provider allots it.
 ///
@@ -15,7 +15,8 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// ```json
 /// {"volumes_disk":107374182400,"images_disk":53687091200,
-/// "container_memory":4294967296,"overlay_disk":17179869184}
+/// "container_memory":4294967296,"container_disk":17179869184,
+/// "fuse_disk":8589934592}
 /// ```
 ///
 /// # Each number is the caller's, as of now
@@ -32,13 +33,24 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// # Reckoned by reservation
 ///
-/// `container_memory` and `overlay_disk` count against what was
-/// RESERVED — the `memory` and `disk` the running containers'
-/// requests stated, and the `overlay_disk` of every ephemeral volume
-/// a container mounts or a FUSE serve holds — and not against what
-/// the host has free: a run whose `memory`, and whose `disk` and
-/// mounts' `overlay_disk` together, are within them is one the
-/// provider's caps admit.
+/// `container_memory`, `container_disk` and `fuse_disk` count against
+/// what was RESERVED — the `memory` and `disk` the running
+/// containers' requests stated, with the `overlay_disk` of every
+/// ephemeral volume a container mounts; and the `overlay_disk` of
+/// every FUSE serve of an ephemeral volume — and not against what the
+/// host has free: a run whose `memory`, and whose `disk` and mounts'
+/// `overlay_disk` together, are within the first two is one the
+/// provider's caps admit, and a FUSE serve whose `overlay_disk` is
+/// within the third is too.
+///
+/// # Two overlays, kept apart
+///
+/// What a container writes — into its own layer, and into an
+/// ephemeral volume it mounts — and what is written through a FUSE
+/// serve of an ephemeral volume are two reservations against two
+/// caps, `container_disk` and `fuse_disk`: a container's writes are
+/// kept where the provider keeps its containers, a FUSE serve's where
+/// the provider says, and neither takes room from the other.
 ///
 /// # Every member is sent; a caller reads what the capabilities allow
 ///
@@ -46,9 +58,9 @@ use crate::wire::encode::{Encode, Writer};
 /// [`Capabilities`](crate::provider::endpoints::info::server::response::Capabilities)
 /// do not hold out carries any number, and a caller does not read it:
 /// `volumes_disk` where no volume mode object is held out,
-/// `images_disk` where `images.store` is not, `container_memory`
-/// where `containers` is not, and `overlay_disk` where neither
-/// `containers` nor an ephemeral volume's `fuse_serve` is.
+/// `images_disk` where `images.store` is not, `container_memory` and
+/// `container_disk` where `containers` is not, and `fuse_disk` where
+/// the `fuse_serve` of `volumes_ephemeral` is not.
 ///
 /// # There is no failure
 ///
@@ -70,15 +82,19 @@ pub struct Frame {
     /// could still reserve: what remains of the provider's memory cap
     /// after every running container's `memory`.
     pub container_memory: u64,
-    /// The number of BYTES of overlay the caller could still reserve:
-    /// what remains of the provider's one overlay cap after every
-    /// running container's `disk`, the `overlay_disk` of every
-    /// ephemeral volume a running container mounts, and the
-    /// `overlay_disk` of every FUSE serve of an ephemeral volume. A
-    /// run's `disk` and its ephemeral mounts' `overlay_disk` together,
-    /// and a FUSE serve's `overlay_disk`, are each what it is measured
-    /// against.
-    pub overlay_disk: u64,
+    /// The number of BYTES of overlay disk a container run of the
+    /// caller could still reserve: what remains of the provider's
+    /// container overlay cap after every running container's `disk`
+    /// and the `overlay_disk` of every ephemeral volume a running
+    /// container mounts. A run's `disk` and its ephemeral mounts'
+    /// `overlay_disk` together are what it is measured against.
+    pub container_disk: u64,
+    /// The number of BYTES a FUSE serve of an ephemeral volume could
+    /// still reserve as its `overlay_disk`: what remains of the
+    /// provider's cap for those serves after the `overlay_disk` of
+    /// every one open. Read only where the `fuse_serve` of
+    /// `volumes_ephemeral` is held out.
+    pub fuse_disk: u64,
 }
 
 /// The struct as JSON, and nothing in front of it.

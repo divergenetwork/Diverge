@@ -82,13 +82,13 @@ pub struct VolumeMount {
     ///    volume and is discarded with the container. A mount that has
     ///    it or lacks it the other way round refuses the run.
     /// 2. **Reserved.** The provider sets the bytes aside for the
-    ///    container's life, out of the one capacity a run's `disk` and
-    ///    an ephemeral
-    ///    [`fuse_serve`](crate::provider::endpoints::volumes::fuse_serve)'s
-    ///    `overlay_disk` are set aside from — what its
+    ///    container's life, out of the capacity the run's `disk` is
+    ///    set aside from — what its
     ///    [`capacity`](crate::provider::endpoints::capacity) answers
-    ///    as `overlay_disk` — and refuses the run when it cannot, as
-    ///    it refuses one whose `disk` it cannot set aside.
+    ///    as `container_disk` — and refuses the run when it cannot, as
+    ///    it refuses one whose `disk` it cannot set aside. A FUSE
+    ///    serve's `overlay_disk` is set aside from another capacity,
+    ///    `fuse_disk`, and takes no room from this one.
     /// 3. **Held to it.** A write inside the container that would take
     ///    the layer past the bytes fails there, as a write to a full
     ///    disk does, and the container goes on. `0` is a layer nothing
