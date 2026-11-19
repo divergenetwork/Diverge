@@ -207,6 +207,42 @@ pub enum Volumes {
     /// the folder, and deleting a store deletes it.
     #[command(subcommand)]
     Stores(Stores),
+    /// Read, set or delete where a FUSE serve of an ephemeral volume
+    /// keeps what is written through it, and how much,
+    /// `volumes.ephemeral_fuse`. With it set the provider serves
+    /// ephemeral volumes over FUSE; without it, it serves none.
+    #[command(name = "ephemeral_fuse", subcommand)]
+    EphemeralFuse(EphemeralFuse),
+}
+
+/// What is done to the provider's `volumes.ephemeral_fuse`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum EphemeralFuse {
+    /// Print it, one line: `{"path":"…","capacity":…}`, the path
+    /// resolved, absolute. `null` where it is not set, or the
+    /// `volumes` section is absent.
+    Get,
+    /// Set it, both members at once. Refused where the `volumes`
+    /// section is absent — enable it first — where the capacity is
+    /// `0`, and while the provider is running on the root. The folder
+    /// is made by the provider at its start, and emptied then: nothing
+    /// in it is kept from one start to the next, so a changed path
+    /// moves nothing.
+    Set {
+        /// The folder: absolute, or relative to the root.
+        #[arg(long)]
+        path: std::path::PathBuf,
+        /// The most every ephemeral FUSE serve's own layer may hold
+        /// together, in BYTES: a plain integer, `34359738368` for
+        /// 32 GiB.
+        #[arg(long)]
+        capacity: u64,
+    },
+    /// Remove it: the provider serves no ephemeral volume over FUSE.
+    /// The folder is left as it is. Nothing changes where it is not
+    /// set. Refused while the provider is running on the root.
+    Delete,
 }
 
 /// What is done to the provider's `volumes.stores`: see
@@ -337,6 +373,11 @@ pub enum Containers {
     /// its settings with it. Refused while the provider is running on
     /// the root: stop it first.
     Disable,
+    /// Read or write the most every running container's disk, and
+    /// every ephemeral volume a container mounts, may take together,
+    /// `containers.container_overlay_disk`.
+    #[command(name = "container_overlay_disk", subcommand)]
+    ContainerOverlayDisk(Bytes),
     /// Read or write the most every running container's memory may
     /// take together, `containers.memory`; on macOS, also the memory
     /// the podman machine is given.
@@ -377,29 +418,6 @@ pub enum Podman {
     /// Read or write the most podman's image cache may hold.
     #[command(name = "image_cache_disk", subcommand)]
     ImageCacheDisk(ImageCacheDisk),
-    /// Read or write the most that may be written over what is kept,
-    /// `podman.overlay_disk`: the one cap every running container's
-    /// disk, every ephemeral volume a container mounts and every FUSE
-    /// serve of an ephemeral volume reserve from.
-    #[command(name = "overlay_disk", subcommand)]
-    OverlayDisk(OverlayDisk),
-}
-
-/// What is done to the provider's `podman.overlay_disk`: see
-/// [`provider`](crate::cli::provider).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
-pub enum OverlayDisk {
-    /// Print the number of bytes, as the provider reads it: the
-    /// default, 32 GiB, where none was set.
-    Get,
-    /// Write the number of bytes. Refused while the provider is
-    /// running on the root: stop it first.
-    Set {
-        /// The most that may be reserved at once, in BYTES: a plain
-        /// integer, `34359738368` for 32 GiB.
-        #[arg(value_name = "BYTES")]
-        value: u64,
-    },
 }
 
 /// What is done to the provider's `podman.image_cache_disk`: see

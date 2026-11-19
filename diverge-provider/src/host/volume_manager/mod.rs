@@ -38,7 +38,7 @@
 //! An ephemeral serve runs on an [`Overlay`]: the image read, a
 //! scratch file under `<podman.storage_path>/ephemeral/`
 //! written, the scratch capped by the FUSE serve's `overlay_disk` and
-//! counted against `podman.overlay_disk` beside the containers and their mounts —
+//! counted against `volumes.ephemeral_fuse`'s capacity —
 //! see [`Scratch`]. A fixed volume in ephemeral mode is not served,
 //! this provider having no scratch layer over a directory.
 //!

@@ -135,16 +135,24 @@ impl Provider {
             })),
         };
         blobs.sweep().await.map_err(Error::Store)?;
-        // The one overlay cap: the containers' `disk`, the ephemeral
-        // mounts' `overlay_disk` and the ephemeral FUSE serves'
-        // `overlay_disk` are all taken from it.
-        let disk = Arc::new(Limit::new(config.podman.overlay_disk));
-        // The scratch — a FUSE serve's layer, and a mount's — is under
+        // The containers' overlay cap: their `disk`, and their
+        // ephemeral mounts' `overlay_disk`. `0` where the provider
+        // runs none.
+        let disk = Arc::new(Limit::new(config.containers.as_ref().map_or(0, |containers| containers.container_overlay_disk)));
+        // Where a container's ephemeral mount keeps its layer: under
         // podman's storage path, which a podman machine must see for
-        // a mount's layer to be mounted inside it.
-        let scratch_dir = volume_manager::scratch_dir(&config.podman.storage_path);
-        shares.push(scratch_dir.clone());
-        let scratch = Scratch::new(scratch_dir, Arc::clone(&disk));
+        // the layer to be mounted inside it. Only a provider that
+        // runs containers has one.
+        if config.containers.is_some() {
+            shares.push(volume_manager::scratch_dir(&config.podman.storage_path));
+        }
+        // The FUSE serves' own: where an ephemeral serve keeps its
+        // layer, and the cap those layers count against. With no
+        // `volumes.ephemeral_fuse` there is neither, and no serve of
+        // an ephemeral volume is taken: see `capabilities`.
+        let ephemeral_fuse = config.volumes.as_ref().and_then(|volumes| volumes.ephemeral_fuse.clone());
+        let fuse_disk = Arc::new(Limit::new(ephemeral_fuse.as_ref().map_or(0, |ephemeral_fuse| ephemeral_fuse.capacity)));
+        let scratch = Scratch::new(ephemeral_fuse.map(|ephemeral_fuse| ephemeral_fuse.path), Arc::clone(&fuse_disk));
         scratch.sweep().await.map_err(Error::Scratch)?;
         let resizable = cfg!(target_os = "linux") || podman_in_use;
         let volumes = Arc::new(VolumeManager::new(config.volumes, hooks_dir.clone(), scratch, resizable));
@@ -156,14 +164,14 @@ impl Provider {
             podman::configure(config.podman.storage_path.clone());
             let registry = Arc::new(ImageRegistry::start(Arc::clone(&blobs)).await.map_err(Error::Registry)?);
             Some(Arc::new(
-                ContainerDeployer::new(config.podman, config.containers, dir, Arc::clone(&volumes), registry, shares, Arc::clone(&disk), Arc::clone(&blobs))
+                ContainerDeployer::new(config.podman, config.containers, dir, Arc::clone(&volumes), registry, shares, disk, Arc::clone(&blobs))
                     .await
                     .map_err(Error::Deployer)?,
             ))
         } else {
             None
         };
-        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), deployer.clone(), Arc::clone(&disk)));
+        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), deployer.clone(), Arc::clone(&fuse_disk)));
         let client = Arc::new(RegistryClient::new(&registries).map_err(Error::RegistryClient)?);
         let images = Arc::new(ImageManager::new(store, blobs, Arc::clone(&volumes), deployer.clone(), client));
         let deployer = Arc::new(deployer);
@@ -303,6 +311,14 @@ async fn ready(config: &Config, dir: &Path) -> Result<(), Error> {
         tokio::fs::create_dir_all(&store.path)
             .await
             .map_err(|source| Error::Directory(store.path.clone(), source))?;
+    }
+    // An ephemeral FUSE scratch with no room serves nothing, and is
+    // refused as a store with none is; its directory is the scratch's
+    // own to make, when it is swept.
+    if let Some(ephemeral_fuse) = &volumes.ephemeral_fuse {
+        if ephemeral_fuse.capacity == 0 {
+            return Err(Error::Capacity(ephemeral_fuse.path.clone()));
+        }
     }
     let mut names = HashSet::new();
     for fixed in volumes.fixed.iter() {

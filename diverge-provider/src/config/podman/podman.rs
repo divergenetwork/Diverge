@@ -7,9 +7,8 @@ use serde::{Deserialize, Serialize};
 
 /// Everything the provider hands podman, whatever it uses podman for
 /// — running containers, building an image, reading a file out of
-/// one: where it pulls from, where it keeps its data, how much the
-/// image cache may hold, and how much may be written over what is
-/// kept.
+/// one: where it pulls from, where it keeps its data, and how much
+/// the image cache may hold.
 ///
 /// Any field may be left out, and is then its default; the section
 /// absent is every field its default. A provider that uses no podman
@@ -69,34 +68,6 @@ pub struct Podman {
     /// never removed and always counted; an image larger than it
     /// alone cannot be pulled.
     pub image_cache_disk: u64,
-    /// The most that may be written over what is kept, in BYTES: one
-    /// cap, which three things reserve from and give back to. The
-    /// rules:
-    ///
-    /// 1. **A container's own layer.** What a container writes over
-    ///    its image: its request's `disk`, reserved for the
-    ///    container's life.
-    /// 2. **An ephemeral volume a container mounts.** What a
-    ///    container writes into a volume in the `ephemeral` mode, kept
-    ///    apart and discarded with the container: the mount's
-    ///    `overlay_disk`, reserved for the container's life, one for
-    ///    each mount.
-    /// 3. **An ephemeral volume's FUSE serve.** What is written
-    ///    through a FUSE serve of a volume in the `ephemeral` mode,
-    ///    discarded with the serve: the serve's `overlay_disk`,
-    ///    reserved for the serve's life.
-    /// 4. **Refused whole.** A run or a serve whose reservation would
-    ///    take the sum past the cap is refused, and nothing of it is
-    ///    begun. `0` refuses every one that reserves anything.
-    /// 5. **Held to what it reserved.** Each is stopped at its own
-    ///    number: podman holds a container's layer to its `disk`, and
-    ///    a mount's or a serve's layer is of exactly its
-    ///    `overlay_disk`.
-    ///
-    /// An image is not counted here: see
-    /// [`image_cache_disk`](Self::image_cache_disk). A provider that
-    /// runs no containers reads it for its FUSE serves alone.
-    pub overlay_disk: u64,
 }
 
 /// What a `podman` section that names nothing gives: the four
@@ -104,7 +75,7 @@ pub struct Podman {
 /// [`REGISTRY`](diverge_sdk::identity_diverge_network::REGISTRY) —
 /// then `docker.io`, `ghcr.io` and `quay.io`, each pulled from
 /// anonymously; podman's data under `provider/podman_data` beside
-/// `provider.yaml`; a 32 GiB image cache; and 32 GiB of overlay.
+/// `provider.yaml`; and a 32 GiB image cache.
 impl Default for Podman {
     fn default() -> Self {
         Podman {
@@ -112,8 +83,6 @@ impl Default for Podman {
             storage_path: PathBuf::from("provider/podman_data"),
             // 32 GiB.
             image_cache_disk: 32 * 1024 * 1024 * 1024,
-            // 32 GiB.
-            overlay_disk: 32 * 1024 * 1024 * 1024,
         }
     }
 }

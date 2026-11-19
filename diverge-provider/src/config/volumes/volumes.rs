@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::{Fixed, Store};
+use super::{EphemeralFuse, Fixed, Store};
 
 /// The `volumes` section: where new volumes may be created, and which
 /// volumes exist already. Two lists, either of which may be empty; a
@@ -30,6 +30,12 @@ pub struct Volumes {
     /// written.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fixed: Vec<Fixed>,
+    /// Where a FUSE serve of an ephemeral volume keeps what is
+    /// written through it, and how much: see [`EphemeralFuse`].
+    /// Absent, the provider serves no ephemeral volume over FUSE, and
+    /// the member is not written.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ephemeral_fuse: Option<EphemeralFuse>,
 }
 
 impl Volumes {

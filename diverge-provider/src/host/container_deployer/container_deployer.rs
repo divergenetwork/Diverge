@@ -86,7 +86,7 @@ impl ContainerDeployer {
     /// image registry, `shares` the directories the
     /// volumes live in, which a podman machine must see beside `dir`
     /// and the executable's directory, and `disk` the
-    /// `podman.overlay_disk` cap, which the volumes hold too, and
+    /// `container_overlay_disk` cap, and
     /// `store` the Store the registry serves. Made ready here: on Linux the
     /// provider found to be root, and on the hosts with a machine the
     /// machine brought to what the configuration says, first, since
@@ -136,6 +136,13 @@ impl ContainerDeployer {
             sweep_all(&label, &mounts_dir),
         )
         .await?;
+        // After the sweep, which unmounted every layer an earlier life
+        // left mounted: the layers' own files, and the directory they
+        // are kept in, on a provider that runs containers.
+        let scratch_dir = crate::host::volume_manager::scratch_dir(&podman.storage_path);
+        if containers.is_some() {
+            sweep_layers(&scratch_dir).await?;
+        }
         #[cfg(not(target_os = "linux"))]
         let tunnel = super::Tunnel::open(&run_dir, registry.address()).await?;
         #[cfg(not(target_os = "linux"))]
@@ -148,7 +155,7 @@ impl ContainerDeployer {
                 memory: Limit::new(containers.as_ref().map_or(0, |containers| containers.memory)),
                 images: Images::new(podman.image_cache_disk),
             }),
-            scratch_dir: crate::host::volume_manager::scratch_dir(&podman.storage_path),
+            scratch_dir,
             podman,
             proxy_path,
             mounts_dir,
@@ -215,6 +222,13 @@ impl ContainerDeployer {
     /// memory.
     pub fn memory_room(&self) -> u64 {
         self.shared.memory.room()
+    }
+
+    /// What remains of the `container_overlay_disk` cap, in BYTES, as
+    /// of now: what a run's `disk` and its ephemeral mounts'
+    /// `overlay_disk` could still be together.
+    pub fn disk_room(&self) -> u64 {
+        self.shared.disk.room()
     }
 }
 
@@ -296,6 +310,20 @@ async fn proxy_present(proxy: &Path) -> Result<String, Error> {
         return Err(Error::Missing(proxy.to_path_buf()));
     }
     Ok(tool_path(proxy))
+}
+
+/// The directory the ephemeral mounts' layers are kept in made, and
+/// every file an earlier life left in it removed: a layer is a
+/// container's, and no container of an earlier life is running. A
+/// file that will not go is left, as a mount that will not unmount
+/// is.
+async fn sweep_layers(scratch_dir: &Path) -> Result<(), Error> {
+    tokio::fs::create_dir_all(scratch_dir).await?;
+    let mut entries = tokio::fs::read_dir(scratch_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let _ = tokio::fs::remove_file(entry.path()).await;
+    }
+    Ok(())
 }
 
 /// Every container carrying `label` removed at once, then every

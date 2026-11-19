@@ -9,9 +9,8 @@ use crate::host::Limit;
 /// to by a container's stop, so both hold it.
 #[derive(Debug)]
 pub struct Shared {
-    /// `podman.overlay_disk` against the running containers' `disk`,
-    /// their ephemeral mounts' `overlay_disk` and the ephemeral
-    /// serves' `overlay_disk`: the volumes hold the same one.
+    /// `container_overlay_disk` against the running containers'
+    /// `disk` and their ephemeral mounts' `overlay_disk`.
     pub disk: Arc<Limit>,
     /// `memory` against the running containers' `memory`.
     pub memory: Limit,

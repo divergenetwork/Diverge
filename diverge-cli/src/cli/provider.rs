@@ -20,7 +20,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Fixed, Identity, ImageCacheDisk, Images, OverlayDisk, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
+use crate::arguments::{Bytes, Containers, Fixed, Identity, EphemeralFuse, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -159,6 +159,9 @@ pub async fn containers(root: &Path, action: Containers) -> Result<(), Error> {
             })
             .await
         }
+        Containers::ContainerOverlayDisk(action) => {
+            bytes(root, action, |section| &mut section.container_overlay_disk).await
+        }
         Containers::Memory(action) => bytes(root, action, |section| &mut section.memory).await,
     }
 }
@@ -229,6 +232,43 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
         Volumes::Disable => {
             provider(root, |config| {
                 config.volumes = None;
+                Ok(())
+            })
+            .await
+        }
+        // `volumes ephemeral_fuse get|set|delete`: the one member, read
+        // whole and written whole. A `get` prints it with its path
+        // resolved as the provider resolves it, or `null`; a `set`
+        // takes both the path and the capacity, and a capacity of `0`
+        // is refused here as the provider refuses it at its start; a
+        // `delete` removes the member and leaves the folder.
+        Volumes::EphemeralFuse(EphemeralFuse::Get) => {
+            let config = read::<Config>(root, Which::Provider).await?;
+            let set = config.volumes.as_ref().and_then(|section| section.ephemeral_fuse.as_ref());
+            line(&set.map(|set| {
+                serde_json::json!({
+                    "path": diverge_provider::config::resolve(root, &set.path),
+                    "capacity": set.capacity,
+                })
+            }))
+            .await
+        }
+        Volumes::EphemeralFuse(EphemeralFuse::Set { path, capacity }) => {
+            if capacity == 0 {
+                return Err(Error::Usage("a capacity of 0: the ephemeral FUSE serves would have no room"));
+            }
+            provider(root, |config| {
+                let section = config.volumes.as_mut().ok_or_else(absent)?;
+                section.ephemeral_fuse = Some(volumes_section::EphemeralFuse { path, capacity });
+                Ok(())
+            })
+            .await
+        }
+        Volumes::EphemeralFuse(EphemeralFuse::Delete) => {
+            provider(root, |config| {
+                if let Some(section) = config.volumes.as_mut() {
+                    section.ephemeral_fuse = None;
+                }
                 Ok(())
             })
             .await
@@ -686,7 +726,6 @@ pub async fn podman(root: &Path, action: Podman) -> Result<(), Error> {
         Podman::Registries(action) => registries(root, action).await,
         Podman::StoragePath(action) => storage_path(root, action).await,
         Podman::ImageCacheDisk(action) => image_cache_disk(root, action).await,
-        Podman::OverlayDisk(action) => overlay_disk(root, action).await,
     }
 }
 
@@ -736,28 +775,6 @@ async fn registries(root: &Path, action: Registries) -> Result<(), Error> {
 /// smaller number is trimmed by the provider at its next deploy, as
 /// it trims at every one. The number is read by a provider that uses
 /// podman, and written here either way.
-/// `diverge provider podman overlay_disk get|set`: the most that may
-/// be written over what is kept, `podman.overlay_disk`, in BYTES. A
-/// `get` prints the number as the provider reads it, which is the
-/// default where the document says none. A `set` writes it. It is one
-/// cap for three things — a container's own layer, an ephemeral
-/// volume a container mounts, and a FUSE serve of an ephemeral volume
-/// — and a smaller number than what is reserved now is taken at the
-/// provider's next start, when nothing is. It is read by every
-/// provider, one that runs no containers for its FUSE serves alone.
-async fn overlay_disk(root: &Path, action: OverlayDisk) -> Result<(), Error> {
-    match action {
-        OverlayDisk::Get => number(read::<Config>(root, Which::Provider).await?.podman.overlay_disk).await,
-        OverlayDisk::Set { value } => {
-            provider(root, |config| {
-                config.podman.overlay_disk = value;
-                Ok(())
-            })
-            .await
-        }
-    }
-}
-
 async fn image_cache_disk(root: &Path, action: ImageCacheDisk) -> Result<(), Error> {
     match action {
         ImageCacheDisk::Get => number(read::<Config>(root, Which::Provider).await?.podman.image_cache_disk).await,

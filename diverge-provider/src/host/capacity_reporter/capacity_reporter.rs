@@ -15,8 +15,8 @@ use crate::protocol::capacity_reporter;
 use crate::protocol::volume_manager;
 
 /// The host's capacity reporter: the volumes' largest store room,
-/// the Store's room, the deployer's memory cap and the one overlay
-/// cap, each as of now.
+/// the Store's room, the deployer's two caps and the ephemeral FUSE
+/// serves' cap, each as of now.
 #[derive(Debug)]
 pub struct CapacityReporter {
     /// The volumes, whose stores hold the room for a new one.
@@ -24,20 +24,19 @@ pub struct CapacityReporter {
     /// The Store; `None` where the configuration has
     /// none, and then its room is `0`.
     store: Option<Arc<Store>>,
-    /// The deployer, whose cap holds the memory room; `None` where
-    /// the provider uses no podman, and then it is `0`.
+    /// The deployer, whose caps hold the memory and the overlay room;
+    /// `None` where the provider uses no podman, and then each is `0`.
     deployer: Option<Arc<ContainerDeployer>>,
-    /// The overlay cap, `podman.overlay_disk`: the one the containers,
-    /// their ephemeral mounts and the ephemeral FUSE serves reserve
-    /// from, which a provider that runs no containers has too.
-    disk: Arc<Limit>,
+    /// The ephemeral FUSE serves' cap, `volumes.ephemeral_fuse`'s
+    /// capacity: `0` where the configuration has none.
+    fuse_disk: Arc<Limit>,
 }
 
 impl CapacityReporter {
     /// A reporter over the volumes, the Store if there
     /// is one, and the deployer.
-    pub fn new(volumes: Arc<VolumeManager>, store: Option<Arc<Store>>, deployer: Option<Arc<ContainerDeployer>>, disk: Arc<Limit>) -> Self {
-        CapacityReporter { volumes, store, deployer, disk }
+    pub fn new(volumes: Arc<VolumeManager>, store: Option<Arc<Store>>, deployer: Option<Arc<ContainerDeployer>>, fuse_disk: Arc<Limit>) -> Self {
+        CapacityReporter { volumes, store, deployer, fuse_disk }
     }
 }
 
@@ -48,9 +47,10 @@ impl capacity_reporter::CapacityReporter for CapacityReporter {
     /// `volumes_disk` is what `volumes::create_capacity` answers, the
     /// most room any one store has; `images_disk` is the store's
     /// capacity less what its ownerships hold, or `0` with no Store;
-    /// `container_memory` is what remains of the memory cap, `0` on a
-    /// provider that runs no containers; `overlay_disk` is what
-    /// remains of the one overlay cap, on every provider. The
+    /// the container numbers are what remains of the two caps, each
+    /// `0` on a provider that runs no containers; `fuse_disk` is what
+    /// remains of the ephemeral FUSE serves' cap, `0` on a provider
+    /// that serves none. The
     /// identity narrows nothing: this host allots every caller the
     /// whole of the room.
     async fn capacity(&self, client_identity: &Identity) -> Result<Frame, Error> {
@@ -68,7 +68,8 @@ impl capacity_reporter::CapacityReporter for CapacityReporter {
             volumes_disk: volumes_disk.map_err(Error::Volumes)?,
             images_disk: images_disk.map_err(Error::Images)?,
             container_memory: self.deployer.as_ref().map_or(0, |deployer| deployer.memory_room()),
-            overlay_disk: self.disk.room(),
+            container_disk: self.deployer.as_ref().map_or(0, |deployer| deployer.disk_room()),
+            fuse_disk: self.fuse_disk.room(),
         })
     }
 }

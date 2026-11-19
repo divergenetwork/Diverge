@@ -46,8 +46,8 @@
 //!     - ghcr.io
 //!   storage_path: /mnt/podman
 //!   image_cache_disk: 107374182400
-//!   overlay_disk: 214748364800
 //! containers:
+//!   container_overlay_disk: 214748364800
 //!   memory: 34359738368
 //! volumes:
 //!   stores:

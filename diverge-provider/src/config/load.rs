@@ -12,7 +12,8 @@ const FILE: &str = "provider.yaml";
 /// The configuration at `root`: `provider.yaml` read and parsed, or
 /// the defaults where there is no such file, with every path in it
 /// resolved against `root` — `podman.storage_path`, each
-/// store's and each fixed volume's `path`, and `images.path` — so
+/// store's and each fixed volume's `path`, `volumes.ephemeral_fuse`'s,
+/// and `images.path` — so
 /// that what comes back holds every path absolute. A file that does
 /// not parse, or names a key the document does not have, is
 /// [`Error::Parse`], with the path to the value that was wrong.
@@ -33,6 +34,9 @@ pub async fn load(root: &Path) -> Result<Config, Error> {
         }
         for fixed in volumes.fixed.iter_mut() {
             fixed.path = resolve(root, &fixed.path);
+        }
+        if let Some(ephemeral_fuse) = &mut volumes.ephemeral_fuse {
+            ephemeral_fuse.path = resolve(root, &ephemeral_fuse.path);
         }
     }
     if let Some(images) = &mut config.images {

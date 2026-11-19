@@ -65,8 +65,8 @@ pub enum Error {
     /// A write's content ended in the caller's own error before it was
     /// whole; the write was abandoned. The error is the caller's.
     Content(error::Error),
-    /// The FUSE serve's `overlay_disk` would take what is reserved
-    /// past `podman.overlay_disk`.
+    /// The FUSE serve's `overlay_disk` would take what the ephemeral
+    /// serves reserve past `volumes.ephemeral_fuse`'s capacity.
     OverlayDisk(u64),
     /// An ephemeral fixed volume asked to be served, which this
     /// provider does not do.

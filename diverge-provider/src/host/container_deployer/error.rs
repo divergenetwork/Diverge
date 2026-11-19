@@ -43,7 +43,7 @@ pub enum Error {
     Store(image_manager::Error),
     /// The provider's registry could not mint a token.
     Registry(image_registry::Error),
-    /// What is reserved of `podman.overlay_disk` would pass it with
+    /// What is reserved of `container_overlay_disk` would pass it with
     /// this run's `disk` and its ephemeral mounts' `overlay_disk`.
     Disk,
     /// A mount states an `overlay_disk` and its volume is not

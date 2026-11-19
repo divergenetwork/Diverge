@@ -44,10 +44,11 @@ use crate::host::image_manager::manifest::host;
 ///   container, since a serve opens the image in userspace and the
 ///   image bears one writer; an ephemeral or a read-only one by any
 ///   number of either at once. An ephemeral volume is FUSE served on
-///   a scratch counted against `podman.overlay_disk`, which every
-///   provider has, so it is served whether the provider runs
-///   containers or not; a cap of `0` refuses each serve as it
-///   reserves.
+///   a scratch of the volumes' own, `volumes.ephemeral_fuse`: with
+///   the member there the mode is held out with all three of
+///   `fuse_serve`, `fuse_serve_many` and `mount_and_fuse_serve`, and
+///   with it absent each of the three is `false`. Whether the
+///   provider runs containers has no say in it.
 /// - `messages`: the `messages` section's rate, as it is written; the
 ///   section absent, no object, and every listen and send answered
 ///   `Unsupported`.
@@ -61,7 +62,7 @@ pub fn capabilities(config: &Config) -> Capabilities {
             registries: registries(config).to_vec(),
         },
         volumes_persistent: mode(config, Mode::Persistent, PERSISTENT),
-        volumes_ephemeral: mode(config, Mode::Ephemeral, ANY),
+        volumes_ephemeral: mode(config, Mode::Ephemeral, if served_ephemeral(config) { ANY } else { UNSERVED }),
         volumes_read_only: mode(config, Mode::ReadOnly, ANY),
         messages: config.messages.map(|messages| MessagesCapabilities { messages: messages.messages, seconds: messages.seconds }),
     }
@@ -110,6 +111,25 @@ const PERSISTENT: VolumeCapabilities = VolumeCapabilities {
     create: false,
     mount: true,
     fuse_serve: true,
+    mount_many: true,
+    fuse_serve_many: false,
+    mount_and_fuse_serve: false,
+};
+
+/// Whether the provider serves ephemeral volumes over FUSE: its
+/// `volumes` section has an `ephemeral_fuse`. The one fact the
+/// capability, the scratch and the cap are all decided by.
+fn served_ephemeral(config: &Config) -> bool {
+    config.volumes.as_ref().is_some_and(|volumes| volumes.ephemeral_fuse.is_some())
+}
+
+/// The ephemeral mode on a provider with no `volumes.ephemeral_fuse`:
+/// mounted as the mode allows, and never FUSE served, there being no
+/// scratch.
+const UNSERVED: VolumeCapabilities = VolumeCapabilities {
+    create: false,
+    mount: true,
+    fuse_serve: false,
     mount_many: true,
     fuse_serve_many: false,
     mount_and_fuse_serve: false,
