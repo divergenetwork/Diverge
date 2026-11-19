@@ -75,6 +75,9 @@ pub async fn run(arguments: Arguments) -> Result<(), Error> {
         Some(Command::Provider(Server::Messages(action))) => {
             super::provider::messages(&root, action).await
         }
+        Some(Command::Provider(Server::Logging(action))) => {
+            super::provider::logging(&root, action).await
+        }
         Some(Command::Viewer(Viewer::Start { daemon, account })) => {
             // Handed on as the viewer's own arguments, after the root.
             let mut arguments = Vec::new();

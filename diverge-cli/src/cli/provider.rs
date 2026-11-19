@@ -20,7 +20,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Authorized, Bytes, Containers, Fixed, FixedCommand, Identity, EphemeralFuse, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
+use crate::arguments::{Authorized, Bytes, Containers, Fixed, FixedCommand, Identity, EphemeralFuse, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Logging, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -980,4 +980,28 @@ fn absolute(path: &Path) -> Result<PathBuf, Error> {
 /// [`set`](super::setting::set).
 async fn provider(root: &Path, change: impl FnOnce(&mut Config) -> Result<(), Error>) -> Result<(), Error> {
     set(root, Program::Provider, Which::Provider, change).await
+}
+
+/// `provider logging enabled|enable|disable`: the one boolean, read as
+/// it is in effect — `true` where it was never written — and written
+/// whole. `enable` and `disable` hold the provider's lock and are
+/// refused while it runs.
+pub async fn logging(root: &Path, action: Logging) -> Result<(), Error> {
+    match action {
+        Logging::Enabled => line(&read::<Config>(root, Which::Provider).await?.logging).await,
+        Logging::Enable => {
+            provider(root, |config| {
+                config.logging = true;
+                Ok(())
+            })
+            .await
+        }
+        Logging::Disable => {
+            provider(root, |config| {
+                config.logging = false;
+                Ok(())
+            })
+            .await
+        }
+    }
 }

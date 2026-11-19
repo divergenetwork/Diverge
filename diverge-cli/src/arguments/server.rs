@@ -48,6 +48,27 @@ pub enum Server {
     /// rate it is relayed at.
     #[command(subcommand)]
     Messages(Messages),
+    /// Turn the provider's log on or off, or print whether it is on.
+    #[command(subcommand)]
+    Logging(Logging),
+}
+
+/// What is done to the provider's `logging`: see
+/// [`provider`](crate::cli::provider). On, the provider writes who
+/// connected, whether its handshake was taken, what it asked for and
+/// when it went, a line each; off, it writes nothing. On where the
+/// setting was never written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum Logging {
+    /// Print whether the provider keeps its log: `true` or `false`.
+    Enabled,
+    /// Have the provider keep its log. Refused while the provider is
+    /// running on the root: stop it first.
+    Enable,
+    /// Have the provider keep no log. What it wrote before is left
+    /// where it is. Refused while the provider is running on the
+    /// root: stop it first.
+    Disable,
 }
 
 /// What is done to the provider's `messages` section: see
