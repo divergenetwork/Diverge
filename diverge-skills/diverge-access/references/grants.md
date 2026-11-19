@@ -234,8 +234,9 @@ the account the record names is the remote's own to judge.
 | Tagging | `tag`, `untag` | `accounts tag` / `untag` |
 
 `within`: `identities`, `roles`, `connected`, `creators`, `all_tags`, `any_tags`, `created_from`,
-`created_to`. An administrator with no account is reached only through `identities` and `connected`.
-An administrator's command log (`of.type` = `admin`) is read by administrators alone; no grant gives it.
+`created_to`. An administrator is reached through `identities`, `connected` and its tags.
+An administrator's command log is read like any account's (`of.type` = `account`, with `logs` over
+accounts reaching it); the older `of.type` = `admin` form is read by administrators alone.
 
 ## roles
 

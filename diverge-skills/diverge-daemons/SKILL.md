@@ -318,9 +318,9 @@ Rules:
 1. A and B are connected to a **common provider**, at the daemon's own version.
 2. On **B**, that provider's record has an **`announcement`** (so `providers daemons list` on A shows B).
 3. On **B**, that provider's record has `accept_daemons: true` (the default).
-4. B has an **account** for the identity A presents (the record's `identity`). **B's administrators do
-   not count here**: a daemon reaching another is admitted only as an account. Give that account roles for
-   exactly what A should be able to do on B.
+4. The identity A presents (the record's `identity`) is an **account on B**: a stored account, with roles
+   for exactly what A should be able to do on B, or one of B's administrators (an identity in B's `admins`
+   with no stored account), which is allowed everything on B.
 5. That account is not already in use by another daemon connection: an account has at most one daemon
    connecting as it at a time, and a second is refused.
 6. A's host holds the `identity` signed in. B keeps no list of trusted issuers: its account (item 4) is what
@@ -480,7 +480,7 @@ administrator on both. (This is step 10 of `reports/SETUP_INSTRUCTIONS_1.md`.)
 ```bash
 ISS=https://identity.diverge.network
 
-# --- On B: a role and an account for the identity A will present. B's admins do not count for A.
+# --- On B: a role and an account for the identity A will present (or name it in B's `admins` for full access).
 diverge run --daemon b roles create '{"name":"peer","description":"daemon A on this daemon","grants":[
   {"agents":{"actions":["get","list","logs","message"],"within":"any"}},
   {"agents_templates":{"actions":["get","list"],"within":"any"}},

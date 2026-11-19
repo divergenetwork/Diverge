@@ -24,13 +24,20 @@ Every body may also carry `relay` (see the `diverge-daemons` skill).
 2. **An account is one identity the daemon admits**, with a description, roles and tags. One account per
    identity; the identity is the account's name and never changes. An identity that is no account, no
    administrator and no provider is refused in the handshake: the connection closes with no frame.
-3. **Administrators** are the identities in the daemon's `admins` setting (`diverge daemon admins get`). An administrator is admitted
-   whether or not it has an account, and every judgment allows it everything without reading a grant. A
-   fresh daemon has no account, so its first accounts are made by an administrator. `admins` is read once at
-   the daemon's start (see `diverge-config` to change it).
-4. **Admin status is local to one daemon.** It does not travel: a request relayed to another daemon is
-   served there as an *account* of that daemon, and that daemon's `admins` do not count for a daemon
-   connecting to it. Being an administrator of daemon A gives nothing on daemon B.
+3. **Administrators** are the identities in the daemon's `admins` setting (`diverge daemon admins get`)
+   **that have no stored account**. An administrator is an account in every respect except that it is not
+   stored: it is admitted wherever an account is (directly, and when another daemon connects as it), it is
+   listed, tagged, disconnected and sent requests like one, and every judgment allows it everything without
+   reading a grant. A fresh daemon has no account, so its first accounts are made by an administrator.
+   `admins` is read once at the daemon's start (see `diverge-config` to change it).
+   - **A stored account wins.** One identity is one account. If an identity in `admins` also has a stored
+     account, it is that account and nothing more: it holds only what its roles grant, and the `admins`
+     entry does nothing until the stored account is deleted.
+   - An administrator cannot be created as an account (`accounts create` answers `"exists"`), and cannot be
+     edited or deleted (`"administrator"`). To stop it being an administrator, take it out of `admins`.
+4. **Admin status is local to one daemon.** Being an administrator of daemon A gives nothing on daemon B.
+   A request relayed to B is served as whatever the presented identity is **on B**: a stored account there,
+   or one of B's own administrators.
 5. **A role holds grants; an account holds roles.** A role holds no roles. An account with no role may do
    nothing (it can still connect, and `info` needs no grant). A role's edit takes effect at each holder's
    next request.
@@ -222,12 +229,14 @@ What to know:
 - **`accounts disconnect`** closes every connection a client has as the account (direct ones, and one
   another daemon made as it through a provider), answers the count (`0` if none) without waiting, and
   changes nothing else: the account may reconnect at once. An account may disconnect itself. It also works
-  on an administrator that has no account. Use it to force a reconnect or to cut a session off; to keep
+  on an administrator. Use it to force a reconnect or to cut a session off; to keep
   someone out, delete the account or take its roles away.
-- **Administrators in lists.** `accounts list` and `get` show each `admins` identity with `"admin":true`.
-  One with no account of its own has no roles, tags, `created` or `creator`, and `edit`, `tag` and `delete`
-  answer `not_found` for it (there is nothing to edit). A grant's `within` reaches such an administrator
-  only through `identities` or `connected`, never through a filter on roles, tags, creators or times.
+- **Administrators in lists.** `accounts list` and `get` show each administrator with `"admin":true`, its
+  tags, and no roles, `created` or `creator`. `accounts tag` and `untag` work on it as on any account.
+  `edit` and `delete` answer `"administrator"`: it is not stored, so there is nothing to change or remove.
+  A grant's `within` reaches an administrator through `identities`, `connected` and its tags, never through
+  a filter on roles, creators or times. An identity in `admins` that has a stored account shows as that
+  account, with `"admin":false`.
 - List filter members for accounts: `identities`, `roles`, `connected`, `creators`, `all_tags`, `any_tags`,
   `created_from`, `created_to`, plus `count`. `accounts list` takes `--watch` (an account's `connected`
   flipping arrives as `changed`).
@@ -289,7 +298,7 @@ diverge run requests listen
   - No `request` grant of any of the three kinds: `"forbidden"`.
 - **Tools.** A standalone tool and a dependency tool can each listen and create, as itself, with the
   grants its image declares. A connected standalone tool (another daemon's) does neither.
-- An administrator with no account is addressed only by its identity in `accounts`, never by a tag.
+- An administrator is addressed like any account: by its identity in `accounts`, or by a tag it carries.
 - `from` and `to` name a party as a creator is named: `{"type":"client","identity":{…}}` for an account,
   `{"type":"tool","record":{…}}` or `{"type":"tool","dependency":{…}}` for a tool.
 
@@ -389,8 +398,9 @@ For `"forbidden"`, work through this list:
    mounted, a vault key bound, a transfer's destination, the first `relay` ID.
 6. **Tagging:** the grant's `tags` must cover every tag in the request, or be `"any"`.
 7. **Relayed?** With `relay`, `forbidden` can come from this daemon (no `relay` grant reaching the record)
-   or from the remote, which judges the request as the account the record names, by *its* roles there. A
-   remote's administrators are not administrators for a relayed connection.
+   or from the remote, which judges the request as the account the record names, by *its* roles there. If
+   that identity is one of the remote's administrators (and has no stored account there), it is allowed
+   everything there.
 8. **Is the requester a tool?** A tool's container holds only what its image declared at registration, and
    is no account; an agent's container asks the daemon nothing. See `diverge-tools`.
 9. **Read the command log.** The daemon keeps every request a requester put, with whether it was let
