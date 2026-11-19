@@ -299,6 +299,9 @@ pub enum ClientRequest<'a> {
     RequestsListen(requests::listen::client::request::Frame),
     /// Tag `166`. Make a request of others, and wait for its answer.
     RequestsCreate(requests::create::client::request::Frame),
+    /// Tag `167`. Make one image of one or more, in the daemon's Store
+    /// on a provider.
+    ImagesMerge(images::merge::client::request::Frame),
     /// Tag `146`. Hold another daemon's standalone tool under a name.
     ConnectedStandaloneToolsCreate(connected_standalone_tools::create::client::request::Frame),
     /// Tag `147`. Get one connected tool.
@@ -469,6 +472,7 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::ImagesPublish(frame) => frame.encode(out),
             ClientRequest::RequestsListen(frame) => frame.encode(out),
             ClientRequest::RequestsCreate(frame) => frame.encode(out),
+            ClientRequest::ImagesMerge(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsCreate(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsGet(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsList(frame) => frame.encode(out),
@@ -895,6 +899,9 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             166 => requests::create::client::request::Frame::decode(bytes)
                 .map(ClientRequest::RequestsCreate)
                 .ok(),
+            167 => images::merge::client::request::Frame::decode(bytes)
+                .map(ClientRequest::ImagesMerge)
+                .ok(),
             146 => connected_standalone_tools::create::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ConnectedStandaloneToolsCreate)
                 .ok(),
@@ -1070,6 +1077,7 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::ImagesPublish(_) => f.write_str("images publish"),
             ClientRequest::RequestsListen(_) => f.write_str("requests listen"),
             ClientRequest::RequestsCreate(_) => f.write_str("requests create"),
+            ClientRequest::ImagesMerge(_) => f.write_str("images merge"),
             ClientRequest::ConnectedStandaloneToolsCreate(_) => f.write_str("connected standalone tools create"),
             ClientRequest::ConnectedStandaloneToolsGet(_) => f.write_str("connected standalone tools get"),
             ClientRequest::ConnectedStandaloneToolsList(_) => f.write_str("connected standalone tools list"),
@@ -1224,6 +1232,7 @@ pub fn tag(path: &str) -> Option<u8> {
         "images/publish" => Some(164),
         "requests/listen" => Some(165),
         "requests/create" => Some(166),
+        "images/merge" => Some(167),
         "connected_standalone_tools/create" => Some(146),
         "connected_standalone_tools/get" => Some(147),
         "connected_standalone_tools/list" => Some(148),
@@ -1375,6 +1384,7 @@ impl ClientRequest<'_> {
             ClientRequest::ImagesPublish(_) => "images/publish",
             ClientRequest::RequestsListen(_) => "requests/listen",
             ClientRequest::RequestsCreate(_) => "requests/create",
+            ClientRequest::ImagesMerge(_) => "images/merge",
             ClientRequest::ConnectedStandaloneToolsCreate(_) => "connected_standalone_tools/create",
             ClientRequest::ConnectedStandaloneToolsGet(_) => "connected_standalone_tools/get",
             ClientRequest::ConnectedStandaloneToolsList(_) => "connected_standalone_tools/list",

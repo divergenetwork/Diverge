@@ -13,6 +13,7 @@ export * as build from "./build/index.js";
 export * as delete from "./delete/index.js";
 export * as get from "./get/index.js";
 export * as list from "./list/index.js";
+export * as merge from "./merge/index.js";
 export * as publish from "./publish/index.js";
 export * as push from "./push/index.js";
 export * as read from "./read/index.js";

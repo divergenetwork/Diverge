@@ -34,4 +34,8 @@ pub enum Action {
     /// [`images::publish`](crate::daemon::endpoints::images::publish)
     /// does: judged by the provider the publish is done on.
     Publish,
+    /// Make one image of one or more in a Store of the daemon's, as
+    /// [`images::merge`](crate::daemon::endpoints::images::merge)
+    /// does: judged by the provider the image is made on.
+    Merge,
 }

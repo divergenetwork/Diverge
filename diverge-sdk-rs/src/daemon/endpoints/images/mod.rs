@@ -33,6 +33,7 @@ pub mod build;
 pub mod delete;
 pub mod get;
 pub mod list;
+pub mod merge;
 pub mod publish;
 pub mod push;
 pub mod read;
