@@ -523,7 +523,15 @@ What each member means:
   that break the schema surface as a start error in the agent's or tool's log, not at
   `templates create`.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
-  commands in `diverge-agents` / `diverge-tools`).
+  commands in `diverge-agents` / `diverge-tools`). To look like the rest of Diverge in the person's
+  theme, the page links `<link rel="stylesheet" href="/diverge/theme.css">` and
+  `<script src="/diverge/theme.js"></script>` after its own styles, and names every colour, size,
+  space and edge by the theme's roles (`--bg`, `--surface`, `--line`, `--line-strong`, `--text`,
+  `--text-3`, `--accent`, `--on-accent`, `--ok`, `--bad`, `--font-ui`, `--text-sm`, `--control`,
+  `--radius-md`… as in `diverge-theme/theme.css`). The viewer answers both on the frontend's own
+  address, outside `/frontend`, and keeps the page's `data-theme` the person's. Elsewhere both are
+  missing, so a page keeps fallback values of its own. Not taking them is allowed: the page is its
+  maker's. The example `chat`, `human` and identity pages take them.
 - **Icons are files, not members.** An image ships up to three, each optional, each by a fixed name in the
   same `.diverge` folder: `icon.svg` (an SVG), `icon-512.png` (a PNG of exactly 512×512), `icon-64.png`
   (a PNG of exactly 64×64). The file being there is the whole declaration. A provider answers each on
