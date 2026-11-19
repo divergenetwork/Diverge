@@ -145,6 +145,8 @@ jobs:
 
           One archive per platform, each holding every program: \`diverge\` (the CLI), \`diverge-daemon\`, \`diverge-provider\`, \`diverge-postgres\`, \`diverge-viewer\` and \`diverge-container-proxy\`. Unpack it and put the programs together in one folder on your \`PATH\`; they find one another beside themselves. Each archive has a \`.sha256\` beside it. An archive appears here as its platform finishes building.
 
+          The skills, for an agent that uses Diverge: \`diverge-skills-$VERSION.zip\`, one folder per skill. \`diverge update <SKILLS_DIR>\` installs them.
+
           The SDKs: [\`diverge-sdk\`](https://crates.io/crates/diverge-sdk) on crates.io and [\`@diverge/sdk\`](https://www.npmjs.com/package/@diverge/sdk) on npm, at the same version.
           EOF
           gh release create "v$VERSION" --repo "$REPO" --target "$SHA" --title "v$VERSION" --notes-file notes.md --latest
@@ -278,6 +280,23 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
           REPO: ${{ github.repository }}
         run: gh release upload "v$VERSION" dist/diverge-* --clobber --repo "$REPO"
+
+  # ── The skills: one archive, the same for every platform ────────────────
+  skills:
+    name: archive (skills)
+    needs: [check, create-release]
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pack
+        run: bash package-skills.sh dist
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: gh release upload "v$VERSION" dist/diverge-skills-* --clobber --repo "$REPO"
 
   # ── The SDKs ────────────────────────────────────────────────────────────
   # Each skips a version that is published already, so a run that is
