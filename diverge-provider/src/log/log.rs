@@ -19,11 +19,14 @@ const FILES: usize = 8;
 /// The provider's log. The rules:
 ///
 /// 1. **What is written.** One line for each of: a connection a peer
-///    dialled, with the IP it came from; its handshake taken, with the
-///    identity it was taken as, or not taken, with why; a peer the
-///    provider dialled, likewise; every request a connection opens,
-///    by its tag — the byte the protocol names its endpoints by — and
-///    never its body, so no secret and no file's bytes are written;
+///    dialled, with the IP it came from, said before its handshake so
+///    that a handshake that never ends is a line with nothing after
+///    it; its handshake taken, with the identity it was taken as, or
+///    not taken, with why; a peer the provider dialled, likewise;
+///    every request a connection opens, by its tag — the byte the
+///    protocol names its endpoints by — and never its body, so no
+///    secret and no file's bytes are written, but for a `capacity`,
+///    which every daemon asks every ten seconds and is left out;
 ///    and a connection's end, with how long it lasted. No channel
 ///    request, no response and no payload is written.
 /// 2. **Where.** Under `logs/` in the provider's own directory, in a

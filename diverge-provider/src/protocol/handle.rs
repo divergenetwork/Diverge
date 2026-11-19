@@ -150,6 +150,9 @@ where
 
         // The request's tag, and nothing of its body: see `Log`.
         match payload.first() {
+            // A capacity, which every daemon asks every ten seconds:
+            // written, it would be most of the log, and say nothing.
+            Some(24) => {}
             Some(tag) => log.say(format!("{address} {} {} opened a request, tag {tag}", client_identity.issuer, client_identity.subject)),
             None => log.say(format!("{address} {} {} opened a request with no tag", client_identity.issuer, client_identity.subject)),
         }

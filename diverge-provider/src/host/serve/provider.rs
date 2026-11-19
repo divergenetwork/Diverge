@@ -205,6 +205,9 @@ impl Provider {
     /// another connection holds among the ways — closes the connection
     /// with nothing sent.
     pub async fn accept(&self, connection: Connection, address: IpAddr) {
+        // Said before the handshake, so that one that never ends is a
+        // line with nothing after it, and not no line at all.
+        self.log.say(format!("{address} dialled in"));
         match handshake::accept(connection, &self.authenticator.admitting(), address).await {
             Ok(Handshook { connection, peer }) => self.held(connection, peer, address, None).await,
             Err(error) => self.log.say(format!("{address} dialled in, and its handshake was not taken: {error}")),
@@ -223,7 +226,7 @@ impl Provider {
             Some(target) => format!("dialled at {target}"),
             None => "dialled in".to_string(),
         };
-        self.log.say(format!("{address} {how}, connected as {} {}", peer.issuer, peer.subject));
+        self.log.say(format!("{address} {how}, and its handshake was taken as {} {}", peer.issuer, peer.subject));
         let began = tokio::time::Instant::now();
         self.connection(connection, Arc::new(peer.clone()), address, dialled).await;
         self.mailboxes.left(&peer).await;
