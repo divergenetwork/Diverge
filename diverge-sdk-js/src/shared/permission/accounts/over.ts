@@ -12,7 +12,7 @@ import { z } from "zod";
  * - `edit`: Change one, as `accounts.edit` does.
  * - `logs`: Read one's command log, as `logs` does.
  * - `disconnect`: Close every connection a client has as one, as `accounts.disconnect` does.
- * - `request`: Make a request of them, as `requests.create` does: an account the grant reaches may be named by a request, or by a tag of one, and is sent a request made of all.
+ * - `request`: Make a request of them, as `requests.create` does: a request is made of an account it addresses — by itself, by a tag, or as one of all — only where the grant reaches it.
  */
 export const Over = z.enum(["get", "list", "delete", "edit", "logs", "disconnect", "request"]);
 export type Over = z.infer<typeof Over>;

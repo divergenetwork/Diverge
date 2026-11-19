@@ -16,7 +16,7 @@ import { z } from "zod";
  * - `exec`: Run a command in one's container — any program it holds, as the container's own user — as `dependency_tools.exec` does.
  * - `frontend`: Send HTTP requests to the frontend its program serves, as `dependency_tools.frontend` does.
  * - `logs`: Read one's log, running or not, as `dependency_tools.logs` does.
- * - `request`: Make a request of them, as `requests.create` does: a tool the grant reaches may be named by a request, or by a tag of one, and is sent a request made of all.
+ * - `request`: Make a request of them, as `requests.create` does: a request is made of a tool it addresses — by itself, by a tag, or as one of all — only where the grant reaches it.
  */
 export const Over = z.enum(["get", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "logs", "request"]);
 export type Over = z.infer<typeof Over>;

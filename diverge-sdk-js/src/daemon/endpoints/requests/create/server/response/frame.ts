@@ -13,7 +13,7 @@ import { Responded } from "./responded.js";
  * sent it, as each is; then `responded` and the finish — or, where the
  * caller took the request back or went, the finish with no `responded`
  * before it. A create that is refused is exactly one of `forbidden`,
- * `not_found` and `error`, with nothing before it, then the finish.
+ * `no_recipient` and `error`, with nothing before it, then the finish.
  */
 export const Frame = z.union([
   /** The request exists. Tag `0`. */
@@ -22,11 +22,11 @@ export const Frame = z.union([
   z.strictObject({ delivered: Delivered }),
   /** It was answered. Tag `2`. */
   z.strictObject({ responded: Responded }),
-  /** The caller holds no `request` grant, or none reaching an account, a tool or a tag the request names. Tag `3`. */
+  /** The caller holds no `request` grant: over accounts, over standalone tools, or over dependency tools. Tag `3`. */
   z.literal("forbidden"),
-  /** An account or a tool the request names is none there is. Tag `4`. */
-  z.literal("not_found"),
-  /** A failure: a request that names nobody among them. Tag `5`. */
+  /** The request is made of nobody: no account and no tool there is is both one the request addresses and one the caller's `request` grants reach. Tag `4`. */
+  z.literal("no_recipient"),
+  /** A failure. Tag `5`. */
   z.strictObject({ error: Error }),
 ]);
 export type Frame = z.infer<typeof Frame>;
@@ -48,7 +48,7 @@ export function decode(bytes: Uint8Array): Frame {
     case 3:
       return "forbidden";
     case 4:
-      return "not_found";
+      return "no_recipient";
     case 5:
       return { error: Error.parse(jsonOf(rest)) };
     default:

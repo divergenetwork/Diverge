@@ -12,7 +12,7 @@ use crate::daemon::reference;
 #[serde(rename_all = "snake_case")]
 pub enum To {
     /// Every account and every tool the caller's `request` grants
-    /// reach, and no other. Never refused for reach.
+    /// reach, and no other.
     All,
     /// The accounts and tools named: see [`Only`].
     Only(Only),
@@ -30,8 +30,11 @@ pub enum To {
 /// 3. **A tag names every record that carries it**, those that come to
 ///    carry it after the create included, for as long as the request
 ///    is pending.
-/// 4. **Something is named.** Every member empty names nobody, and the
-///    create is refused as an error.
+/// 4. **Narrowed by reach, never refused for it.** What is named and
+///    the caller's `request` grant for its kind does not reach is not
+///    addressed, and neither is a name that names nothing. A request
+///    that addresses nobody at all — every member empty included — is
+///    refused: see [`create`](super::super::super).
 ///
 /// Every member may be left out, and is then empty.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -56,16 +59,4 @@ pub struct Only {
     /// Every dependency tool that carries any of these tags.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependency_tool_tags: Vec<String>,
-}
-
-impl Only {
-    /// Rule 4: whether it names nobody.
-    pub fn is_empty(&self) -> bool {
-        self.accounts.is_empty()
-            && self.account_tags.is_empty()
-            && self.standalone_tools.is_empty()
-            && self.standalone_tool_tags.is_empty()
-            && self.dependency_tools.is_empty()
-            && self.dependency_tool_tags.is_empty()
-    }
 }

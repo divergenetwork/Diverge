@@ -25,7 +25,9 @@
 //!    once.
 //! 5. **Who may be asked** is the creator's grants': the `request`
 //!    action over accounts, over standalone tools and over dependency
-//!    tools, each with its own reach. See
+//!    tools, each with its own reach. A request is made of those it
+//!    addresses that the grants reach, and is refused only where that
+//!    is nobody. See
 //!    [`grant`](crate::daemon::grant). Listening takes no grant: a
 //!    listener hears only what was made of it.
 //!

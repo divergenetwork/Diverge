@@ -11,8 +11,10 @@ import { Tool } from "../../../../../reference/tool.js";
  * kind's tags are that kind's: `account_tags` name accounts and
  * nothing else, and so the two tool kinds. A tag names every record
  * that carries it, those that come to carry it while the request is
- * pending included. Every member may be left out; every member empty
- * names nobody, and the create is refused as an error.
+ * pending included. What is named and the caller's `request` grant for
+ * its kind does not reach is not addressed, and neither is a name that
+ * names nothing; neither refuses the create. Every member may be left
+ * out. A request that addresses nobody at all is refused.
  */
 export const Only = z.strictObject({
   /** Accounts, each by its identity. */
@@ -32,8 +34,7 @@ export type Only = z.infer<typeof Only>;
 
 /**
  * Whom a request is made of: the string `"all"` — every account and
- * every tool the caller's `request` grants reach, and no other, never
- * refused for reach — or `{"only": {…}}`, the accounts and tools
+ * every tool the caller's `request` grants reach, and no other — or `{"only": {…}}`, the accounts and tools
  * named.
  */
 export const To = z.union([z.literal("all"), z.strictObject({ only: Only })]);

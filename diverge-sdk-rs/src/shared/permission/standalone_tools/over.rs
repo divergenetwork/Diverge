@@ -71,7 +71,7 @@ pub enum Over {
     Logs,
     /// Make a request of them, as
     /// [`requests::create`](crate::daemon::endpoints::requests::create)
-    /// does: a tool the grant reaches may be named by a request, or by
-    /// a tag of one, and is sent a request made of all.
+    /// does: a request is made of a tool it addresses — by itself, by
+    /// a tag, or as one of all — only where the grant reaches it.
     Request,
 }

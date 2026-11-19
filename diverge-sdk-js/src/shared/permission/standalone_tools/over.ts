@@ -20,7 +20,7 @@ import { z } from "zod";
  * - `frontend`: Send HTTP requests to the frontend its program serves, as `standalone_tools.frontend` does.
  * - `connect`: Serve one to another daemon, as `standalone_tools.connect` does.
  * - `logs`: Read one's log, as `standalone_tools.logs` does.
- * - `request`: Make a request of them, as `requests.create` does: a tool the grant reaches may be named by a request, or by a tag of one, and is sent a request made of all.
+ * - `request`: Make a request of them, as `requests.create` does: a request is made of a tool it addresses — by itself, by a tag, or as one of all — only where the grant reaches it.
  */
 export const Over = z.enum(["get", "edit", "attach", "detach", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "connect", "logs", "request"]);
 export type Over = z.infer<typeof Over>;

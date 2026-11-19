@@ -16,7 +16,7 @@ use crate::shared::error::Error;
 /// [`Responded`](Self::Responded) and the finish — or, where the
 /// caller took the request back or went, the finish with no
 /// `Responded` before it. A create that is refused is exactly one of
-/// [`Forbidden`](Self::Forbidden), [`NotFound`](Self::NotFound) and
+/// [`Forbidden`](Self::Forbidden), [`NoRecipient`](Self::NoRecipient) and
 /// [`Error`](Self::Error), with nothing before it, then the finish.
 ///
 /// A payload leads with one byte saying which, and the rest is that
@@ -37,13 +37,14 @@ pub enum Frame {
     Delivered(Delivered),
     /// It was answered. Tag `2`.
     Responded(Responded),
-    /// The caller holds no `request` grant, or none reaching an
-    /// account, a tool or a tag the request names. Tag `3`.
+    /// The caller holds no `request` grant: over accounts, over
+    /// standalone tools, or over dependency tools. Tag `3`.
     Forbidden,
-    /// An account or a tool the request names is none there is. Tag
-    /// `4`.
-    NotFound,
-    /// A failure: a request that names nobody among them. Tag `5`.
+    /// The request is made of nobody: no account and no tool there is
+    /// is both one the request addresses and one the caller's
+    /// `request` grants reach. Tag `4`.
+    NoRecipient,
+    /// A failure. Tag `5`.
     Error(Error),
 }
 
@@ -59,8 +60,8 @@ const RESPONDED: u8 = 2;
 /// Tag for [`Frame::Forbidden`].
 const FORBIDDEN: u8 = 3;
 
-/// Tag for [`Frame::NotFound`].
-const NOT_FOUND: u8 = 4;
+/// Tag for [`Frame::NoRecipient`].
+const NO_RECIPIENT: u8 = 4;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 5;
@@ -92,7 +93,7 @@ impl Encode for Frame {
                 serde_json::to_writer(out, value)
             }
             Frame::Forbidden => bare(out, FORBIDDEN),
-            Frame::NotFound => bare(out, NOT_FOUND),
+            Frame::NoRecipient => bare(out, NO_RECIPIENT),
             Frame::Error(error) => {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
@@ -113,7 +114,7 @@ impl Decode<'_> for Frame {
             DELIVERED => serde_json::from_slice(rest).map(Frame::Delivered).map_err(FrameError::Body),
             RESPONDED => serde_json::from_slice(rest).map(Frame::Responded).map_err(FrameError::Body),
             FORBIDDEN => Ok(Frame::Forbidden),
-            NOT_FOUND => Ok(Frame::NotFound),
+            NO_RECIPIENT => Ok(Frame::NoRecipient),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
             tag => Err(FrameError::UnknownTag(tag)),
         }
