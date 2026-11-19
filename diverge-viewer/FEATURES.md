@@ -305,6 +305,28 @@ The keys are not printed.
 
 ---
 
+### Requests
+
+- **Requests** is a second card over the board: every request made of
+  the account you are signed in as, on every tab you have open, newest
+  first. Each row shows who asked, which tab it came in on, how long
+  ago, and how it begins.
+- Each open tab listens on the daemon it shows: Home on your own, a
+  daemon's tab on that daemon. Closing a tab stops its listening.
+- A daemon lets an account listen once. If two tabs reach the same
+  daemon as the same account, one of them has the listen and the other
+  stays quiet; if the account is listening somewhere else, the card
+  says so for that tab.
+- **A new request** flashes the card, and flashes the window's taskbar
+  button when the window is not the one in use.
+- **Click a request** to open it along the bottom: what it says, and a
+  box to answer in. Enter sends. The sheet says whether your answer was
+  taken, or that someone else answered first.
+- **✕ on a row** puts it aside without answering. A request answered
+  elsewhere or cancelled leaves the list by itself.
+- Drag the card by its header; fold it with the button. Where it
+  stands and whether it is open are remembered.
+
 ### What is remembered
 
 - **Where you put each node.** A node stays where you dragged it, across
