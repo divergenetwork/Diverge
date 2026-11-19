@@ -132,8 +132,6 @@ diverge provider podman registries add registry.example.com:5000
 diverge provider podman registries delete 2
 diverge provider podman image_cache_disk get                # 34359738368   bytes
 diverge provider podman image_cache_disk set 68719476736
-diverge provider podman overlay_disk get                    # 34359738368   bytes
-diverge provider podman overlay_disk set 68719476736
 diverge provider podman storage_path get                    # the absolute path podman's data is kept at
 diverge provider podman storage_path set /mnt/big/podman    # MOVES podman's data there, then changes the setting
 diverge provider podman storage_path set /mnt/big/podman --no-transfer   # changes the setting, moves nothing
@@ -145,9 +143,6 @@ diverge provider podman storage_path delete                 # DELETES podman's d
   credential, so only public images are pulled from one. Deleting every registry leaves none.
 - `image_cache_disk`: the most podman's image cache may hold, in plain bytes. Lowering it deletes nothing at
   once; the provider trims the cache at its next container start.
-- `overlay_disk`: one room for everything written temporarily, in plain bytes. A container's `disk`, an
-  ephemeral volume mount's `overlay_disk` and an ephemeral FUSE serve's `overlay_disk` are each reserved
-  from it, and one that does not fit is refused. It is read whether or not containers are enabled.
 - `storage_path`: where podman keeps everything: on Linux its image store, on macOS and Windows the whole
   `diverge-provider` machine, which can be tens of gigabytes. By default it is inside the config root.
   - `set <path>` **moves the data**. Same drive or filesystem: a rename, instant, no extra space. Another
@@ -169,8 +164,10 @@ diverge provider podman storage_path delete                 # DELETES podman's d
 
 ```bash
 diverge provider containers enabled                         # true or false
-diverge provider containers enable                          # 8 GiB memory
+diverge provider containers enable                          # 32 GiB overlay disk, 8 GiB memory
 diverge provider containers disable
+diverge provider containers container_overlay_disk get      # 34359738368, or null while disabled
+diverge provider containers container_overlay_disk set 68719476736
 diverge provider containers memory get                      # 8589934592, or null while disabled
 diverge provider containers memory set 17179869184
 ```
@@ -195,6 +192,9 @@ diverge provider volumes stores add --path /mnt/volumes --capacity 107374182400
 diverge provider volumes stores edit 0 --capacity 214748364800
 diverge provider volumes stores edit 0 --path /mnt/big/volumes    # MOVES the store and every volume in it
 diverge provider volumes stores delete 0                    # DELETES the store and every volume in it
+diverge provider volumes ephemeral_fuse get                 # {"path":"/mnt/fuse-scratch","capacity":34359738368}, or null
+diverge provider volumes ephemeral_fuse set --path /mnt/fuse-scratch --capacity 34359738368
+diverge provider volumes ephemeral_fuse delete              # the provider serves no ephemeral volume over FUSE
 diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/srv/datasets","bytes":…,"mode":"read_only"}
 diverge provider volumes fixed add --name datasets --path /srv/datasets --bytes 107374182400 --mode read_only
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory it names

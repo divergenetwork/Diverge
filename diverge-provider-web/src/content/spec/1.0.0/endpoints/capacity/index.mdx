@@ -7,8 +7,9 @@ draft: false
 
 A client opens the scope with a request whose payload is the tag byte
 `24` and nothing more. The server sends exactly one response, whose
-payload is one JSON object carrying four members, `volumes_disk`,
-`images_disk`, `container_memory` and `overlay_disk`, each a count
+payload is one JSON object carrying five members, `volumes_disk`,
+`images_disk`, `container_memory`, `container_disk` and `fuse_disk`,
+each a count
 of bytes. The response finish follows the response, and no frame
 follows the finish.
 
@@ -21,10 +22,11 @@ follows the finish.
   the Store, as [Image sources](/endpoints/#image-sources) defines
   it; as `container_memory`, the number of bytes
   of memory a container run of the client could still reserve; and
-  as `overlay_disk`, the number of bytes of overlay the client
-  could still reserve, by a container run, by a mount of an
-  `ephemeral` volume in one, or by a FUSE serve of an `ephemeral`
-  volume.
+  as `container_disk`, the number of bytes of overlay disk a
+  container run of the client could still reserve, for the container
+  and for every `ephemeral` volume it mounts; and as `fuse_disk`, the
+  number of bytes a FUSE serve of an `ephemeral` volume could still
+  reserve.
   [Response](/endpoints/capacity/response/) states its form.
 - **What is reported.** Each member is the most of its resource that
   the client, as the identity of the connection, could use as of the
@@ -49,17 +51,20 @@ follows the finish.
   not read it. Where the server does not hold out `images.store`,
   `images_disk` carries any value, and a client does not read it.
   Where the server does not hold out `containers`, `container_memory`
-  carries any value, and a client does not read it. Where the server
-  holds out neither `containers` nor the `fuse_serve` of
-  `volumes_ephemeral`, `overlay_disk` carries any value, and a client
+  and `container_disk` each carry any value, and a client reads
+  neither. Where the server does not hold out the `fuse_serve` of
+  `volumes_ephemeral`, `fuse_disk` carries any value, and a client
   does not read it.
   [Capabilities](/capabilities/) states what the server holds out.
 - **Reckoned by reservation.** `container_memory` is what remains of
   the memory the server lets its running containers reserve, after
-  the `memory` of every running container's request. `overlay_disk`
-  is what remains of the one overlay quantity the server lets be
-  reserved, after the `disk` of every running container's request,
-  the `overlay_disk` of every mount of an `ephemeral` volume in a
-  running container, and the `overlay_disk` of every FUSE serve of
-  an `ephemeral` volume that is open. The server reckons neither
+  the `memory` of every running container's request. `container_disk`
+  is what remains of the overlay disk the server lets its running
+  containers reserve, after the `disk` of every running container's
+  request and the `overlay_disk` of every mount of an `ephemeral`
+  volume in a running container. `fuse_disk` is what remains of the
+  quantity the server lets FUSE serves of `ephemeral` volumes
+  reserve, after the `overlay_disk` of every such serve that is open.
+  The two quantities are distinct: a reservation from one takes
+  nothing from the other. The server reckons none of the three
   against the memory or the disk free on its host.

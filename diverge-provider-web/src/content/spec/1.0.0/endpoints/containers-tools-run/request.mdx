@@ -44,8 +44,8 @@ as JSON, read as [Notation](/endpoints/#notation) provides.
   `ephemeral` and the mount does not carry it.
 - **The reservation.** The server sets aside, for the life of the
   container, `disk` and the `overlay_disk` of every mount, out of
-  the one quantity that [capacity](/endpoints/capacity/) reports as
-  `overlay_disk`. Where that quantity does not cover their sum, the
+  the quantity that [capacity](/endpoints/capacity/) reports as
+  `container_disk`. Where that quantity does not cover their sum, the
   server refuses the run with an error and sets nothing aside. A
   request that names one volume at several paths states one
   `overlay_disk` for each mount, and each is set aside.

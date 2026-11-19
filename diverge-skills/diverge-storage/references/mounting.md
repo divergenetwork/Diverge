@@ -167,8 +167,9 @@ start is not answered `delivered`.
 | A persistent volume is asked to be FUSE-served while served or mounted by anyone | Same; or switch that mount to a volume mount |
 | The provider does not mount, or does not FUSE serve, volumes of that mode | Use another mode or another provider |
 | The volume no longer exists, or the provider is not connected | Recreate it under the same name, or reconnect the provider |
-| An ephemeral FUSE serve's `overlay_disk` cannot be set aside | Ask for fewer bytes, or free overlay disk on the provider |
-| A start fails saying the provider's overlay disk has no room | The container's `disk` plus its ephemeral mounts' `overlay_disk` is more than the provider has left. Ask for less, stop something, or raise the provider's `podman overlay_disk` |
+| An ephemeral FUSE serve's `overlay_disk` cannot be set aside | Ask for fewer bytes, end another ephemeral serve, or raise the provider's `volumes ephemeral_fuse` capacity |
+| The provider does not FUSE serve ephemeral volumes at all | Its `volumes ephemeral_fuse` is not set. Set a path and a capacity there, or use another mode |
+| A start fails saying the provider's overlay disk has no room | The container's `disk` plus its ephemeral mounts' `overlay_disk` is more than the provider has left. Ask for less, stop something, or raise the provider's `containers container_overlay_disk` |
 
 ## A worked example: a workspace volume and a shared read-only dataset
 

@@ -98,9 +98,9 @@ does not announce itself there), `accept_daemons`, `messageable`, `enabled`, `de
   `mount_and_fuse_serve`), and `messages` (present only when the provider relays direct messages). A member
   absent is the capability absent. The daemon asks a provider nothing its capabilities exclude.
 - `capacity` is the provider's latest answer, polled every ten seconds (fixed; not configurable):
-  `volumes_disk`, `images_disk`, `container_memory`, `overlay_disk`, in bytes. `overlay_disk` is the one
-  room a container's `disk`, an ephemeral volume mount's `overlay_disk` and an ephemeral FUSE serve's
-  `overlay_disk` are all reserved from. Absent unless
+  `volumes_disk`, `images_disk`, `container_memory`, `container_disk`, `fuse_disk`, in bytes.
+  `container_disk` is the room a container's `disk` and its ephemeral volume mounts' `overlay_disk` are
+  reserved from. `fuse_disk` is a separate room, for an ephemeral FUSE serve's `overlay_disk`. Absent unless
   `connected`.
 - List filter members: `identities`, `connected`, `enabled`, plus `count`. `providers list --watch` keeps
   the list open: a status or capacity change arrives as `{"changed":{…}}`.
