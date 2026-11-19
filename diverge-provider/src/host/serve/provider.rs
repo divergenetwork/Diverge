@@ -208,9 +208,12 @@ impl Provider {
         // Said before the handshake, so that one that never ends is a
         // line with nothing after it, and not no line at all.
         self.log.say(format!("{address} dialled in"));
-        match handshake::accept(connection, &self.authenticator.admitting(), address).await {
-            Ok(Handshook { connection, peer }) => self.held(connection, peer, address, None).await,
-            Err(error) => self.log.say(format!("{address} dialled in, and its handshake was not taken: {error}")),
+        // A peer that connects and says nothing does not hold its
+        // socket for ever: the handshake has a time.
+        match tokio::time::timeout(super::dial::HANDSHAKE, handshake::accept(connection, &self.authenticator.admitting(), address)).await {
+            Ok(Ok(Handshook { connection, peer })) => self.held(connection, peer, address, None).await,
+            Ok(Err(error)) => self.log.say(format!("{address} dialled in, and its handshake was not taken: {error}")),
+            Err(_) => self.log.say(format!("{address} dialled in, and its handshake did not finish within {} seconds", super::dial::HANDSHAKE.as_secs())),
         }
     }
 

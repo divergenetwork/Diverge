@@ -6,7 +6,13 @@ use std::sync::Arc;
 use diverge_sdk::wire::connection::Connection;
 use diverge_sdk::wire::handshake::{self, Handshook};
 use tokio::net::TcpStream;
-use tokio::time::{Duration, sleep};
+use tokio::time::{Duration, sleep, timeout};
+
+/// How long a dial waits for the peer's address to answer.
+const CONNECT: Duration = Duration::from_secs(20);
+
+/// How long a handshake may take, dialled or accepted.
+pub(super) const HANDSHAKE: Duration = Duration::from_secs(30);
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use super::Provider;
@@ -28,15 +34,21 @@ use crate::protocol::keepalive;
 pub async fn dial(provider: Arc<Provider>, client: Outgoing) {
     let url = if client.address.contains("://") { client.address.clone() } else { format!("ws://{}/", client.address) };
     loop {
-        match keepalive::connect(url.as_str()).await {
-            Ok(socket) => {
+        // Neither the connect nor the handshake waits for ever: a peer
+        // that takes the socket and says nothing is a dial that
+        // failed, and the next is made. A connection held is never
+        // timed.
+        match timeout(CONNECT, keepalive::connect(url.as_str())).await {
+            Ok(Ok(socket)) => {
                 let address = peer_ip(&socket);
-                match handshake::connect(Connection::Outgoing(socket), &provider.authenticator.dialling(&client.identity), address).await {
-                    Ok(Handshook { connection, peer }) => provider.held(connection, peer, address, Some(client.address.clone())).await,
-                    Err(error) => provider.log.say(format!("{address} dialled at {}, and its handshake was not taken: {error}", client.address)),
+                match timeout(HANDSHAKE, handshake::connect(Connection::Outgoing(socket), &provider.authenticator.dialling(&client.identity), address)).await {
+                    Ok(Ok(Handshook { connection, peer })) => provider.held(connection, peer, address, Some(client.address.clone())).await,
+                    Ok(Err(error)) => provider.log.say(format!("{address} dialled at {}, and its handshake was not taken: {error}", client.address)),
+                    Err(_) => provider.log.say(format!("{address} dialled at {}, and its handshake did not finish within {} seconds", client.address, HANDSHAKE.as_secs())),
                 }
             }
-            Err(error) => provider.log.say(format!("{} could not be dialled: {error}", client.address)),
+            Ok(Err(error)) => provider.log.say(format!("{} could not be dialled: {error}", client.address)),
+            Err(_) => provider.log.say(format!("{} did not answer within {} seconds", client.address, CONNECT.as_secs())),
         }
         // Five seconds: long enough that a peer that is down is not
         // hammered, short enough that one that is back is served soon.
