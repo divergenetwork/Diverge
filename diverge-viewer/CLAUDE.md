@@ -10,7 +10,7 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   `data-input` on the root says whether the keys or the mouse are in use, so hover marks nothing while the keys do and
   focus looks as hover does (no ring, no box round a row). The one menu is the outliner (`outliner/outliner.ts`), HTML
   over the canvas: a card that floats where its header is dragged, snaps to edges, folds to its header, to the kinds'
-  shapes (upright at a side edge, lying along the top or bottom) or to one button, resizes by its corner's grip, and docks as a rail down the left (`--outliner-left` on the root, which the sheet starts beside) — Arrange,
+  shapes (upright at a side edge, lying along the top or bottom) or to one button, resizes by its corner's grip, and docks as a rail down the left (`--outliner-left` on the root, which the sheet starts beside) —
   fold and dock in its header, line types and kinds as show/hide chips (`LINES`, `KINDS`), then every node by kind,
   a row's press (`FOCUS`) flying the board's camera to it and opening its sheet, its hover or focus (`HOVER`) focusing
   it; the board tells it the nodes (`OUTLINE`) and the open one (`SELECTED`) through the registry, and it tells the
@@ -61,7 +61,7 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   given the route, with its own follow, nodes, camera and sheet, and `ui` brought back to the top. Switching sleeps the
   board shown (its sheet closes; its lists stay open), sets `ACTIVE` and wakes the target; ✕ stops and removes the
   board. Only the `ACTIVE` board writes `STATUS`, `OUTLINE` and `SELECTED` (`say` keeps the last of each and writes it
-  again on wake) and takes `ARRANGE`, `FOCUS`, `HOVER` and pulses; `KINDS` and `LINES` are shared, set by the first;
+  again on wake) and takes `FOCUS`, `HOVER` and pulses; `KINDS` and `LINES` are shared, set by the first;
   only Home launches `ui`; the backdrop follows the `ACTIVE` board's camera. **The route is on every request**: each
   frame is spread with `relayed(route)` (`lib/wire.ts`) — `{}` for `[]`, so Home's frames carry no `relay`, else
   `{ relay: route }` — in `world/live.ts`, `world/names.ts` and every sheet tab (`Opened.route`); our daemon takes the

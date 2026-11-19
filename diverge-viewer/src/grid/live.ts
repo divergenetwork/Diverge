@@ -63,7 +63,7 @@ function along(g: Phaser.GameObjects.Graphics, path: Offset[], x: number, y: num
  *    container is not deployed, an account not connected, a volume
  *    mounted into no deployed container. Faint is a still shape in the
  *    strong edge, not a fade.
- * 4. The trace follows its node as it is dragged or glides, hides with
+ * 4. The trace follows its node as it is dragged, hides with
  *    it, and dims with it while another node is focused.
  */
 export function makeLit(scene: Phaser.Scene, nodes: Nodes): Lit {

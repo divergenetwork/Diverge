@@ -5,7 +5,6 @@
 // along a route.
 
 import * as Phaser from "phaser";
-import { arrange } from "../grid/arrange";
 import { type Edge, edges } from "../grid/edges";
 import { type Links, makeLinks } from "../grid/links";
 import { type Here, makeHere } from "../grid/here";
@@ -13,7 +12,6 @@ import { type Lit, makeLit } from "../grid/live";
 import { makeNodes, type Node, type Nodes, setAt, setDim, setShown, where } from "../grid/nodes";
 import { place, placeOne } from "../grid/place";
 import { type Pulses, pulses } from "../grid/pulses";
-import { REACH } from "../grid/textures";
 import type { Route } from "../lib/wire";
 import { Sheet } from "../sheet/sheet";
 import { follow } from "../world/live";
@@ -22,10 +20,8 @@ import { mountsOf } from "../world/mounts";
 import type { Snapshot } from "../world/snapshot";
 import type { Watching } from "../world/watch";
 import { controls } from "./camera";
-import { ACTIVE, ARRANGE, type Bounds, type Counts, FOCUS, HOVER, KINDS, type Kinds, LINES, type Lines, OPEN, type Opening, OUTLINE, OUTLINER, type Outline, SELECTED, STATUS, type Status } from "./status";
+import { ACTIVE, type Bounds, type Counts, FOCUS, HOVER, KINDS, type Kinds, LINES, type Lines, OPEN, type Opening, OUTLINE, OUTLINER, type Outline, SELECTED, STATUS, type Status } from "./status";
 
-/** How long nodes take to glide to their arranged places, in milliseconds. */
-const GLIDE = 700;
 
 /** How long the view takes to bring a node the outliner chose to its middle, in milliseconds. */
 const PAN = 400;
@@ -60,10 +56,8 @@ const PAN = 400;
  * 5. Clicking any node opens its sheet — its tabs, those it has, or
  *    none: a provider's or a daemon's is its header alone — and puts the gold corners round it (`makeHere`); clicking another swaps the sheet and the corners;
  *    clicking the same one again, or the sheet's ✕, closes it.
- * 6. Arrange (`ARRANGE`) gives every node shown a new place by the
- *    lines shown (`arrange`), and the nodes glide there over `GLIDE`, their
- *    lines and corners following. It does nothing while a node is
- *    dragged, or while nodes are still gliding.
+ * 6. A node stands where it was put, and is moved by dragging it and
+ *    by nothing else: the board never arranges itself.
  * 7. The hovered node, else the one whose sheet is open, is focused:
  *    its lines stay bright, its made-by lines show — who made it and
  *    what it made — and the rest are faint (`Links.focus`), and every
@@ -82,7 +76,7 @@ const PAN = 400;
  * 10. Only the board shown (`ACTIVE`) speaks to the outliner: what it
  *    would write of `STATUS`, `OUTLINE` and `SELECTED` is kept (`say`)
  *    and written only while it is shown, and all of it again when it
- *    wakes; `ARRANGE`, `FOCUS`, `HOVER` and pulses are its alone. Which
+ *    wakes; `FOCUS`, `HOVER` and pulses are its alone. Which
  *    lines and kinds are shown (`LINES`, `KINDS`) is every board's
  *    alike, set by the first. Put to sleep, it closes its sheet; its
  *    lists stay open and its world current. Shut down — its tab closed —
@@ -100,7 +94,6 @@ export class Board extends Phaser.Scene {
   private nodes: Nodes | null = null;
   private links: Links | null = null;
   private edges: Edge[] = [];
-  private gliding = false;
   private images = new Map<string, string>();
   private following: Watching | null = null;
   private lit: Lit | null = null;
@@ -139,8 +132,6 @@ export class Board extends Phaser.Scene {
     const shown = (_parent: unknown, value: Kinds) => this.showKinds(value);
     this.registry.events.on(`changedata-${KINDS}`, shown);
     // Rule 10: the outliner's words are the shown board's alone.
-    const arranged = () => this.awake() && this.arrange();
-    this.game.events.on(ARRANGE, arranged);
     const focus = (key: string) => this.awake() && this.focus(key);
     this.game.events.on(FOCUS, focus);
     const hoverKey = (key: string | null) => this.awake() && this.hoverKey(key);
@@ -160,7 +151,6 @@ export class Board extends Phaser.Scene {
     };
     this.events.on("wake", woke);
     this.events.once("shutdown", () => {
-      this.game.events.off(ARRANGE, arranged);
       this.game.events.off(FOCUS, focus);
       this.game.events.off(HOVER, hoverKey);
       this.events.off("sleep", slept);
@@ -352,34 +342,6 @@ export class Board extends Phaser.Scene {
     if (hovered && !hovered.image.visible) this.hovered = null;
     this.links?.redraw();
     this.refocus();
-  }
-
-  /** Rule 6. */
-  private arrange() {
-    const nodes = this.nodes;
-    if (!nodes || nodes.dragging() || this.gliding) return;
-    const bodies = [...nodes.byKey.values()].filter((node) => node.image.visible).map((node) => ({ key: node.entity.key, at: where(node), r: Math.max(REACH[node.entity.kind] + 6, node.label.width / 2 + 4) }));
-    const to = arrange(bodies, this.edges, this.registry.get(LINES) as Lines);
-    const from = new Map(bodies.map((body) => [body.key, body.at]));
-    this.gliding = true;
-    this.tweens.addCounter({
-      from: 0,
-      to: 1,
-      duration: GLIDE,
-      ease: "Cubic.easeInOut",
-      onUpdate: (tween) => {
-        const t = tween.getValue() ?? 0;
-        for (const [key, p] of to) {
-          const node = nodes.byKey.get(key);
-          const s = from.get(key);
-          if (node && s) setAt(node, s.x + (p.x - s.x) * t, s.y + (p.y - s.y) * t);
-        }
-        this.moved();
-      },
-      onComplete: () => {
-        this.gliding = false;
-      },
-    });
   }
 
   /** Rule 7: the pointer came onto a node, so it is focused. */

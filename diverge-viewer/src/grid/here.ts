@@ -22,7 +22,7 @@ export type Here = { show(kind: Kind, x: number, y: number): void; move(x: numbe
  * 1. Gold is where you are, and nothing else: four corner marks, square,
  *    `WIDTH` wide with `ARM`-long arms, standing `PAST` beyond the shape's
  *    reach so the trace of a working node runs inside them.
- * 2. They follow their node as it is dragged or glides, and go when its
+ * 2. They follow their node as it is dragged, and go when its
  *    sheet closes.
  */
 export function makeHere(scene: Phaser.Scene): Here {

@@ -6,7 +6,7 @@ import type * as Phaser from "phaser";
 import { type EdgeType, TYPES } from "../grid/edges";
 import { FAMILY } from "../grid/palette";
 import { KIND_ORDER } from "../scenes/kinds";
-import { ARRANGE, type Bounds, FOCUS, HOVER, KINDS, type Kinds, LINES, type Lines, OUTLINE, OUTLINER, type Outline, SELECTED, STATUS, type Status } from "../scenes/status";
+import { type Bounds, FOCUS, HOVER, KINDS, type Kinds, LINES, type Lines, OUTLINE, OUTLINER, type Outline, SELECTED, STATUS, type Status } from "../scenes/status";
 import { TABS } from "../tabs/tabs";
 import type { Kind } from "../world/model";
 import { glyph, kindIcon, lineIcon } from "./icons";
@@ -96,8 +96,7 @@ type Edge = "left" | "right" | "top" | "bottom";
  *    keys as the rest of the page does. A press or a wheel on it never
  *    reaches the board; its bounds are told the board all the same
  *    (`OUTLINER`), with whether it is held.
- * 2. Open, it is a header — Outliner, how many nodes, Arrange (`ARRANGE`),
- *    fold, dock — then what the world has to say (`STATUS`), quietly;
+ * 2. Open, it is a header — Outliner, how many nodes, fold, dock — then what the world has to say (`STATUS`), quietly;
  *    then what to show on the board, as chips: each type of line with its
  *    sample and count (`LINES`), each kind by its shape (`KINDS`), pressed
  *    while shown; then every node shown, by kind (`GROUPS`), every kind
@@ -253,11 +252,9 @@ export function outliner(game: Phaser.Game): void {
       count.textContent = String(outline.length);
       head.append(title, count);
       if (form === "open") {
-        const arrange = button("icon", "Arrange", "btn:arrange", glyph("arrange"));
-        arrange.addEventListener("click", () => game.events.emit(ARRANGE));
         const fold = button("icon", "Fold", "btn:fold", glyph("fold"));
         fold.addEventListener("click", () => setForm(docked ? "shapes" : "header"));
-        head.append(arrange, fold);
+        head.append(fold);
       } else {
         const unfold = button("icon", "Unfold", "btn:unfold", glyph("unfold"));
         unfold.addEventListener("click", () => setForm("open"));

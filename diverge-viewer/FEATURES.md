@@ -16,7 +16,7 @@ is named, so the two can be checked against each other.
   along a line as each event happens.
 - An outliner lists every node by kind — clicking one flies the view to
   it and opens its sheet — shows and hides each kind and each type of
-  line, with counts, and can arrange the board. It floats where you drag
+  line, with counts. It floats where you drag
   it, folds small, and docks down the window's left.
 - Clicking a node opens a sheet along the bottom: its **logs**, its
   **filesystem**, a **console** into its container, and — for an agent
@@ -218,8 +218,8 @@ on it, or the wheel over it, does not move the view.
 
 ### Header
 
-- **Outliner**, how many nodes the board holds, then three buttons:
-  **Arrange** (see Arrange below), **fold**, and **dock** (or **float**,
+- **Outliner**, how many nodes the board holds, then two buttons:
+  **fold** and **dock** (or **float**,
   when docked). Folded to its header, its buttons are **unfold**, **fold
   to shapes**, **fold to a button** and **dock**.
 - Under it, quietly, only when there is something to say: "waiting for
@@ -302,20 +302,6 @@ The keys are not printed.
 | `9` | calls |
 | `0` | attachments |
 | `-` | creators |
-| `A` | arrange |
-
-### Arrange
-
-- **Arrange**, or the `A` key, lays out every shown node by the shown
-  lines (`grid/arrange.ts`).
-- The nodes glide to their new places over about 0.7 s.
-- **The goals:** fewer crossings, no line through a node it does not
-  belong to, no overlapping nodes or names, no lines bunched at one
-  node, and a board that stays compact.
-- **Each press starts from where the nodes are now**, so pressing again
-  can give a different, often better, layout.
-- It does nothing while a node is being dragged or nodes are still
-  gliding.
 
 ---
 

@@ -5,7 +5,6 @@ import * as Phaser from "phaser";
 import { TYPES } from "../grid/edges";
 import { KIND_ORDER } from "./kinds";
 import { flipKind, flipLine } from "../outliner/outliner";
-import { ARRANGE } from "./status";
 
 /**
  * The keys that show and hide each kind, in `KIND_ORDER`, then each type
@@ -20,8 +19,7 @@ const KEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "N
  * The rules:
  *
  * 1. Each of `KEYS` shows or hides its kind or type of line, as the
- *    outliner's chips do; the `A` key arranges, as its Arrange does. The
- *    keys are not printed.
+ *    outliner's chips do. The keys are not printed.
  */
 export class Ui extends Phaser.Scene {
   constructor() {
@@ -34,6 +32,5 @@ export class Ui extends Phaser.Scene {
     if (!keyboard) return;
     KIND_ORDER.forEach(([kind], i) => keyboard.on(`keydown-${KEYS[i]}`, () => flipKind(this.registry, kind)));
     TYPES.forEach((type, i) => keyboard.on(`keydown-${KEYS[KIND_ORDER.length + i]}`, () => flipLine(this.registry, type)));
-    keyboard.on("keydown-A", () => this.game.events.emit(ARRANGE));
   }
 }

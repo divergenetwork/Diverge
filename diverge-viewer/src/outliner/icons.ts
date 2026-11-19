@@ -35,7 +35,6 @@ export const lineIcon = (type: EdgeType) => `<svg class="ico" width="24" height=
 
 /** The buttons' glyphs, on a 24 grid. */
 const GLYPH = {
-  arrange: ["M4 4h6v6h-6z", "M14 4h6v6h-6z", "M4 14h6v6h-6z", "M14 14h6v6h-6z"],
   fold: ["M6 15l6 -6l6 6"],
   unfold: ["M6 9l6 6l6 -6"],
   shapes: ["M12 3 L20 8 L20 16 L12 21 L4 16 L4 8 Z"],

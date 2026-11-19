@@ -29,9 +29,6 @@ export const KINDS = "kinds";
 /** Whether each kind of node is shown. */
 export type Kinds = Record<Kind, boolean>;
 
-/** The game event the UI sends when the Arrange button is pressed. */
-export const ARRANGE = "arrange";
-
 /** The registry key of the `Outline`: every node on the board, as the outliner lists it. */
 export const OUTLINE = "outline";
 
@@ -56,7 +53,7 @@ export type Bounds = { x: number; y: number; width: number; height: number; held
 /**
  * The registry key of the scene key of the board shown — its tab the
  * one lit — which alone writes `STATUS`, `OUTLINE` and `SELECTED` and
- * takes `ARRANGE`, `FOCUS` and `HOVER`.
+ * takes `FOCUS` and `HOVER`.
  */
 export const ACTIVE = "active";
 
