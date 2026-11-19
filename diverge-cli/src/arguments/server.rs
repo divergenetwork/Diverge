@@ -1,6 +1,6 @@
 //! What `diverge provider` takes.
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 
 use super::{Identity, Lifecycle, Port};
 
@@ -198,8 +198,8 @@ pub enum Volumes {
     Disable,
     /// List, add or delete the volumes the provider provides as they
     /// are — each a directory on the host, listed to clients as
-    /// `provided`, which no client edits or deletes.
-    #[command(subcommand)]
+    /// `provided`, which no client edits or deletes — or, after a
+    /// volume's index, read or write who that volume is listed to.
     Fixed(Fixed),
     /// List, add, edit or delete the places a volume may be created
     /// in. Each is a folder that
@@ -306,19 +306,40 @@ pub enum Stores {
     },
 }
 
-/// What is done to the provider's `volumes.fixed`: see
-/// [`provider`](crate::cli::provider).
+/// `diverge provider volumes fixed …`: the list, or one fixed volume
+/// of it. With no index, the list is worked on — `get`, `add`,
+/// `delete`. With a volume's index first, one setting of that volume
+/// is — `diverge provider volumes fixed 0 authorized get`. The shape
+/// of [`Daemons`](super::Daemons), the CLI's other list whose items
+/// hold a list.
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct Fixed {
+    /// The index of the fixed volume whose setting is read or
+    /// written, as `fixed get` prints it: `0` is the first. Left out
+    /// for `get`, `add` and `delete`, which work on the list.
+    #[arg(value_name = "INDEX")]
+    pub index: Option<usize>,
+    /// What to do.
+    #[command(subcommand)]
+    pub command: FixedCommand,
+}
+
+/// What is done to the provider's `volumes.fixed`, or to one of
+/// them: see [`provider`](crate::cli::provider).
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
-pub enum Fixed {
-    /// Print the fixed volumes, one line each, in the order they
-    /// were added: `{"index":0,"name":"…","path":"…","bytes":…,"mode":"…"}`,
-    /// with `authorize_hook` where it has one. Nothing is printed
-    /// where there is none, or where the section is absent. The index
-    /// is what `delete` takes.
+pub enum FixedCommand {
+    /// The list: print the fixed volumes, one line each, in the order
+    /// they were added:
+    /// `{"index":0,"name":"…","path":"…","bytes":…,"mode":"…","authorized":…}`,
+    /// `authorized` the string `all` or the list of identities.
+    /// Nothing is printed where there is none, or where the section
+    /// is absent. The index is what a setting of one and `delete`
+    /// take.
     Get,
-    /// Add a fixed volume, after the last. Refused where the section
-    /// is absent — enable it first — where the name is listed
-    /// already, and while the provider is running on the root.
+    /// The list: add a fixed volume, after the last, listed to every
+    /// identity. Refused where the section is absent — enable it
+    /// first — where the name is listed already, and while the
+    /// provider is running on the root.
     Add {
         /// The name clients list and mount it under.
         #[arg(long)]
@@ -335,17 +356,63 @@ pub enum Fixed {
         /// `read_only`.
         #[arg(long, value_parser = mode)]
         mode: diverge_sdk::provider::endpoints::volumes::Mode,
-        /// The hook that says which identities are listed it: a folder
-        /// under the provider's `hooks/`. Absent, every identity is.
-        #[arg(long)]
-        authorize_hook: Option<String>,
     },
-    /// Delete the fixed volume at an index: the entry, never the
-    /// directory. Refused where the section is absent and while the
-    /// provider is running on the root. Every one after it moves one
-    /// index down.
+    /// The list: delete the fixed volume at an index: the entry,
+    /// never the directory. Refused where the section is absent and
+    /// while the provider is running on the root. Every one after it
+    /// moves one index down.
     Delete {
         /// The volume's index, as `get` prints it: `0` is the first.
+        #[arg(value_name = "INDEX")]
+        index: usize,
+    },
+    /// One fixed volume: read who it is listed to, list it to every
+    /// identity, or add or delete one of the identities it is listed
+    /// to, its `authorized`.
+    #[command(subcommand)]
+    Authorized(Authorized),
+}
+
+/// What is done to one fixed volume's `authorized`: see
+/// [`provider`](crate::cli::provider). It is the word `all`, or a
+/// list of identities, worked on as every list of identities is.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Authorized {
+    /// Print who the volume is listed to: the one line `"all"`, or
+    /// the identities, one line each, in the order they were added:
+    /// `{"index":0,"issuer":"…","subject":"…"}`. A list with nobody in
+    /// it prints nothing. The index is what `delete` takes.
+    Get,
+    /// List the volume to every identity: `all`. Whatever identities
+    /// were named are forgotten. Refused while the provider is
+    /// running on the root: stop it first.
+    Set {
+        /// `all`: the one value there is to set. An identity is
+        /// added, and never set.
+        #[arg(value_name = "all", value_parser = ["all"])]
+        value: String,
+    },
+    /// Add an identity, after the last. A volume listed to `all` is
+    /// from then on listed to that identity alone. Refused while the
+    /// provider is running on the root, and where the identity is
+    /// listed already.
+    Add {
+        /// The identity's issuer, exactly as its discovery document
+        /// names it.
+        #[arg(long)]
+        issuer: String,
+        /// The identity's subject: the `sub` of its tokens.
+        #[arg(long)]
+        subject: String,
+    },
+    /// Delete the identity at an index. Deleting the last leaves the
+    /// list empty, which lists the volume to nobody: `set all` is
+    /// what lists it to everybody. Refused where the volume is listed
+    /// to `all`, there being no list, and while the provider is
+    /// running on the root. Every identity after it moves one index
+    /// down.
+    Delete {
+        /// The identity's index, as `get` prints it: `0` is the first.
         #[arg(value_name = "INDEX")]
         index: usize,
     },

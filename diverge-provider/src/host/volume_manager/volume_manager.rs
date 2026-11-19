@@ -2,7 +2,7 @@
 //! has asked.
 
 use diverge_sdk::shared;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,8 +16,7 @@ use tokio::fs;
 use diverge_sdk::provider::endpoints::volumes::Mode;
 
 use super::{Error, Identities, Identity, ModeFile, Place, Reservation, Scratch, Volume, image, mode, name, settle};
-use crate::config::volumes::{Fixed, HookInput, HookOutput, Volumes};
-use crate::host::hook;
+use crate::config::volumes::{Fixed, Volumes};
 
 /// The provider's volumes: the directories it offers every identity,
 /// and everything done to them, over the stores it may create in and
@@ -30,7 +29,7 @@ use crate::host::hook;
 /// read again when it is named after. Each identity is its own entry
 /// with its own lock, so two identities never wait on each other. The
 /// fixed volumes are the configuration's and are answered on each
-/// call, through their hook where they have one.
+/// call, to the identities each is listed to.
 #[derive(Debug)]
 pub struct VolumeManager {
     /// The stores, and the room left in each: shared with every
@@ -42,9 +41,6 @@ pub struct VolumeManager {
     /// The volumes that exist already. Empty is a provider that
     /// holds none.
     fixed: Vec<Fixed>,
-    /// The `hooks/` directory of the provider, where a fixed volume's
-    /// `authorize_hook` is found by name.
-    hooks_dir: PathBuf,
     /// When this provider started, in seconds since the Unix epoch:
     /// a fixed volume's creation time where its filesystem records
     /// none.
@@ -92,16 +88,14 @@ impl Drop for Named<'_> {
 
 impl VolumeManager {
     /// A manager over the `volumes` section, absent or present, with
-    /// the provider's `hooks/` directory, the scratch, and whether a
-    /// stored volume can be resized here.
-    pub fn new(volumes: Option<Volumes>, hooks_dir: PathBuf, scratch: Scratch, resizable: bool) -> Self {
+    /// the scratch, and whether a stored volume can be resized here.
+    pub fn new(volumes: Option<Volumes>, scratch: Scratch, resizable: bool) -> Self {
         let volumes = volumes.unwrap_or_default();
         VolumeManager {
             resizable,
             reservation: Arc::new(Reservation::new(volumes.stores)),
             scratch: Arc::new(scratch),
             fixed: volumes.fixed,
-            hooks_dir,
             started: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map(|elapsed| elapsed.as_secs())
@@ -135,22 +129,12 @@ impl VolumeManager {
         self.fixed.iter().find(|fixed| fixed.name == name)
     }
 
-    /// Whether `client_identity` may see the fixed volume: what its
-    /// hook answers, run now, or `true` where it has none. A hook
-    /// that does not answer — a manifest missing, a non-zero exit,
-    /// an output that is not the expected one — is `false`, as the
-    /// hook's output documents.
-    async fn authorized(&self, client_identity: &shared::Identity, fixed: &Fixed) -> bool {
-        let Some(hook) = &fixed.authorize_hook else {
-            return true;
-        };
-        let input = HookInput {
-            identity: client_identity.clone(),
-            volume: fixed.name.clone(),
-        };
-        hook::run::<HookInput, HookOutput>(&self.hooks_dir, hook, &input)
-            .await
-            .is_ok_and(|output| output.authorized)
+    /// Whether `client_identity` may see the fixed volume: what the
+    /// volume's `authorized` says — every identity, or the ones it
+    /// names. The configuration's word alone: nothing is run, and
+    /// nothing is read.
+    fn authorized(&self, client_identity: &shared::Identity, fixed: &Fixed) -> bool {
+        fixed.authorized.admits(client_identity)
     }
 
     /// The fixed volume as a [`Volume`], in the mode the configuration
@@ -180,18 +164,13 @@ impl VolumeManager {
         Ok(listed.into_iter().flatten().collect())
     }
 
-    /// One fixed volume, listed if the identity may see it: the hook
-    /// and the filesystem asked at once.
+    /// One fixed volume, listed if the identity may see it: one it
+    /// may not see is not looked at.
     async fn fixed_one(&self, client_identity: &shared::Identity, fixed: &Fixed) -> Result<Option<response::Volume>, Error> {
-        let (authorized, listing) = future::join(
-            self.authorized(client_identity, fixed),
-            self.fixed_volume(fixed).listing(),
-        )
-        .await;
-        if !authorized {
+        if !self.authorized(client_identity, fixed) {
             return Ok(None);
         }
-        Ok(Some(listing?))
+        Ok(Some(self.fixed_volume(fixed).listing().await?))
     }
 
     /// Every stored volume of the identity, listed — each read beside
@@ -222,10 +201,10 @@ impl volume_manager::VolumeManager for VolumeManager {
 
     /// A fixed volume by that name, if the identity may see it, else
     /// the identity's stored volume by it. A run and a stat of a fixed
-    /// volume both pass through its hook here.
+    /// volume both pass through its `authorized` here.
     async fn get(&self, client_identity: &shared::Identity, name: &str) -> Result<Option<Volume>, Error> {
         if let Some(fixed) = self.fixed_named(name) {
-            if !self.authorized(client_identity, fixed).await {
+            if !self.authorized(client_identity, fixed) {
                 return Ok(None);
             }
             return Ok(Some(self.fixed_volume(fixed)));

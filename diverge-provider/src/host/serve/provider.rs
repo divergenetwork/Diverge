@@ -89,7 +89,7 @@ pub struct Provider {
 impl Provider {
     /// Everything made, in the order its parts depend on each other:
     /// the provider's disk readied — `dir`, `<root>/provider/`, with
-    /// `hooks/` and `run/`, podman's `storage_path` and every store
+    /// `run/`, podman's `storage_path` and every store
     /// made, every fixed volume found to be a directory, every store's
     /// capacity and every fixed name checked; the Store, where the configuration names one — else
     /// the deployer's own under `run/`, with no room — made and its
@@ -116,7 +116,6 @@ impl Provider {
         let capabilities = Arc::new(capabilities(&config));
         let podman_in_use = config.podman_in_use();
         let registries = registries(&config).to_vec();
-        let hooks_dir = dir.join("hooks");
         let mut shares = config.volumes.as_ref().map(Volumes::paths).unwrap_or_default();
         let store = config.images.as_ref().map(|images| {
             shares.push(images.path.clone());
@@ -155,7 +154,7 @@ impl Provider {
         let scratch = Scratch::new(ephemeral_fuse.map(|ephemeral_fuse| ephemeral_fuse.path), Arc::clone(&fuse_disk));
         scratch.sweep().await.map_err(Error::Scratch)?;
         let resizable = cfg!(target_os = "linux") || podman_in_use;
-        let volumes = Arc::new(VolumeManager::new(config.volumes, hooks_dir.clone(), scratch, resizable));
+        let volumes = Arc::new(VolumeManager::new(config.volumes, scratch, resizable));
         // Podman, and everything that is there for it — the registry
         // it pulls a caller's image from, and the deployer — only on
         // a provider that uses it: see `Config::podman_in_use`. One
@@ -271,8 +270,8 @@ impl Provider {
     }
 }
 
-/// The provider's disk, as its block names it: `dir` with `hooks/`
-/// and `run/` inside it, podman's `storage_path` — on a provider
+/// The provider's disk, as its block names it: `dir` with `run/`
+/// inside it, podman's `storage_path` — on a provider
 /// that uses podman, and on no other — and every store made if
 /// absent, the Store's directory made if absent and
 /// `run/builds/` swept; a fixed
@@ -283,7 +282,7 @@ impl Provider {
 /// fixed volume's, refused. What the file said is the SDK's to read; what it names
 /// here is the provider's to check.
 async fn ready(config: &Config, dir: &Path) -> Result<(), Error> {
-    let mut made = vec![dir.join("hooks"), dir.join("run")];
+    let mut made = vec![dir.join("run")];
     if config.podman_in_use() {
         made.push(config.podman.storage_path.clone());
     }

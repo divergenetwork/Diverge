@@ -24,7 +24,7 @@ pub struct Volumes {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stores: Vec<Store>,
     /// Volumes that exist before any client asks, offered in a
-    /// listing to every identity, or to those a hook vouches for;
+    /// listing to every identity, or to the ones each names;
     /// each is listed as `provided`, and is neither edited nor
     /// deleted by a client. Absent is empty, and an empty list is not
     /// written.

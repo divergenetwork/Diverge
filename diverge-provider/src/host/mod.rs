@@ -49,7 +49,6 @@ pub use limit::*;
 pub mod authenticator;
 pub mod capacity_reporter;
 pub mod container_deployer;
-pub mod hook;
 pub mod image_manager;
 pub mod image_registry;
 pub mod registry_client;

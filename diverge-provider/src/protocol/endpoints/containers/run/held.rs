@@ -85,9 +85,9 @@ impl<V: Volume + 'static> Held<V> {
     /// `capabilities` for that mode allow.
     ///
     /// Every distinct name is [`got`](VolumeManager::get) beside
-    /// every other — a lookup may run a provider's hook, a process,
-    /// and three of them one after another would be three processes'
-    /// latency end to end — and then each found volume is
+    /// every other — a lookup is the provider's to make, and three of
+    /// them one after another would be three lookups' latency end to
+    /// end — and then each found volume is
     /// [`mounted`](Volume::mount) in the order first named, one after
     /// another, since a hold is one atomic that answers at once and
     /// taking them in order is what lets a refusal give back exactly

@@ -21,9 +21,8 @@
 //!   fixed volume that must exist — the provider checks at its start:
 //!   this module reads the document, and nothing else.
 //!
-//! The provider keeps its state under `<root>/provider/`: `hooks/`,
-//! where every folder is a hook the document names by the folder's
-//! name alone; `run/`, its own scratch; and, where it uses podman,
+//! The provider keeps its state under `<root>/provider/`: `run/`, its
+//! own scratch; and, where it uses podman,
 //! podman's data under `podman.storage_path`, which is
 //! `<root>/provider/podman_data/` unless the document says otherwise.
 //!
@@ -58,7 +57,9 @@
 //!       path: /srv/datasets
 //!       bytes: 536870912000
 //!       mode: ephemeral
-//!       authorize_hook: datasets
+//!       authorized:
+//!         - issuer: https://auth.example.com
+//!           subject: acme
 //! images:
 //!   path: /mnt/images
 //!   capacity: 274877906944

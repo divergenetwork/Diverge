@@ -195,9 +195,13 @@ diverge provider volumes stores delete 0                    # DELETES the store 
 diverge provider volumes ephemeral_fuse get                 # {"path":"/mnt/fuse-scratch","capacity":34359738368}, or null
 diverge provider volumes ephemeral_fuse set --path /mnt/fuse-scratch --capacity 34359738368
 diverge provider volumes ephemeral_fuse delete              # the provider serves no ephemeral volume over FUSE
-diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/srv/datasets","bytes":…,"mode":"read_only"}
+diverge provider volumes fixed get                          # {"index":0,"name":"datasets","path":"/srv/datasets","bytes":…,"mode":"read_only","authorized":"all"}
 diverge provider volumes fixed add --name datasets --path /srv/datasets --bytes 107374182400 --mode read_only
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory it names
+diverge provider volumes fixed 0 authorized get             # "all", or {"index":0,"issuer":"…","subject":"…"} a line each
+diverge provider volumes fixed 0 authorized add --issuer https://identity.diverge.network --subject github.12345.daemon
+diverge provider volumes fixed 0 authorized delete 0        # by the identity's index in that volume's list
+diverge provider volumes fixed 0 authorized set all         # listed to everyone again
 ```
 
 - Two lists. `stores` are places new volumes are created. `fixed` are existing directories on the host that
@@ -215,8 +219,17 @@ diverge provider volumes fixed delete 0                     # removes the entry,
   drive, checked copy across drives, all or nothing, run again to resume). `stores delete` has no undo and no
   prompt.
 - `fixed add` takes `--name`, `--path` (an existing directory), `--bytes` (a declared size, not measured),
-  `--mode` (`persistent`, `ephemeral` or `read_only`) and optionally `--authorize-hook`. It refuses a name
-  already listed.
+  `--mode` (`persistent`, `ephemeral` or `read_only`). It refuses a name already listed. A new fixed volume
+  is listed to every identity.
+- **Who a fixed volume is listed to** is its `authorized`, worked on with the volume's index first:
+  `fixed 0 authorized …`. The index is the one `fixed get` prints.
+  - It is `all` (everyone who connects) or a list of identities.
+  - `authorized add` on a volume listed to `all` turns it into a list of that one identity: from then on
+    nobody else is shown the volume. Add every identity that should see it.
+  - `authorized delete` takes the identity's index from `authorized get`. Deleting the last leaves an empty
+    list, which shows the volume to nobody. It is refused on a volume listed to `all`.
+  - `authorized set all` opens it to everyone again and forgets the list.
+  - An identity not listed is not told the volume exists: mounting it by name fails as an unknown volume.
 
 ### images
 

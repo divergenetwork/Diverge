@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use diverge_sdk::provider::endpoints::volumes::Mode;
 use serde::{Deserialize, Serialize};
 
+use super::Authorized;
+
 /// A volume that exists already, under a name the provider chose.
 ///
 /// It is what the protocol calls a provided volume: a listing reports
@@ -46,45 +48,9 @@ pub struct Fixed {
     /// over FUSE, this provider having no scratch layer over a
     /// directory.
     pub mode: Mode,
-    /// The hook, by name, that says which identities the volume is
-    /// listed to: the folder `hooks/<name>/` under `<root>/provider/`,
-    /// run by the provider's hook convention — a `hook.yaml` naming
-    /// the command per platform, one JSON line in on stdin, one JSON
-    /// document out on exit `0`. It reads a [`HookInput`] and writes
-    /// a [`HookOutput`]. Absent means every identity.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorize_hook: Option<String>,
-}
-
-/// What the hook receives on stdin, as one line of JSON.
-///
-/// ```json
-/// {"identity": {"issuer": "https://auth.example.com", "subject": "acme"}, "volume": "datasets"}
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct HookInput {
-    /// The identity asking: the `(issuer, subject)` its connection's
-    /// handshake verified.
-    pub identity: diverge_sdk::shared::Identity,
-    /// The fixed volume's `name`, as the configuration wrote it.
-    pub volume: String,
-}
-
-/// What the hook writes to stdout, as one JSON document, on exit `0`.
-///
-/// Anything else — a non-zero exit, a stdout that is not this — is
-/// the hook not having answered, and the volume is not listed to that
-/// identity.
-///
-/// ```json
-/// {"authorized": true}
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct HookOutput {
-    /// `true`, the volume is listed to the identity and may be
-    /// mounted by it; `false`, it is not, and the identity is not
-    /// told that it exists.
-    pub authorized: bool,
+    /// Who the volume is listed to: `all`, every identity, or a list
+    /// of the identities it is. See [`Authorized`]. Absent, `all`,
+    /// and `all` is not written.
+    #[serde(default, skip_serializing_if = "Authorized::is_all")]
+    pub authorized: Authorized,
 }

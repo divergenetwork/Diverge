@@ -20,7 +20,7 @@ use diverge_sdk::shared;
 
 use super::Error;
 use super::setting::{add, delete, hold, identities, line, number, read, set, write};
-use crate::arguments::{Bytes, Containers, Fixed, Identity, EphemeralFuse, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
+use crate::arguments::{Authorized, Bytes, Containers, Fixed, FixedCommand, Identity, EphemeralFuse, ImageCacheDisk, Images, ImagesCapacity, ImagesPath, Incoming, Messages, Outgoing, Podman, Port, Rate, Registries, StoragePath, Stores, Volumes};
 use crate::document::{self, Which};
 use crate::lifecycle::Program;
 
@@ -273,44 +273,134 @@ pub async fn volumes(root: &Path, action: Volumes) -> Result<(), Error> {
             })
             .await
         }
-        Volumes::Fixed(Fixed::Get) => {
+        Volumes::Fixed(action) => fixed(root, action).await,
+        Volumes::Stores(action) => stores(root, action).await,
+    }
+}
+
+/// The usage a `fixed` command of the list is refused with where it
+/// was given a volume's index.
+const FIXED_LISTWISE: &str = "`get`, `add` and `delete` work on the list of fixed volumes and take no volume's index before them: `diverge provider volumes fixed get`";
+
+/// The usage a `fixed` command of one volume is refused with where it
+/// was given no index.
+const FIXED_ONE: &str = "name the fixed volume by its index first, as `diverge provider volumes fixed get` prints it: `diverge provider volumes fixed 0 authorized get`";
+
+/// `diverge provider volumes fixed …`: the fixed volumes,
+/// `volumes.fixed`, a list worked on as the CLI's daemons are — the
+/// list with no index, one volume's setting with that volume's index
+/// first. By these rules:
+///
+/// - `get` prints each fixed volume as one JSON line with its `index`
+///   first and its `authorized` last, the string `all` or the list of
+///   identities; an absent section is an empty list, and nothing is
+///   printed.
+/// - `add` puts the volume after the last, listed to every identity,
+///   and refuses a name that is listed already. `delete` takes the
+///   index, and removes the entry, never the directory.
+/// - `<INDEX> authorized get` prints the one line `"all"`, or the
+///   identities one line each with their own indexes.
+/// - `<INDEX> authorized set all` lists the volume to every identity.
+/// - `<INDEX> authorized add` puts the identity after the last and
+///   refuses one listed already. Added to a volume listed to `all`,
+///   it makes a list of that one identity: from then on the volume is
+///   listed to nobody else.
+/// - `<INDEX> authorized delete` takes the identity's index. The
+///   last deleted leaves an empty list, as every list here may be
+///   left, which lists the volume to nobody; a volume listed to `all`
+///   has no list, and the delete is refused.
+/// - A command of the list given an index, and a command of one
+///   volume given none, is refused, [`Error::Usage`]; an index the
+///   list does not reach is refused, [`Error::NoItem`].
+/// - Every write is refused where the section is absent,
+///   [`Error::Disabled`], and while the provider runs on the root.
+async fn fixed(root: &Path, action: Fixed) -> Result<(), Error> {
+    /// The volume at `at`, of a section that is there.
+    fn one(config: &mut Config, at: usize) -> Result<&mut volumes_section::Fixed, Error> {
+        let section = config.volumes.as_mut().ok_or(Error::Disabled { section: "volumes", program: Program::Provider })?;
+        let count = section.fixed.len();
+        section.fixed.get_mut(at).ok_or(Error::NoItem { list: "volumes.fixed", index: at, count })
+    }
+    let absent = || Error::Disabled { section: "volumes", program: Program::Provider };
+    let Fixed { index, command } = action;
+    let listwise = matches!(command, FixedCommand::Get | FixedCommand::Add { .. } | FixedCommand::Delete { .. });
+    match (listwise, index) {
+        (true, Some(_)) => return Err(Error::Usage(FIXED_LISTWISE)),
+        (false, None) => return Err(Error::Usage(FIXED_ONE)),
+        _ => {}
+    }
+    let at = index.unwrap_or_default();
+    match command {
+        FixedCommand::Get => {
             let config = read::<Config>(root, Which::Provider).await?;
             let mut text = Vec::new();
             for (index, fixed) in config.volumes.iter().flat_map(|section| &section.fixed).enumerate() {
-                let mut line = serde_json::json!({
+                let line = serde_json::json!({
                     "index": index,
                     "name": fixed.name,
                     "path": fixed.path,
                     "bytes": fixed.bytes,
                     "mode": fixed.mode,
+                    "authorized": fixed.authorized,
                 });
-                if let Some(hook) = &fixed.authorize_hook {
-                    line["authorize_hook"] = serde_json::Value::String(hook.clone());
-                }
                 serde_json::to_writer(&mut text, &line).map_err(document::Error::Json)?;
                 text.push(b'\n');
             }
             write(text).await
         }
-        Volumes::Fixed(Fixed::Add { name, path, bytes, mode, authorize_hook }) => {
+        FixedCommand::Add { name, path, bytes, mode } => {
             provider(root, |config| {
                 let section = config.volumes.as_mut().ok_or_else(absent)?;
                 if let Some(index) = section.fixed.iter().position(|fixed| fixed.name == name) {
                     return Err(Error::Listed { list: "volumes.fixed", item: format!("a volume named `{name}`"), index });
                 }
-                section.fixed.push(volumes_section::Fixed { name, path, bytes, mode, authorize_hook });
+                section.fixed.push(volumes_section::Fixed { name, path, bytes, mode, authorized: volumes_section::Authorized::All });
                 Ok(())
             })
             .await
         }
-        Volumes::Fixed(Fixed::Delete { index }) => {
+        FixedCommand::Delete { index } => {
             provider(root, |config| {
                 let section = config.volumes.as_mut().ok_or_else(absent)?;
                 delete("volumes.fixed", &mut section.fixed, index)
             })
             .await
         }
-        Volumes::Stores(action) => stores(root, action).await,
+        FixedCommand::Authorized(Authorized::Get) => {
+            let mut config = read::<Config>(root, Which::Provider).await?;
+            match &one(&mut config, at)?.authorized {
+                volumes_section::Authorized::All => line(&"all").await,
+                volumes_section::Authorized::Identities(list) => identities(list).await,
+            }
+        }
+        FixedCommand::Authorized(Authorized::Set { .. }) => {
+            provider(root, |config| {
+                one(config, at)?.authorized = volumes_section::Authorized::All;
+                Ok(())
+            })
+            .await
+        }
+        FixedCommand::Authorized(Authorized::Add { issuer, subject }) => {
+            provider(root, |config| {
+                let fixed = one(config, at)?;
+                let identity = shared::Identity { issuer, subject };
+                match &mut fixed.authorized {
+                    volumes_section::Authorized::Identities(list) => add("volumes.fixed.authorized", list, identity),
+                    all => {
+                        *all = volumes_section::Authorized::Identities(vec![identity]);
+                        Ok(())
+                    }
+                }
+            })
+            .await
+        }
+        FixedCommand::Authorized(Authorized::Delete { index }) => {
+            provider(root, |config| match &mut one(config, at)?.authorized {
+                volumes_section::Authorized::Identities(list) => delete("volumes.fixed.authorized", list, index),
+                volumes_section::Authorized::All => Err(Error::Usage("the volume is listed to `all`, and has no list of identities to delete from: add the identities it is to be listed to")),
+            })
+            .await
+        }
     }
 }
 

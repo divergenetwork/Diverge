@@ -15,8 +15,8 @@ use crate::host::watch;
 /// The first seven are refusals of what was asked, decided before
 /// anything is touched; the last four are the host not answering:
 /// its filesystem, the formatter, the resizing tools, or the watch. A
-/// fixed volume's hook that does not answer is not an error: the
-/// volume is not listed, as the hook's output documents.
+/// fixed volume an identity is not listed is not an error: it is no
+/// volume of that identity's.
 #[derive(Debug)]
 pub enum Error {
     /// The name is not one a volume may have — see

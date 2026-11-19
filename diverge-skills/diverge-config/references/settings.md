@@ -63,11 +63,12 @@ none installed.
 |---|---|---|
 | `volumes` | disabled | Whether the two lists below exist. The provider keeps volumes when either has something; with both empty it keeps none. |
 | `volumes stores` | none | Places new volumes are created, in order of preference. Each is a `path` and a `capacity`: the most the volumes in it may reserve together (`0` is refused at start). With one or more, clients can create volumes of every mode. With none, no client can create a volume. |
-| `volumes fixed` | none | Existing directories on the host that the provider offers as volumes as they are. Each: `name` (unique; never given to a created volume), `path` (must already be a directory, or the provider refuses to start), `bytes` (a declared size, not enforced), `mode` (`persistent`, `ephemeral` or `read_only`), and an optional authorization hook. Clients see one as `"provided": true` and can neither edit nor delete it. With fixed volumes and no store, only the modes they are in are offered, and nothing can be created. |
+| `volumes fixed` | none | Existing directories on the host that the provider offers as volumes as they are. Each: `name` (unique; never given to a created volume), `path` (must already be a directory, or the provider refuses to start), `bytes` (a declared size, not enforced), `mode` (`persistent`, `ephemeral` or `read_only`), and `authorized` (who it is listed to: `all`, the default, or a list of identities). Clients see one as `"provided": true` and can neither edit nor delete it. With fixed volumes and no store, only the modes they are in are offered, and nothing can be created. |
 | `volumes ephemeral_fuse` | none | Where an ephemeral volume served over FUSE keeps what is written through it, and how much: a `path` and a `capacity` in bytes. Each serve reserves its `overlay_disk` from the capacity and is refused if it does not fit. **Without it the provider serves no ephemeral volume over FUSE** and does not advertise that it can. It does not depend on containers being enabled. |
 
-An authorization hook limits which identities are shown a fixed volume: without one, every identity is. Hooks
-are installed on the provider by its operator, not by the CLI. If a task needs one, ask the user.
+A fixed volume's `authorized` says which identities are shown it. `all`, the default, is every identity that
+connects. A list is exactly the identities named, each by issuer and subject; anyone else is not shown the
+volume and is not told it exists. An empty list is nobody.
 
 ### images (off by default)
 
