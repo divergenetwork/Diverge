@@ -52,6 +52,10 @@ pub enum Frame {
     /// The account the request is served for holds no grant allowing
     /// it; nothing changed. Tag `2`.
     Forbidden,
+    /// The account named is an administrator: an identity the daemon's
+    /// configuration names, which is an account that is not stored,
+    /// and so is not deleted. Nothing changed. Tag `4`.
+    Administrator,
     /// A failure. Tag `3`.
     ///
     /// Nothing changed. See
@@ -68,6 +72,9 @@ const NOT_FOUND: u8 = 1;
 
 /// Tag for [`Frame::Forbidden`].
 const FORBIDDEN: u8 = 2;
+
+/// Tag for [`Frame::Administrator`].
+const ADMINISTRATOR: u8 = 4;
 
 /// Tag for [`Frame::Error`].
 const ERROR: u8 = 3;
@@ -93,6 +100,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[FORBIDDEN]);
                 Ok(())
             }
+            Frame::Administrator => {
+                out.extend_from_slice(&[ADMINISTRATOR]);
+                Ok(())
+            }
             Frame::Error(error) => {
                 out.extend_from_slice(&[ERROR]);
                 error.encode(out)
@@ -112,6 +123,7 @@ impl Decode<'_> for Frame {
             DELETED => Ok(Frame::Deleted),
             NOT_FOUND => Ok(Frame::NotFound),
             FORBIDDEN => Ok(Frame::Forbidden),
+            ADMINISTRATOR => Ok(Frame::Administrator),
             ERROR => Error::decode(rest).map(Frame::Error).map_err(FrameError::Error),
             tag => Err(FrameError::UnknownTag(tag)),
         }
@@ -123,7 +135,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's four.
+    /// A tag that is none of this frame's five.
     UnknownTag(u8),
     /// The error did not parse.
     Error(serde_json::Error),

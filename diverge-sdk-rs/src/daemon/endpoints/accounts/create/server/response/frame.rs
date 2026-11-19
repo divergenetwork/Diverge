@@ -49,8 +49,10 @@ use crate::shared::error::Error;
 pub enum Frame {
     /// The account exists, with its roles. Tag `0`.
     Created,
-    /// The identity is an account's already; nothing was
-    /// created. Tag `1`.
+    /// The identity is an account's already — a stored account's, or
+    /// an administrator's, which the daemon's configuration names and
+    /// which is an account that is not stored; nothing was created.
+    /// Tag `1`.
     Exists,
     /// A role named is none the daemon has; nothing was created. Tag
     /// `2`.

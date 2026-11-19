@@ -16,6 +16,8 @@ export const Frame = z.union([
   z.literal("not_found"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `2`. */
   z.literal("forbidden"),
+  /** The account named is an administrator: an identity the daemon's configuration names, which is an account that is not stored, and so is not deleted. Nothing changed. Tag `4`. */
+  z.literal("administrator"),
   /** A failure. See `shared.error.Error` for why it says so little. Tag `3`. */
   z.strictObject({ error: Error }),
 ]);
@@ -23,6 +25,7 @@ export type Frame = z.infer<typeof Frame>;
 
 const DELETED = 0;
 const NOT_FOUND = 1;
+const ADMINISTRATOR = 4;
 const FORBIDDEN = 2;
 const ERROR = 3;
 
@@ -39,6 +42,8 @@ export function decode(bytes: Uint8Array): Frame {
       return "not_found";
     case FORBIDDEN:
       return "forbidden";
+    case ADMINISTRATOR:
+      return "administrator";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
     default:
