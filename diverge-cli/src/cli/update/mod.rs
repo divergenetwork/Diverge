@@ -40,12 +40,14 @@
 
 mod error;
 mod releases;
+mod skills;
 mod swap;
 mod unpack;
 mod update;
 
 pub use error::*;
 pub use releases::*;
+pub use skills::*;
 pub use swap::*;
 pub use unpack::*;
 pub use update::*;

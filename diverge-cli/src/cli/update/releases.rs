@@ -125,3 +125,25 @@ pub async fn download(client: &reqwest::Client, address: &str, version: &str, os
     }
     file.flush().await.map_err(failed)
 }
+
+/// The skills of `version`, downloaded to `to`, piece by piece as they
+/// come: one zip, the same for every platform, asked at the
+/// releases' own address, which redirects to where the file is. A
+/// version released with none — every one before skills were — is
+/// [`Error::NoSkills`].
+pub async fn download_skills(client: &reqwest::Client, address: &str, version: &str, to: &Path) -> Result<(), Error> {
+    let url = format!("{address}/{version}/skills");
+    let mut response = client.get(&url).send().await.map_err(|source| Error::Http { url: url.clone(), source })?;
+    if response.status().as_u16() == 404 {
+        return Err(Error::NoSkills(version.to_string()));
+    }
+    if !response.status().is_success() {
+        return Err(Error::Status { url, status: response.status().as_u16() });
+    }
+    let failed = |source| Error::Io { path: to.to_path_buf(), source };
+    let mut file = tokio::fs::File::create(to).await.map_err(failed)?;
+    while let Some(piece) = response.chunk().await.map_err(|source| Error::Http { url: url.clone(), source })? {
+        file.write_all(&piece).await.map_err(failed)?;
+    }
+    file.flush().await.map_err(failed)
+}

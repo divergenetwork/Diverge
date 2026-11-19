@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use super::{Error, download, expected, file, next, swap, unpack};
+use super::{Error, download, download_skills, expected, file, install_skills, next, swap, unpack, unpack_skills};
 use crate::arguments;
 use crate::cli::setting::hold;
 use crate::lifecycle::{self, Program};
@@ -28,6 +28,12 @@ pub const TEMP: &str = "temp";
 /// 6. The archive downloaded into it, and unpacked into `new` inside
 ///    it.
 /// 7. Every program a release holds found among what was unpacked.
+/// 7a. Where skills are to be installed: the release's skills
+///    downloaded into `temp/<version>` and unpacked into `skills`
+///    inside it — a release with none ends here, nothing changed —
+///    and then installed where asked: see [`install_skills`]. Before
+///    the programs, so that a skills directory that cannot be written
+///    is found while the programs are still as they were.
 /// 8. The programs replaced, the CLI last: see [`swap`].
 /// 9. `temp/<version>` deleted, as far as it can be: on Windows the
 ///    CLI that is running is in it and stays until the next update of
@@ -72,7 +78,20 @@ pub async fn update(root: &Path, asked: arguments::Update) -> Result<(), crate::
     if let Some(missing) = files.iter().find(|file| !unpacked.contains(file)) {
         return Err(Error::Incomplete(missing.clone()).into());
     }
+    // Step 7a. The arguments have said which: a directory, or the
+    // flag, and never neither.
+    let installed = match &asked.skills {
+        Some(into) => {
+            let zipped = work.join(format!("diverge-skills-{version}.zip"));
+            download_skills(&client, &address, &version, &zipped).await?;
+            let staged = work.join("skills");
+            let names = unpack_skills(&zipped, &staged).await?;
+            install_skills(&staged, &names, into).await?;
+            format!(", and {} skills installed in {}", names.len(), into.display())
+        }
+        None => String::new(),
+    };
     swap(&bin, &new, &old, &files).await?;
     let _ = tokio::fs::remove_dir_all(&work).await;
-    Ok(lifecycle::say(&format!("updated to {version} for {os}/{arch}")).await?)
+    Ok(lifecycle::say(&format!("updated to {version} for {os}/{arch}{installed}")).await?)
 }
