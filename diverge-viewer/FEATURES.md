@@ -309,7 +309,11 @@ The keys are not printed.
 
 - **Where you put each node.** A node stays where you dragged it, across
   reloads and restarts. It is saved once you let go, not while you drag.
-  A node you never moved, or a new one, is placed automatically.
+  A node you never moved, or a new one, is placed automatically, beside
+  the ones already standing. A node that is gone keeps its place for
+  when it comes back. Places are kept per daemon: each tab's by the
+  daemon it shows, and Home's by the daemon and account the viewer was
+  started on.
 - **What the outliner shows:** which kinds and which line types are on.
   All three line types, creators included, are on until you turn one off.
 - **How the outliner stands:** open or folded, floating or docked, where

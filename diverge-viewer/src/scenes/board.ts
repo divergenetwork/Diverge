@@ -5,7 +5,8 @@
 // along a route.
 
 import * as Phaser from "phaser";
-import { keep, kept } from "../lib/keep";
+import { HOME_ID, keep, kept } from "../lib/keep";
+import type { Point } from "../world/geometry";
 import { type Edge, edges } from "../grid/edges";
 import { type Links, makeLinks } from "../grid/links";
 import { type Here, makeHere } from "../grid/here";
@@ -16,7 +17,7 @@ import { type Pulses, pulses } from "../grid/pulses";
 import type { Route } from "../lib/wire";
 import { Sheet } from "../sheet/sheet";
 import { follow } from "../world/live";
-import { accountKey, agentKey, connectedKey, daemonKey, dependencyKey, type Entity, type Model, model, providerKey, providerLive, toolKey, volumeKey } from "../world/model";
+import { accountKey, agentKey, connectedKey, daemonKey, dependencyKey, type Entity, type Kind, type Model, model, providerKey, providerLive, toolKey, volumeKey } from "../world/model";
 import { mountsOf } from "../world/mounts";
 import type { Snapshot } from "../world/snapshot";
 import type { Watching } from "../world/watch";
@@ -59,7 +60,8 @@ const PAN = 400;
  *    clicking the same one again, or the sheet's ✕, closes it.
  * 6. A node stands where it was put, and is moved by dragging it and
  *    by nothing else: the board never arranges itself. Where it was put
- *    is kept (`keep`), by the board's own key and the node's: written
+ *    is kept (`keep`), by the ID of the daemon the board shows
+ *    (`placesName`) and the node's key: written
  *    once a drag has ended, never while one goes on, and read when the
  *    board is first drawn and when a node comes later. A node with no
  *    place kept stands where `place` and `placeOne` stand it.
@@ -200,7 +202,54 @@ export class Board extends Phaser.Scene {
       const at = where(node);
       this.places.set(node.entity.key, [Math.round(at.x), Math.round(at.y)]);
     }
-    keep(`places:${this.scene.key}`, () => Object.fromEntries(this.places));
+    keep(this.placesName(), () => Object.fromEntries(this.places));
+  }
+
+  /**
+   * Rule 6: the places kept, put over the first places `at`. The
+   * world now is not the world they were kept of. The rules:
+   *
+   * 1. A node that has a place kept stands there.
+   * 2. With no node that has one, every node stands at its first
+   *    place, as on a board never touched.
+   * 3. Else a node with none kept is new since: it stands where a
+   *    node that comes later does (`placeOne`), beside or below the
+   *    ones already standing, so it lands on none of them.
+   * 4. A place kept of a node that is not here is left kept, for when
+   *    the node is back.
+   */
+  private restore(entities: Entity[], at: Map<string, Point>) {
+    const standing: { kind: Kind; at: Point }[] = [];
+    const fresh: Entity[] = [];
+    for (const entity of entities) {
+      const was = this.places.get(entity.key);
+      if (!was) {
+        fresh.push(entity);
+        continue;
+      }
+      // Rule 1.
+      const p = { x: was[0], y: was[1] };
+      at.set(entity.key, p);
+      standing.push({ kind: entity.kind, at: p });
+    }
+    // Rule 2.
+    if (standing.length === 0) return;
+    // Rule 3.
+    for (const entity of fresh) {
+      const p = placeOne(entity.kind, standing);
+      at.set(entity.key, p);
+      standing.push({ kind: entity.kind, at: p });
+    }
+  }
+
+  /**
+   * Rule 6: what this board's places are kept under: the ID of the
+   * daemon it shows. A daemon's tab is its record's ID, the last of
+   * its route; Home is `HOME_ID`. So a board is kept by which daemon
+   * it is and as whom, whichever viewer or tab shows it.
+   */
+  private placesName(): string {
+    return `places:${this.route[this.route.length - 1] ?? HOME_ID}`;
   }
 
   /** Rule 2: the first world. */
@@ -209,11 +258,8 @@ export class Board extends Phaser.Scene {
     this.images = made.images;
     const placed = place(made.entities);
     // Rule 6: a node with a place kept stands there.
-    this.places = new Map(Object.entries(kept<Record<string, [number, number]>>(`places:${this.scene.key}`) ?? {}));
-    for (const key of placed.at.keys()) {
-      const at = this.places.get(key);
-      if (at) placed.at.set(key, { x: at[0], y: at[1] });
-    }
+    this.places = new Map(Object.entries(kept<Record<string, [number, number]>>(this.placesName()) ?? {}));
+    this.restore(made.entities, placed.at);
     this.here = makeHere(this);
     const nodes = makeNodes(this, made.entities, placed.at, () => this.moved(), () => this.dropped(), (entity) => this.select(entity), (node) => this.hover(node), (node) => this.unhover(node));
     this.nodes = nodes;

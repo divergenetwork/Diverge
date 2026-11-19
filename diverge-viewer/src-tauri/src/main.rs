@@ -74,6 +74,20 @@ fn main() {
             // holding the daemon to the key its own token names — and
             // to the identity the settings state for it, where they
             // state one — and dialling again as `redial` says.
+            // What the page keeps the Home board's places under: the
+            // ID a daemon's record of this daemon, reached as this
+            // account by any route, would have — computed as the daemon
+            // computes a record's — where the settings state who the
+            // daemon is; else its name in the settings, which is all
+            // there is to tell it by. A different daemon, or a
+            // different account on it, is a different board.
+            let home = match &selected.daemon.identity {
+                Some(daemon) => {
+                    let account = diverge_sdk::shared::Identity { issuer: selected.account.issuer.clone(), subject: selected.account.subject.clone() };
+                    diverge_sdk::daemon::endpoints::daemons::DaemonId::of(daemon, &account, &Default::default()).to_string()
+                }
+                None => format!("home:{}", selected.daemon_name),
+            };
             let name = Name { issuer: selected.account.issuer, subject: selected.account.subject };
             let presenter = Arc::new(Presenter::new(identities, name).expecting(selected.daemon.identity));
             app.manage(diverge_sdk::tauri_proxy::TauriProxy::new(selected.daemon.address, presenter, redial));
@@ -86,6 +100,9 @@ fn main() {
             // the daemon this start is on.
             tauri::WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
                 .title(format!("Diverge Viewer — {}", selected.daemon_name))
+                // Read by the page before any of its own code runs:
+                // see `home` above.
+                .initialization_script(format!("window.__DIVERGE_HOME__ = {};", serde_json::Value::String(home)))
                 .on_new_window(|url, _| {
                     if matches!(url.scheme(), "http" | "https") {
                         let _ = webbrowser::open(url.as_str());

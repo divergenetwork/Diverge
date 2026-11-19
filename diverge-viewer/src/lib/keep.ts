@@ -5,6 +5,15 @@
 /** Every name kept is under this, so nothing else in the storage is touched. */
 const PREFIX = "diverge-viewer:";
 
+/**
+ * What the Home board is kept under: the ID of the daemon the viewer
+ * was started on, as the account it was started as, which the app
+ * computes and hands the page before it runs. A viewer started on
+ * another daemon, or as another account, has another. `home` where
+ * the app handed none.
+ */
+export const HOME_ID: string = (globalThis as { __DIVERGE_HOME__?: string }).__DIVERGE_HOME__ ?? "home";
+
 /** How long after the last change a value is written, in milliseconds. */
 const WAIT = 400;
 
