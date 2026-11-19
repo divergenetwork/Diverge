@@ -8,7 +8,6 @@ use diverge_sdk::wire::connection::Connection;
 use diverge_sdk::wire::handshake::{self, Handshook};
 use tokio::net::TcpStream;
 use tokio::task::JoinSet;
-use tokio::time::timeout;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use diverge_sdk::shared::Identity;
@@ -23,17 +22,6 @@ use crate::judge::{Expected, Hold};
 /// hammered, short enough that one that is back is held soon.
 const PAUSE: Duration = Duration::from_secs(5);
 
-/// How long a dial waits for the provider's address to answer: its
-/// TCP connection and its WebSocket upgrade.
-const CONNECT: Duration = Duration::from_secs(20);
-
-/// How long a dial waits for the handshake, once connected.
-const HANDSHAKE: Duration = Duration::from_secs(30);
-
-/// How long a dial waits for the provider to answer its info, once
-/// the handshake is made.
-const ATTACH: Duration = Duration::from_secs(30);
-
 /// Dial the provider `identity` for as long as dial `number` is its
 /// current one and its record enabled and outgoing. The rules:
 ///
@@ -47,11 +35,11 @@ const ATTACH: Duration = Duration::from_secs(30);
 ///    handle [`Live`](crate::daemon::Live) keeps. A round that fails,
 ///    a round that panics, and a connection that ends are each only a
 ///    round over: the next is made.
-/// 3. **Nothing waits for ever before a connection is held.** The
-///    connect, the handshake and the attach each have a time, and one
-///    that runs past it is a round that failed. A connection held is
-///    never timed: it lasts as long as the provider is there, which
-///    transport [`keepalive`] is what tells.
+/// 3. **Nothing is timed.** The connect, the handshake, the attach and
+///    the connection held each wait for as long as they take: no step
+///    of a dial has a deadline. A provider that vanishes without
+///    closing is told by the transport's own [`keepalive`], which ends
+///    the socket, and so the round.
 /// 4. **Why is kept.** What ended a round is kept as the provider's
 ///    status's `reason` until a round connects.
 pub async fn dial(daemon: Arc<Daemon>, identity: Identity, number: u64) {
@@ -91,32 +79,22 @@ async fn rounds(daemon: &Arc<Daemon>, identity: &Identity, number: u64) {
 /// and which it then holds — attached, and served until the
 /// connection ends. What ended the round, in the daemon's words.
 async fn round(daemon: Arc<Daemon>, identity: Identity, address: String) -> String {
-    let socket = match timeout(CONNECT, keepalive::connect(&url(&address))).await {
-        Ok(Ok(socket)) => socket,
-        Ok(Err(error)) => return format!("{address} could not be reached: {error}"),
-        Err(_) => return format!("{address} did not answer within {} seconds", CONNECT.as_secs()),
+    let socket = match keepalive::connect(&url(&address)).await {
+        Ok(socket) => socket,
+        Err(error) => return format!("{address} could not be reached: {error}"),
     };
     let ip = peer_ip(&socket);
     let expecting = daemon.authenticator.dialling(&identity);
-    let (connection, peer) = match timeout(HANDSHAKE, handshake::connect(Connection::Outgoing(socket), &expecting, ip)).await {
-        Ok(Ok(Handshook { connection, peer, .. })) => (connection, peer),
-        Ok(Err(error)) => return format!("the handshake with {address} failed: {error}"),
-        Err(_) => return format!("the handshake with {address} did not finish within {} seconds", HANDSHAKE.as_secs()),
+    let (connection, peer) = match handshake::connect(Connection::Outgoing(socket), &expecting, ip).await {
+        Ok(Handshook { connection, peer, .. }) => (connection, peer),
+        Err(error) => return format!("the handshake with {address} failed: {error}"),
     };
     // A dial that answers holds the identity: the hold goes with the
     // connection, however it ends.
     let hold = Hold::new(&daemon.authenticator, Expected::Provider, peer.clone());
-    let attached = match timeout(ATTACH, attach(connection, peer, &daemon, hold, Source::Dialled(ip))).await {
-        Ok(Ok(attached)) => attached,
-        Ok(Err(error)) => return format!("{address} was connected to and not attached: {error}"),
-        Err(_) => {
-            // The attach was let go part way: what it reserved is
-            // given back here, as it gives it back itself on every
-            // path it ends by. Its hold went with it.
-            daemon.live.forget_provider(&identity).await;
-            daemon.live.disconnect_provider(&identity).await;
-            return format!("{address} did not answer its info within {} seconds", ATTACH.as_secs());
-        }
+    let attached = match attach(connection, peer, &daemon, hold, Source::Dialled(ip)).await {
+        Ok(attached) => attached,
+        Err(error) => return format!("{address} was connected to and not attached: {error}"),
     };
     daemon.live.dial_connected(&identity).await;
     attached.serve().await;
