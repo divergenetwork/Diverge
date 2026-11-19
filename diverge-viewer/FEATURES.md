@@ -576,7 +576,7 @@ refused. An administrator's log is the daemon's own admin log.
 
 ## The frontend tab
 
-`sheet/frontend.ts`, `src-tauri/src/frontend.rs`
+`sheet/frontend.ts`, `src-tauri/src/frontend.rs`, `src-tauri/src/theme.rs`
 
 - **What it is.** The web page an agent's or a tool's own program
   serves, beneath
@@ -601,6 +601,13 @@ refused. An administrator's log is the daemon's own admin log.
   the frame itself (or programs on this machine, which could reach the
   daemon as you anyway); another website in a browser is refused.
 - **↻** loads the frontend again from its start.
+- **Your theme, if the page wants it.** The app answers two addresses
+  on every frontend itself: `/diverge/theme.css` (the shared theme) and
+  `/diverge/theme.js` (which asks the app which theme you have on, and
+  follows it when it changes). A page that loads them takes the theme's
+  colours, sizes and square edges; one that doesn't keeps its own look.
+  The frame round a page is the app's; the page is its maker's. The
+  example chat, human agent and identity pages take it.
 - **Copying.** A frontend may put text on your clipboard, so its copy
   buttons work. It cannot read the clipboard.
 - **Links that open a new window** — a link with a target, or

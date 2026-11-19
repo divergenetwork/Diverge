@@ -45,7 +45,9 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   `imageInfo`) in an `<iframe>`: the app's Rust (`src-tauri/src/frontend.rs`, commands `frontend_open`/`frontend_close`)
   serves it from `127.0.0.1:<fresh port>` (axum), each request one daemon `<family> frontend` scope over the page's
   connection, bodies streamed, a `101` piped both ways; gated by Host, `Sec-Fetch-Site` and a key on the first load;
-  closed with the sheet, on a swap, and on every page load. An account
+  closed with the sheet, on a swap, and on every page load. Two paths on that origin are the app's own, never sent on
+  (`src-tauri/src/theme.rs`): `/diverge/theme.css` and `/diverge/theme.js` (`diverge-theme/`), which a page may take to
+  wear the person's theme, the pane answering its `theme?` with the root's `data-theme`. An account
   and a connected standalone tool (another daemon's, its own kind: `connected_standalone_tools list`, the
   `connected_standalone_tool` log subject) have only logs, a volume only its files, a provider (`providers list`, the
   record the daemon keeps of one; no log subject) one tab of its own, `capacity` (`sheet/capacity.ts`: the four

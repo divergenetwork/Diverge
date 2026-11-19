@@ -5,123 +5,245 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>You, the agent</title>
 <style>
+  /* Fallback: outside the viewer /diverge/theme.css is not served, so the theme's plum five and the roles and sizes
+     this page uses are set here as diverge-theme/theme.css sets them; the theme, linked after this, overrides them. */
   :root {
-    --ink: #101418;
-    --raised: #182028;
-    --line: #2a3540;
-    --text: #e4e9ee;
-    --dim: #8c98a4;
-    --user: #f2b84b;
-    --agent: #4fd1c5;
-    --tool: #a78bfa;
-    --error: #e0604f;
+    color-scheme: dark;
+    accent-color: var(--accent);
+    --ground: #11000e;
+    --raised: #22091d;
+    --accent: #ffb2ff;
+    --ink: #fbeacd;
+    --here: #eba52a;
+    --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-mono: max(var(--text-xs), 0.92em);
+    --leading: 1.6;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --radius-sm: 0;
+    --control: 32px;
+    --hit-min: 28px;
+    --measure: 63ch;
+    --rule: color-mix(in srgb, var(--raised) 91%, var(--ink));
+    --note: color-mix(in srgb, var(--raised) 88%, var(--accent));
+    --bg: var(--ground);
+    --surface: var(--raised);
+    --surface-3: var(--rule);
+    --line: var(--rule);
+    --line-strong: color-mix(in srgb, var(--rule) 60%, var(--ink));
+    --line-hover: var(--ink);
+    --text: var(--ink);
+    --text-2: color-mix(in srgb, var(--ink) 90%, var(--ground));
+    --text-3: color-mix(in srgb, var(--ink) 80%, var(--ground));
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, var(--ground));
+    --accent-hover: color-mix(in srgb, var(--accent) 78%, var(--ink));
+    --on-accent: var(--ground);
+    --ok: #9dd9ae;
+    --bad: #ff9a8f;
+    --line-bad: color-mix(in srgb, var(--bad) 45%, var(--line));
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex;
     flex-direction: column;
-    background: var(--ink);
+    background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 system-ui, sans-serif;
+    font: var(--text-md)/var(--leading) var(--font-ui);
+    -webkit-font-smoothing: antialiased;
   }
+  /* Focus lights an edge, as hover does; no ring is drawn. */
+  :focus-visible { outline: none; }
+  ::selection { background: var(--accent-soft); color: var(--text); }
   header.top {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background: var(--surface);
     border-bottom: 1px solid var(--line);
   }
-  header.top h1 { margin: 0; font-size: 16px; }
+  header.top h1 { margin: 0; font-size: var(--text-lg); font-weight: 650; line-height: 1.2; }
+  /* A chip: who is at the page (the accent), and how the desk stands (quieter). */
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px 8px;
-    border-radius: 999px;
-    border: 1px solid currentColor;
-    font: 12px/1.6 ui-monospace, Consolas, monospace;
+    gap: var(--space-1);
+    height: var(--hit-min);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    line-height: 1.2;
     white-space: nowrap;
   }
-  .badge.user { color: var(--user); }
-  .badge.agent { color: var(--agent); }
-  .badge.dim { color: var(--dim); }
-  .badge.waiting { color: var(--user); animation: pulse 1.6s ease-in-out infinite; }
+  .badge.user { color: var(--accent); }
+  .badge.agent { color: var(--accent); }
+  .badge.dim { color: var(--text-2); }
+  /* A message waits on the person: the note behind it, the accent round it. */
+  .badge.waiting { color: var(--text); background: var(--note); border-color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.45; } }
   .spacer { flex: 1; }
   #log {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 12px 16px;
+    padding: var(--space-3) var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
   }
-  #log .empty { color: var(--dim); margin: auto; text-align: center; }
+  #log .empty { color: var(--text-3); margin: auto; max-width: var(--measure); text-align: center; }
+  /* A message, as the viewer's log draws one: its label, then its words beside a rule. */
   .bubble {
-    max-width: min(760px, 92%);
-    padding: 8px 12px;
-    border-radius: 10px;
-    background: var(--raised);
-    border: 1px solid var(--line);
+    align-self: stretch;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  .bubble .who { display: block; margin-bottom: 4px; }
-  .bubble.in { align-self: flex-start; border-color: color-mix(in srgb, var(--user) 40%, var(--line)); }
-  .bubble.out { align-self: flex-end; border-color: color-mix(in srgb, var(--agent) 40%, var(--line)); }
-  .call {
-    align-self: flex-end;
-    width: min(760px, 92%);
-    border: 1px solid color-mix(in srgb, var(--tool) 45%, var(--line));
-    border-radius: 10px;
-    background: var(--raised);
+  .bubble .who {
+    display: block;
+    height: auto;
+    margin-bottom: var(--space-1);
+    padding: 0;
+    border: 0;
+    color: var(--accent);
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
-  .call summary { padding: 6px 12px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
-  .call summary .name { color: var(--tool); font-family: ui-monospace, Consolas, monospace; }
-  .call summary .status { color: var(--dim); font-size: 12px; }
-  .call summary .status.error { color: var(--error); }
+  .bubble .body {
+    display: block;
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--line);
+  }
+  /* A tool call: a well on the ground, a row with ▸ that turns as it opens, its arguments and answer beside a rule. */
+  .call {
+    align-self: stretch;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+  .call:has(> pre.error) { border-color: var(--line-bad); }
+  .call summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--hit-min);
+    padding: 0 var(--space-2);
+    color: var(--text-2);
+    list-style: none;
+    cursor: pointer;
+  }
+  .call summary::-webkit-details-marker { display: none; }
+  .call summary::before { content: "▸"; color: var(--text-3); transition: transform 0.1s; }
+  .call[open] summary::before { transform: rotate(90deg); }
+  .call summary:hover,
+  .call summary:focus-visible { background: var(--surface-3); color: var(--text); }
+  .call summary .name { color: var(--text); }
+  .call summary .status { color: var(--text-3); font-size: var(--text-sm); }
+  /* Answered: the card holds a second block, the answer. */
+  .call:has(> pre + pre) summary .status { color: var(--ok); }
+  .call summary .status.error { color: var(--bad); }
   .call pre {
-    margin: 0;
-    padding: 8px 12px;
-    border-top: 1px solid var(--line);
-    font: 12px/1.45 ui-monospace, Consolas, monospace;
+    margin: var(--space-1) var(--space-2) var(--space-2) var(--space-5);
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono);
+    line-height: 1.45;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     max-height: 320px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
   }
-  .call pre.error { color: var(--error); }
-  .notice { align-self: center; color: var(--dim); font-size: 12px; }
+  .call pre.error { color: var(--bad); border-left-color: var(--line-bad); }
+  /* An answer with no card of its own: a well of its own. */
+  #log > pre {
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono);
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  #log > pre.error { color: var(--bad); border-color: var(--line-bad); }
+  .notice { align-self: center; color: var(--text-3); font-size: var(--text-sm); }
   footer.desk {
     border-top: 1px solid var(--line);
-    padding: 10px 16px 12px;
+    background: var(--surface);
+    padding: var(--space-3) var(--space-4);
     display: grid;
-    gap: 8px;
+    gap: var(--space-2);
   }
   footer.desk.idle .act { opacity: 0.45; pointer-events: none; }
-  .row { display: flex; gap: 8px; align-items: flex-start; }
-  textarea, select, button {
+  .row { display: flex; gap: var(--space-2); align-items: flex-start; }
+  /* Fields: a well on the ground with a pressable edge, which lights under the mouse and in focus. */
+  textarea, select {
     font: inherit;
     color: var(--text);
-    background: var(--raised);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    outline: none;
   }
-  textarea { flex: 1; min-width: 0; padding: 8px 10px; resize: vertical; }
-  textarea.code { font: 12px/1.45 ui-monospace, Consolas, monospace; }
-  select { padding: 6px 8px; max-width: 100%; }
-  button { padding: 7px 14px; cursor: pointer; white-space: nowrap; }
-  button:hover { border-color: var(--dim); }
-  button.go { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 50%, var(--line)); }
-  button.tool { color: var(--tool); border-color: color-mix(in srgb, var(--tool) 50%, var(--line)); }
-  button.end { color: var(--user); border-color: color-mix(in srgb, var(--user) 50%, var(--line)); }
-  .description { color: var(--dim); font-size: 12px; white-space: pre-wrap; }
-  #said { color: var(--error); font-size: 12px; min-height: 1em; }
-  .hint { color: var(--dim); font-size: 12px; }
+  textarea {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-1) var(--space-2);
+    line-height: 22px;
+    resize: vertical;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  textarea.code { font-family: var(--font-mono); font-size: var(--text-mono); line-height: 20px; }
+  textarea::placeholder { color: var(--text-3); }
+  select { height: var(--control); padding: 0 var(--space-2); max-width: 100%; line-height: 1.2; }
+  textarea:hover, textarea:focus-visible,
+  select:hover, select:focus-visible { border-color: var(--line-hover); }
+  /* Buttons: a pressable edge, no fill, lit under the mouse and in focus. */
+  button {
+    height: var(--control);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text);
+    font: 500 var(--text-sm)/1.2 var(--font-ui);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  button:hover, button:focus-visible { border-color: var(--line-hover); }
+  /* Send, the one action that goes ahead: the accent filled, lighter under the mouse. */
+  button.go { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+  button.go:hover:not(:disabled),
+  button.go:focus-visible { border-color: var(--accent-hover); background: var(--accent-hover); }
+  button.go:disabled { border-color: var(--line); background: none; color: var(--text-3); cursor: default; }
+  /* ↻: a square as tall as the tool list beside it, the glyph quieter than words. */
+  #refresh { width: var(--control); padding: 0; color: var(--text-2); font-size: var(--text-md); line-height: 1; }
+  .description { color: var(--text-2); font-size: var(--text-sm); white-space: pre-wrap; }
+  #said { color: var(--bad); font-size: var(--text-sm); min-height: 1em; }
+  .hint { color: var(--text-3); font-size: var(--text-sm); }
+  @media (prefers-reduced-motion: reduce) {
+    .badge.waiting { animation: none; }
+    .call summary::before { transition: none; }
+  }
 </style>
+<link rel="stylesheet" href="/diverge/theme.css">
+<script src="/diverge/theme.js"></script>
 </head>
 <body>
 <header class="top">
