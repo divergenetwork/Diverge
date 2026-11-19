@@ -85,6 +85,13 @@ pub struct Config {
     /// unsupported.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub messages: Option<Messages>,
+    /// Whether the provider keeps its log: who connected, whether its
+    /// handshake was taken, what it asked for and when it went, under
+    /// `logs/` in the provider's own directory — see
+    /// [`Log`](crate::log::Log). Absent means `true`. `false`, nothing
+    /// is written.
+    #[serde(default = "logging")]
+    pub logging: bool,
 }
 
 /// What a provider runs on before it has written a line of
@@ -103,6 +110,7 @@ impl Default for Config {
             volumes: None,
             images: None,
             messages: None,
+            logging: logging(),
         }
     }
 }
@@ -124,6 +132,11 @@ impl Config {
 }
 
 /// The port `port` takes when the file leaves it out.
+/// What `logging` takes when the document leaves it out: `true`.
+fn logging() -> bool {
+    true
+}
+
 fn proxy_port() -> u16 {
     OUTSIDE_PORT
 }

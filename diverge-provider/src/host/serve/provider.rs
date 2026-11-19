@@ -36,6 +36,7 @@ use crate::host::tools::podman;
 use crate::host::authenticator::ProviderAuthenticator;
 use crate::host::volume_manager::{self, Scratch, VolumeManager};
 use crate::host::Limit;
+use crate::log::Log;
 
 /// The provider's pieces, built once and shared by every connection:
 /// the protocol takes each behind an `Arc`, and the directory of running
@@ -78,6 +79,8 @@ pub struct Provider {
     /// How much a caller may still use, answered by `capacity`: the
     /// stores and the deployer's caps, asked as of each answer.
     capacity: Arc<CapacityReporter>,
+    /// The provider's log: see [`Log`].
+    pub(super) log: Arc<Log>,
     /// The provider's stop: sent `true` by a loopback `POST /stop`
     /// (see [`stop`](super::stop)), or by the signal, and read by the
     /// listener, which drains on it, and by every connection, which
@@ -113,6 +116,8 @@ impl Provider {
     /// already.
     pub async fn start(config: Config, dir: PathBuf, stop: watch::Sender<bool>, authenticator: Arc<ProviderAuthenticator>) -> Result<Self, Error> {
         ready(&config, &dir).await?;
+        let log = Arc::new(Log::start(&dir, config.logging).await);
+        log.say("the provider started".to_string());
         let capabilities = Arc::new(capabilities(&config));
         let podman_in_use = config.podman_in_use();
         let registries = registries(&config).to_vec();
@@ -188,6 +193,7 @@ impl Provider {
             image_changes: Arc::new(Changes::new()),
             capabilities,
             capacity,
+            log,
             stop,
         })
     }
@@ -199,10 +205,10 @@ impl Provider {
     /// another connection holds among the ways — closes the connection
     /// with nothing sent.
     pub async fn accept(&self, connection: Connection, address: IpAddr) {
-        let Ok(Handshook { connection, peer }) = handshake::accept(connection, &self.authenticator.admitting(), address).await else {
-            return;
-        };
-        self.held(connection, peer, address, None).await;
+        match handshake::accept(connection, &self.authenticator.admitting(), address).await {
+            Ok(Handshook { connection, peer }) => self.held(connection, peer, address, None).await,
+            Err(error) => self.log.say(format!("{address} dialled in, and its handshake was not taken: {error}")),
+        }
     }
 
     /// A connection past its handshake, under `peer`, whose identity
@@ -213,9 +219,16 @@ impl Provider {
     /// `daemons::announce` the peer opens on it — whichever end dialled
     /// — is listed with, for as long as that scope is open.
     pub async fn held(&self, connection: Connection, peer: Identity, address: IpAddr, dialled: Option<String>) {
+        let how = match &dialled {
+            Some(target) => format!("dialled at {target}"),
+            None => "dialled in".to_string(),
+        };
+        self.log.say(format!("{address} {how}, connected as {} {}", peer.issuer, peer.subject));
+        let began = tokio::time::Instant::now();
         self.connection(connection, Arc::new(peer.clone()), address, dialled).await;
         self.mailboxes.left(&peer).await;
         self.authenticator.release(&peer).await;
+        self.log.say(format!("{address} {} {} disconnected after {}s", peer.issuer, peer.subject, began.elapsed().as_secs()));
     }
 
     /// One connection, served for as long as it lasts, or until the
@@ -259,6 +272,7 @@ impl Provider {
             Arc::clone(&self.listables),
             Arc::clone(&self.mailboxes),
             Arc::clone(&self.capabilities),
+            Arc::clone(&self.log),
         ));
         let stopping = pin!(async move {
             let _ = stop.wait_for(|stopped| *stopped).await;

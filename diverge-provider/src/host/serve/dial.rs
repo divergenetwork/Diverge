@@ -28,12 +28,15 @@ use crate::protocol::keepalive;
 pub async fn dial(provider: Arc<Provider>, client: Outgoing) {
     let url = if client.address.contains("://") { client.address.clone() } else { format!("ws://{}/", client.address) };
     loop {
-        if let Ok(socket) = keepalive::connect(url.as_str()).await {
-            let address = peer_ip(&socket);
-            let made = handshake::connect(Connection::Outgoing(socket), &provider.authenticator.dialling(&client.identity), address).await;
-            if let Ok(Handshook { connection, peer }) = made {
-                provider.held(connection, peer, address, Some(client.address.clone())).await;
+        match keepalive::connect(url.as_str()).await {
+            Ok(socket) => {
+                let address = peer_ip(&socket);
+                match handshake::connect(Connection::Outgoing(socket), &provider.authenticator.dialling(&client.identity), address).await {
+                    Ok(Handshook { connection, peer }) => provider.held(connection, peer, address, Some(client.address.clone())).await,
+                    Err(error) => provider.log.say(format!("{address} dialled at {}, and its handshake was not taken: {error}", client.address)),
+                }
             }
+            Err(error) => provider.log.say(format!("{} could not be dialled: {error}", client.address)),
         }
         // Five seconds: long enough that a peer that is down is not
         // hammered, short enough that one that is back is served soon.

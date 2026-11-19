@@ -1,5 +1,6 @@
 //! One connection, served whole.
 
+use crate::log::Log;
 use std::fmt;
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -105,6 +106,7 @@ pub async fn handle<D, V, M, O, C>(
     listables: Arc<Listables>,
     mailboxes: Arc<Mailboxes>,
     capabilities: Arc<Capabilities>,
+    log: Arc<Log>,
 ) -> Result<(), HandleError>
 where
     D: ContainerDeployer + 'static,
@@ -145,6 +147,12 @@ where
                 break;
             }
         };
+
+        // The request's tag, and nothing of its body: see `Log`.
+        match payload.first() {
+            Some(tag) => log.say(format!("{address} {} {} opened a request, tag {tag}", client_identity.issuer, client_identity.subject)),
+            None => log.say(format!("{address} {} {} opened a request with no tag", client_identity.issuer, client_identity.subject)),
+        }
 
         // The decode borrows `payload` and nothing borrows `scope`, so
         // every arm is free to move the scope into its task with the
