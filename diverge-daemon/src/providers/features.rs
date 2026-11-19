@@ -75,9 +75,9 @@ struct Held {
 /// The announce scope held open.
 #[derive(Debug)]
 struct Announced {
-    /// The text it was opened with: what a sync compares the record's
-    /// against.
-    announcement: Description,
+    /// The text it was opened with, or none: what a sync compares the
+    /// record's against.
+    announcement: Option<Description>,
     /// Its cancel.
     cancel: execute::Cancel,
     /// The task reading its stream to the end: done once the provider
@@ -161,7 +161,7 @@ pub async fn sync(daemon: &Arc<Daemon>, identity: &Identity) {
 }
 
 /// Rules 4 to 6 for the announce: `held` made `wanted`.
-async fn sync_announce(handle: &Handle, held: &mut Option<Announced>, wanted: Option<Description>) {
+async fn sync_announce(handle: &Handle, held: &mut Option<Announced>, wanted: Option<Option<Description>>) {
     if held.as_ref().map(|announced| &announced.announcement) == wanted.as_ref() {
         return;
     }

@@ -34,7 +34,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 ///    grants do not reach.
 /// 2. **Given replaces, absent leaves.** `announcement`,
 ///    `accept_daemons`, `messageable` and `description` given are
-///    written over the record's. `announcement` given as `null` clears
+///    written over the record's. `announcement` given as `false` stops
 ///    it: the daemon announces itself there no more.
 /// 3. **`ips`.** Given for an incoming record, they replace its `ips`
 ///    — `null`, any IP. Given for an outgoing record, as a value or as

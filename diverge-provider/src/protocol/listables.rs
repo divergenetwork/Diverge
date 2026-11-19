@@ -72,7 +72,7 @@ impl Listables {
     /// `listening` or not as it is now (rule 5), until
     /// [`leave`](Self::leave). Called under the mailboxes' lock
     /// (rule 6).
-    pub(super) async fn enter(&self, identity: &Identity, announcement: Description, ip: IpAddr, address: Option<String>, listening: bool) {
+    pub(super) async fn enter(&self, identity: &Identity, announcement: Option<Description>, ip: IpAddr, address: Option<String>, listening: bool) {
         let listed = response::Listed { identity: identity.clone(), announcement, ip, address, listening };
         self.held.lock().await.insert(identity.clone(), listed);
         let _ = self.nudges.send(());

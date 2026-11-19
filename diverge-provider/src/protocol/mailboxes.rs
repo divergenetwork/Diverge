@@ -176,7 +176,7 @@ impl Mailboxes {
     /// The mailboxes' lock is held from the reading to the entry, so an
     /// [`open`](Self::open) or a [`close`](Self::close) is wholly
     /// before it, and seen, or wholly after, and marks the entry made.
-    pub async fn announce(&self, identity: &Identity, announcement: Description, ip: IpAddr, address: Option<String>) {
+    pub async fn announce(&self, identity: &Identity, announcement: Option<Description>, ip: IpAddr, address: Option<String>) {
         let boxes = self.boxes.lock().await;
         self.listables.enter(identity, announcement, ip, address, boxes.contains_key(identity)).await;
     }

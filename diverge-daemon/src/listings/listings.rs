@@ -262,7 +262,7 @@ impl Listings {
                 }
                 let (providers, announcements) = merged.entry(identity.clone()).or_default();
                 providers.insert(via(&provider, listed));
-                announcements.insert(listed.announcement.clone());
+                announcements.extend(listed.announcement.clone());
             }
         }
         merged

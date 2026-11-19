@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::providers::Direction;
 use diverge_sdk::shared::Identity;
+use diverge_sdk::shared::announcement::Announcement;
 use diverge_sdk::shared::description::Description;
 use sqlx::types::Json;
 use sqlx::{PgConnection, Row as _};
@@ -17,10 +18,12 @@ pub struct Record {
     pub identity: Identity,
     /// How its connection is made.
     pub direction: Direction,
-    /// What the daemon announces itself with on it: present, the
-    /// daemon holds its `daemons::announce` open with this text while
-    /// connected; absent, it does not announce itself there.
-    pub announcement: Option<Description>,
+    /// Whether the daemon announces itself on it, and with what. Kept
+    /// in the one `announcement` column: `NULL`, it does not; the
+    /// empty string, it does, with no text; any other string, it does,
+    /// with that text. A text is never empty, so the three are told
+    /// apart.
+    pub announcement: Announcement,
     /// Whether the daemon accepts other daemons through it: holds its
     /// `daemons::accept` open while connected.
     pub accept_daemons: bool,
@@ -49,7 +52,11 @@ fn record(row: &sqlx::postgres::PgRow) -> Result<Record, Error> {
     let Json(direction): Json<Direction> = row.try_get("direction")?;
     let Json(creator): Json<Creator> = row.try_get("creator")?;
     let announcement: Option<String> = row.try_get("announcement")?;
-    let announcement = announcement.map(Description::new).transpose().map_err(|error| sqlx::Error::Decode(Box::new(error)))?;
+    let announcement = match announcement.as_deref() {
+        None => Announcement::Whether(false),
+        Some("") => Announcement::Whether(true),
+        Some(text) => Announcement::Text(Description::new(text).map_err(|error| sqlx::Error::Decode(Box::new(error)))?),
+    };
     Ok(Record {
         identity: Identity { issuer: row.try_get("issuer")?, subject: row.try_get("subject")? },
         direction,
@@ -74,7 +81,7 @@ pub async fn create(conn: &mut PgConnection, record: &Record) -> Result<bool, Er
     .bind(&record.identity.issuer)
     .bind(&record.identity.subject)
     .bind(Json(&record.direction))
-    .bind(record.announcement.as_ref().map(Description::as_str))
+    .bind(column(&record.announcement))
     .bind(record.accept_daemons)
     .bind(record.messageable)
     .bind(record.enabled)
@@ -130,7 +137,7 @@ pub async fn edit(conn: &mut PgConnection, record: &Record) -> Result<(), Error>
         .bind(&record.identity.issuer)
         .bind(&record.identity.subject)
         .bind(Json(&record.direction))
-        .bind(record.announcement.as_ref().map(Description::as_str))
+        .bind(column(&record.announcement))
         .bind(record.accept_daemons)
         .bind(record.messageable)
         .bind(&record.description)
@@ -189,4 +196,10 @@ pub async fn in_use(conn: &mut PgConnection, identity: &Identity) -> Result<bool
     .fetch_one(&mut *conn)
     .await?;
     Ok(row.try_get("used")?)
+}
+
+/// The record's announcement as its column keeps it: `NULL`, not
+/// announced; the empty string, announced with no text; else the text.
+fn column(announcement: &Announcement) -> Option<&str> {
+    announcement.announce().map(|text| text.map_or("", Description::as_str))
 }

@@ -84,12 +84,13 @@ impl ProviderBook {
         record.direction.dialled().map(str::to_string)
     }
 
-    /// What the daemon announces itself with on `identity`, when its
-    /// record is enabled and has an announcement — rule 3.
-    pub fn announcement(&self, identity: &Identity) -> Option<Description> {
+    /// Whether the daemon announces itself on `identity`, and with
+    /// what, when its record is enabled — rule 3: `None`, it does not;
+    /// `Some(None)`, with no text; `Some(Some)`, with the text.
+    pub fn announcement(&self, identity: &Identity) -> Option<Option<Description>> {
         let records = self.records.load();
         let record = records.iter().find(|record| &record.identity == identity && record.enabled)?;
-        record.announcement.clone()
+        record.announcement.announce().map(|text| text.cloned())
     }
 
     /// Whether the daemon accepts other daemons through `identity`:
