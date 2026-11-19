@@ -309,6 +309,22 @@ the daemon owns no image of that digest there), `"unsupported"` (the provider ha
 
 Grant: `delete` over images, reaching the provider.
 
+## Changing an image's description: `diverge run images edit`
+
+```bash
+diverge run images edit '{"provider":{"issuer":"…","subject":"github.12345.provider"},
+  "digest":"sha256:…","description":"python agent loop, rebuilt for the new proxy"}'
+# -> "edited" | "not_found" | "forbidden" | "unsupported" | {"error":…}
+
+diverge run images edit '{"provider":{…},"digest":"sha256:…"}'     # no description: clears it
+```
+
+- The description is the only thing about an image that can be changed. Its bytes and platforms are fixed by
+  its digest; to change those, build, push or merge a new image.
+- `description` is one short line (132 characters at most). Leaving it out, or giving `null`, clears it.
+- `"not_found"`: no such provider, or the daemon owns no image of that digest in its Store there.
+- Grant: `{"images":{"actions":["edit"],"within":"any"}}`, or narrowed to providers.
+
 ## Joining images into one: `diverge run images merge`
 
 Two images built for two platforms are two different images, each with its own digest. A push cannot join
