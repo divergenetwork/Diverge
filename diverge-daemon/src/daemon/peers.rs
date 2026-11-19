@@ -93,7 +93,7 @@ impl Peers {
         match self.slots.get(identity).map(|slot| &slot.standing) {
             Some(Standing::Connected { info, .. }) => Status::Connected { info: (**info).clone() },
             Some(Standing::DifferentVersion { info, .. }) => Status::DifferentVersion { info: (**info).clone() },
-            Some(Standing::Pending) | None => Status::Disconnected,
+            Some(Standing::Pending) | None => Status::Disconnected { reason: None },
         }
     }
 }

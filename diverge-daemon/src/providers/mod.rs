@@ -55,6 +55,7 @@ mod attach;
 mod book;
 mod capacity;
 mod dial;
+pub mod keepalive;
 mod error;
 mod features;
 mod url;

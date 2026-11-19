@@ -81,6 +81,11 @@ pub struct Live {
     /// identity, to be ended when the daemon stops: replaced by the
     /// next dial's, and gone with the dial's end or the task's.
     dial_tasks: Mutex<HashMap<Identity, AbortHandle>>,
+    /// Why the last dial of each provider dialled made no connection,
+    /// or what ended the connection it made: what a disconnected
+    /// provider's status says. Gone once a dial connects, and with the
+    /// dial.
+    dial_failures: Mutex<HashMap<Identity, String>>,
     /// The closer of every provider connection held now, by the
     /// provider's identity — what [`close_provider`](Self::close_provider)
     /// tells — and how that connection was made, with the IP at its
@@ -494,7 +499,28 @@ impl Live {
     /// Where the daemon stands with the provider, as a list reports
     /// it.
     pub async fn provider_status(&self, identity: &Identity) -> Status {
-        self.providers.lock().await.status(identity)
+        match self.providers.lock().await.status(identity) {
+            Status::Disconnected { .. } => Status::Disconnected {
+                reason: self.dial_failures.lock().await.get(identity).cloned(),
+            },
+            status => status,
+        }
+    }
+
+    /// The dial of `identity` made no connection, or the one it made
+    /// ended, for `reason`: kept for its status, and the word said when
+    /// it is not what was kept already.
+    pub async fn dial_failed(&self, identity: &Identity, reason: String) {
+        let changed = self.dial_failures.lock().await.insert(identity.clone(), reason.clone()) != Some(reason);
+        if changed {
+            self.changes.changed(Kind::Providers);
+        }
+    }
+
+    /// The dial of `identity` connected: nothing is kept of why an
+    /// earlier one did not.
+    pub async fn dial_connected(&self, identity: &Identity) {
+        self.dial_failures.lock().await.remove(identity);
     }
 
     /// Every provider the daemon uses now: one snapshot, for whoever
@@ -601,6 +627,7 @@ impl Live {
         let mut dials = self.dials.lock().await;
         dials.remove(identity);
         self.dial_tasks.lock().await.remove(identity);
+        self.dial_failures.lock().await.remove(identity);
     }
 
     /// End every dial task: the daemon is stopping, and nothing reads

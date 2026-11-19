@@ -34,7 +34,9 @@ use crate::provider::endpoints::info::server::response::Frame as Info;
 ///
 /// # On the wire
 ///
-/// An object tagged by `type`: `{"type":"disconnected"}`,
+/// An object tagged by `type`: `{"type":"disconnected"}`, with a
+/// `reason` beside it where the daemon dials the provider and its
+/// last dial failed,
 /// `{"type":"connected","info":{…}}`,
 /// `{"type":"different_version","info":{…}}`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,7 +44,15 @@ use crate::provider::endpoints::info::server::response::Frame as Info;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Status {
     /// The daemon holds no connection to the provider.
-    Disconnected,
+    Disconnected {
+        /// Why not, for a provider the daemon dials: what ended its
+        /// last connection, or why its last dial did not make one, in
+        /// the daemon's words. Absent for a provider that dials the
+        /// daemon, and for one not dialled yet. The daemon dials again
+        /// every five seconds whatever it says.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+    },
     /// The daemon holds a connection it uses, and this is what the
     /// provider answered its `info` ask.
     Connected {

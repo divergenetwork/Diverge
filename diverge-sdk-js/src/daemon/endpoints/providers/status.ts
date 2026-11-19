@@ -12,8 +12,8 @@ import { Frame as Info } from "../../../provider/endpoints/info/server/response/
  * daemon's own. An object tagged by `type`.
  */
 export const Status = z.discriminatedUnion("type", [
-  /** The daemon holds no connection to the provider. */
-  z.object({ type: z.literal("disconnected") }),
+  /** The daemon holds no connection to the provider. `reason`, for a provider the daemon dials: what ended its last connection, or why its last dial did not make one. The daemon dials again every five seconds whatever it says. */
+  z.object({ type: z.literal("disconnected"), reason: z.string().optional() }),
   /** The daemon holds a connection it uses, and this is what the provider answered its `info` ask. */
   z.object({ type: z.literal("connected"), info: Info }),
   /** The daemon holds a connection it never uses: the provider's version is not the daemon's. */
