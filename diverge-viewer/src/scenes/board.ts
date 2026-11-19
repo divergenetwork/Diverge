@@ -448,7 +448,16 @@ export class Board extends Phaser.Scene {
     this.say(SELECTED, entity.key);
     this.here.show(entity.kind, node.image.x, node.image.y);
     this.refocus();
+    // Whatever selected it — a click on it, or its row in the outliner
+    // — the view glides to it.
+    this.centre(node);
     this.sheet?.open({ entity, images: this.images, route: this.route });
+  }
+
+  /** The view glides until `node` is at its middle, over `PAN`. */
+  private centre(node: Node) {
+    const at = where(node);
+    this.cameras.main.pan(at.x, at.y, PAN, "Cubic.easeInOut");
   }
 
   /** Rule 5: the sheet closed, so nothing is selected. */
@@ -463,9 +472,9 @@ export class Board extends Phaser.Scene {
   private focus(key: string) {
     const node = this.nodes?.byKey.get(key);
     if (!node || !node.image.visible) return;
-    const at = where(node);
-    this.cameras.main.pan(at.x, at.y, PAN, "Cubic.easeInOut");
+    // Selecting it centres it; one selected already is centred again.
     if (this.selected !== key) this.select(node.entity);
+    else this.centre(node);
   }
 
   /** Rule 7: a row hovered in the outliner, or left. */

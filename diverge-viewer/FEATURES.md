@@ -329,8 +329,8 @@ The keys are not printed.
 
 ### Opening and closing
 
-- **Open:** click any node. Gold corners mark it, and its
-  sheet opens along the bottom of the window.
+- **Open:** click any node. Gold corners mark it, the view glides to
+  centre it, and its sheet opens along the bottom of the window.
 - **Swap:** click another node to switch the sheet to it.
 - **Through the sheet:** a click on the sheet never selects a node
   beneath it.
