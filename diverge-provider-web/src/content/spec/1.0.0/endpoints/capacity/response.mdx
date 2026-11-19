@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends exactly one response, whose payload is one JSON object with the members volumes_disk, images_disk, container_memory and container_disk, each a count of bytes, with no tag and no length, and the response finish follows it.'
+summary: 'The server sends exactly one response, whose payload is one JSON object with the members volumes_disk, images_disk, container_memory and overlay_disk, each a count of bytes, with no tag and no length, and the response finish follows it.'
 order: 2
 draft: false
 ---
@@ -13,14 +13,14 @@ finish follows the response, and no frame follows the finish.
 ```
 
 ```json
-{"volumes_disk":107374182400,"images_disk":53687091200,"container_memory":4294967296,"container_disk":17179869184}
+{"volumes_disk":107374182400,"images_disk":53687091200,"container_memory":4294967296,"overlay_disk":17179869184}
 ```
 
 - **The payload.** The payload of the response is one JSON object,
   read as [Notation](/endpoints/#notation) provides, running to the
   end of the frame. No tag precedes it and no length prefixes it.
   The object has exactly four members, `volumes_disk`, `images_disk`,
-  `container_memory` and `container_disk`, and the server sends no
+  `container_memory` and `overlay_disk`, and the server sends no
   other member.
 - **`volumes_disk`.** An integer: the largest size, in bytes, a new
   volume of the client could have as of the instant of the response
@@ -35,10 +35,14 @@ finish follows the response, and no frame follows the finish.
   container run of the client could still reserve, as of the instant
   of the response. A client reads it only where the server holds out
   [`containers`](/capabilities/#containers).
-- **`container_disk`.** An integer: the number of bytes of overlay
-  disk a container run of the client could still reserve, as of the
-  instant of the response. A client reads it only where the server
-  holds out [`containers`](/capabilities/#containers).
+- **`overlay_disk`.** An integer: the number of bytes of overlay the
+  client could still reserve, as of the instant of the response. The
+  `disk` of a container run together with the `overlay_disk` of
+  every mount of an `ephemeral` volume in it, and the `overlay_disk`
+  of a FUSE serve of an `ephemeral` volume, are each reserved from
+  it. A client reads it only where the server holds out
+  [`containers`](/capabilities/#containers) or the `fuse_serve` of
+  [`volumes_ephemeral`](/capabilities/#the-volume-modes).
 - **Each integer.** Each member is an integer no less than `0` and no
   greater than `18446744073709551615`. `0` is an answer: no room.
 - **The sequence.** Exactly one response precedes the response

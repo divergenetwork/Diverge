@@ -38,6 +38,7 @@ There are two kinds of mount. Choose by where the volume lives and what you need
 | `volume_name` | a volume of **that** provider, by the name its listing gives |
 | `volume_relative_path` | components from the volume's root; `[]` mounts the volume itself, anything else a subdirectory |
 | `volume_mode` | the mode the mount **expects** the volume to be in (`persistent`, `ephemeral`, `read_only`). It does not set the mode |
+| `overlay_disk` | bytes the container may write into the volume. **Present exactly when `volume_mode` is `ephemeral`**, absent otherwise; either way round wrong is the create's error. Reserved on the provider from the same room as the container's `disk` |
 | `container_path` | components from the container's root. `[]` (the root) is refused |
 
 - With `provider` present and `volume_mounts` empty, the container is pinned to that provider and
@@ -167,6 +168,7 @@ start is not answered `delivered`.
 | The provider does not mount, or does not FUSE serve, volumes of that mode | Use another mode or another provider |
 | The volume no longer exists, or the provider is not connected | Recreate it under the same name, or reconnect the provider |
 | An ephemeral FUSE serve's `overlay_disk` cannot be set aside | Ask for fewer bytes, or free overlay disk on the provider |
+| A start fails saying the provider's overlay disk has no room | The container's `disk` plus its ephemeral mounts' `overlay_disk` is more than the provider has left. Ask for less, stop something, or raise the provider's `podman overlay_disk` |
 
 ## A worked example: a workspace volume and a shared read-only dataset
 

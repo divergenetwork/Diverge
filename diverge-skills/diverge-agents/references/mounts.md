@@ -42,6 +42,11 @@ single file (for example a credential file a vendor CLI rewrites).
 - `volume_mode`: `persistent`, `ephemeral` or `read_only`. It states the mode the mount **expects** the
   volume to be in. It does not set it. A volume in another mode refuses the run, which is the agent's start
   error (in its log), not the create's. Only a `volumes edit` changes a volume's mode.
+- `overlay_disk` (bytes): required exactly when `volume_mode` is `ephemeral`, forbidden otherwise; the
+  wrong way round is the create's error. It is the most the container may write into that volume. The
+  provider reserves it for the container's life from the same room as the container's own `disk`, and
+  refuses the start if the room is not there. A write past it fails inside the container with "no space
+  left"; `0` makes the volume unwritable.
 - `container_path`: components from the container's root. Never the root (`[]` is refused).
 - Without `provider`, the daemon chooses a provider at each start and the agent mounts no volume. Its state
   is then only its conversation, which the daemon keeps.

@@ -110,9 +110,12 @@ pages of those endpoints define.
   channel on the scope, and answers no channel the client opens on
   the scope.
 
-  The server sends `container_memory` and `container_disk` in every
-  [capacity](/endpoints/capacity/) response. Each carries any value,
-  and a client reads neither.
+  The server sends `container_memory` in every
+  [capacity](/endpoints/capacity/) response. It carries any value,
+  and a client does not read it. The server sends `overlay_disk` in
+  every capacity response too; a client reads it where the server
+  holds out the `fuse_serve` of `volumes_ephemeral`, and not
+  otherwise.
 
 ## `images`
 

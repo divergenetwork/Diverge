@@ -31,7 +31,29 @@ as JSON, read as [Notation](/endpoints/#notation) provides.
   it for nothing else.
 - **`memory`, `disk`.** Limits in bytes: the memory the container may
   use, and the bytes the container may write to its own filesystem.
-  Neither governs a mount.
+  Neither governs a mount. The `overlay_disk` of a mount governs
+  what the container may write into an `ephemeral` volume.
+- **`overlay_disk`.** A member of a mount in `volume_mounts`: an
+  integer, the most bytes the mount's own layer holds. The layer
+  holds every change the container makes to an `ephemeral` volume
+  and is discarded when the container ends. A mount whose `mode` is
+  `ephemeral` carries the member. A mount whose `mode` is
+  `persistent` or `read_only` does not carry it. The server refuses,
+  with an error, a run in which a mount carries the member and its
+  `mode` is not `ephemeral`, and a run in which a mount's `mode` is
+  `ephemeral` and the mount does not carry it.
+- **The reservation.** The server sets aside, for the life of the
+  container, `disk` and the `overlay_disk` of every mount, out of
+  the one quantity that [capacity](/endpoints/capacity/) reports as
+  `overlay_disk`. Where that quantity does not cover their sum, the
+  server refuses the run with an error and sets nothing aside. A
+  request that names one volume at several paths states one
+  `overlay_disk` for each mount, and each is set aside.
+- **The limit.** The server lets the container write no more into
+  the layer of a mount than the `overlay_disk` of that mount. A
+  write that would exceed it fails inside the container, and the
+  container continues. An `overlay_disk` of `0` is a volume into
+  which the container writes nothing.
 - **`volume_mounts`.** Ordered; the server applies them in order.
   `volume_name` is a `name` in the client's listing; `volume_relative_path`
   and `container_path` are components. An empty `container_path`

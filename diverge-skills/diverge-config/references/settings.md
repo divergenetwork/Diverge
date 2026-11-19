@@ -48,13 +48,13 @@ none installed.
 | `podman registries` | `registry.diverge.network`, `docker.io`, `ghcr.io`, `quay.io` | The registries the provider pulls from when an image's references name them. Each is a host: what a reference names before its first `/`; no scheme, no path; a port is allowed. The provider holds no credential for any, so only public images are pulled. A reference naming an unlisted registry is ignored. The daemon refuses a run unless at least one of the image's references names a listed registry. |
 | `podman storage_path` | inside the config root | Where podman's data is kept: on Linux its image store, on macOS and Windows the `diverge-provider` machine. On Linux its filesystem must support project quotas (XFS `pquota`, or ext4 with project quota) or every container run fails. Changing it moves the data. |
 | `podman image_cache_disk` | `34359738368` (32 GiB) | The most podman's image cache may hold. The provider removes images no running container uses, least recently run first, except images labelled `diverge.network/keep`. An image larger than this cannot be pulled. |
+| `podman overlay_disk` | `34359738368` (32 GiB) | One room for everything written temporarily, reserved up front: every running container's `disk`, the `overlay_disk` of every ephemeral volume a container mounts, and the `overlay_disk` of every ephemeral volume served over FUSE. A run or a serve that would take the total past it is refused. It applies whether or not containers are enabled. |
 
 ### containers (off by default)
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `containers` | disabled | Whether the provider runs containers. Disabled, every agent and tool run is refused as unsupported. |
-| `containers container_overlay_disk` | `34359738368` (32 GiB) | The sum of every running container's `disk` never exceeds it; a run that would is refused. The scratch space of an ephemeral volume served over FUSE counts against it too, so a provider with containers disabled serves no ephemeral volume over FUSE. |
 | `containers memory` | `8589934592` (8 GiB) | The sum of every running container's `memory` never exceeds it; a run that would is refused. On macOS the podman machine is given exactly this much. |
 
 ### volumes (off by default)

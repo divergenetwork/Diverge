@@ -576,7 +576,7 @@ decision and the hold being one act.
 (a) **The answer.** The Provider shall answer every `capacity`
 request with exactly one Response whose payload is one JSON object
 with exactly four members — `volumes_disk`, `images_disk`,
-`container_memory` and `container_disk`, each an integer no less than
+`container_memory` and `overlay_disk`, each an integer no less than
 `0` and no greater than `18446744073709551615` — with no tag and no
 length prefix, followed by the Response Finish. The Provider shall
 answer every `capacity` request whatever its `capabilities` object
@@ -587,7 +587,9 @@ and shall not send an error or a refusal on this Endpoint.
 its resource — the size of a new Volume, for `volumes_disk`; what a
 build could add to the Client Image Store, for `images_disk`; the
 `memory` a container run could reserve, for `container_memory`; the
-`disk` a container run could reserve, for `container_disk` — that the
+overlay a container run, a mount of an `ephemeral` Volume in one, or
+a FUSE serve of an `ephemeral` Volume could reserve, for
+`overlay_disk` — that the
 Identity of the Connection could use as of the instant the Provider
 sends the Response, as the Provider allots it. A Provider that
 allots the Identity less of a resource than the Provider holds shall
@@ -595,9 +597,19 @@ report the Identity's allotment, and a Provider that allots the
 Identity the whole of a resource shall report the whole; a Provider
 shall report no more of a resource than it would, at that instant,
 let the Identity use. The Provider shall reckon `container_memory`
-and `container_disk` against what its running Containers reserved,
-by the `memory` and `disk` of their requests, and not against the
-memory or the disk free on its host.
+against what its running Containers reserved, by the `memory` of
+their requests, and `overlay_disk` against one quantity from which it
+reserves the `disk` of every running Container's request, the
+`overlay_disk` of every mount of an `ephemeral` Volume in a running
+Container, and the `overlay_disk` of every open FUSE serve of an
+`ephemeral` Volume, and neither against the memory or the disk free
+on its host. The Provider shall refuse, with an error and with
+nothing reserved, a run whose `disk` and mounts' `overlay_disk`
+together exceed what remains of that quantity; shall refuse a run in
+which a mount carries `overlay_disk` and is not `ephemeral`, or is
+`ephemeral` and carries none; and shall let a Container write into
+the layer of an `ephemeral` mount no more than the `overlay_disk` the
+mount stated.
 
 (c) **Nothing reserved.** The Provider sets nothing aside by
 answering. A request that relies on a member is judged by the
