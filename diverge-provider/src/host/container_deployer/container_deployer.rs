@@ -52,6 +52,9 @@ pub struct ContainerDeployer {
     /// Where stored volumes are loop-mounted, `run/mounts/`, on this
     /// host.
     pub(super) mounts_dir: PathBuf,
+    /// Where an ephemeral mount's layer is kept, a file each: the
+    /// scratch directory.
+    pub(super) scratch_dir: PathBuf,
     /// The Store: where a caller's own images are looked for first,
     /// and where every blob taken from a caller is kept for its proof.
     /// Where the configuration names none, a Store of the deployer's
@@ -83,7 +86,7 @@ impl ContainerDeployer {
     /// image registry, `shares` the directories the
     /// volumes live in, which a podman machine must see beside `dir`
     /// and the executable's directory, and `disk` the
-    /// `container_overlay_disk` cap, which the volumes hold too, and
+    /// `podman.overlay_disk` cap, which the volumes hold too, and
     /// `store` the Store the registry serves. Made ready here: on Linux the
     /// provider found to be root, and on the hosts with a machine the
     /// machine brought to what the configuration says, first, since
@@ -145,6 +148,7 @@ impl ContainerDeployer {
                 memory: Limit::new(containers.as_ref().map_or(0, |containers| containers.memory)),
                 images: Images::new(podman.image_cache_disk),
             }),
+            scratch_dir: crate::host::volume_manager::scratch_dir(&podman.storage_path),
             podman,
             proxy_path,
             mounts_dir,
@@ -211,14 +215,6 @@ impl ContainerDeployer {
     /// memory.
     pub fn memory_room(&self) -> u64 {
         self.shared.memory.room()
-    }
-
-    /// What remains of the `container_overlay_disk` cap, in BYTES, as
-    /// of now: what a run's `disk` could still be. The cap is the one
-    /// the ephemeral FUSE serves' scratch counts against too, so what
-    /// they hold is not room either.
-    pub fn disk_room(&self) -> u64 {
-        self.shared.disk.room()
     }
 }
 

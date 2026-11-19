@@ -2,7 +2,7 @@
 //! how the leftovers of an earlier life are swept.
 
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use tokio::fs;
@@ -10,17 +10,22 @@ use tokio::fs;
 use super::sparse;
 use crate::host::{Held, Limit};
 
+/// Where every ephemeral layer the provider keeps itself is: a FUSE
+/// serve's, and a container's ephemeral mount's, each a file of its
+/// own. It is `<podman.storage_path>/ephemeral/`, on every provider,
+/// whether it runs containers or not.
+pub fn scratch_dir(storage_path: &Path) -> PathBuf {
+    storage_path.join("ephemeral")
+}
+
 /// The scratch directory and the cap the scratch counts against,
 /// shared by every stored volume.
 ///
-/// The directory is `<podman.storage_path>/ephemeral/`: the
-/// filesystem the containers' overlays are on, so that
-/// `containers.container_overlay_disk`, which [`Limit`] enforces over
-/// the running containers' `disk`, is an honest cap over the FUSE
-/// serves' `overlay_disk` beside them. A provider that runs no
-/// containers has no such cap: its [`Limit`] is `0`, no lease is
-/// ever given, nothing is written, and the directory is one under
-/// the provider's own `run/`.
+/// The directory is [`scratch_dir`], and the cap is
+/// `podman.overlay_disk`: the one [`Limit`] the running containers'
+/// `disk` and their ephemeral mounts' `overlay_disk` are taken from
+/// too, so that a FUSE serve's `overlay_disk` is counted beside
+/// them.
 #[derive(Debug)]
 pub struct Scratch {
     dir: PathBuf,

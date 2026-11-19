@@ -43,9 +43,13 @@ pub enum Error {
     Store(image_manager::Error),
     /// The provider's registry could not mint a token.
     Registry(image_registry::Error),
-    /// The running containers' `disk` would pass
-    /// `container_overlay_disk` with this one.
+    /// What is reserved of `podman.overlay_disk` would pass it with
+    /// this run's `disk` and its ephemeral mounts' `overlay_disk`.
     Disk,
+    /// A mount states an `overlay_disk` and its volume is not
+    /// ephemeral, or states none and its volume is: by the volume's
+    /// name.
+    Overlay(String),
     /// The running containers' `memory` would pass `memory` with this
     /// one.
     Memory,
@@ -103,7 +107,8 @@ impl fmt::Display for Error {
             Error::ProofFailed => f.write_str("the caller did not prove that it holds the image"),
             Error::Store(error) => write!(f, "the Store could not be used: {error}"),
             Error::Registry(error) => write!(f, "the registry could not serve the pull: {error}"),
-            Error::Disk => write!(f, "the running containers have the provider's disk"),
+            Error::Disk => write!(f, "the provider's overlay disk has no room for the run's disk and its ephemeral mounts"),
+            Error::Overlay(name) => write!(f, "the mount of the volume `{name}` states an `overlay_disk` exactly when the volume is ephemeral"),
             Error::Memory => write!(f, "the running containers have the provider's memory"),
             Error::Volume(name) => write!(f, "no volume named `{name}`"),
             Error::Volumes(error) => write!(f, "the volume could not be looked up: {error}"),
@@ -139,6 +144,7 @@ impl std::error::Error for Error {
             Error::Store(error) => Some(error),
             Error::Registry(error) => Some(error),
             Error::Disk => None,
+            Error::Overlay(_) => None,
             Error::Memory => None,
             Error::Volume(_) => None,
             Error::Volumes(error) => Some(error),
@@ -187,6 +193,7 @@ impl From<Error> for error::Error {
             Error::Store(_) => "store",
             Error::Registry(_) => "registry",
             Error::Disk => "disk",
+            Error::Overlay(_) => "overlay_disk",
             Error::Memory => "memory",
             Error::Volume(_) => "volume",
             Error::Volumes(_) => "volumes",

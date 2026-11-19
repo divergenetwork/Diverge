@@ -1,8 +1,10 @@
 //! The volume mounts of a deploy: checked, resolved, and put where
 //! podman can bind them.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use crate::host::tools::mount;
+use crate::host::volume_manager::{format_image, make_directories, reserve_image};
 use crate::protocol::mount::Mount;
 use diverge_sdk::provider::endpoints::volumes::Mode;
 use crate::protocol::volume_manager::VolumeManager as _;
@@ -16,12 +18,43 @@ use crate::host::volume_manager::Volume;
 /// container is gone.
 #[derive(Debug, Clone)]
 pub struct Bound {
-    /// `<host>:<container>`, with `:O` after it for an ephemeral
-    /// volume — podman's overlay, the container's writes discarded
-    /// with it — and `:ro` for a read-only one.
+    /// `<host>:<container>`, with `:O` and where its layer is after it
+    /// for an ephemeral volume — podman's overlay, the container's
+    /// writes discarded with it — and `:ro` for a read-only one.
     pub argument: String,
     /// The volume, attached once for this mount.
     pub volume: Volume,
+    /// An ephemeral mount's layer, where it has one: see [`Layer`].
+    pub layer: Option<Layer>,
+}
+
+/// The layer an ephemeral mount's writes land in: an image of exactly
+/// the mount's `overlay_disk`, mounted, for the container's life. The
+/// rules:
+///
+/// 1. **Of exactly the bytes reserved.** The image is made
+///    `overlay_disk` long and formatted to fill it, so what the
+///    container writes into the volume cannot pass what the mount
+///    reserved: a write past it fails inside the container as a
+///    write to a full disk does.
+/// 2. **Where podman is told.** The image is mounted as a stored
+///    volume's is, and holds two directories, `upper` and `work`,
+///    which the mount names to podman as the overlay's `upperdir` and
+///    `workdir`. Left to itself podman keeps an overlay's writes in
+///    its own storage, bounded by nothing.
+/// 3. **Gone with the container.** [`release`] unmounts it and
+///    removes the image, so nothing written is kept, which is what
+///    the mode means. One left by an earlier life is unmounted with
+///    the loop mounts and removed with the scratch, at the start.
+/// 4. **None for nothing.** A mount whose `overlay_disk` is `0` has
+///    no layer and is bound read-only: nothing can be written into
+///    it, which is what `0` reserves.
+#[derive(Debug, Clone)]
+pub struct Layer {
+    /// The image, on this host.
+    image: PathBuf,
+    /// Where it is mounted, as the tool sees it.
+    dir: String,
 }
 
 /// Every mount checked and made ready, each resolved beside every
@@ -48,10 +81,59 @@ pub async fn bind(deployer: &ContainerDeployer, mounts: &[Mount]) -> Result<Vec<
 }
 
 /// Every volume of `bound` detached, each beside every other: the
-/// last container to have a stored volume unmounts its image.
+/// last container to have a stored volume unmounts its image; and
+/// every ephemeral mount's layer unmounted and removed.
 pub async fn release(bound: &[Bound]) {
-    future::join_all(bound.iter().map(|one| one.volume.detach())).await;
+    future::join_all(bound.iter().map(|one| async move {
+        future::join(one.volume.detach(), async {
+            if let Some(layer) = &one.layer {
+                layer.remove().await;
+            }
+        })
+        .await;
+    }))
+    .await;
 }
+
+impl Layer {
+    /// Rules 1 and 2 of [`Layer`]: an image of `bytes` in
+    /// `scratch_dir`, formatted, its two directories made, mounted
+    /// under `mounts_dir`. A step that fails undoes the ones before
+    /// it.
+    async fn make(scratch_dir: &Path, mounts_dir: &Path, bytes: u64) -> Result<Layer, Error> {
+        let name = uuid::Uuid::new_v4().to_string();
+        let image = scratch_dir.join(format!("{name}.layer"));
+        let made = async {
+            reserve_image(&image, bytes).await?;
+            format_image(&image, bytes).await?;
+            make_directories(&image, &[UPPER, WORK]).await
+        }
+        .await;
+        if let Err(error) = made {
+            let _ = tokio::fs::remove_file(&image).await;
+            return Err(Error::Volumes(error));
+        }
+        let dir = tool_path(&mounts_dir.join(name));
+        if let Err(error) = mount::mount(&image, &dir, false).await {
+            let _ = tokio::fs::remove_file(&image).await;
+            return Err(Error::Mount(error));
+        }
+        Ok(Layer { image, dir })
+    }
+
+    /// Rule 3 of [`Layer`]. A refusal is not reported, there being
+    /// nobody to report it to: the next start sweeps what is left.
+    async fn remove(&self) {
+        let _ = mount::unmount(&self.dir).await;
+        let _ = tokio::fs::remove_file(&self.image).await;
+    }
+}
+
+/// The directory of a [`Layer`] the container's writes land in.
+const UPPER: &str = "upper";
+
+/// The directory of a [`Layer`] the kernel's overlay works in.
+const WORK: &str = "work";
 
 /// The refusals the contract puts on the provider, for what a
 /// deployment carries: the root as a container path; a component that
@@ -98,22 +180,47 @@ fn component_ok(component: &str) -> bool {
 /// to have it — the relative path descended on the directory it
 /// answers, and the argument built: plain for a persistent volume,
 /// under podman's overlay for an ephemeral one, read-only for a
-/// read-only one.
+/// read-only one. The rules of an ephemeral one's layer:
+///
+/// 1. **A number exactly when ephemeral.** A mount that states an
+///    `overlay_disk` for a volume that is not ephemeral, or none for
+///    one that is, is [`Error::Overlay`], before the volume is
+///    attached.
+/// 2. **Its layer made**, as [`Layer`] states, and named to podman;
+///    with `0` reserved there is none, and the mount is read-only.
+/// 3. A layer that cannot be made detaches the volume again.
 async fn one(deployer: &ContainerDeployer, mount: &Mount) -> Result<Bound, Error> {
     let volume = deployer
         .volumes
         .get(&mount.client_identity, &mount.volume_name)
         .await?
         .ok_or_else(|| Error::Volume(mount.volume_name.clone()))?;
+    let mode = volume.mode().await;
+    // Rule 1.
+    if (mode == Mode::Ephemeral) != mount.overlay_disk.is_some() {
+        return Err(Error::Overlay(mount.volume_name.clone()));
+    }
     let dir = volume.attach(&deployer.mounts_dir).await.map_err(Error::Mount)?;
     let host = descend(&dir, &mount.volume_relative_path);
     let mut argument = format!("{host}:/{}", mount.container_path.join("/"));
-    match volume.mode().await {
-        Mode::Persistent => {}
-        Mode::Ephemeral => argument.push_str(":O"),
-        Mode::ReadOnly => argument.push_str(":ro"),
+    let mut layer = None;
+    match (mode, mount.overlay_disk) {
+        (Mode::Persistent, _) => {}
+        (Mode::ReadOnly, _) | (Mode::Ephemeral, None | Some(0)) => argument.push_str(":ro"),
+        // Rule 2.
+        (Mode::Ephemeral, Some(bytes)) => match Layer::make(&deployer.scratch_dir, &deployer.mounts_dir, bytes).await {
+            Ok(made) => {
+                argument.push_str(&format!(":O,upperdir={}/{UPPER},workdir={}/{WORK}", made.dir, made.dir));
+                layer = Some(made);
+            }
+            // Rule 3.
+            Err(error) => {
+                volume.detach().await;
+                return Err(error);
+            }
+        },
     }
-    Ok(Bound { argument, volume })
+    Ok(Bound { argument, volume, layer })
 }
 
 /// `base` with `components` after it, joined by `/` as the tool

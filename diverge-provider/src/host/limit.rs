@@ -15,7 +15,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 const UNIT: u64 = 4096;
 
 /// A ceiling in BYTES and how much of it is held: `memory` against
-/// the running containers' `memory`, and `container_overlay_disk`
+/// the running containers' `memory`, and `podman.overlay_disk`
 /// against the running containers' `disk` and every ephemeral
 /// FUSE serve's `overlay_disk` together, since a FUSE serve's scratch lives
 /// beside the containers' overlays. A take is a [`Held`], and the

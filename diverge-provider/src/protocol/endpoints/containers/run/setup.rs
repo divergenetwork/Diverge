@@ -321,6 +321,7 @@ fn deployment(client_identity: &Identity, request: &Container) -> Deployment {
                 client_identity: client_identity.clone(),
                 volume_name: mount.volume_name.clone(),
                 volume_relative_path: mount.volume_relative_path.clone(),
+                overlay_disk: mount.overlay_disk,
                 container_path: mount.container_path.clone(),
             })
             .collect(),

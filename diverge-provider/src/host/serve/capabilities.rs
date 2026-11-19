@@ -44,10 +44,10 @@ use crate::host::image_manager::manifest::host;
 ///   container, since a serve opens the image in userspace and the
 ///   image bears one writer; an ephemeral or a read-only one by any
 ///   number of either at once. An ephemeral volume is FUSE served on
-///   a scratch counted against `containers.container_overlay_disk`,
-///   so a provider with no `containers` section serves none: the
-///   mode's `fuse_serve`, `fuse_serve_many` and
-///   `mount_and_fuse_serve` are `false`.
+///   a scratch counted against `podman.overlay_disk`, which every
+///   provider has, so it is served whether the provider runs
+///   containers or not; a cap of `0` refuses each serve as it
+///   reserves.
 /// - `messages`: the `messages` section's rate, as it is written; the
 ///   section absent, no object, and every listen and send answered
 ///   `Unsupported`.
@@ -61,7 +61,7 @@ pub fn capabilities(config: &Config) -> Capabilities {
             registries: registries(config).to_vec(),
         },
         volumes_persistent: mode(config, Mode::Persistent, PERSISTENT),
-        volumes_ephemeral: mode(config, Mode::Ephemeral, if config.containers.is_some() { ANY } else { UNSERVED }),
+        volumes_ephemeral: mode(config, Mode::Ephemeral, ANY),
         volumes_read_only: mode(config, Mode::ReadOnly, ANY),
         messages: config.messages.map(|messages| MessagesCapabilities { messages: messages.messages, seconds: messages.seconds }),
     }
@@ -110,17 +110,6 @@ const PERSISTENT: VolumeCapabilities = VolumeCapabilities {
     create: false,
     mount: true,
     fuse_serve: true,
-    mount_many: true,
-    fuse_serve_many: false,
-    mount_and_fuse_serve: false,
-};
-
-/// The ephemeral mode on a provider that runs no containers: mounted
-/// as the mode allows, and never FUSE served, there being no scratch.
-const UNSERVED: VolumeCapabilities = VolumeCapabilities {
-    create: false,
-    mount: true,
-    fuse_serve: false,
     mount_many: true,
     fuse_serve_many: false,
     mount_and_fuse_serve: false,

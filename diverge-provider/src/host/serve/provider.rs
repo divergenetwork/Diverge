@@ -135,15 +135,15 @@ impl Provider {
             })),
         };
         blobs.sweep().await.map_err(Error::Store)?;
-        let disk = Arc::new(Limit::new(config.containers.as_ref().map_or(0, |containers| containers.container_overlay_disk)));
-        // The scratch is beside the containers' overlays where there
-        // are containers, and under `run/` — never written, the cap
-        // being `0` — where there are none, so that a provider with
-        // no podman makes nothing under podman's storage path.
-        let scratch_dir = match &config.containers {
-            Some(_) => config.podman.storage_path.join("ephemeral"),
-            None => dir.join("run").join("ephemeral"),
-        };
+        // The one overlay cap: the containers' `disk`, the ephemeral
+        // mounts' `overlay_disk` and the ephemeral FUSE serves'
+        // `overlay_disk` are all taken from it.
+        let disk = Arc::new(Limit::new(config.podman.overlay_disk));
+        // The scratch — a FUSE serve's layer, and a mount's — is under
+        // podman's storage path, which a podman machine must see for
+        // a mount's layer to be mounted inside it.
+        let scratch_dir = volume_manager::scratch_dir(&config.podman.storage_path);
+        shares.push(scratch_dir.clone());
         let scratch = Scratch::new(scratch_dir, Arc::clone(&disk));
         scratch.sweep().await.map_err(Error::Scratch)?;
         let resizable = cfg!(target_os = "linux") || podman_in_use;
@@ -156,14 +156,14 @@ impl Provider {
             podman::configure(config.podman.storage_path.clone());
             let registry = Arc::new(ImageRegistry::start(Arc::clone(&blobs)).await.map_err(Error::Registry)?);
             Some(Arc::new(
-                ContainerDeployer::new(config.podman, config.containers, dir, Arc::clone(&volumes), registry, shares, disk, Arc::clone(&blobs))
+                ContainerDeployer::new(config.podman, config.containers, dir, Arc::clone(&volumes), registry, shares, Arc::clone(&disk), Arc::clone(&blobs))
                     .await
                     .map_err(Error::Deployer)?,
             ))
         } else {
             None
         };
-        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), deployer.clone()));
+        let capacity = Arc::new(CapacityReporter::new(Arc::clone(&volumes), store.clone(), deployer.clone(), Arc::clone(&disk)));
         let client = Arc::new(RegistryClient::new(&registries).map_err(Error::RegistryClient)?);
         let images = Arc::new(ImageManager::new(store, blobs, Arc::clone(&volumes), deployer.clone(), client));
         let deployer = Arc::new(deployer);

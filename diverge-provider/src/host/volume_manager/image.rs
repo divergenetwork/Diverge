@@ -366,6 +366,26 @@ pub async fn write_file(
     .map_err(io::Error::other)?
 }
 
+/// The directories `names` made at the root of the image at `path`,
+/// and the filesystem's metadata flushed: what an ephemeral mount's
+/// layer is given before it is mounted. On the blocking pool, as a
+/// write is.
+pub async fn make_directories(path: &Path, names: &[&str]) -> Result<(), Error> {
+    let image = path.to_path_buf();
+    let names: Vec<String> = names.iter().map(|name| name.to_string()).collect();
+    tokio::task::spawn_blocking(move || {
+        let mut device = FileBackend::open(&image)?;
+        let mut filesystem = Ext::open(&mut device)?;
+        for name in &names {
+            make_parents(&mut filesystem, &mut device, std::slice::from_ref(name))?;
+        }
+        filesystem.flush(&mut device)?;
+        Ok(())
+    })
+    .await
+    .map_err(io::Error::other)?
+}
+
 /// Every directory of `parents` made, from the root down, where it is
 /// not there already; one that is there and is not a directory is
 /// [`Error::NotADirectory`].

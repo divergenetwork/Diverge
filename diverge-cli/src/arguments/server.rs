@@ -337,10 +337,6 @@ pub enum Containers {
     /// its settings with it. Refused while the provider is running on
     /// the root: stop it first.
     Disable,
-    /// Read or write the most every running container's disk may
-    /// take together, `containers.container_overlay_disk`.
-    #[command(name = "container_overlay_disk", subcommand)]
-    ContainerOverlayDisk(Bytes),
     /// Read or write the most every running container's memory may
     /// take together, `containers.memory`; on macOS, also the memory
     /// the podman machine is given.
@@ -381,6 +377,29 @@ pub enum Podman {
     /// Read or write the most podman's image cache may hold.
     #[command(name = "image_cache_disk", subcommand)]
     ImageCacheDisk(ImageCacheDisk),
+    /// Read or write the most that may be written over what is kept,
+    /// `podman.overlay_disk`: the one cap every running container's
+    /// disk, every ephemeral volume a container mounts and every FUSE
+    /// serve of an ephemeral volume reserve from.
+    #[command(name = "overlay_disk", subcommand)]
+    OverlayDisk(OverlayDisk),
+}
+
+/// What is done to the provider's `podman.overlay_disk`: see
+/// [`provider`](crate::cli::provider).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum OverlayDisk {
+    /// Print the number of bytes, as the provider reads it: the
+    /// default, 32 GiB, where none was set.
+    Get,
+    /// Write the number of bytes. Refused while the provider is
+    /// running on the root: stop it first.
+    Set {
+        /// The most that may be reserved at once, in BYTES: a plain
+        /// integer, `34359738368` for 32 GiB.
+        #[arg(value_name = "BYTES")]
+        value: u64,
+    },
 }
 
 /// What is done to the provider's `podman.image_cache_disk`: see

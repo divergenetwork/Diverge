@@ -84,6 +84,11 @@ pub struct Mount {
     /// components and `..` is a name rather than an instruction. The
     /// provider descends; it does not resolve.
     pub volume_relative_path: Vec<String>,
+    /// The most bytes the mount's own layer may hold, as the request
+    /// stated it: present for an ephemeral volume and absent for any
+    /// other, which the deployer holds the mount to. See
+    /// [`request::VolumeMount`](diverge_sdk::shared::containers::request::VolumeMount).
+    pub overlay_disk: Option<u64>,
     /// Where it appears inside the container, as path components from
     /// the container's root.
     ///

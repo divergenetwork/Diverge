@@ -42,7 +42,12 @@ pub(super) async fn deploy(
     image: &Image,
     caller: &Caller,
 ) -> Result<(Container, Source), Error> {
-    let Some(disk) = deployer.shared.disk.take(deployment.disk) else {
+    // One take for the run: its own layer and every mount's, so that
+    // a run is refused whole or reserves whole. A mount that states a
+    // number its volume has no layer for is refused when it is bound,
+    // and gives everything back.
+    let layers = deployment.mounts.iter().filter_map(|mount| mount.overlay_disk).fold(deployment.disk, u64::saturating_add);
+    let Some(disk) = deployer.shared.disk.take(layers) else {
         return Err(Error::Disk);
     };
     let Some(memory) = deployer.shared.memory.take(deployment.memory) else {
