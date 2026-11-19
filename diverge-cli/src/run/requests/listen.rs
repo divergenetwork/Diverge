@@ -35,11 +35,11 @@ pub struct Arguments {
 /// The request put, and the listen held open. The rules:
 ///
 /// 1. **What is heard is printed.** Each `request`, with its id and
-///    its value, and each `withdrawn`, with its id, is a line as it
+///    its content, and each `withdrawn`, with its id, is a line as it
 ///    comes.
 /// 2. **An answer is a line of standard input**: one JSON object,
-///    `{"id": …, "response": …}`, the id a request came with and any
-///    JSON value. An empty line is passed over. A line that is not
+///    `{"id": …, "response": […]}`, the id a request came with and
+///    the answer's content blocks. An empty line is passed over. A line that is not
 ///    that object ends the command as an error.
 /// 3. **Each answer's delivery is printed**, when the daemon says it:
 ///    `{"delivered": {"id": …}}`, the answer was taken, or

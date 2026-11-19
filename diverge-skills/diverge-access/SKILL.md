@@ -235,17 +235,18 @@ What to know:
 ## Requests (`diverge run requests …`)
 
 A request is a question one party puts to others, and the one answer it gets. The question and the answer
-are any JSON value; the daemon reads neither.
+are content blocks, exactly as a chat message's `content` is (`[{"type":"text","text":…}]`): conversation,
+not data. The daemon reads neither.
 
 ```bash
 # Ask. Prints `created`, a `delivered` for each listener sent it, then `responded`, and ends.
-diverge run requests create '{"request":{"question":"Deploy to production?"},"to":"all"}'
+diverge run requests create '{"request":[{"type":"text","text":"Deploy to production?"}],"to":"all"}'
 #   {"created":{"id":"7c0e…"}}
 #   {"delivered":{"to":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
-#   {"responded":{"response":{"answer":"yes"},"from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
+#   {"responded":{"response":[{"type":"text","text":"yes"}],"from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
 
 # Ask only some. Every member is optional.
-diverge run requests create '{"request":"ready?","to":{"only":{
+diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{"only":{
   "accounts":[{"issuer":"…","subject":"github.12345.alice"}],
   "account_tags":["oncall"],
   "standalone_tools":[{"name":"reviewer"}],
@@ -255,8 +256,8 @@ diverge run requests create '{"request":"ready?","to":{"only":{
 
 # Listen. Prints each request made of this account; answers are read from standard input, one JSON object a line.
 diverge run requests listen
-#   {"request":{"id":"7c0e…","request":{"question":"Deploy to production?"}}}
-# type on standard input:   {"id":"7c0e…","response":{"answer":"yes"}}
+#   {"request":{"id":"7c0e…","request":[{"type":"text","text":"Deploy to production?"}]}}
+# type on standard input:   {"id":"7c0e…","response":[{"type":"text","text":"yes"}]}
 #   {"delivered":{"id":"7c0e…"}}
 ```
 
@@ -273,7 +274,7 @@ diverge run requests listen
 - **One `listen` per account or tool**, across all its connections. A second answers `"already_open"`.
 - **`listen` never ends by itself.** Do not run it in the foreground of a task that must return: run it in
   the background and write lines to its standard input. Standard input ending does not end the listen. A
-  line that is not `{"id":…,"response":…}` ends the command with an error.
+  line that is not `{"id":…,"response":[…]}` ends the command with an error.
 - **Ignore a `withdrawn` for an ID you never saw.**
 - **Who may be asked.** Listening needs no grant. Creating needs the `request` action, which exists in
   three kinds, each with its own `within` and its own tags: `accounts`, `standalone_tools`,

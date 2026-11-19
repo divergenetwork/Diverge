@@ -6,7 +6,7 @@ use std::sync::Arc;
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::requests::RequestId;
 use diverge_sdk::daemon::endpoints::requests::create::client::request::To;
-use serde_json::Value;
+use rmcp::model::ContentBlock;
 use tokio::sync::{Mutex, mpsc};
 
 use super::Party;
@@ -16,7 +16,7 @@ use crate::judge::Standing;
 #[derive(Debug, Clone)]
 pub enum Told {
     /// A request made of it.
-    Request { id: RequestId, request: Arc<Value> },
+    Request { id: RequestId, request: Arc<Vec<ContentBlock>> },
     /// A request it was sent is wanted no more.
     Withdrawn(RequestId),
 }
@@ -27,7 +27,7 @@ pub enum Became {
     /// A listener was sent it: who.
     Delivered(Creator),
     /// It was answered, and is over: the answer, and who gave it.
-    Responded { response: Value, from: Creator },
+    Responded { response: Vec<ContentBlock>, from: Creator },
 }
 
 /// A pending request, as whoever judges a listener against it needs
@@ -44,8 +44,8 @@ pub struct Candidate {
 
 /// One pending request.
 struct Pending {
-    /// Its value, as every listener is sent it.
-    request: Arc<Value>,
+    /// Its content, as every listener is sent it.
+    request: Arc<Vec<ContentBlock>>,
     /// Whom it is made of.
     to: Arc<To>,
     /// Its creator's grants at its create.
@@ -158,7 +158,7 @@ impl Requests {
     /// read, in the one critical section, so a listener that opens a
     /// moment after is one that finds it among its
     /// [`candidates`](Self::candidates).
-    pub async fn create(&self, id: RequestId, request: Value, to: To, standing: Standing) -> (mpsc::UnboundedReceiver<Became>, Vec<Party>) {
+    pub async fn create(&self, id: RequestId, request: Vec<ContentBlock>, to: To, standing: Standing) -> (mpsc::UnboundedReceiver<Became>, Vec<Party>) {
         let (creator, receiver) = mpsc::unbounded_channel();
         let mut state = self.state.lock().await;
         state.pending.insert(
@@ -199,7 +199,7 @@ impl Requests {
     /// the answer and who gave it, and every OTHER party it was sent
     /// to is told it is withdrawn. The party that answered is told
     /// nothing here: its `true` is that word.
-    pub async fn respond(&self, id: &RequestId, party: &Party, response: Value) -> bool {
+    pub async fn respond(&self, id: &RequestId, party: &Party, response: Vec<ContentBlock>) -> bool {
         let mut state = self.state.lock().await;
         let sent = state.pending.get(id).is_some_and(|pending| pending.delivered.contains(party));
         let Some(named) = state.listeners.get(party).map(|listener| listener.named.clone()) else {

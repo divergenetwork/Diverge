@@ -13,8 +13,8 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 #[command(subcommand_negates_reqs = true, args_conflicts_with_subcommands = true)]
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
-    /// [`request::Frame`] — `request`, any JSON value, which every
-    /// listener is sent as it is; and `to`, whom it is made of: the
+    /// [`request::Frame`] — `request`, content blocks as a chat
+    /// message's are, which every listener is sent as they are; and `to`, whom it is made of: the
     /// string `all`, or `{"only": {…}}` naming accounts, standalone
     /// tools and dependency tools, each by itself or by a tag; `relay`
     /// among its members has another daemon serve it.

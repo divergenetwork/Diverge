@@ -1,5 +1,6 @@
 //! A request, as a listener is sent it.
 
+use rmcp::model::ContentBlock;
 use serde::{Deserialize, Serialize};
 
 use crate::daemon::endpoints::requests::RequestId;
@@ -11,7 +12,7 @@ pub struct Asked {
     /// What the request is known by: what an answer to it, and its
     /// withdrawal, name.
     pub id: RequestId,
-    /// The request: any JSON value, as its creator wrote it. The
-    /// daemon reads none of it.
-    pub request: serde_json::Value,
+    /// The request: its content, in order, as its creator wrote it.
+    /// The daemon reads none of it.
+    pub request: Vec<ContentBlock>,
 }

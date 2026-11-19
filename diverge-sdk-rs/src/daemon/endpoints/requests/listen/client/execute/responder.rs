@@ -29,7 +29,7 @@ impl Responder {
     /// took the answer as the request's. `NotDelivered` is an answer
     /// like the other: the request was answered or withdrawn first,
     /// or is none this listener was sent.
-    pub async fn respond(&self, id: RequestId, response: serde_json::Value) -> Result<channel_response::Frame, RespondError> {
+    pub async fn respond(&self, id: RequestId, response: Vec<rmcp::model::ContentBlock>) -> Result<channel_response::Frame, RespondError> {
         let mut payload = Vec::new();
         channel_request::Frame::Respond(Respond { id, response })
             .encode(&mut Writer::new(&mut payload))

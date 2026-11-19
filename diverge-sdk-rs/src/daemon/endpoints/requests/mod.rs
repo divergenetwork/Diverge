@@ -1,7 +1,8 @@
 //! Requests: a question one party puts to others, and the one answer
 //! it gets.
 //!
-//! A party [`create`]s a request — any JSON value — and says whom it
+//! A party [`create`]s a request — content, as a chat message's is:
+//! conversation, not data — and says whom it
 //! is made of: accounts and tools, each by name or by tag, or all the
 //! party may ask. Every one of them that [`listen`]s is sent it, and
 //! any of them may answer. The rules of the whole:

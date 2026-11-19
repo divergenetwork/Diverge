@@ -2,6 +2,7 @@
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
+use rmcp::model::ContentBlock;
 use serde::{Deserialize, Serialize};
 
 use crate::shared::relay::Relay;
@@ -14,9 +15,10 @@ use super::To;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Frame {
-    /// The request: any JSON value. The daemon reads none of it, and
-    /// every listener is sent it as it is.
-    pub request: serde_json::Value,
+    /// The request: its content, in order, as a chat message's is.
+    /// The daemon reads none of it, and every listener is sent it as
+    /// it is.
+    pub request: Vec<ContentBlock>,
     /// Whom it is made of: see [`To`].
     pub to: To,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
