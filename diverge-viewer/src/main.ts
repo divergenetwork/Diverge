@@ -52,13 +52,33 @@ const game = new Phaser.Game({
   render: { mipmapFilter: "LINEAR_MIPMAP_LINEAR" },
   scene: [Backdrop, Board, Ui],
 });
-/** The window resized, or moved to a screen of another density: the game follows. */
+/**
+ * The window resized, or moved to a screen of another density: the game
+ * follows.
+ *
+ * The rules:
+ *
+ * 1. The game is fitted to `#world` as `#world` is laid out, not to the
+ *    window as the window says it changed: the size is read from the
+ *    element, by an observer of the element, which is told after the
+ *    page has been laid out at the new size. A window `resize` can
+ *    arrive before that — a maximise, a restore, a snap to half the
+ *    screen change the window in one step — and reading the element
+ *    then reads the size it had, which left the game the size of the
+ *    window before, in the corner of the new one.
+ * 2. A fit to the size the game already is does nothing.
+ */
 const fit = () => {
   const { width, height } = size();
-  game.scale.setZoom(1 / density());
+  if (width === 0 || height === 0) return;
+  const zoom = 1 / density();
+  // Rule 2.
+  if (game.scale.width === width && game.scale.height === height && game.scale.zoom === zoom) return;
+  game.scale.setZoom(zoom);
   game.scale.resize(width, height);
 };
-addEventListener("resize", fit);
+// Rule 1.
+new ResizeObserver(fit).observe(world);
 watchDensity();
 onDensity(fit);
 tabs(game);
