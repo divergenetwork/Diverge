@@ -4,7 +4,7 @@ import { z } from "zod";
 
 /**
  * The actions over tools that exist, which a grant reaches as far as its `within` says.
- * Snake case on the wire: `"get"`, `"edit"`, `"attach"`, `"detach"`, `"delete"`, `"list"`, `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"connect"`, `"logs"`.
+ * Snake case on the wire: `"get"`, `"edit"`, `"attach"`, `"detach"`, `"delete"`, `"list"`, `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"connect"`, `"logs"`, `"request"`.
  *
  * - `get`: Get one, as `standalone_tools.get` does.
  * - `edit`: Change one, as `standalone_tools.edit` does.
@@ -20,6 +20,7 @@ import { z } from "zod";
  * - `frontend`: Send HTTP requests to the frontend its program serves, as `standalone_tools.frontend` does.
  * - `connect`: Serve one to another daemon, as `standalone_tools.connect` does.
  * - `logs`: Read one's log, as `standalone_tools.logs` does.
+ * - `request`: Make a request of them, as `requests.create` does: a tool the grant reaches may be named by a request, or by a tag of one, and is sent a request made of all.
  */
-export const Over = z.enum(["get", "edit", "attach", "detach", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "connect", "logs"]);
+export const Over = z.enum(["get", "edit", "attach", "detach", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "connect", "logs", "request"]);
 export type Over = z.infer<typeof Over>;

@@ -26,6 +26,11 @@ export class Cancel {
     this.#scope = scope;
   }
 
+  /** The scope's number: what a channel this side opens on it names. */
+  get scope(): number {
+    return this.#scope;
+  }
+
   /** Ask the daemon to finish the scope. */
   async cancel(): Promise<void> {
     try {

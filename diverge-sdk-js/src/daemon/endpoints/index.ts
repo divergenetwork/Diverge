@@ -19,6 +19,7 @@ export * as info from "./info/index.js";
 export * as logs from "./logs/index.js";
 export * as postgres from "./postgres/index.js";
 export * as providers from "./providers/index.js";
+export * as requests from "./requests/index.js";
 export * as roles from "./roles/index.js";
 export * as standalone_tools from "./standalone_tools/index.js";
 export * as vault from "./vault/index.js";

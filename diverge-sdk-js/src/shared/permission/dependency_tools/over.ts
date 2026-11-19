@@ -4,7 +4,7 @@ import { z } from "zod";
 
 /**
  * The actions over dependency tools that exist, which a grant reaches as far as its `within` says.
- * Snake case on the wire: `"get"`, `"delete"`, `"list"`, `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"logs"`.
+ * Snake case on the wire: `"get"`, `"delete"`, `"list"`, `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"logs"`, `"request"`.
  *
  * - `get`: Get one, as `dependency_tools.get` does.
  * - `delete`: Delete every tool of a template, as `dependency_tools.delete` does.
@@ -16,6 +16,7 @@ import { z } from "zod";
  * - `exec`: Run a command in one's container — any program it holds, as the container's own user — as `dependency_tools.exec` does.
  * - `frontend`: Send HTTP requests to the frontend its program serves, as `dependency_tools.frontend` does.
  * - `logs`: Read one's log, running or not, as `dependency_tools.logs` does.
+ * - `request`: Make a request of them, as `requests.create` does: a tool the grant reaches may be named by a request, or by a tag of one, and is sent a request made of all.
  */
-export const Over = z.enum(["get", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "logs"]);
+export const Over = z.enum(["get", "delete", "list", "download", "upload", "transfer", "filetree", "exec", "frontend", "logs", "request"]);
 export type Over = z.infer<typeof Over>;
