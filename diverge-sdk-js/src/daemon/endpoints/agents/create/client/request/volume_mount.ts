@@ -24,7 +24,7 @@ export const VolumeMount = z
    * The most bytes the mount's own layer may hold, for an ephemeral
    * volume: what the container writes into the volume, kept apart and
    * discarded with the container. The provider sets the bytes aside
-   * for the container's life, out of the one capacity the container's
+   * for the container's life, out of the capacity the container's
    * `disk` is set aside from, and refuses the run when it cannot; a
    * write that would take the layer past them fails. `0` is a volume
    * nothing can be written into.

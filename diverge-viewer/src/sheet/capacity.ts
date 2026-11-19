@@ -4,12 +4,13 @@
 import type { Capacity } from "../world/model";
 import { bytes } from "./strip";
 
-/** The four amounts, in the order they are shown: the member of the provider's answer, the row's name, and what the provider must offer for the amount to mean anything. */
+/** The five amounts, in the order they are shown: the member of the provider's answer, the row's name, and what the provider must offer for the amount to mean anything. */
 const ROWS = [
   { member: "volumes_disk", name: "Volumes", offer: "volumes" },
   { member: "images_disk", name: "Images", offer: "images" },
   { member: "container_memory", name: "Container memory", offer: "containers" },
-  { member: "overlay_disk", name: "Overlay disk", offer: "overlay" },
+  { member: "container_disk", name: "Container disk", offer: "containers" },
+  { member: "fuse_disk", name: "Ephemeral FUSE disk", offer: "fuse" },
 ] as const;
 
 /**
@@ -21,10 +22,11 @@ const ROWS = [
  *    board's own `providers list`, which the daemon asks the provider
  *    for every ten seconds, and at once after anything it does that
  *    changes it; `set` is handed each one the list brings.
- * 2. Four rows, a name and an amount: volumes, images, container
- *    memory, overlay disk — the one room a container's own disk, an
- *    ephemeral volume it mounts and an ephemeral volume's FUSE serve
- *    are all set aside from. Each amount is what the daemon could
+ * 2. Five rows, a name and an amount: volumes, images, container
+ *    memory, container disk — the room a container's own disk and an
+ *    ephemeral volume it mounts are set aside from — and ephemeral
+ *    FUSE disk, the room an ephemeral volume's FUSE serve is set
+ *    aside from. Each amount is what the daemon could
  *    still use of it now, in words (`bytes`). The provider says what
  *    is free and never a total, so no row draws a share of anything.
  * 3. A row whose resource the provider does not offer says so in
