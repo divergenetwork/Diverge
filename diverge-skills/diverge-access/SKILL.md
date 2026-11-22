@@ -17,7 +17,7 @@ Every body may also carry `relay` (see the `diverge-daemons` skill).
 
 ## The model in six rules
 
-1. **An identity is `(issuer, subject)`**, written `{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"}`.
+1. **An identity is `(issuer, subject)`**, written `{"issuer":"https://identity.diverge.network","subject":"ronald.alice"}`.
    It is what a client's access token establishes in the handshake, once the client has proven it holds
    the key that token is bound to. The daemon keeps no list of
    trusted issuers: an identity from any issuer connects once a record (account, administrator, provider) names it.
@@ -82,8 +82,8 @@ not decode. Write a making grant and an over grant as two separate grants.
 ```json
 {"agents":{"actions":["get","list","message","logs"],"within":{"all_tags":["crew"]}}}
 {"agents":{"actions":["message"],"within":{"agents":[{"template":"<agent template id>","index":3}]}}}
-{"agents":{"actions":["delete"],"within":{"creators":[{"type":"client","identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"}}]}}}
-{"volumes":{"actions":["get","stat"],"within":{"volumes":[{"provider":{"issuer":"…","subject":"github.12345.provider"},"name":"datasets"}]}}}
+{"agents":{"actions":["delete"],"within":{"creators":[{"type":"client","identity":{"issuer":"https://identity.diverge.network","subject":"ronald.alice"}}]}}}
+{"volumes":{"actions":["get","stat"],"within":{"volumes":[{"provider":{"issuer":"…","subject":"ronald.provider"},"name":"datasets"}]}}}
 ```
 
 Which member names records differs per kind; the table and the narrowing members per kind are in
@@ -160,7 +160,7 @@ diverge run roles create '{"name":"operator","description":"runs the crew agents
 
 diverge run roles get  '{"name":"operator"}'          # -> {"found":{name, description, grants, accounts, tags, created, creator}}
 diverge run roles list                                 # -> {"added":{…}} per role, then "listed"
-diverge run roles list '{"accounts":[{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"}]}'   # roles alice holds
+diverge run roles list '{"accounts":[{"issuer":"https://identity.diverge.network","subject":"ronald.alice"}]}'   # roles alice holds
 diverge run roles tag   '{"name":"operator","tags":["team-a"]}'    # -> "tagged"
 diverge run roles untag '{"name":"operator","tags":["team-a"]}'    # -> "untagged"
 diverge run roles delete '{"name":"operator"}'         # -> "deleted" | "not_found" | "in_use" | "forbidden"
@@ -192,11 +192,11 @@ takes `--watch`.
 
 ```bash
 # Create: the identity is admitted from now on. `roles` may be empty.
-diverge run accounts create '{"identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"},
+diverge run accounts create '{"identity":{"issuer":"https://identity.diverge.network","subject":"ronald.alice"},
   "description":"crew operator","roles":["operator"]}'
 # -> "created" | "exists" | "no_role" | "forbidden" | {"error":…}
 
-diverge run accounts get '{"account":{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"}}'
+diverge run accounts get '{"account":{"issuer":"https://identity.diverge.network","subject":"ronald.alice"}}'
 # -> {"found":{"identity":{…},"description":…,"roles":[…],"connected":false,"last_connected":…,"tags":[…],
 #              "created":…,"creator":{…}}}   (an administrator also carries "admin":true)
 
@@ -204,15 +204,15 @@ diverge run accounts list                                  # every account the g
 diverge run accounts list '{"roles":["operator"],"connected":true}'
 
 # Edit: a JSON Patch over {"description":…,"roles":[…]}. The identity is not editable.
-diverge run accounts edit '{"account":{"issuer":"https://identity.diverge.network","subject":"github.12345.alice"},
+diverge run accounts edit '{"account":{"issuer":"https://identity.diverge.network","subject":"ronald.alice"},
   "patch":[{"op":"add","path":"/roles/-","value":"auditor"}]}'
 # -> "edited" | "not_found" | "no_role" | "forbidden" | {"error":…}
 
-diverge run accounts tag   '{"account":{"issuer":"…","subject":"github.12345.alice"},"tags":["team-a"]}'   # -> "tagged"
-diverge run accounts untag '{"account":{"issuer":"…","subject":"github.12345.alice"},"tags":["team-a"]}'   # -> "untagged"
+diverge run accounts tag   '{"account":{"issuer":"…","subject":"ronald.alice"},"tags":["team-a"]}'   # -> "tagged"
+diverge run accounts untag '{"account":{"issuer":"…","subject":"ronald.alice"},"tags":["team-a"]}'   # -> "untagged"
 
-diverge run accounts disconnect '{"account":{"issuer":"…","subject":"github.12345.alice"}}'   # -> {"disconnected":2}
-diverge run accounts delete     '{"account":{"issuer":"…","subject":"github.12345.alice"}}'   # -> "deleted" | "not_found" | "forbidden"
+diverge run accounts disconnect '{"account":{"issuer":"…","subject":"ronald.alice"}}'   # -> {"disconnected":2}
+diverge run accounts delete     '{"account":{"issuer":"…","subject":"ronald.alice"}}'   # -> "deleted" | "not_found" | "forbidden"
 ```
 
 What to know:
@@ -251,12 +251,12 @@ not data. The daemon reads neither.
 # Ask. Prints `created`, a `delivered` for each listener sent it, then `responded`, and ends.
 diverge run requests create '{"request":[{"type":"text","text":"Deploy to production?"}],"to":"all"}'
 #   {"created":{"id":"7c0e…"}}
-#   {"delivered":{"to":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
-#   {"responded":{"response":[{"type":"text","text":"yes"}],"from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.alice"}}}}
+#   {"delivered":{"to":{"type":"client","identity":{"issuer":"…","subject":"ronald.alice"}}}}
+#   {"responded":{"response":[{"type":"text","text":"yes"}],"from":{"type":"client","identity":{"issuer":"…","subject":"ronald.alice"}}}}
 
 # Ask only some. Every member is optional.
 diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{"only":{
-  "accounts":[{"issuer":"…","subject":"github.12345.alice"}],
+  "accounts":[{"issuer":"…","subject":"ronald.alice"}],
   "account_tags":["oncall"],
   "standalone_tools":[{"name":"reviewer"}],
   "standalone_tool_tags":[],
@@ -266,7 +266,7 @@ diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{
 # Listen. Prints each request made of this account; answers are read from standard input, one JSON object a line.
 diverge run requests listen
 #   {"request":{"id":"7c0e…","request":[{"type":"text","text":"Deploy to production?"}],
-#               "from":{"type":"client","identity":{"issuer":"…","subject":"github.12345.bob"}}}}
+#               "from":{"type":"client","identity":{"issuer":"…","subject":"ronald.bob"}}}}
 # type on standard input:   {"id":"7c0e…","response":[{"type":"text","text":"yes"}]}
 #   {"delivered":{"id":"7c0e…"}}
 ```
@@ -313,13 +313,13 @@ request ever answers a token.
 ```bash
 diverge run identities list                         # -> {"listed":[{"issuer":…,"subject":…,"tags":[…]}, …]}
 diverge run identities list '{"issuers":["https://identity.diverge.network"],"any_tags":["peer"]}'
-diverge run identities get   '{"identity":{"issuer":"…","subject":"github.12345.daemon-a"}}'                  # {"found":{…}} | "not_found"
-diverge run identities tag   '{"identity":{"issuer":"…","subject":"github.12345.daemon-a"},"tags":["peer"]}'   # "tagged" | "not_found"
-diverge run identities untag '{"identity":{"issuer":"…","subject":"github.12345.daemon-a"},"tags":["peer"]}'   # "untagged"
+diverge run identities get   '{"identity":{"issuer":"…","subject":"ronald.daemon-a"}}'                  # {"found":{…}} | "not_found"
+diverge run identities tag   '{"identity":{"issuer":"…","subject":"ronald.daemon-a"},"tags":["peer"]}'   # "tagged" | "not_found"
+diverge run identities untag '{"identity":{"issuer":"…","subject":"ronald.daemon-a"},"tags":["peer"]}'   # "untagged"
 
 # Sign an identity in on the daemon's host. At Diverge's own issuer the command approves the code
-# itself and waits; the account github.12345 must be signed in under the CLI's root first.
-diverge run identities login --issuer https://identity.diverge.network --subject github.12345.daemon-a --client-id diverge
+# itself and waits; the account whose username is ronald must be signed in under the CLI's root first.
+diverge run identities login --issuer https://identity.diverge.network --subject ronald.daemon-a --client-id diverge
 # -> {"signed_in":{"issuer":…,"subject":…}}
 # -> or, refused: "held" | "forbidden" | {"error":…}, or an error naming the account to sign in
 
@@ -335,7 +335,7 @@ diverge run identities list
   a JSON body with the same members works too. The device code is the only login there is: no password,
   and no browser is opened.
 - **At `https://identity.diverge.network`, exactly**, the login needs no person. The subject is
-  `<issuer>.<id>.<name>`, and the account `<issuer>.<id>` (a GitHub or Google sign-in) must already be signed
+  `<username>.<name>`, and the account with that username (a GitHub or Google sign-in) must already be signed
   in under the CLI's own root with `diverge identity.diverge.network accounts login <issuer>`. The command
   approves the code as that account, waits, and prints `signed_in`. See `diverge-config`.
 - **At any other issuer** the command ends once `pending` is printed. A background process of the CLI keeps
@@ -360,12 +360,12 @@ ISS=https://identity.diverge.network
 diverge run roles create '{"name":"team-a","grants":[
   {"agents":["create"]},
   {"agents":{"actions":["get","list","message","logs","filetree"],"within":{"all_tags":["team-a"]}}},
-  {"agents":{"actions":["get","list","edit","delete"],"within":{"creators":[{"type":"client","identity":{"issuer":"'$ISS'","subject":"github.12345.alice"}}]}}},
-  {"agents":{"actions":["tag"],"within":{"creators":[{"type":"client","identity":{"issuer":"'$ISS'","subject":"github.12345.alice"}}]},"tags":["team-a"]}},
+  {"agents":{"actions":["get","list","edit","delete"],"within":{"creators":[{"type":"client","identity":{"issuer":"'$ISS'","subject":"ronald.alice"}}]}}},
+  {"agents":{"actions":["tag"],"within":{"creators":[{"type":"client","identity":{"issuer":"'$ISS'","subject":"ronald.alice"}}]},"tags":["team-a"]}},
   {"agents_templates":{"actions":["get","list"],"within":"any"}},
-  {"accounts":{"actions":["logs"],"within":{"identities":[{"issuer":"'$ISS'","subject":"github.12345.alice"}]}}}]}'
+  {"accounts":{"actions":["logs"],"within":{"identities":[{"issuer":"'$ISS'","subject":"ronald.alice"}]}}}]}'
 # 2. The account.
-diverge run accounts create '{"identity":{"issuer":"'$ISS'","subject":"github.12345.alice"},"roles":["team-a"]}'
+diverge run accounts create '{"identity":{"issuer":"'$ISS'","subject":"ronald.alice"},"roles":["team-a"]}'
 # 3. Tag the existing agents the team should see.
 diverge run agents tag '{"agent":{"name":"echo"},"tags":["team-a"]}'
 # 4. Check as alice (after adding her to the daemon's accounts: diverge cli daemons <INDEX> accounts add …).
@@ -408,7 +408,7 @@ For `"forbidden"`, work through this list:
    through. As an administrator (or with `logs` over accounts):
 
    ```bash
-   diverge run logs '{"of":{"type":"account","issuer":"https://identity.diverge.network","subject":"github.12345.alice"}}' \
+   diverge run logs '{"of":{"type":"account","issuer":"https://identity.diverge.network","subject":"ronald.alice"}}' \
      --jq '.item.account | select(.allowed == false) | {logs_index, created, path, request}'
    ```
 

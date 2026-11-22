@@ -178,7 +178,7 @@ a Store is found by its digest, so it needs no `references`:
 
 ```bash
 diverge run images list                                    # every image the grant reaches, then "listed"
-diverge run images list '{"providers":[{"issuer":"…","subject":"github.12345.provider"}]}'
+diverge run images list '{"providers":[{"issuer":"…","subject":"ronald.provider"}]}'
 diverge run images list '{"digests":["sha256:…"]}' --jq '.added'
 diverge run images list --watch                            # stays open: added / changed / removed
 ```
@@ -206,7 +206,7 @@ diverge run images list --watch                            # stays open: added /
 
 ```bash
 diverge run images push '{
-  "provider": {"issuer":"…","subject":"github.12345.provider"},
+  "provider": {"issuer":"…","subject":"ronald.provider"},
   "platforms": ["linux/amd64","linux/arm64"],
   "image": {"digest":"sha256:…","references":[{"registry":"ghcr.io","name":"acme/worker"}]},
   "source": "daemon",
@@ -276,7 +276,7 @@ A push cannot be cancelled.
 
 ```bash
 # the whole image
-diverge run images delete '{"provider":{"issuer":"…","subject":"github.12345.provider"},"digest":"sha256:…"}'
+diverge run images delete '{"provider":{"issuer":"…","subject":"ronald.provider"},"digest":"sha256:…"}'
 # "deleted"
 
 # only some platforms; the rest stay, under the same digest
@@ -312,7 +312,7 @@ Grant: `delete` over images, reaching the provider.
 ## Changing an image's description: `diverge run images edit`
 
 ```bash
-diverge run images edit '{"provider":{"issuer":"…","subject":"github.12345.provider"},
+diverge run images edit '{"provider":{"issuer":"…","subject":"ronald.provider"},
   "digest":"sha256:…","description":"python agent loop, rebuilt for the new proxy"}'
 # -> "edited" | "not_found" | "forbidden" | "unsupported" | {"error":…}
 
@@ -334,7 +334,7 @@ daemon's Store on a provider, without sending it anywhere.
 ```bash
 # An amd64 image built on one provider and an arm64 image built on another, joined on the first.
 diverge run images merge '{
-  "provider": {"issuer": "https://identity.diverge.network", "subject": "github.12345.provider"},
+  "provider": {"issuer": "https://identity.diverge.network", "subject": "ronald.provider"},
   "images": [
     {"digest": "sha256:aaaa…"},
     {"digest": "sha256:bbbb…", "platforms": ["linux/arm64"]}

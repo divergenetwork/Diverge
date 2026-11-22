@@ -22,7 +22,7 @@ single file (for example a credential file a vendor CLI rewrites).
 
 ```json
 "provider": {
-  "identity": {"issuer": "https://identity.diverge.network", "subject": "github.12345.provider"},
+  "identity": {"issuer": "https://identity.diverge.network", "subject": "ronald.provider"},
   "volume_mounts": [
     {
       "volume_name": "notes",
@@ -56,7 +56,7 @@ single file (for example a credential file a vendor CLI rewrites).
 ```json
 "fuse_file_mounts": [
   {
-    "provider": {"issuer": "https://identity.diverge.network", "subject": "github.12345.provider"},
+    "provider": {"issuer": "https://identity.diverge.network", "subject": "ronald.provider"},
     "volume_name": "creds",
     "volume_relative_path": ["claude", "credentials.json"],
     "volume_mode": "persistent",
@@ -65,7 +65,7 @@ single file (for example a credential file a vendor CLI rewrites).
 ],
 "fuse_directory_mounts": [
   {
-    "provider": {"issuer": "https://identity.diverge.network", "subject": "github.12345.provider"},
+    "provider": {"issuer": "https://identity.diverge.network", "subject": "ronald.provider"},
     "volume_name": "shared",
     "volume_relative_path": [],
     "volume_mode": "ephemeral",
@@ -121,7 +121,7 @@ The editable document is:
 # append a FUSE directory mount (the one change a running agent accepts)
 diverge run agents edit '{"agent":{"name":"echo"},"patch":[
   {"op":"add","path":"/fuse_directory_mounts/-","value":{
-    "provider":{"issuer":"https://identity.diverge.network","subject":"github.12345.provider"},
+    "provider":{"issuer":"https://identity.diverge.network","subject":"ronald.provider"},
     "volume_name":"shared","volume_relative_path":[],"volume_mode":"read_only","container_path":["shared"]}}
 ]}'
 

@@ -76,11 +76,11 @@ diverge daemon port get                 # 14980
 diverge daemon port set 15000
 diverge daemon idle_seconds get         # 10
 diverge daemon idle_seconds set 300
-diverge daemon admins get               # {"index":0,"issuer":"https://identity.diverge.network","subject":"github.12345.admin"}   one line per administrator
-diverge daemon admins add --issuer https://identity.diverge.network --subject github.12345.other
+diverge daemon admins get               # {"index":0,"issuer":"https://identity.diverge.network","subject":"ronald.admin"}   one line per administrator
+diverge daemon admins add --issuer https://identity.diverge.network --subject ronald.other
 diverge daemon admins delete 0
 diverge daemon identity get             # {"issuer":"…","subject":"…"}, or null
-diverge daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
+diverge daemon identity set --issuer https://identity.diverge.network --subject ronald.daemon-a
 diverge daemon postgres get             # {"kind":"local","max_connections":1024}  or  {"kind":"remote","url":"…","has_password":true}
 diverge daemon postgres set local                             # the daemon's own Postgres, 1024 connections
 diverge daemon postgres set local --max-connections 200
@@ -106,12 +106,12 @@ diverge daemon postgres set remote --url postgres://diverge@db.example.com:5432/
 diverge provider port get               # 14979
 diverge provider port set 15001
 diverge provider identity get           # {"issuer":"…","subject":"…"}, or null
-diverge provider identity set --issuer https://identity.diverge.network --subject github.12345.provider
+diverge provider identity set --issuer https://identity.diverge.network --subject ronald.provider
 diverge provider incoming get           # {"index":0,"issuer":"…","subject":"…"}   one line per identity that may dial in
-diverge provider incoming add --issuer https://identity.diverge.network --subject github.12345.daemon-b
+diverge provider incoming add --issuer https://identity.diverge.network --subject ronald.daemon-b
 diverge provider incoming delete 0
 diverge provider outgoing get           # {"index":0,"address":"…","issuer":"…","subject":"…"}   one line per peer the provider dials
-diverge provider outgoing add --address relay.example.com:14979 --issuer https://identity.diverge.network --subject github.12345.relay
+diverge provider outgoing add --address relay.example.com:14979 --issuer https://identity.diverge.network --subject ronald.relay
 diverge provider outgoing delete 0
 ```
 
@@ -199,7 +199,7 @@ diverge provider volumes fixed get                          # {"index":0,"name":
 diverge provider volumes fixed add --name datasets --path /srv/datasets --bytes 107374182400 --mode read_only
 diverge provider volumes fixed delete 0                     # removes the entry, never the directory it names
 diverge provider volumes fixed 0 authorized get             # "all", or {"index":0,"issuer":"…","subject":"…"} a line each
-diverge provider volumes fixed 0 authorized add --issuer https://identity.diverge.network --subject github.12345.daemon
+diverge provider volumes fixed 0 authorized add --issuer https://identity.diverge.network --subject ronald.daemon
 diverge provider volumes fixed 0 authorized delete 0        # by the identity's index in that volume's list
 diverge provider volumes fixed 0 authorized set all         # listed to everyone again
 ```
@@ -302,12 +302,12 @@ diverge cli default set 1                # by index
 diverge cli daemons 0 address get        # ws://127.0.0.1:14980/
 diverge cli daemons 0 address set ws://10.0.0.5:14980/
 diverge cli daemons 0 accounts get       # {"index":0,"name":"me","issuer":"…","subject":"…"}   one line per account
-diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject ronald.admin
 diverge cli daemons 0 accounts delete 0
 diverge cli daemons 0 default get        # {"index":0,"name":"me"}, or null: the account used when --account is not given
 diverge cli daemons 0 default set 0      # by the account's index
 diverge cli daemons 0 identity get       # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
-diverge cli daemons 0 identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
+diverge cli daemons 0 identity set --issuer https://identity.diverge.network --subject ronald.daemon-a
 ```
 
 - A fresh CLI has one daemon, `local`, at `ws://127.0.0.1:14980/`, with no account.
@@ -345,12 +345,12 @@ diverge viewer default set 1             # by index
 diverge viewer daemons 0 address get     # ws://127.0.0.1:14980/
 diverge viewer daemons 0 address set ws://10.0.0.5:14980/
 diverge viewer daemons 0 accounts get    # {"index":0,"name":"me","issuer":"…","subject":"…"}   one line per account
-diverge viewer daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge viewer daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject ronald.admin
 diverge viewer daemons 0 accounts delete 0
 diverge viewer daemons 0 default get     # {"index":0,"name":"me"}, or null
 diverge viewer daemons 0 default set 0   # by the account's index
 diverge viewer daemons 0 identity get    # null, or {"issuer":"…","subject":"…"}: the daemon's OWN identity
-diverge viewer daemons 0 identity set --issuer https://identity.diverge.network --subject github.12345.daemon-a
+diverge viewer daemons 0 identity set --issuer https://identity.diverge.network --subject ronald.daemon-a
 ```
 
 - A fresh viewer has one daemon, `local`, at `ws://127.0.0.1:14980/`, with no account: the same daemon a fresh
@@ -365,15 +365,25 @@ diverge viewer daemons 0 identity set --issuer https://identity.diverge.network 
 
 ## Accounts at Diverge's own issuer: `diverge identity.diverge.network`
 
-`https://identity.diverge.network` is Diverge's hosted issuer. Every subject there is `<issuer>.<id>.<name>`:
+`https://identity.diverge.network` is Diverge's hosted issuer. Every subject there is `<username>.<name>`:
+
+- `<username>` is the owner's username, which the owner's account sets once (below).
+- `<name>` is chosen by the owner: 1 to 64 characters of `a-z`, `0-9`, `-`, `_`.
+
+An **account** is one GitHub or Google sign-in, written `<issuer>.<id>`:
 
 - `<issuer>` is `github` or `google`: who issued the owner's own sign-in. In these commands "issuer" always
   means GitHub or Google, never `identity.diverge.network` itself.
 - `<id>` is the owner's permanent user id there.
-- `<name>` is chosen by the owner: 1 to 64 characters of `a-z`, `0-9`, `-`, `_`.
 
-An **account** is `<issuer>.<id>`. It owns every subject that starts with it. Sign an account in once per
-root; after that, signing any of its subjects in needs no person (see the next section).
+An account owns every subject that starts with its username. Sign an account in once per root and set its
+username once; after that, signing any of its subjects in needs no person (see the next section).
+
+**The username is permanent.** It is set once and can never be changed or given up, and every subject of
+the account carries it. Choosing it is the person's decision: ask them, and never pick one yourself. It is
+1 to 39 characters of `a-z`, `0-9`, `-`, `_`; it begins and ends with a letter or a digit; and no two of `-`
+and `_` are next to each other. No two accounts have the same username. An account with no username cannot
+sign any subject in.
 
 ```bash
 diverge identity.diverge.network accounts login github
@@ -382,8 +392,12 @@ diverge identity.diverge.network accounts list
 # {"account":"github.12345","issuer":"github","id":"12345"}        one line per account
 diverge identity.diverge.network accounts info github 12345
 # {"account":"github.12345","issuer":"github","id":"12345","info":{…}}
+diverge identity.diverge.network accounts username get github 12345
+# {"account":"github.12345","username":null}                      null: none set yet
+diverge identity.diverge.network accounts username set github 12345 ronald
+# {"account":"github.12345","username":"ronald"}
 diverge identity.diverge.network subjects list github 12345
-# {"subject":"github.12345.daemon-a","name":"daemon-a","refresh_tokens":2}     one line per subject signed in somewhere
+# {"subject":"ronald.daemon-a","name":"daemon-a","refresh_tokens":2}     one line per subject signed in somewhere
 diverge identity.diverge.network refresh-tokens list github 12345 daemon-a
 # {"id":"…","created":…,"ip":"…","user_agent":"…","last_used":…,"last_ip":"…"}   one line per place it is signed in
 diverge identity.diverge.network refresh-tokens end github 12345 daemon-a <id>
@@ -395,6 +409,8 @@ diverge identity.diverge.network refresh-tokens end github 12345 daemon-a <id>
 | `accounts login <issuer>` | Starts a device login at GitHub or Google, opens that page in this host's browser, prints the code, and **ends**. A person enters the code on the page. A background process saves the account once it is approved. `--no-browser` opens nothing. |
 | `accounts list` | The accounts signed in under this root. Asks nobody. |
 | `accounts info <issuer> <id>` | What GitHub or Google says about that user right now. The `info` object is the issuer's own and differs between the two. |
+| `accounts username get <issuer> <id>` | The account's username, or `null` when it has set none. |
+| `accounts username set <issuer> <id> <username>` | Sets the account's username. **Once**: a second `set` is refused with `username_set`, whatever username it names. A username another account has is refused with `username_taken`: ask the person for another. |
 | `subjects list <issuer> <id>` | The account's subjects that are signed in somewhere, with how many places each. |
 | `refresh-tokens list <issuer> <id> <name>` | Where one subject is signed in: one entry per sign-in, with the address and program that started it and when it was last used. |
 | `refresh-tokens end <issuer> <id> <name> <refresh-token-id>` | Signs one of them out. Tokens it already holds last until they expire (15 minutes). |
@@ -435,8 +451,8 @@ log in again.
 
 ```bash
 # At Diverge's own issuer: nothing to approve, the command does it and waits.
-diverge identities login --issuer https://identity.diverge.network --subject github.12345.admin --client-id diverge
-# → {"issuer":"https://identity.diverge.network","subject":"github.12345.admin"}     signed in
+diverge identities login --issuer https://identity.diverge.network --subject ronald.admin --client-id diverge
+# → {"issuer":"https://identity.diverge.network","subject":"ronald.admin"}     signed in
 
 # At any other issuer: a code to approve there.
 diverge identities login --issuer https://auth.example.com --subject alice --client-id my-client
@@ -466,10 +482,12 @@ At `https://identity.diverge.network`:
 
 - **The issuer string must match exactly.** A trailing slash, or any other address, is treated as another
   issuer and takes the code-and-background path.
-- **The subject must be `<issuer>.<id>.<name>`.** It is split at its first two periods. Anything else is
+- **The subject must be `<username>.<name>`.** It is split at its first period. Anything else is
   refused before anything is contacted, with the form it should have.
-- **The account `<issuer>.<id>` must be signed in under this root.** If it is not, the error says so and gives
-  the fix: `diverge identity.diverge.network accounts login <issuer>`, then run the login again.
+- **The account whose username it is must be signed in under this root.** If none is, the error says so and
+  gives the fix: `diverge identity.diverge.network accounts login <issuer>`, then run the login again.
+- **The account must have set its username.** The error names the command:
+  `diverge identity.diverge.network accounts username set <issuer> <id> <username>`.
 - **A new subject and an existing one are the same command.** Signing in under a name never used before is how
   a subject begins. Signing in again under a used name adds another sign-in for the same subject.
 - The name must be 1 to 64 of `a-z`, `0-9`, `-`, `_`, or the issuer refuses the approval.
@@ -501,9 +519,9 @@ At every issuer:
 
 ```bash
 diverge identities list
-# {"issuer":"https://identity.diverge.network","subject":"github.12345.admin"}      one line per identity; signed-out ones included
-diverge identities remove --issuer https://identity.diverge.network --subject github.12345.old
-# {"removed":{"issuer":"…","subject":"github.12345.old"}}
+# {"issuer":"https://identity.diverge.network","subject":"ronald.admin"}      one line per identity; signed-out ones included
+diverge identities remove --issuer https://identity.diverge.network --subject ronald.old
+# {"removed":{"issuer":"…","subject":"ronald.old"}}
 ```
 
 `remove` removes the identity's key with it.
@@ -520,11 +538,11 @@ the usual `run` flags and `relay`, and answer `"forbidden"` otherwise.
 ```bash
 diverge run identities list                                   # {"listed":[{"issuer":…,"subject":…,"tags":[…]}, …]}
 diverge run identities list --issuer https://identity.diverge.network   # also --subject; body: issuers, subjects, all_tags, any_tags
-diverge run identities get   '{"identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"}}'                  # {"found":{…}} | "not_found"
-diverge run identities tag   '{"identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"},"tags":["prod"]}'   # "tagged" | "not_found"
-diverge run identities untag '{"identity":{"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"},"tags":["prod"]}'   # "untagged" | "not_found"
-diverge run identities login --issuer https://identity.diverge.network --subject github.12345.daemon-a --client-id diverge
-# {"signed_in":{"issuer":"https://identity.diverge.network","subject":"github.12345.daemon-a"}}
+diverge run identities get   '{"identity":{"issuer":"https://identity.diverge.network","subject":"ronald.daemon-a"}}'                  # {"found":{…}} | "not_found"
+diverge run identities tag   '{"identity":{"issuer":"https://identity.diverge.network","subject":"ronald.daemon-a"},"tags":["prod"]}'   # "tagged" | "not_found"
+diverge run identities untag '{"identity":{"issuer":"https://identity.diverge.network","subject":"ronald.daemon-a"},"tags":["prod"]}'   # "untagged" | "not_found"
+diverge run identities login --issuer https://identity.diverge.network --subject ronald.daemon-a --client-id diverge
+# {"signed_in":{"issuer":"https://identity.diverge.network","subject":"ronald.daemon-a"}}
 ```
 
 - `list` is one snapshot (`{"listed":[…]}`), not a stream; there is no `--watch`. Tags exist only so grants can
@@ -535,7 +553,7 @@ diverge run identities login --issuer https://identity.diverge.network --subject
 - **At `https://identity.diverge.network`** the command approves the code itself and waits. It prints
   `{"signed_in":{…}}`, or why not. The daemon's host does the sign-in, but the approval uses the account
   signed in under **the CLI's own root**, on the machine where you run the command. The same rules apply:
-  exact issuer string, subject `<issuer>.<id>.<name>`, account signed in here first.
+  exact issuer string, subject `<username>.<name>`, the account with that username signed in here first.
 - **At any other issuer** the command prints `{"pending":{"user_code",…}}` and ends. A background process of
   the CLI keeps the login alive until the code is approved, denied or expires. Check the outcome with
   `diverge run identities list`; it is never printed.
@@ -663,21 +681,21 @@ Before stopping anything, say what it will interrupt and make sure the user aske
 ```bash
 # 1. sign in: the account once (a person approves the code), then the identities
 diverge identity.diverge.network accounts login github
-diverge identities login --issuer https://identity.diverge.network --subject github.12345.admin    --client-id diverge
-diverge identities login --issuer https://identity.diverge.network --subject github.12345.daemon   --client-id diverge
-diverge identities login --issuer https://identity.diverge.network --subject github.12345.provider --client-id diverge
+diverge identities login --issuer https://identity.diverge.network --subject ronald.admin    --client-id diverge
+diverge identities login --issuer https://identity.diverge.network --subject ronald.daemon   --client-id diverge
+diverge identities login --issuer https://identity.diverge.network --subject ronald.provider --client-id diverge
 
 # 2. the provider: who it is, who may dial it, and that it runs containers
-diverge provider identity set --issuer https://identity.diverge.network --subject github.12345.provider
-diverge provider incoming add --issuer https://identity.diverge.network --subject github.12345.daemon
+diverge provider identity set --issuer https://identity.diverge.network --subject ronald.provider
+diverge provider incoming add --issuer https://identity.diverge.network --subject ronald.daemon
 diverge provider containers enable
 
 # 3. the daemon: who it is, and its first administrator
-diverge daemon identity set --issuer https://identity.diverge.network --subject github.12345.daemon
-diverge daemon admins add   --issuer https://identity.diverge.network --subject github.12345.admin
+diverge daemon identity set --issuer https://identity.diverge.network --subject ronald.daemon
+diverge daemon admins add   --issuer https://identity.diverge.network --subject ronald.admin
 
 # 4. the CLI: dial the local daemon as the administrator
-diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject github.12345.admin
+diverge cli daemons 0 accounts add --name me --issuer https://identity.diverge.network --subject ronald.admin
 diverge cli daemons 0 default set 0
 
 # 5. start, and check
