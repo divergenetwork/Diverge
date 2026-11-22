@@ -25,9 +25,12 @@ identities in on the daemon's host, so the daemon must grant it the
 every `login` is refused. To publish it needs `publish` over images as
 well.
 
-Every subject at that issuer is `<issuer>.<id>.<name>`: `github` or
-`google`, the owner's user id there, and a name the owner chose. An
-**account** is `<issuer>.<id>`. The tool keeps accounts — the GitHub or
+Every subject at that issuer is `<username>.<name>`: the owner's
+username, and a name the owner chose. An **account** is `<issuer>.<id>`:
+`github` or `google`, and the owner's user id there. An account sets
+its username at that issuer once, and it never changes; an account
+that has set none has no subject and no namespace, and `login` and
+`publish` as it are refused, saying so. The tool keeps accounts — the GitHub or
 Google sign-ins themselves — in its database, and uses one to approve
 a login the daemon begins. So an agent that may call this tool can
 put any subject of any account the tool holds onto the daemon's host,
@@ -41,18 +44,19 @@ For agents, over MCP:
 | tool | parameters | does |
 |---|---|---|
 | `list_accounts` | none | the accounts the tool holds, each as `{"account","issuer","id"}` |
-| `login` | `issuer`, `id`, `subject` | signs the subject `<issuer>.<id>.<subject>` in on the daemon's host, as that account, and waits for it |
-| `publish` | `issuer`, `id`, `repository`, `images`, and optionally `tags`, `description`, `provider` | publishes the images to `registry.diverge.network/<issuer>.<id>/<repository>` as that account, and waits for it |
+| `login` | `issuer`, `id`, `subject` | signs the subject `<username>.<subject>` in on the daemon's host, as that account, and waits for it |
+| `publish` | `issuer`, `id`, `repository`, `images`, and optionally `tags`, `description`, `provider` | publishes the images to `registry.diverge.network/<username>/<repository>` as that account, and waits for it |
 
 - `issuer` is `github` or `google`: who issued the account's own
   sign-in, and never `identity.diverge.network` itself.
 - `id` is the account's user id at that issuer, as `list_accounts`
   gives it.
-- `subject` is the name alone, the third part: 1 to 64 of `a-z`, `0-9`,
-  `-` and `_`. The whole subject is built from the three.
+- `subject` is the name alone, the second part: 1 to 64 of `a-z`, `0-9`,
+  `-` and `_`. The whole subject is the account's username, a period,
+  and it.
 - A subject never signed in before and one that already is are the
   same call: a login under a new name is how a subject begins.
-- `login` answers `{"signed_in": {"issuer": "https://identity.diverge.network", "subject": "<issuer>.<id>.<subject>"}}`.
+- `login` answers `{"signed_in": {"issuer": "https://identity.diverge.network", "subject": "<username>.<subject>"}}`.
   The identity is then on the daemon's host. Which identity the daemon
   presents is still its own configuration's.
 - No tool answers a token, and no tool adds an account.
@@ -63,8 +67,8 @@ For agents, over MCP:
 It takes no username, no password and no registry:
 
 - **The registry is fixed**: `registry.diverge.network`.
-- **The namespace is the account**: the image goes to
-  `<issuer>.<id>/<repository>`, the one namespace that account may
+- **The namespace is the account's username**: the image goes to
+  `<username>/<repository>`, the one namespace that account may
   write. `repository` is one name with no `/`.
 - **The credential is the account's own**, supplied by the tool. It is
   handed to the daemon for that one publish and appears in no answer.

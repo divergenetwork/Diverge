@@ -19,7 +19,7 @@ pub const NAME: &str = "publish";
 
 /// What the tool does, as its caller reads it.
 pub const DESCRIPTION: &str = "Publish one or more images to Diverge's registry, registry.diverge.network, as one of this tool's accounts, and wait for it. \
-Give the account's `issuer` and `id` as `list_accounts` gives them, a `repository` name, and the `images` by digest: the image goes to `<issuer>.<id>/<repository>` there. \
+Give the account's `issuer` and `id` as `list_accounts` gives them, a `repository` name, and the `images` by digest: the image goes to `<username>/<repository>` there, the username the account's own, set once at identity.diverge.network. \
 No username, password or registry is given: the tool supplies the account's own. The daemon gathers the images from wherever they are, merges several into one, and publishes. \
 Answers `{\"published\": {\"provider\", \"digest\", \"created\", \"reference\", \"tags\"}}`.";
 
@@ -35,7 +35,8 @@ pub struct Parameters {
     /// The repository's name in the account's namespace: one name,
     /// with no `/`, of lowercase letters and digits with single `.`,
     /// `_` or `-` between them. The image goes to
-    /// `registry.diverge.network/<issuer>.<id>/<repository>`.
+    /// `registry.diverge.network/<username>/<repository>`, the
+    /// username the account's own.
     pub repository: String,
     /// The images to publish as one, each a digest and, optionally,
     /// the platforms to take of it: one or more. One image taking all
@@ -57,7 +58,7 @@ pub struct Parameters {
     pub provider: Option<Identity>,
 }
 
-/// Publish `images` to `<issuer>.<id>/<repository>` at [`REGISTRY`].
+/// Publish `images` to `<username>/<repository>` at [`REGISTRY`].
 /// The rules:
 ///
 /// 1. **The account is one the tool holds.** Its issuer is one there
@@ -66,8 +67,10 @@ pub struct Parameters {
 ///    repository is empty, the repository is one name, and at least
 ///    one image is named.
 /// 2. **Where it goes is not the caller's to say.** The registry is
-///    [`REGISTRY`], and the repository's namespace is the account,
-///    `<issuer>.<id>`: the one namespace the account may write.
+///    [`REGISTRY`], and the repository's namespace is the account's
+///    username — see [`username`](store::accounts::username) — the
+///    one namespace the account may write. An account that has set
+///    none has no namespace: [`Failure::NoUsername`].
 /// 3. **Its token is had first** — see
 ///    [`token`](store::accounts::token) — the one the registry takes
 ///    of its issuer, which is the one `identity.diverge.network`
@@ -101,12 +104,13 @@ pub async fn call(call: Call<'_>, parameters: Parameters) -> Result<Value, Failu
     // Rule 3.
     let pool = call.state.store.pool(&call.state.client).await?;
     let token = store::accounts::token(pool, &call.state.http, call.template, issuer, &parameters.id, issuer.presents).await?;
+    let username = store::accounts::username(&call.state.http, issuer, &parameters.id, &token).await?;
     // Rules 2 and 4.
     let request = request::Frame {
         images: parameters.images,
         reference: Reference {
             registry: REGISTRY.to_string(),
-            name: format!("{}.{}/{}", issuer.name, parameters.id, parameters.repository),
+            name: format!("{username}/{}", parameters.repository),
         },
         tags: parameters.tags,
         credential: Some(request::Credential {

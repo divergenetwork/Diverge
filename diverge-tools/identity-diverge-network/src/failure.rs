@@ -37,6 +37,10 @@ pub enum Failure {
     Daemon(String),
     /// A publish ended without the image published: why.
     Unpublished(String),
+    /// The account has set no username at
+    /// `identity.diverge.network`, and so has no subject and no
+    /// namespace: the account.
+    NoUsername(String),
     /// The database could not be reached, or refused a statement.
     Store(String),
     /// An account's issuer, or `identity.diverge.network`, could not
@@ -60,6 +64,10 @@ impl fmt::Display for Failure {
             Failure::Ended => f.write_str("the daemon's login ended with no outcome; nothing is known to be signed in"),
             Failure::Daemon(why) => write!(f, "the daemon could not be asked: {why}; nothing was signed in"),
             Failure::Unpublished(why) => write!(f, "nothing was published: {why}"),
+            Failure::NoUsername(account) => write!(
+                f,
+                "the account `{account}` has set no username at identity.diverge.network, and a subject and a registry namespace each begin with one; nothing was done. A person sets it once, and for good, with `diverge identity.diverge.network accounts username set <ISSUER> <ID> <USERNAME>`"
+            ),
             Failure::Store(why) => write!(f, "the accounts could not be read or written: {why}"),
             Failure::Identity(why) => write!(f, "{why}"),
         }

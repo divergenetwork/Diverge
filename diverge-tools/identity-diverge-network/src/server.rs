@@ -68,10 +68,11 @@ impl Server {
 
 /// The instructions a caller's MCP client is handed on connecting.
 const INSTRUCTIONS: &str = "Signs identities in on the daemon's host at Diverge's own issuer, https://identity.diverge.network, with nobody entering a code. \
-See which accounts this tool holds with `list_accounts`: each is `<issuer>.<id>`, a GitHub or Google sign-in, and owns every subject that begins with it. \
-Sign a subject in with `login`, giving the account's `issuer` and `id` and the subject's name as `subject`: the whole subject is `<issuer>.<id>.<subject>`. \
+See which accounts this tool holds with `list_accounts`: each is `<issuer>.<id>`, a GitHub or Google sign-in, and owns every subject that begins with the username it set at that issuer, once. \
+Sign a subject in with `login`, giving the account's `issuer` and `id` and the subject's name as `subject`: the whole subject is `<username>.<subject>`. \
 A name never used before begins a new subject. \
-Publish images to Diverge's registry, registry.diverge.network, with `publish`, giving the account's `issuer` and `id`, a `repository` name and the `images` by digest: they go to `<issuer>.<id>/<repository>`, and the tool supplies the account's own credential, so no username, password or registry is given. \
+Publish images to Diverge's registry, registry.diverge.network, with `publish`, giving the account's `issuer` and `id`, a `repository` name and the `images` by digest: they go to `<username>/<repository>`, and the tool supplies the account's own credential, so no username, password or registry is given. \
+An account that has set no username can do neither, and the refusal says how a person sets one. \
 Accounts are added by a person at this tool's page, never by a tool call: if `list_accounts` answers none, ask a person to open the page and sign one in.";
 
 impl ServerHandler for Server {

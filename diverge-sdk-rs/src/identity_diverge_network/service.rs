@@ -15,10 +15,10 @@ pub const ISSUER_HEADER: &str = "diverge-issuer";
 /// One subject of an account's.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Subject {
-    /// The subject, whole: `<issuer>.<id>.<name>`, the `sub` of its
+    /// The subject, whole: `<username>.<name>`, the `sub` of its
     /// tokens.
     pub subject: String,
-    /// Its name: the third part.
+    /// Its name: the second part.
     pub name: String,
     /// How many refresh tokens it has that have not been ended.
     pub refresh_tokens: u64,
@@ -47,6 +47,12 @@ pub struct RefreshToken {
 #[derive(Deserialize)]
 struct Approved {
     subject: String,
+}
+
+/// `GET /username`'s and `PUT /username`'s answer.
+#[derive(Deserialize)]
+struct Username {
+    username: String,
 }
 
 /// `GET /subjects`' answer.
@@ -80,6 +86,46 @@ pub async fn approve(http: &reqwest::Client, service: &str, issuer: &Issuer, tok
     let (url, status, body) = request(http, service, issuer, token, Method::POST, &["device", user_code, "approve"], Some(&json!({ "name": name }))).await?;
     let approved: Approved = serde_json::from_slice(&body).map_err(|_| Error::Answer { url, status, body: String::from_utf8_lossy(&body).into_owned() })?;
     Ok(approved.subject)
+}
+
+/// The username of the account `token` is, at `service`:
+/// `GET /username`. `None` where the account has set none.
+pub async fn username(http: &reqwest::Client, service: &str, issuer: &Issuer, token: &str) -> Result<Option<String>, Error> {
+    match request(http, service, issuer, token, Method::GET, &["username"], None).await {
+        Ok((url, status, body)) => {
+            let answer: Username = serde_json::from_slice(&body).map_err(|_| Error::Answer { url, status, body: String::from_utf8_lossy(&body).into_owned() })?;
+            Ok(Some(answer.username))
+        }
+        Err(Error::Service { status: 404, .. }) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// Set the username of the account `token` is, at `service`:
+/// `PUT /username`. A username is set once, and is the first part of
+/// every subject of the account's from then on. One the account has
+/// already is [`Error::Service`], `409 username_set`; one that is
+/// another's, `409 username_taken`; one that may be none,
+/// `400 invalid_request`. The answer is the username, as it was set.
+pub async fn set_username(http: &reqwest::Client, service: &str, issuer: &Issuer, token: &str, username: &str) -> Result<String, Error> {
+    let (url, status, body) = request(http, service, issuer, token, Method::PUT, &["username"], Some(&json!({ "username": username }))).await?;
+    let answer: Username = serde_json::from_slice(&body).map_err(|_| Error::Answer { url, status, body: String::from_utf8_lossy(&body).into_owned() })?;
+    Ok(answer.username)
+}
+
+/// Whether `username` is some account's, at `service`:
+/// `GET /usernames/{username}`, which anyone may ask, so no token is
+/// sent. It says whether, and never whose.
+pub async fn username_taken(http: &reqwest::Client, service: &str, username: &str) -> Result<bool, Error> {
+    let mut url = reqwest::Url::parse(service).map_err(|_| Error::Address(service.to_string()))?;
+    url.path_segments_mut().map_err(|()| Error::Address(service.to_string()))?.pop_if_empty().extend(["usernames", username]);
+    let response = http.get(url.clone()).header(ACCEPT, "application/json").send().await.map_err(Error::Http)?;
+    let status = response.status().as_u16();
+    match status {
+        204 => Ok(true),
+        404 => Ok(false),
+        _ => Err(Error::Answer { url: url.to_string(), status, body: response.text().await.map_err(Error::Http)? }),
+    }
 }
 
 /// One request of `identity.diverge.network`, at `service`, as the
@@ -131,6 +177,42 @@ impl Accounts {
         let issuer = issuer(&account.issuer)?;
         let token = self.token(account, issuer.presents).await?;
         approve(&self.http, &self.service, issuer, &token, user_code, name).await
+    }
+
+    /// [`username`](fn@username), as `account`.
+    pub async fn username(&self, account: &Account) -> Result<Option<String>, Error> {
+        let issuer = issuer(&account.issuer)?;
+        let token = self.token(account, issuer.presents).await?;
+        username(&self.http, &self.service, issuer, &token).await
+    }
+
+    /// [`set_username`], as `account`.
+    pub async fn set_username(&self, account: &Account, username: &str) -> Result<String, Error> {
+        let issuer = issuer(&account.issuer)?;
+        let token = self.token(account, issuer.presents).await?;
+        set_username(&self.http, &self.service, issuer, &token, username).await
+    }
+
+    /// [`username_taken`], asked as nobody.
+    pub async fn username_taken(&self, username: &str) -> Result<bool, Error> {
+        username_taken(&self.http, &self.service, username).await
+    }
+
+    /// The account on this host whose username is `username`, or
+    /// `None` where none's is. Every account is asked its username, at
+    /// once; one its issuer no longer answers for — see
+    /// [`Error::SignedOut`] — cannot be asked, and is none's.
+    pub async fn owner(&self, username: &str) -> Result<Option<Account>, Error> {
+        let held = self.list().await?;
+        let asked = futures_util::future::join_all(held.iter().map(|account| self.username(account))).await;
+        for (account, answer) in held.into_iter().zip(asked) {
+            match answer {
+                Ok(Some(its)) if its == username => return Ok(Some(account)),
+                Ok(_) | Err(Error::SignedOut(_)) => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(None)
     }
 
     /// Every subject of `account`'s that is signed in somewhere, by

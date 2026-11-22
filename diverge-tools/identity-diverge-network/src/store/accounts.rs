@@ -3,7 +3,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use diverge_sdk::identity_diverge_network::{Error, Issuer, Tokens, Which};
+use diverge_sdk::identity_diverge_network::{self, Error, Issuer, Tokens, Which};
 use serde::Serialize;
 use sqlx::{PgPool, Row as _};
 
@@ -89,6 +89,18 @@ pub async fn remove(pool: &PgPool, template: &str, issuer: &str, id: &str) -> Re
 /// 4. **Signed out.** A renewal the issuer refuses, and one that
 ///    answers a token no better, are [`Failure::SignedOut`], and the
 ///    row is left as it was.
+/// The username the account `token` is has set at
+/// `identity.diverge.network`: the first part of every subject of its,
+/// and its namespace at the registry. Asked now, and kept nowhere. An
+/// account that has set none is [`Failure::NoUsername`].
+pub async fn username(http: &reqwest::Client, issuer: &Issuer, id: &str, token: &str) -> Result<String, Failure> {
+    match identity_diverge_network::username(http, identity_diverge_network::SERVICE, issuer, token).await {
+        Ok(Some(username)) => Ok(username),
+        Ok(None) => Err(Failure::NoUsername(format!("{}.{id}", issuer.name))),
+        Err(error) => Err(Failure::Identity(error.to_string())),
+    }
+}
+
 pub async fn token(pool: &PgPool, http: &reqwest::Client, template: &str, issuer: &Issuer, id: &str, which: Which) -> Result<String, Failure> {
     let account = format!("{}.{id}", issuer.name);
     let mut transaction = pool.begin().await?;

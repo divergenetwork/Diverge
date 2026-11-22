@@ -7,15 +7,15 @@ use serde_json::json;
 
 use super::Error;
 use super::print::print;
-use crate::arguments::{Accounts, IdentityDivergeNetwork, RefreshTokens, Subjects};
+use crate::arguments::{Accounts, IdentityDivergeNetwork, RefreshTokens, Subjects, Username};
 use crate::detach;
 
 /// Do `command`, printing one JSON line per answer. The rules:
 ///
 /// 1. **`accounts list`.** Every account on the host, one line each:
 ///    `{"account","issuer","id"}`, the account written
-///    `<issuer>.<id>` — the first two parts of every subject it owns.
-///    No file is read, and nothing is asked of anybody.
+///    `<issuer>.<id>`. No file is read, and nothing is asked of
+///    anybody.
 /// 2. **`accounts info`.** What the account's issuer says of its
 ///    user, asked now and kept nowhere, one line:
 ///    `{"account","issuer","id","info"}`. The `info` is the issuer's
@@ -42,11 +42,13 @@ use crate::detach;
 ///    account of whoever approved — replacing one already there — and
 ///    `accounts list` shows it; any other ending writes nothing, and
 ///    there is nothing to show.
-/// 7. **The requests of `identity.diverge.network`** — `subjects
-///    list`, `refresh-tokens list` and `end` — are each one request
+/// 7. **The requests of `identity.diverge.network`** — `accounts
+///    username get` and `set`, `subjects list`, `refresh-tokens list`
+///    and `end` — are each one request
 ///    made as the account named, and print what it answers: one line
-///    a subject, one a refresh token, and `{"ended":…}` for one
-///    ended. A refusal is the error, with its
+///    a subject, one a refresh token, `{"ended":…}` for one
+///    ended, and `{"account","username"}` for a username, null where
+///    the account has set none. A refusal is the error, with its
 ///    status, its code and what it said.
 /// 8. **An account that cannot ask** — not on the host, or one its
 ///    issuer no longer answers for — is the error, and names what to
@@ -70,6 +72,17 @@ pub async fn run(root: &Path, command: IdentityDivergeNetwork) -> Result<(), Err
             let account = Account { issuer, id };
             let info = accounts.info(&account).await?;
             print(&[json!({ "account": account.to_string(), "issuer": account.issuer, "id": account.id, "info": info })]).await
+        }
+        // Rule 7.
+        IdentityDivergeNetwork::Accounts(Accounts::Username(Username::Get { issuer, id })) => {
+            let account = Account { issuer, id };
+            let username = accounts.username(&account).await?;
+            print(&[json!({ "account": account.to_string(), "username": username })]).await
+        }
+        IdentityDivergeNetwork::Accounts(Accounts::Username(Username::Set { issuer, id, username })) => {
+            let account = Account { issuer, id };
+            let username = accounts.set_username(&account, &username).await?;
+            print(&[json!({ "account": account.to_string(), "username": username })]).await
         }
         IdentityDivergeNetwork::Accounts(Accounts::Login { issuer, no_browser }) => {
             // Rule 3.

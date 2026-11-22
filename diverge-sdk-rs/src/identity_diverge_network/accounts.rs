@@ -18,7 +18,7 @@ pub const SERVICE: &str = ISSUER;
 
 /// Diverge's own registry, as an image reference names it: the host,
 /// with no scheme. An account there is the account here: its
-/// namespace is `<issuer>.<id>`, and what it writes as is its
+/// namespace is its username, and what it writes as is its
 /// issuer's name and the token `identity.diverge.network` takes of
 /// that issuer — see [`Issuer::presents`](super::Issuer::presents).
 pub const REGISTRY: &str = "registry.diverge.network";

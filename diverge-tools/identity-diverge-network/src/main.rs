@@ -3,10 +3,11 @@
 //! as them.
 //!
 //! `https://identity.diverge.network` is Diverge's OpenID Connect
-//! provider. Every subject there is `<issuer>.<id>.<name>` — `github`
-//! or `google`, a user's id there, and a name of that user's choosing
-//! — and the **account** `<issuer>.<id>` owns every subject that
-//! begins with it: see
+//! provider. Every subject there is `<username>.<name>` — its
+//! owner's username, and a name of the owner's choosing — and the
+//! **account** `<issuer>.<id>`, `github` or `google` and a user's id
+//! there, sets its username once and owns every subject that begins
+//! with it: see
 //! [`identity_diverge_network`](diverge_sdk::identity_diverge_network).
 //! The tool keeps accounts, each the issuer's own tokens, in its
 //! database, and signs a subject in on the daemon's host with one: it
