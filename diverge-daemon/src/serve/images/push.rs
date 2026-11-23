@@ -92,7 +92,6 @@ async fn from_client(scope: &Arc<ScopeHandle>, handle: &Handle, frame: request::
     let platforms = frame.platforms.clone();
     let ask = Ask {
         image: frame.image,
-        description: frame.description,
         platforms: frame.platforms,
     };
     let (steps, said) = mpsc::unbounded_channel();
@@ -131,7 +130,7 @@ async fn from_client(scope: &Arc<ScopeHandle>, handle: &Handle, frame: request::
 async fn from_daemon(scope: &Arc<ScopeHandle>, handle: &Handle, frame: request::Frame, daemon: &Arc<Daemon>) -> Frame {
     let (steps, said) = mpsc::unbounded_channel();
     let bringing = async {
-        let brought = bring::bring(daemon, handle, &frame.image, frame.description.as_ref(), &frame.platforms, &steps).await;
+        let brought = bring::bring(daemon, handle, &frame.image, &frame.platforms, &steps).await;
         drop(steps);
         brought
     };

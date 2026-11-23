@@ -18,8 +18,8 @@ use super::Image;
 /// `count` of them, each as [`Added`](Self::Added); then exactly one
 /// [`Listed`](Self::Listed); then, for the scope's life, an image come
 /// to match as `Added`, one that matches still and differs from what
-/// was last sent as [`Changed`](Self::Changed) — its description, the
-/// one thing of an image that changes — one that matches no
+/// was last sent as [`Changed`](Self::Changed) — the platforms held
+/// of it, or its references — one that matches no
 /// more as [`Removed`](Self::Removed) — the listing kept as the first
 /// `count` that match, so one leaving that window is removed and one
 /// entering it added. The finish follows the client's cancel, the

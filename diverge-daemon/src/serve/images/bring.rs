@@ -11,7 +11,6 @@ use diverge_sdk::provider::endpoints::images::push::server::response::{Frame as 
 use diverge_sdk::shared::containers::oci;
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::containers::response::Source as Came;
-use diverge_sdk::shared::description::Description;
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::wire::client::handle::Handle;
 use diverge_sdk::wire::credit::Receiver;
@@ -105,7 +104,7 @@ pub enum Brought {
 ///    all already, with no bytes and `store`.
 /// 5. **The end.** Every push is waited for, whatever another ended
 ///    as: see [`Brought`].
-pub async fn bring(daemon: &Arc<Daemon>, handle: &Handle, image: &Image, description: Option<&Description>, platforms: &[String], steps: &Steps) -> Brought {
+pub async fn bring(daemon: &Arc<Daemon>, handle: &Handle, image: &Image, platforms: &[String], steps: &Steps) -> Brought {
     // Rule 1.
     let reach = images::Reach::Full { except: None };
     let mut search = images::search(daemon, image, reach, &[], images::Wanted::Every(platforms.to_vec()));
@@ -130,7 +129,6 @@ pub async fn bring(daemon: &Arc<Daemon>, handle: &Handle, image: &Image, descrip
     for (source, platforms) in sources {
         let ask = Ask {
             image: image.clone(),
-            description: description.cloned(),
             platforms: platforms.clone(),
         };
         let (handle, steps) = (handle.clone(), steps.clone());

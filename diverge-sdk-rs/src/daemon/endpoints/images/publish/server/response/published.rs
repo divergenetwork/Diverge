@@ -22,9 +22,7 @@ pub struct Published {
     /// Whether this request made the image in the daemon's Store on
     /// the provider. `true`: the daemon owned no image of the digest
     /// there before, and it was brought in, or merged, by this
-    /// request, and is kept as the request's description. `false`: it
-    /// was there already, is kept as it was, and the request's
-    /// description was not used.
+    /// request. `false`: it was there already.
     pub created: bool,
     /// Where it went, as the request named it.
     pub reference: Reference,

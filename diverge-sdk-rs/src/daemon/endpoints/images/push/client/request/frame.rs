@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::daemon::agent_log::Identity;
 use crate::shared::containers::request::Image;
-use crate::shared::description::Description;
 use crate::shared::relay::Relay;
 
 use super::Source;
@@ -31,11 +30,6 @@ pub struct Frame {
     /// or the daemon, which finds a source itself. See [`Source`].
     /// Required.
     pub source: Source,
-    /// What the image is kept as in the Store, beside its digest: one
-    /// short line of plain text. Absent, none. Not written over an
-    /// image owned already.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// The platforms to hold of the image: one or more, each once,
     /// each a [platform string](crate::shared::platform::of) such as
     /// `linux/amd64`. Required. Every one must be a platform the image

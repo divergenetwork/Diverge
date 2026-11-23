@@ -46,11 +46,7 @@
 //!    provider it was done on, the digest the registry holds it by,
 //!    and whether the image was made by this request or was in the
 //!    daemon's Store there already.
-//! 7. **The description is the new image's.** It is what an image this
-//!    request makes in the Store is kept as. An image that was there
-//!    already keeps what it was kept as, and the description is not
-//!    used.
-//! 8. **What was brought in stays.** A request that fails part way
+//! 7. **What was brought in stays.** A request that fails part way
 //!    leaves in the daemon's Store on the provider what it had pushed
 //!    and merged by then, and one that succeeds leaves it all:
 //!    [`images::delete`](super::delete) removes it.

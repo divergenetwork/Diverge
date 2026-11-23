@@ -14,8 +14,8 @@ use crate::wire::frame;
 /// The listing, one [`response::Frame`] per item, in the order the
 /// provider sends them: every image in the caller's Store as added,
 /// the word that the listing is whole, and from then on images added,
-/// changed and removed as the caller builds, pushes, edits and deletes
-/// them. Ends at the
+/// changed and removed as the caller builds, pushes, publishes and
+/// deletes them. Ends at the
 /// provider's finish — after the cancel, or the connection ending — and
 /// an error from the provider is the last item, with nothing after
 /// it.

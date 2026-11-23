@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 
 use super::Part;
-use crate::shared::description::Description;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
@@ -45,10 +44,6 @@ use crate::wire::encode::{Encode, Writer};
 pub struct Frame {
     /// The sources, and what is taken from each. One or more.
     pub images: Vec<Part>,
-    /// What the caller says of the new image, at most 132 characters,
-    /// or `None` for nothing. One postcard byte, `0` for none and `1`
-    /// followed by the text.
-    pub description: Option<Description>,
 }
 
 /// This frame's tag among the scope-opening requests.

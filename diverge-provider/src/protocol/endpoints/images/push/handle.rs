@@ -26,8 +26,8 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 /// 0. [`Unsupported`](response::Frame::Unsupported), then the finish,
 ///    on a provider whose capabilities keep no Store; nothing is
 ///    looked at.
-/// 1. The manager asked to push the request's image with its
-///    description, handed the caller's store over this scope — the
+/// 1. The manager asked to push the request's image, handed the
+///    caller's store over this scope — the
 ///    push's three asks, `OciManifest`, `OciBlob` and `OciProve`, each
 ///    one channel this end opens — and its stream read to the end:
 ///    every [`Blob`](Pushing::Blob) sent as it comes; the first end —
@@ -62,7 +62,7 @@ pub async fn handle<M>(
     let scope = Arc::new(scope);
     let source = ImageSource::new(Arc::clone(&scope), manifest_ask, blob_ask, prove_ask);
     let push = manager
-        .push(client_identity, &request.image, request.description.as_ref(), &request.platforms, source)
+        .push(client_identity, &request.image, &request.platforms, source)
         .await;
     let mut push = Box::pin(push);
     let mut ended = false;

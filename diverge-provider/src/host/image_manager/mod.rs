@@ -9,7 +9,7 @@
 //! `blobs/<algorithm>/<hex>` holds every blob ONCE, however many
 //! owners' images reach it; `owners/<path_name(issuer)>/<path_name(subject)>/<algorithm>-<hex>.json`
 //! is one identity's ownership of one image, by its manifest digest,
-//! with its description, its size, when it was gained and — for an
+//! with its size, when it was gained and — for an
 //! image built here — its Containerfile; `cache/<algorithm>-<hex>.json`
 //! is an image a caller supplied to a run and proved, which nobody
 //! owns; `tmp/` is a blob on its way in. A blob is kept while an
@@ -28,7 +28,7 @@
 //!    Only what the Store lacks moves.
 //!
 //! Ownership is the record; nothing else is. A delete removes the
-//! caller's record and prunes; an edit rewrites its description.
+//! caller's record and prunes.
 //!
 //! # How an image is served
 //!

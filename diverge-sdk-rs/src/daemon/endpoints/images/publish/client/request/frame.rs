@@ -6,7 +6,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::daemon::agent_log::Identity;
 use crate::shared::containers::request::Reference;
-use crate::shared::description::Description;
 use crate::shared::relay::Relay;
 
 use super::{Credential, Part};
@@ -39,11 +38,6 @@ pub struct Frame {
     /// writes from nobody allows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential: Option<Credential>,
-    /// What an image this request makes in the Store is kept as,
-    /// beside its digest: one short line of plain text. Absent, none.
-    /// Not used where the image was in the Store already.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// The provider to do it on: see [`Identity`]. Absent, the daemon
     /// picks one. Named, it must be one that could have been picked.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -4,7 +4,6 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use serde::{Deserialize, Serialize};
 use crate::daemon::agent_log::Identity;
-use crate::shared::description::Description;
 use crate::shared::relay::Relay;
 
 use super::Context;
@@ -22,11 +21,6 @@ pub struct Frame {
     pub provider: Identity,
     /// The Containerfile, whole, as text: what the build runs.
     pub containerfile: String,
-    /// What the image is kept as in the Store, beside its digest: one
-    /// short line of plain text. Absent, none. Not written over an
-    /// image owned already.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// The directory the build reads from: see [`Context`]. Absent,
     /// none, and a Containerfile that copies from its context fails.
     #[serde(default, skip_serializing_if = "Option::is_none")]

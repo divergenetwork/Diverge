@@ -46,7 +46,7 @@ For agents, over MCP:
 |---|---|---|
 | `list_accounts` | none | the accounts the tool holds, each as `{"username","account","issuer","id"}` |
 | `login` | `username`, `subject` | signs the subject `<username>.<subject>` in on the daemon's host, as that account, and waits for it |
-| `publish` | `username`, `repository`, `images`, and optionally `tags`, `description`, `provider` | publishes the images to `registry.diverge.network/<username>/<repository>` as that account, and waits for it |
+| `publish` | `username`, `repository`, `images`, and optionally `tags`, `provider` | publishes the images to `registry.diverge.network/<username>/<repository>` as that account, and waits for it |
 
 - `username` names the account: the one it set at
   `identity.diverge.network`, as `list_accounts` gives it.
@@ -89,8 +89,7 @@ It takes no username, no password and no registry:
 - `publish` answers
   `{"published": {"provider", "digest", "created", "reference", "tags"}}`.
   `provider` is where it was done. `created` is whether the publish
-  made that image on the provider, or it was there already; where it
-  was there already, `description` is not used.
+  made that image on the provider, or it was there already.
 - A provider must list `registry.diverge.network` among the registries
   it uses, or no provider can do the publish.
 - The provider the publish is done on is handed the account's token

@@ -3,8 +3,8 @@
 //! [`execute`] opens the scope and hands back an [`ExecuteStream`] of
 //! what the provider sends — every image in the caller's Store as
 //! added, the word that the listing is whole, then images added,
-//! changed and removed as the caller builds, pushes, edits and deletes
-//! them — with the [`Cancel`] that
+//! changed and removed as the caller builds, pushes, publishes and
+//! deletes them — with the [`Cancel`] that
 //! ends it. A listing has no end of its own, so the cancel is how a
 //! caller that has read what it wanted lets the scope go.
 //!

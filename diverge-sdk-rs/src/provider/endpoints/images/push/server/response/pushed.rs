@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::shared::containers::response::Source;
 
 /// The image pushed into the caller's Store: what a listing will
-/// report it by, less the description the caller already knows and
-/// the time, which is now — and where it came from.
+/// report it by, less the time, which is now — and where it came
+/// from.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Pushed {
     /// The manifest digest of the image as the provider holds it,

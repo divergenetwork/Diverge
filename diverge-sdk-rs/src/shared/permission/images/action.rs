@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The actions over images, each the endpoint of the same name under
 /// [`images`](crate::daemon::endpoints::images). Snake case on the
-/// wire: `"build"`, `"push"`, `"get"`, `"list"`, `"delete"`, `"publish"`. Reading an image is none of
+/// wire: `"build"`, `"push"`, `"get"`, `"list"`, `"delete"`, `"publish"`, `"merge"`. Reading an image is none of
 /// them: [`images::read`](crate::daemon::endpoints::images::read) is
 /// held over the providers and the daemons it asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -38,8 +38,4 @@ pub enum Action {
     /// [`images::merge`](crate::daemon::endpoints::images::merge)
     /// does: judged by the provider the image is made on.
     Merge,
-    /// Change the description of an image in a Store of the daemon's,
-    /// as [`images::edit`](crate::daemon::endpoints::images::edit)
-    /// does.
-    Edit,
 }

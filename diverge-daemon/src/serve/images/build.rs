@@ -92,7 +92,6 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         Err(fail) => return Ok(Frame::Error(fail.error())),
     };
     let ask = Ask {
-        description: frame.description,
         containerfile: frame.containerfile,
         context: frame.context.map(|context| Context {
             volume_name: context.volume,

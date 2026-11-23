@@ -16,11 +16,10 @@ pub struct ImagesCapabilities {
     /// whatever its members — the provider answers
     /// [`images::list`](crate::provider::endpoints::images::list),
     /// [`stat`](crate::provider::endpoints::images::stat),
-    /// [`push`](crate::provider::endpoints::images::push),
-    /// [`edit`](crate::provider::endpoints::images::edit) and
+    /// [`push`](crate::provider::endpoints::images::push) and
     /// [`delete`](crate::provider::endpoints::images::delete), and
     /// [`images::read`](crate::provider::endpoints::images::read) looks
-    /// in it first. Absent — no object — each of the five answers
+    /// in it first. Absent — no object — each of the four answers
     /// `Unsupported`, as [`images::build`](crate::provider::endpoints::images::build)
     /// does, and `read` answers `Unsupported` when
     /// [`registries`](ImagesCapabilities::registries) is empty as
@@ -52,7 +51,7 @@ impl ImagesCapabilities {
 
 /// What a provider's Store does beyond being kept. The Store itself —
 /// listing it, pushing into it, merging and publishing what is in it,
-/// editing and deleting it — is this object being there at all.
+/// and deleting from it — is this object being there at all.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct StoreCapabilities {

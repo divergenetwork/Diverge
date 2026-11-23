@@ -23,7 +23,6 @@ use diverge_sdk::identities::path_name;
 use diverge_sdk::provider::endpoints::images::list::server::response::Image;
 use diverge_sdk::shared::containers::oci::prove::proof::Prover;
 use diverge_sdk::shared::containers::request::Reference;
-use diverge_sdk::shared::description::Description;
 
 /// One identity's ownership of one image,
 /// `owners/<path_name(issuer)>/<path_name(subject)>/<algorithm>-<hex>.json`:
@@ -31,9 +30,6 @@ use diverge_sdk::shared::description::Description;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Meta {
-    /// The owner's description of the image, if it gave one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// The image's size in BYTES: every blob it reaches, each once.
     pub bytes: u64,
     /// When the ownership was gained, in seconds since the epoch.
@@ -553,23 +549,6 @@ impl Store {
         Ok(true)
     }
 
-    /// The description of the identity's image set, or cleared with
-    /// `None`: `None` where it owns no such image, else whether the
-    /// description changed.
-    pub async fn describe(&self, client_identity: &Identity, digest: &Digest, description: Option<Description>) -> Result<Option<bool>, Error> {
-        let _records = self.records.lock().await;
-        let path = self.owner_dir(client_identity).join(record_file(digest));
-        let Some(mut meta) = read_record::<Meta>(path.clone()).await? else {
-            return Ok(None);
-        };
-        if meta.description == description {
-            return Ok(Some(false));
-        }
-        meta.description = description;
-        write_record(&path, &meta).await?;
-        Ok(Some(true))
-    }
-
     /// The identity's record of `digest` changed by `change`, and the
     /// record as it is after: `None` where it owns no such image. The
     /// reading and the writing are one step under the records' lock.
@@ -682,7 +661,6 @@ impl Meta {
     pub fn image(&self, digest: &Digest) -> Image {
         Image {
             digest: digest.to_string(),
-            description: self.description.clone(),
             bytes: self.bytes,
             created: self.created,
             manifest_platforms: self.manifest_platforms.clone(),

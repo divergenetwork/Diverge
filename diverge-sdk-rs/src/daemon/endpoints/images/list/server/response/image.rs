@@ -6,12 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::shared::containers::request::Reference;
 
 use crate::daemon::agent_log::Identity;
-use crate::shared::description::Description;
 use crate::shared::listing::Keyed;
 
 /// One image the daemon owns: the provider whose Store it is in, and
-/// what that provider's listing says of it — its digest, what was said
-/// of it, its size, and when the daemon came to own it. No creator and
+/// what that provider's listing says of it — its digest, its size, and
+/// when the daemon came to own it. No creator and
 /// no tags: an image is no record of the daemon's, and the Store on a
 /// provider is the daemon's own, whichever account built or pushed
 /// into it.
@@ -29,10 +28,6 @@ pub struct Image {
     /// `<algorithm>:<hex>`: the whole of how it is named, with the
     /// provider.
     pub digest: String,
-    /// What was said of the image by the build or the push that gained
-    /// it: one short line. Absent, nothing was said.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// Its size in BYTES: every blob it reaches and its manifests, as
     /// the provider counts them against the Store's capacity.
     pub bytes: u64,

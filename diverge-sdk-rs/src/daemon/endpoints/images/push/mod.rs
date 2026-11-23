@@ -7,7 +7,7 @@
 //! [`images::push`](crate::provider::endpoints::images::push), asked
 //! of the daemon: a client names a provider and an image — its digest,
 //! and the references under which its bytes may be fetched — and where
-//! its bytes come from, and a description if it has one, and the daemon asks that provider's push
+//! its bytes come from, and the daemon asks that provider's push
 //! as itself. The rules:
 //!
 //! 1. **Into the daemon's Store.** The daemon is the provider's

@@ -3,15 +3,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::shared::containers::request::Image;
-use crate::shared::description::Description;
 use crate::shared::platform;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
 /// Push an image into the caller's Store on the provider: the
 /// [`Image`] — its digest, and the references under which its bytes
-/// may be fetched, the same a run names — and what the caller says of
-/// it.
+/// may be fetched, the same a run names. The caller says nothing of
+/// the image: what an image is, the image says, in its own
+/// `/.diverge/DIVERGE.md`.
 ///
 /// # The digest is the image
 ///
@@ -47,11 +47,6 @@ use crate::wire::encode::{Encode, Writer};
 pub struct Frame {
     /// The image to push.
     pub image: Image,
-    /// What the caller says of the image, at most 132 characters;
-    /// absent for nothing. Not written over an image the caller owns
-    /// already, whose description an edit changes.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<Description>,
     /// The platforms to hold of it: one or more, each once, each a
     /// [platform string](crate::shared::platform::of). Required, and a
     /// list that is empty does not decode. The rules:

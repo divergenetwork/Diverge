@@ -1,5 +1,5 @@
-//! Why the Store could not list, examine, build, push, describe,
-//! prove or remove an image, or say whether one is held.
+//! Why the Store could not list, examine, build, push, prove or
+//! remove an image, or say whether one is held.
 
 use std::fmt;
 use std::io;

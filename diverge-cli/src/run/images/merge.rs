@@ -13,8 +13,8 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the `provider` the image is made on; the
-    /// `images` to merge, each a digest and the platforms taken of it;
-    /// and the `description` the image made is kept as; `relay` among
+    /// and the `images` to merge, each a digest and the platforms
+    /// taken of it; `relay` among
     /// its members has another daemon serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,

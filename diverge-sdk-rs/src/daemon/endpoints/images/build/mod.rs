@@ -1,8 +1,7 @@
 //! Building an image on a provider, from a Containerfile. One
 //! request, a stream of answers.
 //!
-//! A client names a provider, hands the Containerfile, a description
-//! if it has one, and — if the Containerfile copies from one — names a
+//! A client names a provider, hands the Containerfile, and — if the Containerfile copies from one — names a
 //! directory of a volume on that provider as the build's context. The
 //! daemon asks the provider's
 //! [`images::build`](crate::provider::endpoints::images::build) as
