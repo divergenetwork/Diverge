@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Chat, FalseOr, StructuredDecisions};
+use crate::shared::description::Description;
 
 /// The document of an image whose program is an agent: its `type` is
 /// `agent`. What a tool's has, and how the agent's program chats and
@@ -20,6 +21,13 @@ pub struct Agent {
     /// unique: two images may say the same name, and the digest is
     /// still what an image is.
     pub name: String,
+    /// What the image is, in one line, as its author states it: a
+    /// [`Description`], and so at most
+    /// [`DESCRIPTION_CHARACTERS`](crate::shared::description::DESCRIPTION_CHARACTERS)
+    /// characters of plain text. The one description an image has: it
+    /// is the image's own, read out of it wherever the image is, and
+    /// no party keeps another beside the image.
+    pub description: Description,
     /// The JSON Schema of the image's
     /// [`arguments`](crate::shared::containers::request::Container::arguments),
     /// as the frontmatter states it: a JSON object, since a schema is

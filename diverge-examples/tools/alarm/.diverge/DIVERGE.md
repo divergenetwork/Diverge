@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "alarm",
+  "description": "Alarms an agent sets to wake itself later, once or on a schedule.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",

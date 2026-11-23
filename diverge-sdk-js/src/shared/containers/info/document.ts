@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { Description } from "../../description.js";
 import { Chat } from "./chat.js";
 import { falseOr } from "./false_or.js";
 import { StructuredDecisions } from "./structured_decisions.js";
@@ -10,6 +11,8 @@ import { StructuredDecisions } from "./structured_decisions.js";
 const common = {
   /** The image's own name, as its author states it. */
   name: z.string(),
+  /** What the image is, in one line, as its author states it: the one description an image has. */
+  description: Description,
   /** The arguments' JSON Schema, a JSON object as the parse requires. */
   schema: z.json(),
   /** Whether the program serves a frontend beneath `/frontend`. Absent, it serves none. */

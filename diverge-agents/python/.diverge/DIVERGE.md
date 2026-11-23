@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "python",
+  "description": "An agent that runs Python source given in its arguments on every turn, with no model.",
   "chat": {
     "prompt_modalities": {
       "image": true,

@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "human",
+  "description": "An agent with no model: a person answers as it, through its web page.",
   "chat": {
     "prompt_modalities": {
       "image": false,

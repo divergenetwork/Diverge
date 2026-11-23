@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "identity-diverge-network",
+  "description": "Signs identities in at identity.diverge.network and publishes images to Diverge's registry, as an account.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",

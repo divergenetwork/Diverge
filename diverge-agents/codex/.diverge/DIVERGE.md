@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "codex",
+  "description": "An agent that runs the OpenAI Codex CLI.",
   "chat": {
     "prompt_modalities": {
       "image": true,

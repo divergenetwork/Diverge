@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "hermes",
+  "description": "An agent that runs a Hermes gateway.",
   "chat": {
     "prompt_modalities": {
       "image": false,

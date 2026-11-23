@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "lone",
+  "description": "An agent that runs a LoNE bundle on the Apple Neural Engine, calling no upstream model.",
   "chat": {
     "prompt_modalities": {
       "image": false,

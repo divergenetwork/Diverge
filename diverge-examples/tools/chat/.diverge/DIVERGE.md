@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "chat",
+  "description": "A chat between a person and the agents attached to it, with a live web page.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
