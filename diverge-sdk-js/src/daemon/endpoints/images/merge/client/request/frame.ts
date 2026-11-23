@@ -4,7 +4,6 @@ import { z } from "zod";
 import { json, tagged } from "../../../../../../wire/encode.js";
 import { Identity } from "../../../../../agent_log/identity.js";
 import { Relay } from "../../../../../../shared/relay.js";
-import { Description } from "../../../../../../shared/description.js";
 import { Part } from "../../../publish/client/request/part.js";
 
 /**
@@ -19,8 +18,6 @@ export const Frame = z.object({
   provider: Identity,
   /** The images, and the platforms taken of each: one or more. A platform two of them take is `platform_repeated`. One image that takes every platform it has is itself, and nothing is merged. */
   images: z.array(Part).min(1),
-  /** What the image made is kept as in the Store. Required. Not written over an image of the same digest owned there already. */
-  description: Description,
   /** Served by another daemon: see `Relay`. Absent, served here. */
   relay: Relay.optional(),
 });

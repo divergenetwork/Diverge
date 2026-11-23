@@ -12,7 +12,7 @@ import { Image } from "./image.js";
  * matches, provider by provider and by digest, the first `count` of
  * them, each as `added`;
  * then exactly one `listed`; then, for the scope's life, every
- * change — its description, the one thing of an image that changes.
+ * change — the platforms held of an image, or its references.
  * The finish follows the client's cancel or
  * exactly one `error`; or the scope is exactly one `forbidden`.
  */

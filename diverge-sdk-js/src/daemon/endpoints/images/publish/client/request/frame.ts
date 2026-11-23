@@ -5,7 +5,6 @@ import { json, tagged } from "../../../../../../wire/encode.js";
 import { Identity } from "../../../../../agent_log/identity.js";
 import { Relay } from "../../../../../../shared/relay.js";
 import { Reference } from "../../../../../../shared/containers/request/reference.js";
-import { Description } from "../../../../../../shared/description.js";
 import { Credential } from "./credential.js";
 import { Part } from "./part.js";
 
@@ -25,8 +24,6 @@ export const Frame = z.object({
   tags: z.array(z.string()).optional(),
   /** What to write to the registry as. Absent, the registry is asked as nobody. */
   credential: Credential.optional(),
-  /** What an image this request makes in the Store is kept as. Absent, none. Not used where the image was in the Store already. */
-  description: Description.optional(),
   /** The provider to do it on. Absent, the daemon picks one: of those the caller's grant reaches that keep a Store and use the registry, the one holding the most of the platforms taken already. */
   provider: Identity.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
