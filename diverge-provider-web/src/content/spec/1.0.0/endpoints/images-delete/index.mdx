@@ -1,12 +1,12 @@
 ---
 title: 'images::delete'
-summary: 'Tag 21: a client names an image of its Store by digest and zero or more platforms of it; the server sends exactly one response stating that the image, or the platforms named, are no longer in the client’s Store, that a running container runs the image and nothing was deleted, that a platform named is not held and nothing was deleted, or an error, and the scope finishes; the deletion is not reversible.'
-order: 21
+summary: 'Tag 20: a client names an image of its Store by digest and zero or more platforms of it; the server sends exactly one response stating that the image, or the platforms named, are no longer in the client’s Store, that a running container runs the image and nothing was deleted, that a platform named is not held and nothing was deleted, or an error, and the scope finishes; the deletion is not reversible.'
+order: 20
 draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
-`21` followed by the digest of an image and zero or more platforms of
+`20` followed by the digest of an image and zero or more platforms of
 it. The server sends exactly one response, which states that the
 image, or the platforms named, are deleted, that a running container
 of the client runs the image and nothing was deleted, that the server

@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload is the tag byte 22 followed by exactly one JSON object, the image, which names the one image the scope asks about by manifest digest and by zero or more references.'
+summary: 'The payload is the tag byte 21 followed by exactly one JSON object, the image, which names the one image the scope asks about by manifest digest and by zero or more references.'
 order: 1
 draft: false
 ---
@@ -40,7 +40,7 @@ JSON object, the image, running to the end of the payload:
   the scope is an ask about that image, as
   [images::read](/endpoints/images-read/) states.
 - **Malformed.** A payload with no byte, a payload whose first byte is
-  not `22`, and a payload whose bytes after the tag do not parse as
+  not `21`, and a payload whose bytes after the tag do not parse as
   the image are malformed. [Endpoints](/endpoints/) states how a
   server answers a request it cannot read.
 

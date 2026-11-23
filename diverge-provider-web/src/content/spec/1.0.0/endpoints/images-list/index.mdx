@@ -1,6 +1,6 @@
 ---
 title: 'images::list'
-summary: 'Tag 14: a client asks which images are in its Store; the server sends every such image as added, says when the listing is whole, keeps sending as images enter the Store, have their descriptions edited and are deleted, and finishes when the client cancels.'
+summary: 'Tag 14: a client asks which images are in its Store; the server sends every such image as added, says when the listing is whole, keeps sending as images enter the Store, come to hold more platforms or a further reference, and are deleted, and finishes when the client cancels.'
 order: 14
 draft: false
 ---
@@ -9,7 +9,8 @@ A client opens the scope with a request whose payload is the tag byte
 `14` and nothing more. The server sends every image in the client's
 Store, one response each, then the word that the listing is whole,
 and keeps the scope open: an image that enters the Store is sent as
-added, an image whose description is edited as changed, and an image
+added, an image of which more platforms are held, or to which a
+reference is added, as changed, and an image
 deleted as removed, for as long as the scope lives. The scope ends at
 the client's cancel, at the client's connection ending, or at an
 error; the response finish follows, and no frame follows the finish.
@@ -34,13 +35,11 @@ A connection holds at most one images::list scope open at a time, as
   image. An image is named by its `digest` alone: the client names an
   image of the listing by its digest in an
   [images::stat](/endpoints/images-stat/),
-  [images::edit](/endpoints/images-edit/),
   [images::read](/endpoints/images-read/) and
   [images::delete](/endpoints/images-delete/) request, and in a
   container request. No image has a name. An image absent from the
   listing is one the client cannot name in an
-  [images::stat](/endpoints/images-stat/),
-  [images::edit](/endpoints/images-edit/) or
+  [images::stat](/endpoints/images-stat/) or
   [images::delete](/endpoints/images-delete/) request. The Containerfile an image
   was built from is reported by [images::stat](/endpoints/images-stat/),
   one image at a time.
@@ -69,9 +68,12 @@ A connection holds at most one images::list scope open at a time, as
    the server has sent the byte `1` of an
    [images::build](/endpoints/images-build/) request by the client, or
    the byte `1` of an [images::push](/endpoints/images-push/) request
-   by the client, it sends the image as added; when it has sent the
-   byte `0` of an [images::edit](/endpoints/images-edit/) request by
-   the client, it sends the image as changed; when it has sent the
+   by the client, it sends the image as added; when an
+   [images::push](/endpoints/images-push/) request by the client has
+   added platforms to those the Store holds of an image listed, or an
+   [images::publish](/endpoints/images-publish/) request by the client
+   has added a reference to it, it sends the image as changed; when it
+   has sent the
    byte `0` of an [images::delete](/endpoints/images-delete/) request
    by the client, it sends the image as removed.
 5. **The server ends the scope.** When the server receives the
@@ -90,11 +92,14 @@ A connection holds at most one images::list scope open at a time, as
   once while it is listed, and as removed exactly once, only after it
   was sent as added. An image deleted and then built or pushed again
   is sent as removed and then as added.
-- **Changed is the description.** The server sends an image as
-  changed only after it was sent as added and before it is sent as
-  removed, and only for an edit of its description. The `digest`,
-  `bytes` and `created` of an image sent as changed equal those it was
-  sent as added with. No other change to an image exists.
+- **What changes.** The server sends an image as changed only after
+  it was sent as added and before it is sent as removed, and only
+  when its `platforms` or its `references` differ from those the
+  server last sent for it on the scope. The `digest`, the `created`
+  and the `manifest_platforms` of an image sent as changed equal
+  those it was sent as added with. No other change to an image
+  exists: an image has no description in the Store, and the document
+  an image carries is part of the image and does not change.
 - **An empty listing.** The byte `3` with no response before it
   states that the client's Store holds no image. An empty listing is
   not an error.

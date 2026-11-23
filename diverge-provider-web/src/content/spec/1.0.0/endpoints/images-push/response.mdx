@@ -58,7 +58,7 @@ draft: false
   client's Store, and carries the `Exists` defined below: its
   `digest` as a varint byte length followed by that many bytes of
   UTF-8. Nothing entered the client's Store as a result of the
-  request, and the image in the Store keeps its description.
+  request.
 - **Insufficient capacity.** A payload that is the byte `3` and
   nothing else states that the Store has no room for the image, by
   the sizes its manifest declares, and that the server took no blob

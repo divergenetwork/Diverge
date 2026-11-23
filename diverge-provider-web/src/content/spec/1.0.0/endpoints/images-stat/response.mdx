@@ -23,13 +23,13 @@ finish follows the response, and no frame follows the finish.
   `Stat` defined below, encoded as the postcard reading of
   [Notation](/endpoints/#notation) provides: the image as the
   [images::list response](/endpoints/images-list/response/) defines
-  it — `digest`, `description`, `bytes`, `created`,
+  it — `digest`, `bytes`, `created`,
   `manifest_platforms`, `platforms`, `references` — followed by
   `containerfile` as the byte `0`, or as the byte `1` followed by a
   varint byte length and that many bytes of UTF-8.
-- **`digest`, `description`, `bytes`, `created`,
+- **`digest`, `bytes`, `created`,
   `manifest_platforms`, `platforms`, `references`.** The image as
-  the client's listing reports it. The seven values equal those the
+  the client's listing reports it. The six values equal those the
   listing reports for the image at the time of the response.
 - **`containerfile`.** For an image that entered the client's Store
   by an [images::build](/endpoints/images-build/) request, the byte

@@ -1,12 +1,12 @@
 ---
 title: 'images::build'
-summary: 'Tag 16: a client hands a Containerfile, an optional description and a directory of one of its volumes as the context, or none; the server sends the build’s output line by line, then exactly one response stating that the image is in the client’s Store, that the client owned its digest already, that the server has insufficient capacity for it, or an error, and the scope finishes; the image stays in the Store until the client deletes it.'
+summary: 'Tag 16: a client hands a Containerfile and a directory of one of its volumes as the context, or none; the server sends the build’s output line by line, then exactly one response stating that the image is in the client’s Store, that the client owned its digest already, that the server has insufficient capacity for it, or an error, and the scope finishes; the image stays in the Store until the client deletes it.'
 order: 16
 draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
-`16` followed by the description, the Containerfile, the context of
+`16` followed by the Containerfile, the context of
 the build, and the platforms it is built for. The server sends zero or more responses, each one line
 of the build's output, then exactly one response which states that
 the image is in the client's Store, that the client owned the
@@ -15,7 +15,7 @@ capacity for it, that something holds the context volume, that the
 server keeps no Store, or an error. The response finish follows that
 response, and no frame follows the finish.
 
-- **The request.** The request carries an optional description, the
+- **The request.** The request carries the
   Containerfile as text, and the context: a directory of one of the
   client's volumes, or none.
   [Request](/endpoints/images-build/request/) states its form.
@@ -58,7 +58,7 @@ response, and no frame follows the finish.
 - **The image.** The image is named by the manifest digest the build
   produces, and by nothing the client chooses. When the server sends
   the byte `1`, the image is in the client's Store, with the digest
-  the response carries and the description of the request. From that
+  the response carries. From that
   moment, every [images::list](/endpoints/images-list/) scope the
   client opens lists the image, and every list scope the client holds
   open is sent the image as added, until an
@@ -71,12 +71,11 @@ response, and no frame follows the finish.
 - **Exists.** When the digest the build produces is the digest of an
   image already in the client's Store, the server sends the byte `2`
   followed by that digest. The server adds nothing to the client's
-  Store, leaves the description of the image in the Store as it was,
-  and sends nothing to a list scope. The client's Store and listing are
+  Store and sends nothing to a list scope. The client's Store and listing are
   as they were before the request.
 - **The client.** The client is the identity under which the
   connection was authorized. The image enters that identity's Store,
-  and that identity alone can examine it, edit it, pull it, delete it,
+  and that identity alone can examine it, pull it, delete it,
   or run it from its Store: an [images::read](/endpoints/images-read/)
   request by that identity naming the image's digest is answered Held, and a
   container request by that identity naming the digest runs the image
@@ -84,13 +83,11 @@ response, and no frame follows the finish.
   states. To any other identity the image is not in its Store, unless
   that identity has built or pushed an image of the same digest
   itself.
-- **The description.** The `description` of the request is absent, or
-  a description as [The description](/endpoints/daemons-announce/request/#the-description)
-  defines it. A request whose `description` does not conform to that
-  definition does not decode. The image carries the description from
-  the moment it enters the Store, until an
-  [images::edit](/endpoints/images-edit/) by the client replaces or
-  clears it.
+- **No description.** The request carries no description of the
+  image, and the server keeps none. What an image is, the image
+  states, in the `description` of its own
+  [document](/shared/document/), which
+  [images::read](/endpoints/images-read/) answers.
 - **Insufficient capacity.** When the server's Store has no room for
   the image, it sends the byte `3`. No image enters the client's
   Store as a result of the request, and the client's listing is as it

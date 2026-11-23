@@ -1,6 +1,6 @@
 ---
 title: 'Endpoints'
-summary: 'A request’s payload begins with one tag byte designating the endpoint; thirty-one endpoints are defined, and a request the server cannot read is answered by a bare response finish.'
+summary: 'A request’s payload begins with one tag byte designating the endpoint; thirty endpoints are defined, and a request the server cannot read is answered by a bare response finish.'
 order: 8
 draft: false
 ---
@@ -32,17 +32,16 @@ endpoint's request content, in the form the endpoint defines.
 | `17` | [images::push](/endpoints/images-push/) |
 | `18` | [images::merge](/endpoints/images-merge/) |
 | `19` | [images::publish](/endpoints/images-publish/) |
-| `20` | [images::edit](/endpoints/images-edit/) |
-| `21` | [images::delete](/endpoints/images-delete/) |
-| `22` | [images::read](/endpoints/images-read/) |
-| `23` | [info](/endpoints/info/) |
-| `24` | [capacity](/endpoints/capacity/) |
-| `25` | [daemons::accept](/endpoints/daemons-accept/) |
-| `26` | [daemons::connect](/endpoints/daemons-connect/) |
-| `27` | [daemons::list](/endpoints/daemons-list/) |
-| `28` | [daemons::listen](/endpoints/daemons-listen/) |
-| `29` | [daemons::message](/endpoints/daemons-message/) |
-| `30` | [daemons::announce](/endpoints/daemons-announce/) |
+| `20` | [images::delete](/endpoints/images-delete/) |
+| `21` | [images::read](/endpoints/images-read/) |
+| `22` | [info](/endpoints/info/) |
+| `23` | [capacity](/endpoints/capacity/) |
+| `24` | [daemons::accept](/endpoints/daemons-accept/) |
+| `25` | [daemons::connect](/endpoints/daemons-connect/) |
+| `26` | [daemons::list](/endpoints/daemons-list/) |
+| `27` | [daemons::listen](/endpoints/daemons-listen/) |
+| `28` | [daemons::message](/endpoints/daemons-message/) |
+| `29` | [daemons::announce](/endpoints/daemons-announce/) |
 
 The tag values are normative as tabulated. Each endpoint has its own
 section. Every section of this layer states requirements of the
