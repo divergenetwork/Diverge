@@ -4,7 +4,6 @@ import { z } from "zod";
 import { json, tagged } from "../../../../../../wire/encode.js";
 import { Identity } from "../../../../../agent_log/identity.js";
 import { Image } from "../../../../../../shared/containers/request/image.js";
-import { Description } from "../../../../../../shared/description.js";
 import { Relay } from "../../../../../../shared/relay.js";
 import { Source } from "./source.js";
 
@@ -24,8 +23,6 @@ export const Frame = z.object({
   image: Image,
   /** Who is asked for the image where the provider asks: the client, one provider, or one remote daemon. Required. */
   source: Source,
-  /** What the image is kept as in the Store, beside its digest: one short line. Absent, none. Not written over an image owned already. */
-  description: Description.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
   /** The platforms to hold of the image; every one must be a platform the image has: one or more, each once, each `os/architecture` such as `linux/amd64`. Required. */
   platforms: z.array(z.string()).min(1),

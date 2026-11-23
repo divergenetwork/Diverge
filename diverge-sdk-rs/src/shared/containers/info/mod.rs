@@ -7,15 +7,18 @@
 //! one thing of it read: a frontmatter between two `---` lines
 //! that is one JSON object — `type`, which is `agent` or `tool` and
 //! says which of the two documents this is; `name`, what the image
-//! calls itself, and `schema`, the JSON Schema of the
+//! calls itself; `description`, what it is, in one line (a
+//! [`Description`](crate::shared::description::Description)); and
+//! `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
-//! the image's program accepts, all three required; `frontend` where
+//! the image's program accepts, all four required; `frontend` where
 //! the program serves one; and, in an agent's and
 //! in no tool's, `chat` and `structured_decisions`, each `false` or
 //! what the agent says of itself ([`Chat`], [`StructuredDecisions`]),
 //! at least one of them said; and no member besides — and then a
-//! short markdown body: what the image runs, and the secrets it
-//! declares.
+//! markdown body: what the image runs, and the secrets it declares.
+//! The description and the body are the short and the long account of
+//! the image, and both are the image's own: no party keeps another.
 //! [`Document`] is that file parsed, and [`Document::parse`] states
 //! the rules; [`Document::render`] writes one back, so that one shape
 //! is written and read. The image's icons are files beside this one,

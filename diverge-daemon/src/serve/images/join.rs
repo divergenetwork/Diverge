@@ -8,7 +8,6 @@ use diverge_sdk::provider::endpoints::images::merge::client::execute as merge;
 use diverge_sdk::provider::endpoints::images::merge::client::request::{Frame as Merge, Part};
 use diverge_sdk::shared::Identity;
 use diverge_sdk::shared::containers::request::Image;
-use diverge_sdk::shared::description::Description;
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::wire::client::handle::Handle;
 use futures_util::future::join_all;
@@ -136,7 +135,7 @@ pub enum Stopped {
 }
 
 /// `parts` brought onto `provider`, whose Store of the daemon's holds
-/// `held` now, and made one image there, kept as `description`. Every
+/// `held` now, and made one image there. Every
 /// blob pulled and every set of platforms that lands is told on
 /// `steps`, which is let go once nothing more is to be told. The
 /// rules:
@@ -149,10 +148,8 @@ pub enum Stopped {
 /// 2. **Merged**, where there is more than one part or the one part
 ///    is not whole: the provider's merge.
 /// 3. **One whole part is itself**: nothing is merged, and the image
-///    is the part, by its own digest. Only then is a part kept as the
-///    description while it is brought in: what is merged is kept as
-///    the description whole, not part by part.
-pub async fn join(daemon: &Arc<Daemon>, provider: &Identity, handle: &Handle, held: &[(Identity, Vec<Listed>)], parts: &[Taken], description: Option<&Description>, steps: mpsc::UnboundedSender<Step>) -> Result<Joined, Stopped> {
+///    is the part, by its own digest.
+pub async fn join(daemon: &Arc<Daemon>, provider: &Identity, handle: &Handle, held: &[(Identity, Vec<Listed>)], parts: &[Taken], steps: mpsc::UnboundedSender<Step>) -> Result<Joined, Stopped> {
     let there = |digest: &str| held.iter().find(|(identity, _)| identity == provider).and_then(|(_, images)| images.iter().find(|image| image.digest == digest));
     // Rule 3, decided before anything moves.
     let merges = !(parts.len() == 1 && parts[0].whole);
@@ -164,7 +161,6 @@ pub async fn join(daemon: &Arc<Daemon>, provider: &Identity, handle: &Handle, he
             None => part.platforms.clone(),
         };
         let steps = &steps;
-        let description = if merges { None } else { description };
         async move {
             if lacking.is_empty() {
                 return Brought::Exists;
@@ -173,7 +169,7 @@ pub async fn join(daemon: &Arc<Daemon>, provider: &Identity, handle: &Handle, he
                 digest: part.digest.clone(),
                 references: Vec::new(),
             };
-            bring::bring(daemon, handle, &image, description, &lacking, steps).await
+            bring::bring(daemon, handle, &image, &lacking, steps).await
         }
     }))
     .await;
@@ -200,7 +196,6 @@ pub async fn join(daemon: &Arc<Daemon>, provider: &Identity, handle: &Handle, he
                 platforms: part.platforms.clone(),
             })
             .collect(),
-        description: description.cloned(),
     };
     match merge::execute(handle, &ask).await {
         Ok(merge::Outcome::Merged(merged)) => Ok(Joined {

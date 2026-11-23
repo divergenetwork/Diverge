@@ -1,13 +1,13 @@
 ---
 title: 'images::push'
-summary: 'Tag 17: a client names an image by digest and references, with an optional description; the server obtains the image from a registry it uses or from the client, makes the nonce check where the client supplied it, sends one response per blob it took from the client, then exactly one response stating that the image is in the client’s Store and its source, that the client owned the digest already, or a refusal, or an error, and the scope finishes.'
+summary: 'Tag 17: a client names an image by digest and references; the server obtains the image from a registry it uses or from the client, makes the nonce check where the client supplied it, sends one response per blob it took from the client, then exactly one response stating that the image is in the client’s Store and its source, that the client owned the digest already, or a refusal, or an error, and the scope finishes.'
 order: 17
 draft: false
 ---
 
 A client opens the scope with a request whose payload is the tag byte
 `17` followed by the request as JSON: the image, named by its digest
-and by zero or more references, and a description, or none. The
+and by zero or more references, and the platforms to hold of it. The
 server obtains the image from exactly one source, as
 [Image sources](/endpoints/#image-sources) states for a push, and
 keeps its own copy. The server sends zero or more responses, each a
@@ -41,8 +41,7 @@ finish.
 3. **Exists.** When the digest of the request is the digest of an
    image in the client's Store, the server answers by exactly one
    response, the byte `2` followed by the digest, and the response
-   finish. The server obtains nothing, opens no channel, and leaves
-   the description of the image in the Store as it was.
+   finish. The server obtains nothing and opens no channel.
 4. **A registry.** When a registry that is in the server's
    [`images.registries`](/capabilities/#imagesregistries) and that a
    reference of the request names serves the digest, the source is
@@ -74,7 +73,7 @@ finish.
    whether or not it asked the client for any blob.
 6. **The image enters the Store.** When the image was obtained from a
    registry, or from the client and the nonce check passed, the image
-   is in the client's Store, with the description of the request. The
+   is in the client's Store. The
    server sends exactly one response, the byte `1` followed by the
    digest, the size and the source, and the response finish. From
    that moment, every [images::list](/endpoints/images-list/) scope
@@ -121,8 +120,7 @@ finish.
   the platforms it lacks as this page provides and answers with the
   byte `1`; the image then holds them as well, and every
   [images::list](/endpoints/images-list/) scope the client holds open
-  that was sent the image as added is sent it as changed. The
-  description of the request is not written over the image's.
+  that was sent the image as added is sent it as changed.
 - **The proof.** Where the client supplies the image, the server
   makes the nonce check once for each image manifest it took, naming
   that manifest as the proof's platform where the image is an index.
@@ -130,17 +128,16 @@ finish.
   image the digest of the request names, and the source answered is
   the source from which the server obtained it. A push never has the
   source `Store`.
-- **The description.** The `description` of the request is absent,
-  or a description as
-  [The description](/endpoints/daemons-announce/request/#the-description) defines it. The
-  image carries it from the moment it enters the Store, until an
-  [images::edit](/endpoints/images-edit/) by the client replaces or
-  clears it.
+- **No description.** The request carries no description of the
+  image, and the server keeps none. What an image is, the image
+  states, in the `description` of its own
+  [document](/shared/document/), which
+  [images::read](/endpoints/images-read/) answers.
 - **The client.** The client is the identity under which the
   connection was authorized, as [Authorization](/authorization/)
   provides. The image enters that identity's Store, as an image the
   client built enters it, and that identity alone can examine it,
-  edit it, pull it, delete it, or run it from its Store.
+  pull it, delete it, or run it from its Store.
 - **No eviction.** The end of the scope, and the end of every
   connection of the client, leave a pushed image in the Store. The
   server does not remove the image from the Store on its own account.

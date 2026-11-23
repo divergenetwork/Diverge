@@ -9,20 +9,20 @@
 //!
 //! # The Store
 //!
-//! The other eight are the Store: the images a caller owns on the
-//! provider, each by its digest alone, with a description the caller
-//! may give it. [`list`] is the listing, kept open; [`stat`] examines
+//! The other seven are the Store: the images a caller owns on the
+//! provider, each by its digest alone. The Store keeps no word of the
+//! caller's about an image: what an image is, the image says, in its
+//! own `/.diverge/DIVERGE.md`. [`list`] is the listing, kept open; [`stat`] examines
 //! one; [`build`] makes one from a Containerfile, streaming what the
 //! build says as it goes; [`push`] takes one already built, from a
 //! registry the provider uses or from the caller; [`merge`] makes one
 //! of the platforms of several; [`publish`] sends one to a registry;
-//! [`edit`] changes its description; [`delete`] destroys one. The
-//! rules:
+//! [`delete`] destroys one. The rules:
 //!
 //! 1. **By digest.** An image in the Store is named by its manifest
 //!    digest and by nothing else. A caller owns a digest once.
 //! 2. **The caller's own.** The Store is the caller's: no other
-//!    identity can list, examine, edit, pull, run from or delete what
+//!    identity can list, examine, pull, run from or delete what
 //!    the caller owns. Two callers owning one digest each own it.
 //! 3. **Ownership is proven when it is gained.** A build proves it by
 //!    building. A push from a registry takes the registry's bytes,
@@ -86,7 +86,7 @@
 //!
 //! # Reading what the provider holds
 //!
-//! The ninth, [`read`], is the question whether the provider can
+//! The eighth, [`read`], is the question whether the provider can
 //! supply one image, and, where it can, everything read of it: a
 //! caller opens a scope on the provider naming one image, is answered
 //! held or not, and asks, on channels, for that image's manifests,
@@ -104,7 +104,6 @@
 
 pub mod build;
 pub mod delete;
-pub mod edit;
 pub mod list;
 pub mod merge;
 pub mod publish;

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::{Agent, Chat, FalseOr, ParseError, StructuredDecisions, Tool};
+use crate::shared::description::Description;
 
 /// `/.diverge/DIVERGE.md`, parsed: an agent's image's document or a
 /// tool's, told apart by the member `type`, which is `agent` or
@@ -12,20 +13,21 @@ use super::{Agent, Chat, FalseOr, ParseError, StructuredDecisions, Tool};
 /// The frontmatter is one JSON object — raw JSON, which is YAML's flow
 /// style and so reads as a frontmatter anywhere one is expected. Its
 /// member `type` says which of the two it is, and what else it may
-/// hold follows from that: both have `name` and `schema`, and
-/// `frontend` where the program serves one; an agent's has `chat` and `structured_decisions` besides, at
+/// hold follows from that: both have `name`, `description` and
+/// `schema`, and `frontend` where the program serves one; an agent's has `chat` and `structured_decisions` besides, at
 /// least one of them an object; a tool's has neither. No frontmatter
 /// has a member that is none of its type's. The body is the image's
-/// prose: what it runs and the secrets it declares, kept as the author
-/// left it.
+/// prose — what it runs and the secrets it declares, kept as the author
+/// left it — and is the long account of the image, as `description` is
+/// the short one.
 ///
 /// The two are different documents and not one with members left out:
 /// an image is asked for its document by its digest, by a caller that
 /// does not know which of the two it is, and the answer says. The
 /// provider carries and does not read any of it; a caller reads the
-/// type to know what the image is, the name to call it something and
-/// the schema to learn what its program takes, without knowing the
-/// image.
+/// type to know what the image is, the name to call it something,
+/// the description to say what it is and the schema to learn what its
+/// program takes, without knowing the image.
 ///
 /// On the wire, and as JSON anywhere, a document is one object: the
 /// member `type`, then its variant's own members.
@@ -45,6 +47,7 @@ pub enum Document {
 #[serde(deny_unknown_fields)]
 struct AgentFrontmatter {
     name: String,
+    description: Description,
     schema: Value,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
@@ -60,6 +63,7 @@ struct AgentFrontmatter {
 #[serde(deny_unknown_fields)]
 struct ToolFrontmatter {
     name: String,
+    description: Description,
     schema: Value,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
@@ -104,16 +108,19 @@ impl Document {
     ///    that is no string, or that is any other string, is
     ///    [`ParseError::Type`].
     /// 5. The object's other members are exactly its type's. Both
-    ///    types have `name`, a string, and `schema`, each required;
-    ///    and perhaps `frontend`, a boolean, `false` when absent. An
+    ///    types have `name`, a string, `description`, a string that is
+    ///    a [`Description`] — one line, trimmed, of one to
+    ///    [`DESCRIPTION_CHARACTERS`](crate::shared::description::DESCRIPTION_CHARACTERS)
+    ///    characters — and `schema`, each required; and perhaps
+    ///    `frontend`, a boolean, `false` when absent. An
     ///    agent's has, besides, perhaps `chat` and perhaps
     ///    `structured_decisions`, each `false` or an object as
     ///    [`FalseOr`] reads one, `false` when absent. A tool's has
     ///    neither: `chat` or `structured_decisions` in a tool's
     ///    frontmatter, whatever its value, is a member that is none of
     ///    its type's. A member missing, a member that is none of its
-    ///    type's, or a member of the wrong type is
-    ///    [`ParseError::Json`].
+    ///    type's, a member of the wrong type, or a `description` that
+    ///    is no [`Description`], is [`ParseError::Json`].
     /// 6. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
     /// 7. In an agent's, at least one of `chat` and
@@ -158,7 +165,7 @@ impl Document {
         // Rules 5 to 7.
         Ok(match kind.as_str() {
             "agent" => {
-                let AgentFrontmatter { name, schema, frontend, chat, structured_decisions } =
+                let AgentFrontmatter { name, description, schema, frontend, chat, structured_decisions } =
                     serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
                 if !schema.is_object() {
                     return Err(ParseError::NotObject);
@@ -166,21 +173,21 @@ impl Document {
                 if chat.is_false() && structured_decisions.is_false() {
                     return Err(ParseError::Neither);
                 }
-                Document::Agent(Agent { name, schema, frontend, chat, structured_decisions, body })
+                Document::Agent(Agent { name, description, schema, frontend, chat, structured_decisions, body })
             }
             "tool" => {
-                let ToolFrontmatter { name, schema, frontend } = serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
+                let ToolFrontmatter { name, description, schema, frontend } = serde_json::from_value(Value::Object(members)).map_err(ParseError::Json)?;
                 if !schema.is_object() {
                     return Err(ParseError::NotObject);
                 }
-                Document::Tool(Tool { name, schema, frontend, body })
+                Document::Tool(Tool { name, description, schema, frontend, body })
             }
             _ => return Err(ParseError::Type),
         })
     }
 
     /// Write the document back as its text: `---`, the frontmatter —
-    /// `type` first, then the name, the schema, `frontend` when it is
+    /// `type` first, then the name, the description, the schema, `frontend` when it is
     /// `true`, and, in an agent's, `chat`
     /// and `structured_decisions` when they are not `false` —
     /// pretty-printed, `---`, and the body, each fence on a line of its
@@ -198,6 +205,7 @@ impl Document {
         let frontmatter = match self {
             Document::Agent(agent) => Frontmatter::Agent(AgentFrontmatter {
                 name: agent.name.clone(),
+                description: agent.description.clone(),
                 schema: agent.schema.clone(),
                 frontend: agent.frontend,
                 chat: agent.chat,
@@ -205,6 +213,7 @@ impl Document {
             }),
             Document::Tool(tool) => Frontmatter::Tool(ToolFrontmatter {
                 name: tool.name.clone(),
+                description: tool.description.clone(),
                 schema: tool.schema.clone(),
                 frontend: tool.frontend,
             }),
@@ -218,6 +227,14 @@ impl Document {
         match self {
             Document::Agent(agent) => &agent.name,
             Document::Tool(tool) => &tool.name,
+        }
+    }
+
+    /// What the image is, in one line, whichever type it is.
+    pub fn description(&self) -> &Description {
+        match self {
+            Document::Agent(agent) => &agent.description,
+            Document::Tool(tool) => &tool.description,
         }
     }
 

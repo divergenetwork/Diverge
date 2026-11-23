@@ -15,8 +15,9 @@ use crate::shared::listing::Change;
 /// A listing is a stream kept open. First every image the caller
 /// owns, each as [`Added`](Self::Added); then exactly one
 /// [`Listed`](Self::Listed); then, for the scope's life, an image the
-/// caller builds or pushes as `Added`, one whose description it edits
-/// as [`Changed`](Self::Changed), and one it deletes as
+/// caller builds or pushes as `Added`, one a push holds more
+/// platforms of or a publish adds a reference to as
+/// [`Changed`](Self::Changed), and one it deletes as
 /// [`Removed`](Self::Removed). The finish follows the caller's cancel,
 /// the caller's connection ending, or exactly one
 /// [`Error`](Self::Error), and nothing else: a caller with no image is
@@ -43,8 +44,8 @@ pub enum Frame {
     /// every image the caller owns then, and after it for one the
     /// caller builds or pushes. Nothing promises an order.
     Added(Image),
-    /// An image listed already, whose description the caller edited.
-    /// Tag `1`.
+    /// An image listed already, of which more platforms are held or
+    /// which has a reference more. Tag `1`.
     ///
     /// The image as it is now. Its `digest`, `bytes` and `created` are
     /// what they were: none of them changes.

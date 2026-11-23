@@ -4,7 +4,6 @@ use diverge_sdk::daemon::agent_log::Identity;
 use diverge_sdk::daemon::endpoints::images::publish::{client::execute, client::request, server::response};
 use diverge_sdk::identity_diverge_network::REGISTRY;
 use diverge_sdk::shared::containers::request::Reference;
-use diverge_sdk::shared::description::Description;
 use futures_util::StreamExt as _;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -44,11 +43,6 @@ pub struct Parameters {
     /// by its digest alone.
     #[serde(default)]
     pub tags: Vec<String>,
-    /// What an image this publish makes is kept as, on the provider it
-    /// is done on: one short line. Not used where the image was there
-    /// already.
-    #[serde(default)]
-    pub description: Option<Description>,
     /// The provider to do it on. Absent, the daemon picks one that
     /// uses the registry.
     #[serde(default)]
@@ -112,7 +106,6 @@ pub async fn call(call: Call<'_>, parameters: Parameters) -> Result<Value, Failu
             username: issuer.name.to_string(),
             password: token,
         }),
-        description: parameters.description,
         provider: parameters.provider,
         relay: None,
     };

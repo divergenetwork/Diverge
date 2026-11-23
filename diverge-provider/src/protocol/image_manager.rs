@@ -16,7 +16,6 @@ use diverge_sdk::provider::endpoints::images::publish::client::request::Credenti
 use diverge_sdk::provider::endpoints::images::stat::server::response::Stat;
 use diverge_sdk::shared::containers::request::Image as Wanted;
 use diverge_sdk::shared::containers::request::Reference;
-use diverge_sdk::shared::description::Description;
 
 /// The Store: one per caller, of the images it owns, each by its
 /// manifest digest alone.
@@ -24,14 +23,13 @@ use diverge_sdk::shared::description::Description;
 /// The store endpoints of
 /// [`images`](diverge_sdk::provider::endpoints::images) are verbs over
 /// one thing, and this is the thing: what a listing reports, what a
-/// build or a push adds and a delete takes away, what an edit
-/// describes. An image is never acted on in place, so there is no
+/// build or a push adds and a delete takes away. An image is never acted on in place, so there is no
 /// second trait for the thing a digest resolves to.
 ///
 /// # Every method takes a `client_identity`
 ///
 /// Because the STORE is the caller's: what one identity owns is not
-/// listed to, examined, described, run from or deleted by another.
+/// listed to, examined, run from or deleted by another.
 /// Two identities owning one digest each own it. The identity
 /// is an argument so that ONE manager serves every caller on every
 /// connection.
@@ -97,8 +95,7 @@ pub trait ImageManager: Send + Sync {
     /// Build an image for this caller from the `containerfile`, with
     /// `context` — a directory of one of the caller's volumes,
     /// resolved by the provider — as the build's context, or none; the
-    /// image owned under the digest the build produced, with
-    /// `description`. A digest the caller owns already is
+    /// image owned under the digest the build produced. A digest the caller owns already is
     /// [`Progress::Exists`], and nothing changes.
     ///
     /// # The context is held
@@ -108,7 +105,6 @@ pub trait ImageManager: Send + Sync {
     fn build(
         &self,
         client_identity: &Identity,
-        description: Option<&Description>,
         containerfile: &str,
         context: Option<&Context>,
     ) -> impl Future<Output = Self::Build> + Send;
@@ -119,8 +115,8 @@ pub trait ImageManager: Send + Sync {
     /// push's life.
     type Push: Stream<Item = Result<Pushing, Self::Error>> + Send + 'static;
 
-    /// Take the image `image` names into this caller's Store, with
-    /// `description`: from a registry the provider uses when one
+    /// Take the image `image` names into this caller's Store: from a
+    /// registry the provider uses when one
     /// serves it, else from the caller through `source`, ending with
     /// the nonce check, holding the `platforms` named of it. The order and the answers are the endpoint's —
     /// see [`push`](diverge_sdk::provider::endpoints::images::push).
@@ -128,20 +124,18 @@ pub trait ImageManager: Send + Sync {
         &self,
         client_identity: &Identity,
         image: &Wanted,
-        description: Option<&Description>,
         platforms: &[String],
         source: ImageSource,
     ) -> impl Future<Output = Self::Push> + Send;
 
     /// Make one image of the platforms `parts` name, each taken from
-    /// an image the caller holds, with `description`, and own it. How
+    /// an image the caller holds, and own it. How
     /// it ended is the [`Merging`]; [`Err`] is the Store as it was.
     /// See [`merge`](diverge_sdk::provider::endpoints::images::merge).
     fn merge(
         &self,
         client_identity: &Identity,
         parts: &[Part],
-        description: Option<&Description>,
     ) -> impl Future<Output = Result<Merging, Self::Error>> + Send;
 
     /// What [`publish`](Self::publish) hands back: every blob the
@@ -162,18 +156,6 @@ pub trait ImageManager: Send + Sync {
         tags: &[String],
         credential: Option<&Credential>,
     ) -> impl Future<Output = Self::Publish> + Send;
-
-    /// The description of the caller's image under `digest` set, or
-    /// cleared with `None`. [`None`] is a digest the caller owns no
-    /// image by; `Some(changed)` is the edit made, `changed` whether
-    /// the description is other than it was — the handler tells the
-    /// listings only then.
-    fn edit(
-        &self,
-        client_identity: &Identity,
-        digest: &str,
-        description: Option<&Description>,
-    ) -> impl Future<Output = Result<Option<bool>, Self::Error>> + Send;
 
     /// Give up the caller's ownership of the image under `digest`, or,
     /// where `platforms` names any, of those platforms of it.

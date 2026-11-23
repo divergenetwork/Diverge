@@ -23,7 +23,6 @@ use diverge_sdk::provider::endpoints::images::publish::client::request::Credenti
 use diverge_sdk::provider::endpoints::images::stat::server::response::Stat;
 use diverge_sdk::shared::containers::request::Image as Wanted;
 use diverge_sdk::shared::containers::request::Reference;
-use diverge_sdk::shared::description::Description;
 
 /// This provider's image manager: the Store, the blob store an image
 /// a registry serves is brought through, the volumes a build reads its
@@ -102,14 +101,13 @@ impl image_manager::ImageManager for ImageManager {
     type Build = Build;
 
     /// The build, on a task of its own; with no Store, the one error.
-    async fn build(&self, client_identity: &Identity, description: Option<&Description>, containerfile: &str, context: Option<&Context>) -> Self::Build {
+    async fn build(&self, client_identity: &Identity, containerfile: &str, context: Option<&Context>) -> Self::Build {
         match (&self.store, &self.deployer) {
             (Some(store), Some(deployer)) => build(
                 Arc::clone(store),
                 Arc::clone(&self.volumes),
                 Arc::clone(deployer),
                 client_identity,
-                description,
                 containerfile,
                 context,
             ),
@@ -120,17 +118,17 @@ impl image_manager::ImageManager for ImageManager {
     type Push = Push;
 
     /// The push, on a task of its own; with no Store, the one error.
-    async fn push(&self, client_identity: &Identity, image: &Wanted, description: Option<&Description>, platforms: &[String], source: ImageSource) -> Self::Push {
+    async fn push(&self, client_identity: &Identity, image: &Wanted, platforms: &[String], source: ImageSource) -> Self::Push {
         match &self.store {
-            Some(store) => push(Arc::clone(store), Arc::clone(&self.registries), client_identity, image, description, platforms, source),
+            Some(store) => push(Arc::clone(store), Arc::clone(&self.registries), client_identity, image, platforms, source),
             None => Box::pin(stream::once(future::ready(Err::<Pushing, Error>(Error::Absent)))),
         }
     }
 
     /// The merge; with no Store, the one error.
-    async fn merge(&self, client_identity: &Identity, parts: &[Part], description: Option<&Description>) -> Result<Merging, Error> {
+    async fn merge(&self, client_identity: &Identity, parts: &[Part]) -> Result<Merging, Error> {
         match &self.store {
-            Some(store) => merge(store, client_identity, parts, description).await,
+            Some(store) => merge(store, client_identity, parts).await,
             None => Err(Error::Absent),
         }
     }
@@ -144,15 +142,6 @@ impl image_manager::ImageManager for ImageManager {
             Some(store) => publish(Arc::clone(store), Arc::clone(&self.registries), client_identity, digest, reference, tags, credential),
             None => Box::pin(stream::once(future::ready(Err::<Publishing, Error>(Error::Absent)))),
         }
-    }
-
-    /// The description set on the identity's record; `None` for a
-    /// digest it owns no image by.
-    async fn edit(&self, client_identity: &Identity, digest: &str, description: Option<&Description>) -> Result<Option<bool>, Error> {
-        let (Some(store), Some(parsed)) = (&self.store, Digest::parse(digest)) else {
-            return Ok(None);
-        };
-        store.describe(client_identity, &parsed, description.cloned()).await
     }
 
     /// The ownership removed, or the platforms named taken out of it,

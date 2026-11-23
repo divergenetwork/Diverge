@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "courier",
+  "description": "An inbox between agents, pulled and never pushed.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",

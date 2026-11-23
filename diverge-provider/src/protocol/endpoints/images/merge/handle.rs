@@ -40,7 +40,7 @@ pub async fn handle<M>(
     let frame = if capabilities.images.store.is_none() {
         response::Frame::Unsupported
     } else {
-        match manager.merge(client_identity, &request.images, request.description.as_ref()).await {
+        match manager.merge(client_identity, &request.images).await {
             Ok(Merging::Merged(merged)) => {
                 changes.changed(client_identity, &merged.digest);
                 response::Frame::Merged(merged)

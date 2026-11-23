@@ -88,7 +88,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     };
     // Rule 5.
     let (steps, said) = mpsc::unbounded_channel();
-    let (joined, ()) = tokio::join!(join::join(daemon, &frame.provider, &handle, &held, &parts, Some(&frame.description), steps), tell(scope, said));
+    let (joined, ()) = tokio::join!(join::join(daemon, &frame.provider, &handle, &held, &parts, steps), tell(scope, said));
     Ok(match joined {
         Ok(joined) => Frame::Merged(Merged {
             digest: joined.digest,

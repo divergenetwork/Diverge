@@ -42,7 +42,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 ///    finishes with nothing built.
 /// 2. The manager asked to build, with the context as a
 ///    [`Context`] — the request's two fields and the caller's
-///    identity — and the description, and its stream read to the end:
+///    identity — and its stream read to the end:
 ///    every [`Output`](Progress::Output) sent as it comes; the first
 ///    of [`Built`](Progress::Built), told to every listing open by
 ///    digest, [`Exists`](Progress::Exists), told to nobody since
@@ -108,7 +108,7 @@ pub async fn handle<M, V>(
         volume_relative_path: context.volume_relative_path.clone(),
     });
     let build = manager
-        .build(client_identity, request.description.as_ref(), &request.containerfile, context.as_ref())
+        .build(client_identity, &request.containerfile, context.as_ref())
         .await;
     let mut build = Box::pin(build);
     let mut ended = false;

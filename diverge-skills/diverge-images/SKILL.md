@@ -1,6 +1,6 @@
 ---
 name: diverge-images
-description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `name`, `schema`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
+description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `name`, `description`, `schema`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
 ---
 
 # Diverge images
@@ -95,7 +95,6 @@ diverge run images build '{
   "provider": {"issuer": "http://127.0.0.1:14981", "subject": "provider"},
   "platforms": ["linux/amd64"],
   "containerfile": "FROM docker.io/library/alpine\nCOPY .diverge /.diverge\n",
-  "description": "my image",
   "context": {"volume": "my-source", "path": ["tool"]}
 }' > build.log
 # {"output":"[1/2] STEP 1/6: FROM …"}        one line per line the build says
@@ -109,7 +108,8 @@ diverge run images build '{
   `diverge run providers list`. The default provider builds for its own machine's platform only.
 - **`context`**: a directory of a volume on that same provider, as `{"volume":"<name>","path":[…]}`. The
   Containerfile's `COPY` and `ADD` read from it. Omit it for a Containerfile that copies nothing.
-- **`description`**: optional, one short line (132 characters at most), kept beside the image.
+- **No description here.** An image's one-line description is its own: the `description` in its
+  `DIVERGE.md` (below). No request gives an image one: a `description` in a body is ignored.
 - **The last line is the result**:
   - `{"built":{"digest":…,"bytes":…}}`: the image is in the Store. The digest is what a template names.
   - `{"exists":{"digest":…}}`: the build produced a digest already in the Store; nothing was added.
@@ -189,9 +189,9 @@ diverge run images list --watch                            # stays open: added /
   answers `{"found":{…}}` with the same members as a list line, `"not_found"` (no such provider on record,
   or no such digest in its Store), `"forbidden"`, or `{"error":…}` (the provider is not connected now, has
   no Store, or its listing failed). It needs the images grant's `get` action.
-- Each line is `{"added":{"provider":…,"digest":…,"description"?:…,"bytes":…,"created":…,
+- Each line is `{"added":{"provider":…,"digest":…,"bytes":…,"created":…,
   "manifest_platforms":[…],"platforms":[…],"references"?:[…]}}`, then `"listed"`. With `--watch`,
-  `{"changed":…}` (a description edited, a platform added, a reference recorded) and `{"removed":…}`
+  `{"changed":…}` (a platform added, a reference recorded) and `{"removed":…}`
   follow as they happen. Other answers: `"forbidden"`, `{"error":…}`.
 - **`manifest_platforms`** is every platform the image is for; **`platforms`** is the ones the daemon
   holds on that provider. The two equal, the image is whole there. Fewer held, push the missing ones
@@ -209,8 +209,7 @@ diverge run images push '{
   "provider": {"issuer":"…","subject":"ronald.provider"},
   "platforms": ["linux/amd64","linux/arm64"],
   "image": {"digest":"sha256:…","references":[{"registry":"ghcr.io","name":"acme/worker"}]},
-  "source": "daemon",
-  "description": "worker 1.4"
+  "source": "daemon"
 }'
 # {"added":{"platforms":["linux/amd64","linux/arm64"],"bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}}}}
 # {"pushed":{"digest":"sha256:…","bytes":123456789,"source":{"registry":{"reference":"ghcr.io/acme/worker@sha256:…"}},"platforms":["linux/amd64","linux/arm64"]}}
@@ -309,22 +308,6 @@ the daemon owns no image of that digest there), `"unsupported"` (the provider ha
 
 Grant: `delete` over images, reaching the provider.
 
-## Changing an image's description: `diverge run images edit`
-
-```bash
-diverge run images edit '{"provider":{"issuer":"…","subject":"ronald.provider"},
-  "digest":"sha256:…","description":"python agent loop, rebuilt for the new proxy"}'
-# -> "edited" | "not_found" | "forbidden" | "unsupported" | {"error":…}
-
-diverge run images edit '{"provider":{…},"digest":"sha256:…"}'     # no description: clears it
-```
-
-- The description is the only thing about an image that can be changed. Its bytes and platforms are fixed by
-  its digest; to change those, build, push or merge a new image.
-- `description` is one short line (132 characters at most). Leaving it out, or giving `null`, clears it.
-- `"not_found"`: no such provider, or the daemon owns no image of that digest in its Store there.
-- Grant: `{"images":{"actions":["edit"],"within":"any"}}`, or narrowed to providers.
-
 ## Joining images into one: `diverge run images merge`
 
 Two images built for two platforms are two different images, each with its own digest. A push cannot join
@@ -338,8 +321,7 @@ diverge run images merge '{
   "images": [
     {"digest": "sha256:aaaa…"},
     {"digest": "sha256:bbbb…", "platforms": ["linux/arm64"]}
-  ],
-  "description": "python agent loop, amd64 and arm64"
+  ]
 }' > merge.log
 # {"blob":{"digest":"sha256:…","bytes":…}}          one line per blob pulled onto the provider
 # {"added":{"platforms":["linux/arm64"]}}             one line per group of platforms that landed
@@ -349,13 +331,12 @@ diverge run images merge '{
 - **`provider`** (required): where the merged image is made and kept.
 - **`images`** (required, one or more): each a `digest`, and optionally the `platforms` taken of it. With
   `platforms` left out, every platform that image has is taken.
-- **`description`** (required): one short line (132 characters at most) kept beside the merged image.
 - **Where the images come from is not yours to say.** Whatever the provider's Store lacks is fetched from
   wherever the daemon finds it: every provider it is connected to, and every remote daemon it has a record
   of. An image already in that provider's Store is not fetched.
 - **The last line is the result.**
   - `{"merged":{"digest":…,"created":…}}`: the image is in the Store; the digest is what a template names.
-    `"created":false` means the daemon already owned that exact image there; its description is unchanged.
+    `"created":false` means the daemon already owned that exact image there.
     The same images merged on any provider give the same digest.
   - `"unavailable"`: an image named, or a platform taken of it, was found on no source. Check the digest,
     that the provider or daemon holding it is connected, and that it holds that platform
@@ -392,8 +373,7 @@ diverge run images publish '{
   ],
   "reference": {"registry": "ghcr.io", "name": "acme/worker"},
   "tags": ["1.4"],
-  "credential": {"username": "…", "password": "…"},
-  "description": "worker 1.4"
+  "credential": {"username": "…", "password": "…"}
 }'
 ```
 
@@ -406,7 +386,6 @@ or on any provider you name: the daemon gathers them.
 | `reference` | yes | `{"registry":…,"name":…}`: the registry host and the repository path. No tag here |
 | `tags` | no | tags to put on it. None, and it is published by digest alone |
 | `credential` | no | `{"username":…,"password":…}`; the password is whatever the registry takes: a password, a token. Absent, the registry is asked as nobody |
-| `description` | no | what an image this request makes is kept as in the Store |
 | `provider` | no | the provider to do it on. Absent, the daemon picks |
 
 What the daemon does, in order:
@@ -440,8 +419,7 @@ Last line when it works:
 - **`digest`** is what the registry holds: the image's own digest when one whole image was published,
   the merged digest otherwise. Use this digest in templates.
 - **`created`** says whether this request made that image on the provider (`true`) or it was already in
-  the daemon's Store there (`false`). When it was already there, your `description` is **not used**: the
-  image keeps the description it had.
+  the daemon's Store there (`false`).
 
 Other last lines: `"forbidden"`, `"not_found"` (the provider named is unknown), `"no_provider"` (nobody
 reachable can do it), `"registry_unlisted"` and `"unsupported"` (the provider named does not use that
@@ -474,6 +452,7 @@ what `arguments` an image accepts without knowing the image.
 {
   "type": "tool",
   "name": "chat",
+  "description": "A chat between a person and the agents attached to it, with a live web page.",
   "schema": { "type": "object", "additionalProperties": false, "description": "…" },
   "frontend": true
 }
@@ -492,8 +471,9 @@ The parse rules, in the order they are checked:
 3. The frontmatter is **one JSON object**.
 4. It has **`type`, required: `"agent"` or `"tool"`**. Missing, or anything else, is an error. The type
    decides which members are allowed.
-5. Both types: `name` (string, required), `schema` (required), `frontend` (boolean, optional, `false`
-   when absent). An agent's also: `chat` and `structured_decisions` (each
+5. Both types: `name` (string, required), `description` (string, required: one line, 1 to 132
+   characters, no line break or other control character, no space at either end), `schema` (required),
+   `frontend` (boolean, optional, `false` when absent). An agent's also: `chat` and `structured_decisions` (each
    `false` or an object, never `true`; optional, `false` when absent). **A tool's must not have `chat`
    or `structured_decisions` at all, not even as `false`.** A missing member, **any member that is not
    one of its type's**, or a wrong type is an error.
@@ -518,6 +498,10 @@ What each member means:
 - `type` — `agent` or `tool`: what the image's program is. It comes back in the parsed document, so a
   caller can tell the two apart without knowing the image.
 - `name` — what the image calls itself. Nothing makes it unique.
+- `description` — what the image is, in one line. It is the only description an image has: it travels
+  inside the image to every provider and registry, and nothing outside the image can set or change it.
+  To change it, change the file and build a new image. The body beneath the frontmatter is the long
+  account of the same image.
 - `schema` — what the template's `arguments` value may be. The daemon and the provider carry
   `arguments` to the program unread; the program validates them at its registration, so arguments
   that break the schema surface as a start error in the agent's or tool's log, not at
@@ -640,7 +624,7 @@ Lines printed: first the daemon's answer; after a `{"held":…}`, any further `{
 | `"not_found"` | no source the daemon asked holds any platform wanted |
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
 | `{"error":…}` | a failure; after a `held`, the source could not read the document, or it is not one |
-| `{"info":{"type":"agent","name":…,"schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent` or `tool`; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
+| `{"info":{"type":"agent","name":…,"description":"…","schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent` or `tool`; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
 | `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
@@ -746,9 +730,8 @@ template declares. Details and lifecycle are in `diverge-tools`; the entry shape
 - `images list`, `images get` and `images push` are from the SDK, the daemon's handlers and the CLI; none
   has been run live. A push whose bytes a client supplies has no caller in this repository; a push fed
   from a provider or a daemon is the daemon's own piping, and has not been run either.
-- The provider protocol also has `images::edit`, `stat` and `delete` over the caller's Store, which the
-  daemon does not expose. Deleting what the Store holds, or changing a description, is therefore not
-  possible from the CLI.
+- The provider protocol also has `images::stat` over the caller's Store, which the daemon does not
+  expose: the Containerfile an image was built from cannot be read back from the CLI.
 - Running a container from a Store image whose template names no `references` is from the daemon's
   code (it asks who holds the digest when no registry matches), not run live.
 - macOS and Linux build commands are from code and the setup report, not run live.

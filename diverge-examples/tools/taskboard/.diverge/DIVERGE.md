@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "taskboard",
+  "description": "A board of tasks shared by the agents that use it.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",

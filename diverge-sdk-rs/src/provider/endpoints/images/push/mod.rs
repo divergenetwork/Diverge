@@ -1,7 +1,7 @@
 //! Pushing an image into the caller's Store, without building it.
 //!
 //! A caller names an image — its digest, and the references under
-//! which its bytes may be fetched — and a description if it has one;
+//! which its bytes may be fetched;
 //! the provider takes the image, keeps its own copy, and the caller
 //! owns it in its Store from then on, as it owns one it built.
 //!

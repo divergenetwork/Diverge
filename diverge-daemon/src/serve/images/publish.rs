@@ -62,8 +62,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// 9. **Made, or there already.** The image published is made by the
 ///    request where it was merged by it, and, where nothing was
 ///    merged, where the daemon owned no image of the digest there
-///    when the provider was picked. Only an image made is kept as the
-///    request's description: one there already keeps its own.
+///    when the provider was picked.
 async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let standing = {
         let mut conn = daemon.store.acquire().await?;
@@ -103,7 +102,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     };
     // Rules 6, 7 and 9, by `join::join`.
     let (steps, said) = mpsc::unbounded_channel();
-    let (joined, ()) = tokio::join!(join::join(daemon, &provider, &handle, &held, &parts, frame.description.as_ref(), steps), tell(scope, said));
+    let (joined, ()) = tokio::join!(join::join(daemon, &provider, &handle, &held, &parts, steps), tell(scope, said));
     let joined = match joined {
         Ok(joined) => joined,
         Err(Stopped::Brought(failure)) => return Ok(refusal(failure)),

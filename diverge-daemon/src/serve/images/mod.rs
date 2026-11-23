@@ -12,7 +12,6 @@
 mod bring;
 pub mod build;
 pub mod delete;
-pub mod edit;
 pub mod get;
 pub mod join;
 pub mod list;

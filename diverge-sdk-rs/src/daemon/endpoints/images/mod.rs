@@ -16,8 +16,11 @@
 //! list would report it. [`delete`] takes one out of the
 //! Store, or some of its platforms. [`publish`] sends one or more
 //! to a registry as one image, bringing onto a provider what it lacks
-//! and merging first where there are several. The six are held by the
-//! images grant, each reaching the providers its `within` lets through; a
+//! and merging first where there are several. [`merge`] makes one
+//! image of the platforms of several, in the Store. The daemon keeps
+//! no word about an image and passes none to a provider: what an
+//! image is, the image says, in its own DIVERGE.md. The seven are held
+//! by the images grant, each reaching the providers its `within` lets through; a
 //! build also takes `mount` over the volume it reads its context from,
 //! where it reads one.
 //!
@@ -31,7 +34,6 @@
 
 pub mod build;
 pub mod delete;
-pub mod edit;
 pub mod get;
 pub mod list;
 pub mod merge;

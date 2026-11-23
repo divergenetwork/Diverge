@@ -30,7 +30,7 @@
 //!    platform taken of it, that no source supplies ends the merge
 //!    `Unavailable`. What landed before it stays in the Store.
 //! 5. **Merged.** The provider makes one image of the platforms
-//!    taken, kept as the request's description: `Merged`, with its
+//!    taken: `Merged`, with its
 //!    digest, which is the same for the same entries on every
 //!    provider. An image of that digest the daemon owned there already
 //!    is `Merged` with `created` false, and is kept as it was.

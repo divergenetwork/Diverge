@@ -4,8 +4,8 @@ import { z } from "zod";
 
 /**
  * The build produced a digest the daemon already owns in its Store
- * on the provider: nothing was added, the image there is the one
- * asked for, and its description is what it was.
+ * on the provider: nothing was added, and the image there is the one
+ * asked for.
  */
 export const Exists = z.object({
   /** The manifest digest the build produced, `<algorithm>:<hex>`. */

@@ -44,8 +44,7 @@ draft: false
   digest the build produced is the digest of an image already in the
   client's Store, and carries that `digest` as a varint byte length
   followed by that many bytes of UTF-8. Nothing entered the client's
-  Store as a result of the request, and the image in the Store keeps
-  its description.
+  Store as a result of the request.
 - **Insufficient capacity.** A payload whose first byte is `3` states
   that the server's Store has no room for the image and that nothing
   entered the client's Store. The server sends nothing after the byte

@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { Identity } from "../../../../../agent_log/identity.js";
 import { Reference } from "../../../../../../shared/containers/request/reference.js";
-import { Description } from "../../../../../../shared/description.js";
 import type { Keyed } from "../../../../../../shared/listing/keyed.js";
 
 /**
@@ -19,8 +18,6 @@ export const Image = z.object({
   provider: Identity,
   /** The manifest digest, `<algorithm>:<hex>`: the whole of how it is named, with the provider. */
   digest: z.string(),
-  /** What was said of the image by the build or the push that gained it. Absent, nothing was said. */
-  description: Description.optional(),
   /** Its size in BYTES, as the provider counts it against the Store's capacity. */
   bytes: z.number().int().nonnegative(),
   /** When the daemon came to own it, as the provider says: an RFC 3339 timestamp in UTC. */

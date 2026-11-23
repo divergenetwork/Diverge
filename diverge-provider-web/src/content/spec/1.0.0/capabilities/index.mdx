@@ -123,7 +123,7 @@ define.
 
 | Member | Type | Absent | Governs |
 |--------|------|--------|---------|
-| `store` | object, [the store object](#imagesstore) | no object: the server keeps no Store | [images::list](/endpoints/images-list/), [images::stat](/endpoints/images-stat/), [images::build](/endpoints/images-build/), [images::push](/endpoints/images-push/), [images::edit](/endpoints/images-edit/), [images::delete](/endpoints/images-delete/), the client's Store as a source of [images::read](/endpoints/images-read/), and the `Store` source of a run |
+| `store` | object, [the store object](#imagesstore) | no object: the server keeps no Store | [images::list](/endpoints/images-list/), [images::stat](/endpoints/images-stat/), [images::build](/endpoints/images-build/), [images::push](/endpoints/images-push/), [images::delete](/endpoints/images-delete/), the client's Store as a source of [images::read](/endpoints/images-read/), and the `Store` source of a run |
 | `registries` | array of strings | `[]` | the registries as a source of [images::read](/endpoints/images-read/), the `Registry` source of a run and of an [images::push](/endpoints/images-push/), and the registries an [images::publish](/endpoints/images-publish/) writes to |
 
 This page writes `images.store` for the member `store` of the object
@@ -153,7 +153,7 @@ such object does not hold it out.
   nothing. Every other requirement of this section holds for the
   server as it does for one that sends `build`: it serves
   images::list, images::stat, images::push, images::merge,
-  images::publish, images::edit and images::delete, and the client's Store is a source of images::read
+  images::publish and images::delete, and the client's Store is a source of images::read
   and of a run.
 
 The server keeps the Store: for each client, the images the client
@@ -170,7 +170,6 @@ endpoints define.
   [images::push](/endpoints/images-push/),
   [images::merge](/endpoints/images-merge/),
   [images::publish](/endpoints/images-publish/),
-  [images::edit](/endpoints/images-edit/),
   and [images::delete](/endpoints/images-delete/) as their pages
   state; the client's Store is a source from which the server answers
   and serves [images::read](/endpoints/images-read/); and the `Store` source of
@@ -198,9 +197,6 @@ endpoints define.
     exactly one response, the byte `8` and nothing else, and the
     response finish; it sends no blob response before it and asks
     nothing of any registry;
-  - an [images::edit](/endpoints/images-edit/) request with exactly
-    one response, the byte `2` and nothing else, and the response
-    finish;
   - an [images::delete](/endpoints/images-delete/) request with
     exactly one response, the byte `2` and nothing else, and the
     response finish;

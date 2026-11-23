@@ -1,7 +1,7 @@
 # The example tools
 
 Six images under `diverge-examples/` in the repository. Five are tools; `human` is an agent image listed here because
-it is used with them. Each image's `/.diverge/DIVERGE.md` states its name, its arguments schema and whether it serves
+it is used with them. Each image's `/.diverge/DIVERGE.md` states its name, its one-line description, its arguments schema and whether it serves
 a frontend; read it from a running daemon with `diverge run images read --info` (`diverge-images`), which is also
 where you get the digest to put in a template. All take `arguments: {}` (any member is refused) and no
 secrets.

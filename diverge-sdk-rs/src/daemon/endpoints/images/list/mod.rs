@@ -18,8 +18,9 @@
 //!    account's: every account whose grant reaches the provider is
 //!    listed the same images there.
 //! 2. **Each as the provider lists it**, with the provider it is on:
-//!    its digest, its description, its size, when the daemon came to
-//!    own it. Only the description of an image changes.
+//!    its digest, its size, when the daemon came to own it, the
+//!    platforms it names and the ones held, and its references. Of
+//!    these, the platforms held and the references change.
 //! 3. **Read from what the daemon holds.** The daemon holds one
 //!    listing of its Store on each connected provider for the
 //!    connection's life and reads from that, so a provider on record

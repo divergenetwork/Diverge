@@ -10,7 +10,6 @@ use crate::run::{Emitter, Error, Target};
 
 pub mod build;
 pub mod delete;
-pub mod edit;
 pub mod get;
 pub mod list;
 pub mod merge;
@@ -26,8 +25,6 @@ pub enum Images {
     /// Delete an image in a Store of the daemon's, or some of its
     /// platforms.
     Delete(delete::Arguments),
-    /// Change the description of an image in a Store of the daemon's.
-    Edit(edit::Arguments),
     /// Get one image in a Store of the daemon's.
     Get(get::Arguments),
     /// List the images in the daemon's Stores, and keep the list.
@@ -55,7 +52,6 @@ pub async fn run(command: Images, target: &Target<'_>, emitter: &mut Emitter) ->
     match command {
         Images::Build(arguments) => build::run(arguments, target, emitter).await,
         Images::Delete(arguments) => delete::run(arguments, target, emitter).await,
-        Images::Edit(arguments) => edit::run(arguments, target, emitter).await,
         Images::Get(arguments) => get::run(arguments, target, emitter).await,
         Images::List(arguments) => list::run(arguments, target, emitter).await,
         Images::Merge(arguments) => merge::run(arguments, target, emitter).await,

@@ -19,7 +19,6 @@ use crate::protocol::context::Context;
 use crate::protocol::progress::Progress;
 use crate::protocol::volume_manager::VolumeManager as _;
 use diverge_sdk::provider::endpoints::images::build::server::response::{Built, Exists};
-use diverge_sdk::shared::description::Description;
 
 /// The build as the manager hands it back: every line as it is
 /// said, then how it ended.
@@ -31,7 +30,6 @@ struct Job {
     volumes: Arc<VolumeManager>,
     deployer: Arc<ContainerDeployer>,
     client_identity: Identity,
-    description: Option<Description>,
     containerfile: String,
     context: Option<Context>,
 }
@@ -64,8 +62,8 @@ struct Job {
 /// 5. Every blob measured: over the capacity, cache records are
 ///    trimmed oldest first; still over, insufficient capacity, and
 ///    nothing owned.
-/// 6. Else the ownership recorded, with the description and the
-///    Containerfile, and the image built.
+/// 6. Else the ownership recorded, with the Containerfile, and the
+///    image built.
 ///
 /// Whatever the end, the attempt leaves — the Store pruned of what it
 /// brought in when nothing owns it — the volume is detached and the
@@ -75,7 +73,6 @@ pub fn build(
     volumes: Arc<VolumeManager>,
     deployer: Arc<ContainerDeployer>,
     client_identity: &Identity,
-    description: Option<&Description>,
     containerfile: &str,
     context: Option<&Context>,
 ) -> Build {
@@ -84,7 +81,6 @@ pub fn build(
         volumes,
         deployer,
         client_identity: client_identity.clone(),
-        description: description.cloned(),
         containerfile: containerfile.to_string(),
         context: context.cloned(),
     };
@@ -213,7 +209,6 @@ impl Job {
         let platforms = self.store.manifest_platforms(&digest).await.unwrap_or_else(|| vec![super::manifest::host()]);
         let bytes = self.store.image_bytes(&digest, &platforms).await;
         let meta = Meta {
-            description: self.description.clone(),
             bytes,
             created: now(),
             containerfile: Some(self.containerfile.clone()),

@@ -39,7 +39,7 @@ use crate::protocol::singles::Single;
 ///    told, keyed by digest — a digest not listed before as `Added`, a
 ///    digest listed and gone as [`Removed`](response::Frame::Removed)
 ///    with the image as it was, and a digest listed whose image
-///    differs — its description edited — as
+///    differs — more platforms held of it, or a reference more — as
 ///    [`Changed`](response::Frame::Changed). A change to another
 ///    caller's image is nothing. A subscription that fell
 ///    behind is the manager asked again the same way. A manager that

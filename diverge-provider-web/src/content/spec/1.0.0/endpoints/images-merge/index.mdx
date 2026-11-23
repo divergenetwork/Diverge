@@ -7,7 +7,7 @@ draft: false
 
 A client opens the scope with a request whose payload is the tag byte
 `18` followed by one or more parts, each the digest of an image and
-the platforms to take from it, and a description, or none. The server
+the platforms to take from it. The server
 sends exactly one response, which states that a new image over
 exactly those platforms is in the client's Store, that the client
 owned the digest of that image already, a refusal, or an error. The

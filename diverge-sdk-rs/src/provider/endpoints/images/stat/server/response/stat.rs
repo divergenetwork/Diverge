@@ -11,8 +11,7 @@ use crate::provider::endpoints::images::list::server::response::Image;
 /// The listing's [`Image`] sits inside this as a field rather than
 /// having its fields copied in, so there is one definition of what a
 /// listing says. Postcard writes a nested struct as its fields in
-/// place, so the wire reads `digest`, `description`, `bytes`,
-/// `created`, then the one field of its own — a listing's record with
+/// place, so the wire reads `digest`, `bytes`, `created`, then the one field of its own — a listing's record with
 /// one field appended.
 ///
 /// # Why the Containerfile is not in the listing
@@ -22,8 +21,8 @@ use crate::provider::endpoints::images::list::server::response::Image;
 /// asked about. A caller pays for it here, one image at a time.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Stat {
-    /// The image as a listing reports it: its digest, its
-    /// description, its size, and when the caller came to own it.
+    /// The image as a listing reports it: its digest, its size, and
+    /// when the caller came to own it.
     pub image: Image,
     /// The Containerfile the image was built from, verbatim, as the
     /// [`build`](crate::provider::endpoints::images::build) request

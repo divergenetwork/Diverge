@@ -71,28 +71,26 @@ pub enum ClientRequest<'a> {
     ImagesMerge(images::merge::client::request::Frame),
     /// Tag `19`. Send one to a registry.
     ImagesPublish(images::publish::client::request::Frame),
-    /// Tag `20`. Change one's description.
-    ImagesEdit(images::edit::client::request::Frame),
-    /// Tag `21`. Destroy one.
+    /// Tag `20`. Destroy one.
     ImagesDelete(images::delete::client::request::Frame),
-    /// Tag `22`. Ask whether one image can be supplied, and pull its
+    /// Tag `21`. Ask whether one image can be supplied, and pull its
     /// manifests, its blobs and its proof.
     ImagesRead(images::read::client::request::Frame),
-    /// Tag `23`. Ask what the provider is, and what it does.
+    /// Tag `22`. Ask what the provider is, and what it does.
     Info(info::client::request::Frame),
-    /// Tag `24`. Ask how much the caller may still use.
+    /// Tag `23`. Ask how much the caller may still use.
     Capacity(capacity::client::request::Frame),
-    /// Tag `25`. Accept connections from other daemons.
+    /// Tag `24`. Accept connections from other daemons.
     DaemonsAccept(daemons::accept::client::request::Frame),
-    /// Tag `26`. Connect to another daemon.
+    /// Tag `25`. Connect to another daemon.
     DaemonsConnect(daemons::connect::client::request::Frame),
-    /// Tag `27`. Ask which connected identities are announced.
+    /// Tag `26`. Ask which connected identities are announced.
     DaemonsList(daemons::list::client::request::Frame),
-    /// Tag `28`. Listen for the messages sent to the caller.
+    /// Tag `27`. Listen for the messages sent to the caller.
     DaemonsListen(daemons::listen::client::request::Frame),
-    /// Tag `29`. Send one message to one identity.
+    /// Tag `28`. Send one message to one identity.
     DaemonsMessage(daemons::message::client::request::Frame<'a>),
-    /// Tag `30`. Announce the caller to the provider's daemons list.
+    /// Tag `29`. Announce the caller to the provider's daemons list.
     DaemonsAnnounce(daemons::announce::client::request::Frame),
     /// Something this version cannot read, kept as it arrived.
     ///
@@ -198,9 +196,6 @@ impl Encode for ClientRequest<'_> {
                 frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
             }
             ClientRequest::ImagesPublish(frame) => {
-                frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
-            }
-            ClientRequest::ImagesEdit(frame) => {
                 frame.encode(out).map_err(ClientRequestEncodeError::Postcard)
             }
             ClientRequest::ImagesDelete(frame) => {
@@ -309,37 +304,34 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             19 => images::publish::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesPublish)
                 .ok(),
-            20 => images::edit::client::request::Frame::decode(bytes)
-                .map(ClientRequest::ImagesEdit)
-                .ok(),
-            21 => images::delete::client::request::Frame::decode(bytes)
+            20 => images::delete::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesDelete)
                 .ok(),
-            22 => images::read::client::request::Frame::decode(bytes)
+            21 => images::read::client::request::Frame::decode(bytes)
                 .map(ClientRequest::ImagesRead)
                 .ok(),
-            23 => info::client::request::Frame::decode(bytes)
+            22 => info::client::request::Frame::decode(bytes)
                 .map(ClientRequest::Info)
                 .ok(),
-            24 => capacity::client::request::Frame::decode(bytes)
+            23 => capacity::client::request::Frame::decode(bytes)
                 .map(ClientRequest::Capacity)
                 .ok(),
-            25 => daemons::accept::client::request::Frame::decode(bytes)
+            24 => daemons::accept::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsAccept)
                 .ok(),
-            26 => daemons::connect::client::request::Frame::decode(bytes)
+            25 => daemons::connect::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsConnect)
                 .ok(),
-            27 => daemons::list::client::request::Frame::decode(bytes)
+            26 => daemons::list::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsList)
                 .ok(),
-            28 => daemons::listen::client::request::Frame::decode(bytes)
+            27 => daemons::listen::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsListen)
                 .ok(),
-            29 => daemons::message::client::request::Frame::decode(bytes)
+            28 => daemons::message::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsMessage)
                 .ok(),
-            30 => daemons::announce::client::request::Frame::decode(bytes)
+            29 => daemons::announce::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DaemonsAnnounce)
                 .ok(),
             _ => None,

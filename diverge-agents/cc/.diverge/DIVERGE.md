@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "cc",
+  "description": "An agent that runs Claude Code.",
   "chat": {
     "prompt_modalities": {
       "image": true,

@@ -9,7 +9,6 @@ use crate::host::image_registry::Digest;
 use crate::protocol::progress::Merging;
 use diverge_sdk::provider::endpoints::images::merge::client::request::Part;
 use diverge_sdk::provider::endpoints::images::merge::server::response::Merged;
-use diverge_sdk::shared::description::Description;
 
 /// The merge. In order:
 ///
@@ -30,7 +29,7 @@ use diverge_sdk::shared::description::Description;
 ///    `InsufficientCapacity`; the index is written; and the caller
 ///    owns it, holding every platform it names. No layer is copied:
 ///    the record reaches the blobs its sources' records reach.
-pub async fn merge(store: &Store, client_identity: &Identity, parts: &[Part], description: Option<&Description>) -> Result<Merging, Error> {
+pub async fn merge(store: &Store, client_identity: &Identity, parts: &[Part]) -> Result<Merging, Error> {
     // Rule 1.
     let mut named: Vec<&String> = Vec::new();
     for platform in parts.iter().flat_map(|part| &part.platforms) {
@@ -95,7 +94,7 @@ pub async fn merge(store: &Store, client_identity: &Identity, parts: &[Part], de
     let attempt = store.enter().await;
     let written = store.write_bytes(attempt, &digest, &index).await;
     let outcome = match written {
-        Ok(true) => own(store, client_identity, &digest, description).await,
+        Ok(true) => own(store, client_identity, &digest).await,
         Ok(false) => Err(Error::Registry("the index written is not its digest's".to_string())),
         Err(error) => Err(error),
     };
@@ -105,11 +104,10 @@ pub async fn merge(store: &Store, client_identity: &Identity, parts: &[Part], de
 }
 
 /// The ownership of the index written: every platform it names, held.
-async fn own(store: &Store, client_identity: &Identity, digest: &Digest, description: Option<&Description>) -> Result<Merging, Error> {
+async fn own(store: &Store, client_identity: &Identity, digest: &Digest) -> Result<Merging, Error> {
     let platforms = store.manifest_platforms(digest).await.unwrap_or_default();
     let bytes = store.image_bytes(digest, &platforms).await;
     let meta = Meta {
-        description: description.cloned(),
         bytes,
         created: now(),
         containerfile: None,

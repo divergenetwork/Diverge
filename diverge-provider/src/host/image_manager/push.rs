@@ -18,7 +18,6 @@ use crate::protocol::progress::Pushing;
 use diverge_sdk::provider::endpoints::images::push::server::response::{Blob, Exists, Pushed};
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::containers::response::Source;
-use diverge_sdk::shared::description::Description;
 
 /// The push as the manager hands it back: every blob taken from the
 /// caller as it lands, then how it ended.
@@ -30,7 +29,6 @@ struct Job {
     registries: Arc<RegistryClient>,
     client_identity: Identity,
     image: Image,
-    description: Option<Description>,
     platforms: Vec<String>,
     source: ImageSource,
 }
@@ -81,7 +79,6 @@ pub fn push(
     registries: Arc<RegistryClient>,
     client_identity: &Identity,
     image: &Image,
-    description: Option<&Description>,
     platforms: &[String],
     source: ImageSource,
 ) -> Push {
@@ -90,7 +87,6 @@ pub fn push(
         registries,
         client_identity: client_identity.clone(),
         image: image.clone(),
-        description: description.cloned(),
         platforms: platforms.to_vec(),
         source,
     };
@@ -219,7 +215,6 @@ impl Job {
         };
         let platforms = held(&[]);
         let meta = Meta {
-            description: self.description.clone(),
             bytes: self.store.image_bytes(digest, &platforms).await,
             created: now(),
             containerfile: None,

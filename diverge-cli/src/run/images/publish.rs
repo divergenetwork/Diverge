@@ -15,7 +15,7 @@ pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the `images` to publish, each a digest and
     /// the platforms taken of it; the `reference` they go to; the
-    /// `tags`; the `credential`; a description; and the `provider` to
+    /// `tags`; the `credential`; and the `provider` to
     /// do it on, which absent the daemon picks; `relay` among its
     /// members has another daemon serve it.
     #[arg(value_name = "BODY")]

@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 
 use super::Context;
-use crate::shared::description::Description;
 use crate::shared::platform;
 
 use crate::wire::decode::Decode;
@@ -18,8 +17,8 @@ use crate::wire::encode::{Encode, Writer};
 /// nothing the caller chose. A build that produces a digest the
 /// caller already owns adds nothing, and answers
 /// [`Exists`](crate::provider::endpoints::images::build::server::response::Frame::Exists).
-/// The [`description`](Self::description) is what the caller says of
-/// the image, kept with it and shown in the listing.
+/// The caller says nothing of the image here: what an image is, the
+/// image says, in its own `/.diverge/DIVERGE.md`.
 ///
 /// # The Containerfile is the whole recipe
 ///
@@ -47,10 +46,6 @@ use crate::wire::encode::{Encode, Writer};
 /// says only that it failed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Frame {
-    /// What the caller says of the image, at most 132 characters, or
-    /// `None` for nothing. One postcard byte, `0` for none and `1`
-    /// followed by the text.
-    pub description: Option<Description>,
     /// The Containerfile, verbatim.
     pub containerfile: String,
     /// The directory of one of the caller's volumes that is the

@@ -185,7 +185,6 @@ pub async fn dispatch(scope: ScopeHandle, payload: &[u8], mut turn: Turn, who: W
         ClientRequest::RequestsListen(frame) => requests::listen::handle(scope, frame, who, daemon).await,
         ClientRequest::RequestsCreate(frame) => requests::create::handle(scope, frame, who, daemon).await,
         ClientRequest::ImagesMerge(frame) => images::merge::handle(scope, frame, who, daemon).await,
-        ClientRequest::ImagesEdit(frame) => images::edit::handle(scope, frame, who, daemon).await,
         ClientRequest::Info(_) => info::handle(scope).await,
         ClientRequest::Logs(frame) => logs::handle(scope, frame, who, daemon).await,
         ClientRequest::Invalid(_) => scope.send_response_finish().await,

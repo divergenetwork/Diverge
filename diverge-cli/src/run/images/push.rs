@@ -23,9 +23,9 @@ use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_s
 pub struct Arguments {
     /// What the request carries, as a JSON object: see
     /// [`request::Frame`] — the provider, the image by its digest and
-    /// the references its bytes may be fetched under, the `source` its
-    /// bytes come from — `daemon`, and never `client` — and a
-    /// description; `relay` among its members has another daemon
+    /// the references its bytes may be fetched under, and the `source`
+    /// its bytes come from — `daemon`, and never `client`; `relay`
+    /// among its members has another daemon
     /// serve it.
     #[arg(value_name = "BODY")]
     pub body: Option<String>,

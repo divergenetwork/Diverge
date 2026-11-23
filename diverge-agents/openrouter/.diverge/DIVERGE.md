@@ -2,6 +2,7 @@
 {
   "type": "agent",
   "name": "openrouter",
+  "description": "An agent that runs a chat-completions loop against OpenRouter.",
   "chat": {
     "prompt_modalities": {
       "image": true,

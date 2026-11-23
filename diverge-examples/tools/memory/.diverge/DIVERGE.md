@@ -2,6 +2,7 @@
 {
   "type": "tool",
   "name": "memory",
+  "description": "A notebook of notes that outlasts an agent's conversation.",
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",

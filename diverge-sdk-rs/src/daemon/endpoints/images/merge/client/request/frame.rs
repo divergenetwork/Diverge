@@ -5,7 +5,6 @@ use crate::wire::encode::{Encode, Writer};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::daemon::agent_log::Identity;
-use crate::shared::description::Description;
 use crate::shared::relay::Relay;
 
 use super::Part;
@@ -24,10 +23,6 @@ pub struct Frame {
     /// is empty does not parse.
     #[serde(deserialize_with = "parts")]
     pub images: Vec<Part>,
-    /// What the image made is kept as in the Store, beside its digest:
-    /// one short line of plain text. Required. Not written over an
-    /// image of the same digest owned there already.
-    pub description: Description,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,

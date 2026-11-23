@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { json, tagged } from "../../../../../../wire/encode.js";
 import { Relay } from "../../../../../../shared/relay.js";
-import { Description } from "../../../../../../shared/description.js";
 import { Identity } from "../../../../../agent_log/identity.js";
 import { Context } from "./context.js";
 
@@ -19,12 +18,6 @@ export const Frame = z.object({
   provider: Identity,
   /** The Containerfile, whole, as text: what the build runs. */
   containerfile: z.string(),
-  /**
-   * What the image is kept as in the Store, beside its digest: one
-   * short line of plain text. Absent, none. Not written over an image
-   * owned already.
-   */
-  description: Description.optional(),
   /** The directory the build reads from. Absent, none, and a Containerfile that copies from its context fails. */
   context: Context.optional(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
