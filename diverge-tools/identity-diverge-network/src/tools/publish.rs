@@ -2,7 +2,7 @@
 
 use diverge_sdk::daemon::agent_log::Identity;
 use diverge_sdk::daemon::endpoints::images::publish::{client::execute, client::request, server::response};
-use diverge_sdk::identity_diverge_network::{self, REGISTRY};
+use diverge_sdk::identity_diverge_network::REGISTRY;
 use diverge_sdk::shared::containers::request::Reference;
 use diverge_sdk::shared::description::Description;
 use futures_util::StreamExt as _;
@@ -19,7 +19,7 @@ pub const NAME: &str = "publish";
 
 /// What the tool does, as its caller reads it.
 pub const DESCRIPTION: &str = "Publish one or more images to Diverge's registry, registry.diverge.network, as one of this tool's accounts, and wait for it. \
-Give the account's `issuer` and `id` as `list_accounts` gives them, a `repository` name, and the `images` by digest: the image goes to `<username>/<repository>` there, the username the account's own, set once at identity.diverge.network. \
+Give the account's `username` as `list_accounts` gives it, a `repository` name, and the `images` by digest: the image goes to `<username>/<repository>` there. \
 No username, password or registry is given: the tool supplies the account's own. The daemon gathers the images from wherever they are, merges several into one, and publishes. \
 Answers `{\"published\": {\"provider\", \"digest\", \"created\", \"reference\", \"tags\"}}`.";
 
@@ -27,16 +27,13 @@ Answers `{\"published\": {\"provider\", \"digest\", \"created\", \"reference\", 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Parameters {
-    /// The account's issuer, as `list_accounts` gives it: `github` or
-    /// `google`.
-    pub issuer: String,
-    /// The account's id at that issuer, as `list_accounts` gives it.
-    pub id: String,
+    /// The account's username, as `list_accounts` gives it: the
+    /// namespace the image goes to.
+    pub username: String,
     /// The repository's name in the account's namespace: one name,
     /// with no `/`, of lowercase letters and digits with single `.`,
     /// `_` or `-` between them. The image goes to
-    /// `registry.diverge.network/<username>/<repository>`, the
-    /// username the account's own.
+    /// `registry.diverge.network/<username>/<repository>`.
     pub repository: String,
     /// The images to publish as one, each a digest and, optionally,
     /// the platforms to take of it: one or more. One image taking all
@@ -61,16 +58,14 @@ pub struct Parameters {
 /// Publish `images` to `<username>/<repository>` at [`REGISTRY`].
 /// The rules:
 ///
-/// 1. **The account is one the tool holds.** Its issuer is one there
-///    is, else [`Failure::Issuer`]; it is kept under the tool's
-///    template, else [`Failure::NoAccount`]. Neither the id nor the
-///    repository is empty, the repository is one name, and at least
-///    one image is named.
+/// 1. **The account is one the tool holds**, named by its username —
+///    see [`named`](store::accounts::named) — else
+///    [`Failure::Unknown`]. Neither the username nor the repository is
+///    empty, the repository is one name, and at least one image is
+///    named.
 /// 2. **Where it goes is not the caller's to say.** The registry is
 ///    [`REGISTRY`], and the repository's namespace is the account's
-///    username — see [`username`](store::accounts::username) — the
-///    one namespace the account may write. An account that has set
-///    none has no namespace: [`Failure::NoUsername`].
+///    username: the one namespace the account may write.
 /// 3. **Its token is had first** — see
 ///    [`token`](store::accounts::token) — the one the registry takes
 ///    of its issuer, which is the one `identity.diverge.network`
@@ -91,9 +86,8 @@ pub struct Parameters {
 ///    by its own name.
 pub async fn call(call: Call<'_>, parameters: Parameters) -> Result<Value, Failure> {
     // Rule 1.
-    let issuer = identity_diverge_network::issuer(&parameters.issuer).map_err(|error| Failure::Issuer(error.to_string()))?;
-    if parameters.id.is_empty() || parameters.repository.is_empty() {
-        return Err(Failure::Parameters("neither `id` nor `repository` may be empty".to_string()));
+    if parameters.username.is_empty() || parameters.repository.is_empty() {
+        return Err(Failure::Parameters("neither `username` nor `repository` may be empty".to_string()));
     }
     if parameters.repository.contains('/') {
         return Err(Failure::Parameters("`repository` is one name, with no `/`: the account is its namespace".to_string()));
@@ -103,14 +97,15 @@ pub async fn call(call: Call<'_>, parameters: Parameters) -> Result<Value, Failu
     }
     // Rule 3.
     let pool = call.state.store.pool(&call.state.client).await?;
-    let token = store::accounts::token(pool, &call.state.http, call.template, issuer, &parameters.id, issuer.presents).await?;
-    let username = store::accounts::username(&call.state.http, issuer, &parameters.id, &token).await?;
+    let account = store::accounts::named(pool, &call.state.http, call.template, &parameters.username).await?;
+    let issuer = account.issuer;
+    let token = store::accounts::token(pool, &call.state.http, call.template, issuer, &account.id, issuer.presents).await?;
     // Rules 2 and 4.
     let request = request::Frame {
         images: parameters.images,
         reference: Reference {
             registry: REGISTRY.to_string(),
-            name: format!("{username}/{}", parameters.repository),
+            name: format!("{}/{}", parameters.username, parameters.repository),
         },
         tags: parameters.tags,
         credential: Some(request::Credential {

@@ -43,14 +43,18 @@ For agents, over MCP:
 
 | tool | parameters | does |
 |---|---|---|
-| `list_accounts` | none | the accounts the tool holds, each as `{"account","issuer","id"}` |
-| `login` | `issuer`, `id`, `subject` | signs the subject `<username>.<subject>` in on the daemon's host, as that account, and waits for it |
-| `publish` | `issuer`, `id`, `repository`, `images`, and optionally `tags`, `description`, `provider` | publishes the images to `registry.diverge.network/<username>/<repository>` as that account, and waits for it |
+| `list_accounts` | none | the accounts the tool holds, each as `{"username","account","issuer","id"}` |
+| `login` | `username`, `subject` | signs the subject `<username>.<subject>` in on the daemon's host, as that account, and waits for it |
+| `publish` | `username`, `repository`, `images`, and optionally `tags`, `description`, `provider` | publishes the images to `registry.diverge.network/<username>/<repository>` as that account, and waits for it |
 
-- `issuer` is `github` or `google`: who issued the account's own
-  sign-in, and never `identity.diverge.network` itself.
-- `id` is the account's user id at that issuer, as `list_accounts`
-  gives it.
+- `username` names the account: the one it set at
+  `identity.diverge.network`, as `list_accounts` gives it.
+- An account listed with `"username": null` has set none. No tool can
+  name it, so it can sign nothing in and publish nothing until a person
+  sets its username at the page. No tool call sets one: it is
+  permanent, and choosing it is a person's decision.
+- `account`, `issuer` and `id` in the list say which GitHub or Google
+  sign-in it is, and are given to no tool.
 - `subject` is the name alone, the second part: 1 to 64 of `a-z`, `0-9`,
   `-` and `_`. The whole subject is the account's username, a period,
   and it.
@@ -101,14 +105,19 @@ the tool, which no tool call can do:
   with a button that copies it,
   and a link to the issuer's own page; sign in there and enter the
   code, and the account appears on the page by itself.
-- **See the accounts** the tool holds, each with the name its issuer
-  has for it now: the GitHub username, or the Google email. The name is
-  asked of the issuer each time the page loads and is kept nowhere.
+- **See the accounts** the tool holds, each with its username, and the
+  name its issuer has for it now: the GitHub login, or the Google
+  email. The issuer's name is asked each time the page loads and is
+  kept nowhere.
+- **Set a username** for an account that has none. The page says
+  whether the one typed is free, and asks once more before setting it:
+  a username is permanent. It can never be changed or given up, and no
+  two accounts have the same one.
 - **Remove an account.** The tool forgets it. What it already signed in
   on a daemon stays signed in.
 
 The accounts are shared: anyone the daemon lets open the page can add
-or remove them, and any agent attached to the tool can log in as any of
+or remove them and set a username, and any agent attached to the tool can log in as any of
 them. The page answers no token.
 
 ## Running it
@@ -119,8 +128,8 @@ A tool container, standalone or a dependency.
 - **Secrets:** none. The accounts are kept in the tool's database, not
   in the vault.
 - **Database:** the tool's own, through the proxy. One table,
-  `identity_accounts`, each row an account and its issuer's tokens,
-  under the template the tool was made from.
+  `identity_accounts`, each row an account, its issuer's tokens and
+  its username once known, under the template the tool was made from.
 - **Network:** the registry is reached by the provider, not by the
   tool. The tool's own is outbound HTTPS to `identity.diverge.network`, and to
   GitHub (`github.com`, `api.github.com`) and Google

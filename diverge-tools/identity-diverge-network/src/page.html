@@ -81,8 +81,30 @@
   .row + .row { border-top: 1px solid var(--line); }
   .row .who { flex: 1; min-width: 0; }
   .row .who div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* The account, who acts, in the accent; what its issuer calls it, quieter. */
+  /* The username, who acts, in the accent; the account and what its issuer calls it, quieter. */
   .row .who .mono { color: var(--accent); }
+  .row .who .none { color: var(--text-3); }
+  /* An account with no username: the row, and beneath it where one is set. */
+  .entry + .entry { border-top: 1px solid var(--line); }
+  .claim { padding: 0 var(--space-4) var(--space-4); }
+  .claim .field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .claim input {
+    flex: 1;
+    min-width: 12ch;
+    max-width: 39ch;
+    height: var(--control);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono);
+  }
+  .claim input:hover, .claim input:focus-visible { border-color: var(--line-hover); }
+  .claim .said { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--text-3); }
+  .claim .said.good { color: var(--ok); }
+  .claim .said.bad { color: var(--bad); }
   /* The issuer: a square chip. */
   .badge {
     flex: none;
@@ -170,10 +192,12 @@
   <div id="login"></div>
 
   <p class="note">
-    An account is a GitHub or Google sign-in, written <span class="mono">issuer.id</span>. It owns every
-    subject at identity.diverge.network that begins with it. Anyone who can open this page can add or remove
-    accounts, and any agent attached to this tool can sign in as any of them. Removing an account here does not
-    sign out what it already signed in.
+    An account is a GitHub or Google sign-in. At identity.diverge.network it has one username, which it sets
+    once and can never change, and it owns every subject that begins with it, written
+    <span class="mono">username.name</span>. An account with no username can sign nothing in until one is set
+    here. Anyone who can open this page can add or remove accounts and set a username, and any agent attached
+    to this tool can sign in as any of them. Removing an account here does not sign out what it already signed
+    in, and does not give up its username.
   </p>
 </main>
 <script>
@@ -236,12 +260,16 @@ async function showAccounts() {
     return;
   }
   accountsBox.replaceChildren(...listed.map((account) => {
-    const lines = [element("div", { className: "mono", textContent: account.account })];
-    if (account.name) lines.push(element("div", { className: "dim", textContent: account.name }));
+    const lines = [
+      account.username
+        ? element("div", { className: "mono", textContent: account.username })
+        : element("div", { className: "none", textContent: "No username yet" }),
+      element("div", { className: "dim", textContent: account.name ? account.name + " · " + account.account : account.account }),
+    ];
     if (account.problem) lines.push(element("div", { className: "problem", textContent: account.problem }));
     const remove = element("button", { className: "quiet", textContent: "Remove" });
     remove.addEventListener("click", async () => {
-      if (!confirm("Remove " + account.account + " from this tool?")) return;
+      if (!confirm("Remove " + (account.username || account.account) + " from this tool?")) return;
       remove.disabled = true;
       try {
         await ask("api/accounts/" + encodeURIComponent(account.issuer) + "/" + encodeURIComponent(account.id), { method: "DELETE" });
@@ -250,12 +278,84 @@ async function showAccounts() {
       }
       showAccounts();
     });
-    return element("div", { className: "row" }, [
+    const row = element("div", { className: "row" }, [
       element("span", { className: "badge", textContent: title(account.issuer) }),
       element("div", { className: "who" }, lines),
       remove,
     ]);
+    // One that has a username, or cannot be asked as, has nothing to set.
+    const entry = [row];
+    if (!account.username && !account.problem) entry.push(claim(account));
+    return element("div", { className: "entry" }, entry);
   }));
+}
+
+// What a username may be, as identity.diverge.network holds one to it:
+// said here so the page can say it before asking.
+const USERNAME = /^[a-z0-9]([a-z0-9]|[-_](?=[a-z0-9])){0,38}$/;
+const RULE = "1 to 39 of a-z, 0-9, - and _. It begins and ends with a letter or a digit, and no two of - and _ are together.";
+
+// Where an account with no username sets one: the name, whether it is
+// free as it is typed, and a button that asks once more before it sets
+// what can never be changed.
+function claim(account) {
+  const input = element("input", { type: "text", placeholder: "username", maxLength: 39, autocomplete: "off", spellcheck: false });
+  input.setAttribute("autocapitalize", "none");
+  input.setAttribute("aria-label", "Username for " + account.account);
+  const set = element("button", { className: "primary", type: "button", textContent: "Set username", disabled: true });
+  const said = element("div", { className: "said", textContent: "Choose a username. It is permanent: it can never be changed or given up. " + RULE });
+  const say = (kind, text) => {
+    said.className = kind ? "said " + kind : "said";
+    said.textContent = text;
+  };
+  // The newest thing typed is the one answered for: an older answer is dropped.
+  let typed = 0;
+  input.addEventListener("input", () => {
+    const mine = ++typed;
+    const wanted = input.value;
+    set.disabled = true;
+    if (wanted === "") return say("", "Choose a username. It is permanent: it can never be changed or given up. " + RULE);
+    if (!USERNAME.test(wanted)) return say("bad", "Not a username: " + RULE);
+    say("", "Checking…");
+    setTimeout(async () => {
+      if (mine !== typed) return;
+      let answer;
+      try {
+        answer = await ask("api/usernames/" + encodeURIComponent(wanted));
+      } catch (error) {
+        if (mine === typed) say("bad", error.message);
+        return;
+      }
+      if (mine !== typed) return;
+      if (answer.taken) return say("bad", wanted + " is taken.");
+      say("good", wanted + " is free.");
+      set.disabled = false;
+    }, 300);
+  });
+  const go = async () => {
+    const wanted = input.value;
+    if (set.disabled) return;
+    if (!confirm("Set the username of " + account.account + " to " + wanted + "?\n\nThis is permanent. It can never be changed or given up.")) return;
+    set.disabled = true;
+    input.disabled = true;
+    try {
+      await ask("api/accounts/" + encodeURIComponent(account.issuer) + "/" + encodeURIComponent(account.id) + "/username", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: wanted }),
+      });
+    } catch (error) {
+      input.disabled = false;
+      say("bad", error.message);
+      return;
+    }
+    showAccounts();
+  };
+  set.addEventListener("click", go);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") go();
+  });
+  return element("div", { className: "claim" }, [element("div", { className: "field" }, [input, set]), said]);
 }
 
 // The one login the page is waiting on, if any: a newer one replaces it.
@@ -287,7 +387,7 @@ async function begin(issuer, button) {
     element("ol", {}, [
       element("li", {}, ["Open ", element("a", { href: page, target: "_blank", rel: "noopener noreferrer", textContent: page }), "."]),
       element("li", { textContent: "Sign in there, and enter the code above." }),
-      element("li", { textContent: "Come back here. The account appears by itself." }),
+      element("li", { textContent: "Come back here. The account appears by itself; if it has no username yet, set one there." }),
     ]),
     state,
   ]));
