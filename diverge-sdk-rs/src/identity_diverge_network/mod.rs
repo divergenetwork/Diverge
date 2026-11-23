@@ -3,12 +3,14 @@
 //! of `identity.diverge.network` as itself.
 //!
 //! `identity.diverge.network` is Diverge's own OpenID Connect
-//! provider. Every subject there is `<issuer>.<id>.<name>`: who
-//! issued the owner's own sign-in — `github`, `google` — the id of a
-//! user of it, and a name of that user's choosing. An **account** is
-//! that user — `<issuer>.<id>`, the first two parts of every subject
-//! it owns — and what proves it to `identity.diverge.network` is its
-//! issuer's own token, which this module signs in for and keeps:
+//! provider. Every subject there is `<username>.<name>`: the
+//! username of its owner, and a name of the owner's choosing. An
+//! **account** is that owner — one user of who issued its own
+//! sign-in, `github` or `google`, written `<issuer>.<id>` — which
+//! sets its username there once, before its first subject, and never
+//! changes it. What proves an account to `identity.diverge.network`
+//! is its issuer's own token, which this module signs in for and
+//! keeps:
 //!
 //! ```text
 //! <root>/identity.diverge.network/

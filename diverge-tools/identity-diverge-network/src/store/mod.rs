@@ -2,7 +2,8 @@
 //!
 //! One table, every row carrying the template the tool was made from:
 //! [`schema`] makes it, and [`accounts`] lists a template's accounts,
-//! adds and removes one, and answers one's token, kept good.
+//! adds and removes one, keeps one's username, and answers one's token,
+//! kept good.
 
 pub mod accounts;
 mod schema;

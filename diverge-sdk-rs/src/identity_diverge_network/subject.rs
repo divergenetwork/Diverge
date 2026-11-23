@@ -1,31 +1,22 @@
 //! A subject of `identity.diverge.network`, read.
 
-use super::issuer::ISSUERS;
-use super::{Account, Error};
+use super::Error;
 
-/// The account that owns `subject` at `identity.diverge.network`, and
-/// the subject's name: `<issuer>.<id>.<name>`, read. The rules:
+/// The username of the account that owns `subject` at
+/// `identity.diverge.network`, and the subject's name:
+/// `<username>.<name>`, read. The rules:
 ///
-/// 1. **Split at the first two periods**, and no other. The issuer
-///    and the id hold none, and the name is everything after the
-///    second, periods and all.
-/// 2. **The issuer is one there is** — see
-///    [`ISSUERS`](super::ISSUERS).
-/// 3. **The id is whatever it is.** It is not held to digits, nor to
-///    anything but being there: what an issuer's ids look like is the
-///    issuer's.
-/// 4. **None of the three is empty.**
+/// 1. **Split at the first period**, and no other. A username holds
+///    none, and the name is everything after it.
+/// 2. **Neither is empty.**
 ///
-/// A subject that is not so is [`Error::Subject`]: no subject of
+/// What a username and a name may otherwise be is
+/// `identity.diverge.network`'s to say, and is not held to here. A
+/// subject that is not so is [`Error::Subject`]: no subject of
 /// `identity.diverge.network`'s.
-pub fn owner(subject: &str) -> Result<(Account, String), Error> {
-    let invalid = || Error::Subject(subject.to_string());
-    // Rule 1.
-    let (issuer, rest) = subject.split_once('.').ok_or_else(invalid)?;
-    let (id, name) = rest.split_once('.').ok_or_else(invalid)?;
-    // Rules 2 and 4.
-    if !ISSUERS.iter().any(|known| known.name == issuer) || id.is_empty() || name.is_empty() {
-        return Err(invalid());
+pub fn parts(subject: &str) -> Result<(String, String), Error> {
+    match subject.split_once('.') {
+        Some((username, name)) if !username.is_empty() && !name.is_empty() => Ok((username.to_string(), name.to_string())),
+        _ => Err(Error::Subject(subject.to_string())),
     }
-    Ok((Account { issuer: issuer.to_string(), id: id.to_string() }, name.to_string()))
 }

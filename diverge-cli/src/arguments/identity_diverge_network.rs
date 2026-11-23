@@ -11,8 +11,8 @@ use clap::Subcommand;
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum IdentityDivergeNetwork {
     /// The host's accounts there: each a user of an issuer — GitHub,
-    /// Google — which owns every subject that begins with its issuer
-    /// and its id.
+    /// Google — which sets a username once, and owns every subject
+    /// that begins with it.
     #[command(subcommand)]
     Accounts(Accounts),
     /// An account's subjects.
@@ -41,6 +41,10 @@ pub enum Accounts {
         /// The account's id at that issuer.
         id: String,
     },
+    /// An account's username: the first part of every subject it
+    /// owns.
+    #[command(subcommand)]
+    Username(Username),
     /// Sign in to an account, at its issuer, by a device code: the
     /// code printed, the issuer's page opened in this host's browser,
     /// and the command ended there. The wait for the code's approval
@@ -55,6 +59,35 @@ pub enum Accounts {
         /// person to open.
         #[arg(long)]
         no_browser: bool,
+    },
+}
+
+/// An account's username at `identity.diverge.network`: what its
+/// subjects, `<USERNAME>.<name>`, begin with. An account has none
+/// until it sets one, and can sign no subject in until it has.
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum Username {
+    /// The account's username, one JSON line: `{"account","username"}`,
+    /// the `username` null where it has set none.
+    Get {
+        /// The account's issuer, by its name.
+        issuer: String,
+        /// The account's id at that issuer.
+        id: String,
+    },
+    /// Set the account's username, once: it is never changed and never
+    /// given up afterwards. One JSON line, `{"account","username"}`.
+    /// Refused where the account has one already, and where the
+    /// username is another account's.
+    Set {
+        /// The account's issuer, by its name.
+        issuer: String,
+        /// The account's id at that issuer.
+        id: String,
+        /// The username: 1 to 39 of `a-z`, `0-9`, `-` and `_`, which
+        /// begins and ends with a letter or a digit, and has no two of
+        /// `-` and `_` together.
+        username: String,
     },
 }
 

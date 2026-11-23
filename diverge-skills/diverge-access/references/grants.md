@@ -180,7 +180,7 @@ a provider reach (identities, tags, or both: see `providers` above).
 | `message` | `providers daemons message`: sent through no provider the grant does not reach |
 
 Examples: `{"providers_daemons":{"actions":["list","listen","message"],"within":"any"}}`,
-`{"providers_daemons":{"actions":["list"],"within":{"identities":[{"issuer":"…","subject":"github.12345.provider"}]}}}`.
+`{"providers_daemons":{"actions":["list"],"within":{"identities":[{"issuer":"…","subject":"ronald.provider"}]}}}`.
 
 ## images
 

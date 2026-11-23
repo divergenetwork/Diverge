@@ -13,20 +13,23 @@
 //!    string `identity.diverge.network` signs its tokens with. Any
 //!    other — that one with a trailing slash, another deployment's —
 //!    is another issuer, and is signed in as any is.
-//! 2. **The subject names its owner.** It is
-//!    `<issuer>.<id>.<name>`, split at its first two periods — see
-//!    [`owner`](identity_diverge_network::owner). One that is not is
+//! 2. **The subject names its owner.** It is `<username>.<name>`,
+//!    split at its first period — see
+//!    [`parts`](identity_diverge_network::parts). One that is not is
 //!    refused, before anything is asked of anybody.
-//! 3. **The owner is signed in here.** The account `<issuer>.<id>` is
-//!    one of this host's — see
-//!    [`identity_diverge_network`](diverge_sdk::identity_diverge_network).
-//!    One that is not is [`Error::NotSignedIn`], which says how to
-//!    sign it in, and nothing is asked of anybody.
+//! 3. **The owner is signed in here.** The account whose username it
+//!    is, is one of this host's — see
+//!    [`Accounts::owner`](identity_diverge_network::Accounts::owner),
+//!    which asks `identity.diverge.network` each account's username.
+//!    Where none's is, it is [`Error::NotSignedIn`], which says how to
+//!    sign one in and how to set its username.
 //! 4. **The code is approved here.** Once the login has its user
 //!    code, [`Ours::approve`] approves it as the subject's name, as
 //!    the account: the account's token had under its lock, renewed
 //!    where it has expired. The code is one this command began a
-//!    moment before, and no other is ever approved.
+//!    moment before, and no other is ever approved. An account that
+//!    has set no username can approve none —
+//!    [`Error::NoUsername`].
 //! 5. **Waited for.** Nothing is left behind: with nobody to wait on,
 //!    the login ends in the time of a poll, and the command ends with
 //!    it, its outcome printed.
@@ -53,19 +56,25 @@ pub enum Error {
     /// The subject is no subject of its, the accounts could not be
     /// opened, or its approval was refused.
     Accounts(identity_diverge_network::Error),
-    /// The account that owns the subject is not signed in on this
-    /// host.
-    NotSignedIn(Account),
+    /// No account signed in on this host has the subject's username:
+    /// the username.
+    NotSignedIn(String),
+    /// The account has set no username, and so has no subject.
+    NoUsername(Account),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Accounts(error) => write!(f, "{error}"),
-            Error::NotSignedIn(account) => write!(
+            Error::NotSignedIn(username) => write!(
                 f,
-                "the subject is `{account}`'s, and that account is not signed in on this host. Sign it in with `diverge identity.diverge.network accounts login {}`, enter the code it prints at the page it opens, check that `diverge identity.diverge.network accounts list` shows `{account}`, and run this again",
-                account.issuer
+                "the subject is `{username}`'s, and no account signed in on this host has that username. Sign the account in with `diverge identity.diverge.network accounts login <ISSUER>`, enter the code it prints at the page it opens, find it with `diverge identity.diverge.network accounts list`, read its username with `diverge identity.diverge.network accounts username get <ISSUER> <ID>` — one that has none sets it once with `accounts username set <ISSUER> <ID> <USERNAME>` — and run this again"
+            ),
+            Error::NoUsername(account) => write!(
+                f,
+                "the account `{account}` has set no username, and a subject begins with one. Set it once, and for good, with `diverge identity.diverge.network accounts username set {} {} <USERNAME>`, and run this again",
+                account.issuer, account.id
             ),
         }
     }
@@ -75,7 +84,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::Accounts(error) => Some(error),
-            Error::NotSignedIn(_) => None,
+            Error::NotSignedIn(_) | Error::NoUsername(_) => None,
         }
     }
 }
@@ -96,12 +105,12 @@ pub async fn ours(root: &Path, issuer: &str, subject: &str) -> Result<Option<Our
         return Ok(None);
     }
     // Rule 2.
-    let (account, name) = identity_diverge_network::owner(subject)?;
+    let (username, name) = identity_diverge_network::parts(subject)?;
     // Rule 3.
     let accounts = Accounts::open(root).await?;
-    if !accounts.holds(&account).await? {
-        return Err(Error::NotSignedIn(account));
-    }
+    let Some(account) = accounts.owner(&username).await? else {
+        return Err(Error::NotSignedIn(username));
+    };
     Ok(Some(Ours { accounts, account, name }))
 }
 
@@ -109,7 +118,10 @@ impl Ours {
     /// Approve `user_code`, the login's own, as the subject — see the
     /// [rules](self), rule 4.
     pub async fn approve(&self, user_code: &str) -> Result<(), Error> {
-        self.accounts.approve(&self.account, user_code, &self.name).await?;
-        Ok(())
+        match self.accounts.approve(&self.account, user_code, &self.name).await {
+            Ok(_) => Ok(()),
+            Err(identity_diverge_network::Error::Service { code, .. }) if code == "username_required" => Err(Error::NoUsername(self.account.clone())),
+            Err(error) => Err(error.into()),
+        }
     }
 }

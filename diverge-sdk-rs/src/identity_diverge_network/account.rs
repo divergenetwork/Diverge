@@ -2,9 +2,9 @@
 
 use std::fmt;
 
-/// An account: one user of one issuer. Written `<issuer>.<id>`, it is
-/// the first two parts of every subject at `identity.diverge.network`
-/// that is the account's own.
+/// An account: one user of one issuer, written `<issuer>.<id>`. At
+/// `identity.diverge.network` it sets a username, once, and every
+/// subject that begins with that username is the account's own.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Account {
     /// The issuer's name.

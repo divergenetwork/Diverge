@@ -1,17 +1,20 @@
 //! The frontend, beneath `/frontend`: the page, and what it asks.
 //!
 //! The page is where a person signs a GitHub or Google account in to
-//! the tool, sees the ones it holds, and removes one. The rules:
+//! the tool, sees the ones it holds, sets the username of one that has
+//! none, and removes one. The rules:
 //!
 //! 1. `GET /frontend` sends the page on to `/frontend/`, where it is
 //!    served whole: one HTML file, its script and its style inline.
 //! 2. `GET /frontend/api/issuers` is the issuers an account may be
 //!    signed in at, by name: the SDK's table.
 //! 3. `GET /frontend/api/accounts` is every account the tool holds,
-//!    each with the name its issuer has for it now — GitHub's `login`,
-//!    Google's `email` — asked of the issuer as the page loads and
-//!    kept nowhere. An account whose issuer no longer answers for it
-//!    is listed all the same, with why in place of its name.
+//!    each with its username at `identity.diverge.network` — null
+//!    where it has set none — and the name its issuer has for it now —
+//!    GitHub's `login`, Google's `email` — asked of the issuer as the
+//!    page loads and kept nowhere. An account whose issuer no longer
+//!    answers for it is listed all the same, with why in place of its
+//!    name.
 //! 4. `POST /frontend/api/logins` `{"issuer"}` begins a login at that
 //!    issuer, by a device code, and answers what the person needs —
 //!    the code, and the issuer's page — and the id to ask after it
@@ -21,18 +24,28 @@
 //!    `waiting`, `signed_in` with the account, or `failed` with why.
 //! 6. `DELETE /frontend/api/accounts/{issuer}/{id}` forgets an
 //!    account: `204`, or `404` where the tool holds none such.
-//! 7. A request with no stamp, or one stamped as an agent, is `403` —
+//! 7. `PUT /frontend/api/accounts/{issuer}/{id}/username`
+//!    `{"username"}` sets that account's username, once and for good —
+//!    see [`set_username`](store::accounts::set_username) — and
+//!    answers `{"username"}`. One that is another account's, and an
+//!    account that has one already, are `409`; one that may be none is
+//!    `400`, with the rule. Setting it is a person's to do, and no tool
+//!    call does: it is permanent.
+//! 8. `GET /frontend/api/usernames/{username}` is whether a username
+//!    is some account's, `{"taken"}`, for the page to say before it is
+//!    asked for.
+//! 9. A request with no stamp, or one stamped as an agent, is `403` —
 //!    see [`person`]. A tool not yet registered is `503`.
-//! 8. No request answers a token, and none is in the page.
+//! 10. No request answers a token, and none is in the page.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
-use diverge_sdk::identity_diverge_network::{self, ISSUERS, Which};
+use diverge_sdk::identity_diverge_network::{self, ISSUERS, SERVICE, Which};
 use futures_util::future::join_all;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -55,6 +68,8 @@ pub fn routes(server: Server) -> Router {
         .route("/frontend/api/issuers", get(issuers))
         .route("/frontend/api/accounts", get(accounts))
         .route("/frontend/api/accounts/{issuer}/{id}", delete(remove))
+        .route("/frontend/api/accounts/{issuer}/{id}/username", put(username))
+        .route("/frontend/api/usernames/{username}", get(taken))
         .route("/frontend/api/logins", post(begin))
         .route("/frontend/api/logins/{id}", get(login))
         .with_state(server)
@@ -71,7 +86,7 @@ fn refused(status: StatusCode, failure: impl std::fmt::Display) -> Response {
     (status, Json(json!({ "error": failure.to_string() }))).into_response()
 }
 
-/// Rule 7: the person, and the template the accounts are kept under.
+/// Rule 9: the person, and the template the accounts are kept under.
 fn asked(headers: &HeaderMap) -> Result<&'static str, Response> {
     person(headers).map_err(|failure| refused(StatusCode::FORBIDDEN, failure))?;
     register::registered().map(|registration| registration.template.as_str()).ok_or_else(|| refused(StatusCode::SERVICE_UNAVAILABLE, Failure::Unregistered))
@@ -101,7 +116,7 @@ async fn accounts(State(server): State<Server>, headers: HeaderMap) -> Response 
     };
     let state = &server.state;
     let listed = match state.store.pool(&state.client).await {
-        Ok(pool) => store::accounts::list(pool, template).await,
+        Ok(pool) => store::accounts::list(pool, &state.http, template).await,
         Err(failure) => Err(failure),
     };
     let listed = match listed {
@@ -115,8 +130,8 @@ async fn accounts(State(server): State<Server>, headers: HeaderMap) -> Response 
         .into_iter()
         .zip(named)
         .map(|(account, named)| match named {
-            Ok(name) => json!({ "account": account.account, "issuer": account.issuer, "id": account.id, "name": name }),
-            Err(failure) => json!({ "account": account.account, "issuer": account.issuer, "id": account.id, "name": null, "problem": failure.to_string() }),
+            Ok(name) => json!({ "username": account.username, "account": account.account, "issuer": account.issuer, "id": account.id, "name": name }),
+            Err(failure) => json!({ "username": account.username, "account": account.account, "issuer": account.issuer, "id": account.id, "name": null, "problem": failure.to_string() }),
         })
         .collect();
     Json(json!({ "accounts": accounts })).into_response()
@@ -216,5 +231,48 @@ async fn remove(State(server): State<Server>, headers: HeaderMap, Path((issuer, 
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
         Ok(false) => refused(StatusCode::NOT_FOUND, Failure::NoAccount(format!("{issuer}.{id}"))),
         Err(failure) => refused(StatusCode::BAD_GATEWAY, failure),
+    }
+}
+
+/// What a username is set with.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Username {
+    /// The username.
+    username: String,
+}
+
+/// Rule 7.
+async fn username(State(server): State<Server>, headers: HeaderMap, Path((issuer, id)): Path<(String, String)>, Json(asked_for): Json<Username>) -> Response {
+    let template = match asked(&headers) {
+        Ok(template) => template,
+        Err(response) => return response,
+    };
+    let issuer = match identity_diverge_network::issuer(&issuer) {
+        Ok(issuer) => issuer,
+        Err(error) => return refused(StatusCode::BAD_REQUEST, error),
+    };
+    let state = &server.state;
+    let set = match state.store.pool(&state.client).await {
+        Ok(pool) => store::accounts::set_username(pool, &state.http, template, issuer, &id, &asked_for.username).await,
+        Err(failure) => Err(failure),
+    };
+    match set {
+        Ok(username) => Json(json!({ "username": username })).into_response(),
+        Err(failure @ (Failure::UsernameTaken(_) | Failure::UsernameSet(_))) => refused(StatusCode::CONFLICT, failure),
+        Err(Failure::Parameters(rule)) => refused(StatusCode::BAD_REQUEST, rule),
+        Err(failure @ Failure::NoAccount(_)) => refused(StatusCode::NOT_FOUND, failure),
+        Err(failure) => refused(StatusCode::BAD_GATEWAY, failure),
+    }
+}
+
+/// Rule 8.
+async fn taken(State(server): State<Server>, headers: HeaderMap, Path(username): Path<String>) -> Response {
+    if let Err(failure) = person(&headers) {
+        return refused(StatusCode::FORBIDDEN, failure);
+    }
+    match identity_diverge_network::username_taken(&server.state.http, SERVICE, &username).await {
+        Ok(taken) => Json(json!({ "taken": taken })).into_response(),
+        Err(error) => refused(StatusCode::BAD_GATEWAY, error),
     }
 }

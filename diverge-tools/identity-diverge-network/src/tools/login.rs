@@ -16,36 +16,34 @@ pub const NAME: &str = "login";
 
 /// What the tool does, as its caller reads it.
 pub const DESCRIPTION: &str = "Sign a subject of identity.diverge.network in on the daemon's host, as one of this tool's accounts, and wait for it. \
-The subject signed in is `<issuer>.<id>.<subject>`; a name never used before begins a new subject. Nobody enters a code: the tool approves the login itself. \
+Give the account's `username`, as `list_accounts` gives it, and the subject's name as `subject`: the subject signed in is `<username>.<subject>`. A name never used before begins a new subject. \
+Nobody enters a code: the tool approves the login itself. \
 Answers `{\"signed_in\": {\"issuer\", \"subject\"}}`.";
 
 /// What `login` takes.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Parameters {
-    /// The account's issuer, as `list_accounts` gives it: `github` or
-    /// `google`. Who issued the account's own sign-in, and never
-    /// identity.diverge.network.
-    pub issuer: String,
-    /// The account's id at that issuer, as `list_accounts` gives it.
-    pub id: String,
-    /// The subject's name: its third part alone, 1 to 64 of `a-z`,
+    /// The account's username, as `list_accounts` gives it: the first
+    /// part of the subject.
+    pub username: String,
+    /// The subject's name: its second part alone, 1 to 64 of `a-z`,
     /// `0-9`, `-` and `_`. The whole subject is
-    /// `<issuer>.<id>.<subject>`.
+    /// `<username>.<subject>`.
     pub subject: String,
 }
 
-/// Sign `<issuer>.<id>.<subject>` in on the daemon's host. The rules:
+/// Sign `<username>.<subject>` in on the daemon's host. The rules:
 ///
-/// 1. **The account is one the tool holds.** Its issuer is one there
-///    is, else [`Failure::Issuer`]; it is kept under the tool's
-///    template, else [`Failure::NoAccount`]. Neither the id nor the
-///    name is empty.
+/// 1. **The account is one the tool holds**, named by its username —
+///    see [`named`](store::accounts::named) — else
+///    [`Failure::Unknown`]. Neither the username nor the name is
+///    empty.
 /// 2. **Its token is had first** — see
 ///    [`token`](store::accounts::token), the one
 ///    `identity.diverge.network` takes of its issuer: under the
-///    account's row lock, renewed where it has expired. An account that cannot approve
-///    begins no login.
+///    account's row lock, renewed where it has expired. An account
+///    that cannot approve begins no login.
 /// 3. **The daemon begins the login**: its `identities login`, of the
 ///    whole subject at [`ISSUER`], as the client [`CLIENT_ID`]. The
 ///    daemon's own host asks `identity.diverge.network` for the code
@@ -65,14 +63,15 @@ pub struct Parameters {
 ///    subject begins.
 pub async fn call(call: Call<'_>, parameters: Parameters) -> Result<Value, Failure> {
     // Rule 1.
-    let issuer = identity_diverge_network::issuer(&parameters.issuer).map_err(|error| Failure::Issuer(error.to_string()))?;
-    if parameters.id.is_empty() || parameters.subject.is_empty() {
-        return Err(Failure::Parameters("neither `id` nor `subject` may be empty".to_string()));
+    if parameters.username.is_empty() || parameters.subject.is_empty() {
+        return Err(Failure::Parameters("neither `username` nor `subject` may be empty".to_string()));
     }
-    let subject = format!("{}.{}.{}", issuer.name, parameters.id, parameters.subject);
-    // Rule 2.
     let pool = call.state.store.pool(&call.state.client).await?;
-    let token = store::accounts::token(pool, &call.state.http, call.template, issuer, &parameters.id, issuer.presents).await?;
+    let account = store::accounts::named(pool, &call.state.http, call.template, &parameters.username).await?;
+    let issuer = account.issuer;
+    let subject = format!("{}.{}", parameters.username, parameters.subject);
+    // Rule 2.
+    let token = store::accounts::token(pool, &call.state.http, call.template, issuer, &account.id, issuer.presents).await?;
     // Rule 3.
     let request = request::Frame { issuer: ISSUER.to_string(), subject: subject.clone(), client_id: CLIENT_ID.to_string(), scope: None, resource: None, relay: None };
     let handle = call.state.daemon.handle(&call.state.client).await?;

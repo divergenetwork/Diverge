@@ -23,7 +23,7 @@ There are two kinds of mount. Choose by where the volume lives and what you need
   "template": "<template id>",
   "name": "worker",
   "provider": {
-    "identity": { "issuer": "https://identity.diverge.network", "subject": "github.12345.provider" },
+    "identity": { "issuer": "https://identity.diverge.network", "subject": "ronald.provider" },
     "volume_mounts": [
       { "volume_name": "data",   "volume_relative_path": [],          "volume_mode": "persistent", "container_path": ["data"] },
       { "volume_name": "models", "volume_relative_path": ["llama"],   "volume_mode": "read_only",  "container_path": ["opt", "models"] }
@@ -54,12 +54,12 @@ There are two kinds of mount. Choose by where the volume lives and what you need
   "template": "<template id>",
   "name": "worker",
   "fuse_directory_mounts": [
-    { "provider": { "issuer": "https://identity.diverge.network", "subject": "github.12345.provider" },
+    { "provider": { "issuer": "https://identity.diverge.network", "subject": "ronald.provider" },
       "volume_name": "creds", "volume_relative_path": ["codex"],
       "volume_mode": "persistent", "container_path": ["root", ".codex"] }
   ],
   "fuse_file_mounts": [
-    { "provider": { "issuer": "https://identity.diverge.network", "subject": "github.12345.provider" },
+    { "provider": { "issuer": "https://identity.diverge.network", "subject": "ronald.provider" },
       "volume_name": "config", "volume_relative_path": ["settings.json"],
       "volume_mode": "ephemeral", "overlay_disk": 16777216,
       "container_path": ["etc", "app", "settings.json"] }
@@ -174,7 +174,7 @@ start is not answered `delivered`.
 ## A worked example: a workspace volume and a shared read-only dataset
 
 ```bash
-P='{"issuer":"https://identity.diverge.network","subject":"github.12345.provider"}'
+P='{"issuer":"https://identity.diverge.network","subject":"ronald.provider"}'
 
 diverge run volumes create "{\"provider\":$P,\"name\":\"ws-alice\",\"bytes\":2147483648,\"mode\":\"persistent\"}"
 diverge run volumes create "{\"provider\":$P,\"name\":\"dataset\",\"bytes\":1073741824,\"mode\":\"persistent\"}"

@@ -17,8 +17,15 @@ pub enum Failure {
     Issuer(String),
     /// The page's request is no person's.
     Person(String),
-    /// The tool holds no such account.
+    /// The tool holds no such account: the account, `<issuer>.<id>`.
     NoAccount(String),
+    /// The tool holds no account whose username it is: the username.
+    Unknown(String),
+    /// The username is another account's: the username.
+    UsernameTaken(String),
+    /// The account has a username already, and one is set once: the
+    /// one it has.
+    UsernameSet(String),
     /// The account's tokens are no longer good at its issuer.
     SignedOut(String),
     /// The daemon grants the tool no login.
@@ -52,6 +59,12 @@ impl fmt::Display for Failure {
             Failure::Issuer(why) => write!(f, "{why}; an account's issuer is who issued its own sign-in, never identity.diverge.network"),
             Failure::Person(why) => write!(f, "the page is a person's, and this request is not one's: {why}"),
             Failure::NoAccount(account) => write!(f, "the tool holds no account `{account}`: `list_accounts` lists the ones it does. A person adds an account at the tool's page"),
+            Failure::Unknown(username) => write!(
+                f,
+                "the tool holds no account whose username is `{username}`: `list_accounts` lists the ones it does, each by its `username`. One listed with no username has set none, and a person sets it at the tool's page; one not listed at all, a person adds there"
+            ),
+            Failure::UsernameTaken(username) => write!(f, "the username `{username}` is another account's: choose another"),
+            Failure::UsernameSet(username) => write!(f, "the account's username is `{username}` already, and a username is set once: it cannot be changed"),
             Failure::SignedOut(account) => write!(f, "the account `{account}` is signed out at its issuer: a person signs it in again at the tool's page"),
             Failure::Forbidden => f.write_str("the daemon grants this tool no login: it needs `{\"identities\": [\"login\"]}` for a subject not on the host yet, and `{\"identities\": {\"actions\": [\"login\"], \"within\": \"any\"}}` for one that is; nothing was signed in"),
             Failure::Held => f.write_str("another login of that identity, or a reader of it, holds it on the daemon's host right now; nothing was signed in, try again"),
