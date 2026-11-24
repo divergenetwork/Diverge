@@ -22,8 +22,8 @@ pub struct Registered {
     /// The secrets the program takes, by name, each `fixed` or
     /// `rotating`: what the proxy feeds the program at every
     /// activation, and — the rotating ones — collects from it at
-    /// every inactive. Empty is a program that takes none, whose
-    /// gate is never closed.
+    /// every inactive. Empty is a program that takes none: it is fed
+    /// an empty object, and its gate shuts and opens as any other's.
     pub secrets: Declaration,
     /// The grants the program holds over the daemon, which a tool
     /// container's `Begun` carries and an agent container's begin

@@ -15,7 +15,9 @@
 //! at every inactive — an agent's loop ended, a tool's last exchange
 //! in flight answered — which the caller writes back into the place
 //! the value was locked from. A program that declared no secret is
-//! never called on either.
+//! still fed: an empty object, `{}`, at every activation, since the
+//! feed is what opens the gate; it is never collected from, as a
+//! program that declared no `rotating` secret is not.
 
 pub mod collect;
 pub mod feed;
