@@ -24,8 +24,9 @@
 //! becomes one channel on the begin scope, and nothing the program
 //! dials has to know.
 //!
-//! For either kind of container the proxy registers the arguments and
-//! the id of the template the container is made from
+//! For either kind of container the proxy registers the arguments,
+//! the id of the template the container is made from and the image
+//! it runs, as the server's begin carried them,
 //! with the program's own server on the loopback when the server
 //! begins, and hands the server the dependencies the program answered
 //! with and the secrets it takes — by name and mode, never a value.

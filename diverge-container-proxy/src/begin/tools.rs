@@ -19,8 +19,8 @@ use crate::{inside, program, tool};
 /// Serve the begin for the connection's life.
 ///
 /// A second begin on the connection is `Error`, then the finish, and
-/// the first goes on. Otherwise the arguments and the template are
-/// registered with the program's server — its refusal is the `Error`,
+/// the first goes on. Otherwise the arguments, the template and the
+/// image are registered with the program's server — its refusal is the `Error`,
 /// in its own words, and the connection has not begun — and then
 /// `Begun` goes out carrying the secrets the program takes, by name
 /// and mode, and the permissions it holds, the dependencies it
@@ -53,7 +53,7 @@ pub async fn tools(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame)
         refuse(&scope, super::agents::begun()).await;
         return;
     }
-    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template).await {
+    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template, frame.image).await {
         Ok(registered) => registered,
         Err(error) => {
             proxy.release_begin().await;

@@ -1,10 +1,11 @@
-//! The arguments and the template, told to the program's server
-//! once: `POST /register`, answered with the dependencies the program
+//! The arguments, the template and the image, told to the program's
+//! server once: `POST /register`, answered with the dependencies the program
 //! declares, the secrets it takes and the permissions it holds.
 
 use diverge_sdk::container_proxy::inside::register::request::Request;
 use diverge_sdk::container_proxy::inside::register::response::Response;
 use diverge_sdk::shared::containers::dependencies::Template;
+use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::containers::secrets::Declaration;
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::shared::permission::Grant;
@@ -31,9 +32,10 @@ pub struct Registered {
     pub permissions: Vec<Grant>,
 }
 
-/// Register `arguments` and `template`, the id of the template the
-/// container is made from, with the program's server. A `2xx` is the
-/// two held for the container's life, and its body the dependencies
+/// Register `arguments`, `template`, the id of the template the
+/// container is made from, and `image`, the image it runs as the
+/// server's begin carried it, with the program's server. A `2xx` is
+/// the three held for the container's life, and its body the dependencies
 /// the program declares, the secrets it takes and the permissions it
 /// holds; a non-`2xx` is the
 /// image refusing them, in its own words, and a server that cannot be
@@ -43,8 +45,8 @@ pub struct Registered {
 /// registration, and a registration the proxy cannot read has not
 /// happened. No value of any secret is here: values arrive on the
 /// begin scope's secrets channel, after `Begun`.
-pub async fn register(upstream: &Upstream, arguments: Value, template: String) -> Result<Registered, Error> {
-    let body = serde_json::to_vec(&Request { arguments, template }).map_err(|error| {
+pub async fn register(upstream: &Upstream, arguments: Value, template: String, image: Image) -> Result<Registered, Error> {
+    let body = serde_json::to_vec(&Request { arguments, template, image }).map_err(|error| {
         Error(serde_json::json!({
             "kind": "program",
             "error": format!("the arguments did not serialize: {error}"),
