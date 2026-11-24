@@ -106,8 +106,8 @@ impl From<Error> for Failed {
 ///    [`Failed::ProofFailed`].
 /// 3. The proxy is dialled: one WebSocket, for the container's life,
 ///    its router's task kept to abort once the container is stopped.
-/// 4. The family's `begin` is opened on it — carrying the arguments
-///    and the template — and its `Begun` awaited, with what the
+/// 4. The family's `begin` is opened on it — carrying the arguments,
+///    the template and the image of the request — and its `Begun` awaited, with what the
 ///    container declared: the dependencies, for an agent container,
 ///    and the secrets it takes, by name and mode. No value of any
 ///    secret is in the begin.
@@ -180,7 +180,7 @@ where
         }
     };
 
-    let begun = match R::begin(&proxy, arguments, request.template.clone()).await {
+    let begun = match R::begin(&proxy, arguments, request.template.clone(), request.image.clone()).await {
         Ok(begun) => begun,
         Err(error) => {
             stop.now().await;

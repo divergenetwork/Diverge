@@ -22,7 +22,7 @@
 //!   serve the caller's manifests and blobs; the deploy, with the
 //!   caller's help at hand and the source the deployer's; the one
 //!   connection to the proxy, and on it the family's `begin` —
-//!   carrying the arguments, answered with what the container
+//!   carrying the arguments, the template and the image, answered with what the container
 //!   declared: its dependencies and the secrets it takes — and then,
 //!   beside each other, the container registered with the caller —
 //!   those dependencies deployed, those secrets' first values

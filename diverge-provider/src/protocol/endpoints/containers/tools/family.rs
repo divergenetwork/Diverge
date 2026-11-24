@@ -139,10 +139,10 @@ impl Family for Tools {
 impl Runs for Tools {
     type Ask<'a> = ask::Frame<'a>;
 
-    fn begin(proxy: &Handle, arguments: Value, template: String) -> impl Future<Output = Result<Begun, Error>> + Send {
+    fn begin(proxy: &Handle, arguments: Value, template: String, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
         let proxy = proxy.clone();
         async move {
-            match begin::execute(&proxy, arguments, template).await {
+            match begin::execute(&proxy, arguments, template, image).await {
                 Ok((handle, asks, events, registered)) => Ok(Begun {
                     begin: Begin::Tools(handle),
                     asks,

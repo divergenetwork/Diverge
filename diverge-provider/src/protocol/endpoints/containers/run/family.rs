@@ -24,6 +24,7 @@ use diverge_sdk::shared::containers::response::{
 };
 use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::containers::fuse_mount;
+use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::containers::secrets::{Declaration, Values};
 use diverge_sdk::shared::permission::Grant;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
@@ -84,12 +85,13 @@ pub(crate) trait Runs: Family {
     type Ask<'a>: Encode + TryFrom<Own<'a>, Error = Unasked>;
 
     /// Begin the container's proxy: the family's begin scope on the
-    /// connection `proxy`, carrying the container's `arguments` and
-    /// its `template`, the id of the template it is made from. What
+    /// connection `proxy`, carrying the container's `arguments`,
+    /// its `template`, the id of the template it is made from, and
+    /// its `image`, the image of the run request, verbatim. What
     /// comes back is the scope and what rides it, with what the
     /// container declared; an error is the run's, in the proxy's
     /// words where it refused.
-    fn begin(proxy: &Handle, arguments: Value, template: String) -> impl Future<Output = Result<Begun, Error>> + Send;
+    fn begin(proxy: &Handle, arguments: Value, template: String, image: Image) -> impl Future<Output = Result<Begun, Error>> + Send;
 
     /// What the container declared, registered with the caller before
     /// the id goes out but with the id minted and told: the
