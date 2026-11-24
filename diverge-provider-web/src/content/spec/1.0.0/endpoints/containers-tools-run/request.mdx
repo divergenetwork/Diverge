@@ -22,7 +22,12 @@ as JSON, read as [Notation](/endpoints/#notation) provides.
   [images::read](/endpoints/images-read/request/), and is the request of
   the run's [oci-has](/endpoints/containers-tools-run/server/oci-has/) ask. The request
   names no source: the server consults the sources in the order that
-  [Image sources](/endpoints/#image-sources) states for a run.
+  [Image sources](/endpoints/#image-sources) states for a run. The
+  server carries the `image` verbatim, `references` included, in the
+  begin scope's request beside `arguments` and `template`, so the
+  container's program is told which image it runs as. The server
+  supplies that value from this request. The client sends it in no
+  other request, and the server asks no other party for it.
 - **`template`.** A string: the id of the template the container is
   made from, as the client names it — an agent template's, a tool
   template's, or a dependency tool template's. The server carries it

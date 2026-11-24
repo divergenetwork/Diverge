@@ -25,7 +25,10 @@ use super::{FuseMount, Image, VolumeMount};
 /// ignored is a field callers will believe in.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Container {
-    /// The image: a digest and its references. See [`Image`].
+    /// The image: a digest and its references. See [`Image`]. The
+    /// provider hands it to the container beside the arguments and
+    /// the template, at its registration, verbatim: it is the
+    /// program's to know which image it runs as.
     pub image: Image,
     /// The template the container is made from, by id: the caller's
     /// word for what this container is an instance of — an agent

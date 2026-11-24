@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload is the tag byte 1 followed by the request as JSON: the arguments, as the image defines them, and the id of the template the container is made from; no secret rides it.'
+summary: 'The payload is the tag byte 1 followed by the request as JSON: the arguments, as the image defines them, the id of the template the container is made from, and the image the container runs, which the client supplies from the run request that made the container; no secret rides it.'
 order: 1
 draft: false
 ---
@@ -20,6 +20,18 @@ draft: false
   the container is made from, which the server hands to the
   container's program with the arguments and reads for nothing
   else.
+- **`image`.** An object of two fields: `{"digest":…,"references":…}`,
+  the `image` of the
+  [containers::tools::run](/endpoints/containers-tools-run/request/)
+  request that made the container, verbatim: the image the container
+  runs. `digest` is the manifest digest; `references` is absent when
+  empty. The client supplies the value. The client is the provider's
+  server that served that request and deployed the container from
+  that image, and it sends the `image` of that request and no other
+  value. No other party supplies the value, and no other request
+  carries it to the server. The server hands it to the container's
+  program with the arguments and the template, and reads it for
+  nothing else.
 - **No secret.** The request carries no secret. Which secrets the
   container's program takes is its own answer, carried in the
   `secrets` of `Begun`; their values follow on a

@@ -1162,8 +1162,8 @@ Deployment is the run's error.
 (d) **Connect to the Proxy.** The Provider shall open exactly one
 WebSocket connection to TCP port 14979 of the Container and, on it
 before any other Scope, the begin Scope of the Container's family,
-carrying the request's `arguments` and `template` verbatim and no
-secret, and shall await its answer. A Proxy that does not accept the
+carrying the request's `arguments`, `template` and `image` verbatim
+and no secret, and shall await its answer. A Proxy that does not accept the
 connection, or that answers the begin Scope with an error, is a
 Container that did not come up: the Provider shall stop the Container
 and treat the failure as the run's error. The Provider shall open no
@@ -1198,10 +1198,15 @@ Channel the Client opened before the id was sent only after the id is
 sent, in the order the Channels were opened, and shall neither refuse
 nor read such a Channel before the last FUSE Mount is complete.
 
-(g) **Carry the arguments and the template.** The Provider shall
-carry the request's `arguments` and `template` verbatim in the begin
-Scope's request, and in nothing else, and shall read the `template`
-for nothing. The request carries no secret, and the Provider shall
+(g) **Carry the arguments, the template and the image.** The Provider
+shall carry the request's `arguments` and `template` verbatim in the
+begin Scope's request, and in nothing else, and shall read the
+`template` for nothing. The Provider shall carry the request's `image`
+verbatim, its `references` included, in the same begin Scope's
+request, so that the Container's program is told which image it runs
+as. The Provider supplies that value itself, from the request it is
+serving: the Provider shall ask no other party for it and shall
+substitute no other value for it. The request carries no secret, and the Provider shall
 hold none: which secrets a Container takes is its program's answer
 at its registration, and their values are the Client's, carried
 under paragraphs (h) and (i). A begin the Proxy answers with an
@@ -1486,7 +1491,8 @@ Container Proxy Endpoints layers:
 that listens on TCP port 14979 and accepts one WebSocket connection
 there; that speaks the Protocol's own frames on it and sends no auth
 frame; that answers exactly one begin Scope per connection, holding the
-arguments and the template id it carries for the Container's life
+arguments, the template id and the image it carries for the
+Container's life
 and answering, for an agent Container, with the dependency tool
 templates and the secrets the program declared, unread, and, for a
 tool Container, with the secrets the program declared, unread, and no

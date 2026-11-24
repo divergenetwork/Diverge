@@ -5,8 +5,9 @@
 //!
 //! The scope a begin opens is the CONNECTION's life. It is the server's
 //! first act, once, and it carries the arguments — the image's, a JSON
-//! value, handed over here and never again — and the template's id,
-//! and nothing else: what it opens is the place channels go, and a
+//! value, handed over here and never again — the template's id, and
+//! the image the container runs, which the server supplies, and
+//! nothing else: what it opens is the place channels go, and a
 //! container that holds its arguments. The proxy answers
 //! [`Begun`](server::response::Frame::Begun) on channel `0` once the
 //! container's server has taken them — carrying the secrets the

@@ -14,7 +14,7 @@
 //!
 //! | the proxy calls | with | the program answers |
 //! |-----------------|------|---------------------|
-//! | `POST /register` | the [`register::request::Request`](crate::container_proxy::inside::register::request::Request) JSON | `2xx` with the [`register::response::Response`](crate::container_proxy::inside::register::response::Response) JSON, the dependencies the program declares and the secrets it takes, the arguments and the template id held for the container's life; or a non-`2xx` |
+//! | `POST /register` | the [`register::request::Request`](crate::container_proxy::inside::register::request::Request) JSON | `2xx` with the [`register::response::Response`](crate::container_proxy::inside::register::response::Response) JSON, the dependencies the program declares and the secrets it takes, the arguments, the template id and the image held for the container's life; or a non-`2xx` |
 //! | `POST /secrets` | the [`secrets::feed::request::Request`](crate::container_proxy::inside::secrets::feed::request::Request) JSON | `2xx` once the values are held, its body unread; or a non-`2xx` |
 //! | `POST /secrets/collect` | the [`secrets::collect::request::Request`](crate::container_proxy::inside::secrets::collect::request::Request) JSON | `2xx` with the [`secrets::collect::response::Response`](crate::container_proxy::inside::secrets::collect::response::Response) JSON, every name asked for with its value; or a non-`2xx` |
 //! | `POST /run` | the [`run::request::Request`] JSON: chat messages, or one structured decision, by its `type` | `2xx` as `text/event-stream`, every `data:` one `AgenticLoopChunk` JSON — the messages' user parts first, or the decision as one chunk — the stream's end the run ended; or a non-`2xx` |

@@ -1,10 +1,10 @@
-//! `POST /register`: the arguments and the template, told to the
-//! program once; the dependencies and the secrets' declaration,
-//! answered once.
+//! `POST /register`: the arguments, the template and the image, told
+//! to the program once; the dependencies and the secrets'
+//! declaration, answered once.
 //!
 //! The proxy sends the [`request::Request`] JSON — the arguments the
-//! container was made with and the id of the template it was made
-//! from — before anything else it asks of the program — an agent's
+//! container was made with, the id of the template it was made from
+//! and the image it runs, which the provider supplies — before anything else it asks of the program — an agent's
 //! first loop, a tool server's first exchange. A `2xx` is the
 //! arguments held for the container's life, and its body is the
 //! [`response::Response`] JSON: the dependency tool templates the

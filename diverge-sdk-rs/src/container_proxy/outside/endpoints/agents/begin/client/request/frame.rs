@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::shared::containers::request::Image;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
@@ -26,10 +27,20 @@ use crate::wire::encode::{Encode, Writer};
 /// which secrets the program takes is its own answer, carried back on
 /// `Begun`, and their values follow on a
 /// [`Secrets`](super::super::channel_request::Frame::Secrets) channel
-/// once the caller has them. The proxy sets nothing under `_meta` on
-/// what it relays — who is on either end of a tool call is the
-/// daemon's to attest, see [`shared::mcp`](crate::shared::mcp) — so
-/// it has no need of the image it runs in, and is not told it.
+/// once the caller has them.
+///
+/// The image rides beside them too: the
+/// [`image`](crate::shared::containers::request::Container::image) of
+/// the request that made the container, verbatim, its references
+/// with it — the image the container runs. It is the server's to
+/// supply: the provider holds it, having deployed the container from
+/// it, and puts it here from the run request it is serving, and
+/// nobody is asked for it again. The proxy hands it to the program
+/// with the arguments and the template, so that a program knows
+/// which image it runs as, and reads it for nothing else: it sets
+/// nothing under `_meta` on what it relays — who is on either end of
+/// a tool call is the daemon's to attest, see
+/// [`shared::mcp`](crate::shared::mcp).
 ///
 /// # Once, and first
 ///
@@ -45,6 +56,12 @@ pub struct Frame {
     /// [`template`](crate::shared::containers::request::Container::template)
     /// of the request that made the container names it.
     pub template: String,
+    /// The image the container runs, as the
+    /// [`image`](crate::shared::containers::request::Container::image)
+    /// of the request that made the container names it: the digest,
+    /// and its references, absent when there are none. The server's
+    /// to supply, from that request.
+    pub image: Image,
 }
 
 /// This frame's tag among the scope-opening requests.

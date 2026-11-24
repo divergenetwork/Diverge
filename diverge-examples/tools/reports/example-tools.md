@@ -25,8 +25,8 @@ daemon's `standalone_tools` family.
 
 - **An MCP server.** The program is an HTTP server on the container's
   loopback at the port `inside::port()` names. The proxy beside it is
-  its only caller: `POST /register` once (the arguments and the
-  template id, fixed for the container's life), `POST /secrets` and
+  its only caller: `POST /register` once (the arguments, the
+  template id and the image, fixed for the container's life), `POST /secrets` and
   `POST /secrets/collect` around every activation, and MCP over
   Streamable HTTP at `/mcp` (`inside::tool`).
 - **The caller, attested.** Every `list_tools`, `list_resources`,

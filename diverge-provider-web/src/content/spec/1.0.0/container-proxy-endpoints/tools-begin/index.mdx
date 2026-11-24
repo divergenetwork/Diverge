@@ -1,13 +1,14 @@
 ---
 title: 'tools::begin'
-summary: 'Tag 1: the client begins its work on a tool container, once, first, and hands over the arguments and the template id; the server answers Begun, carrying the secrets the container takes, once the container holds them and, for the life of the connection, Active whenever an MCP exchange is in flight where none was and Inactive, carrying the rotating secrets handed back, whenever the last in flight is answered; every channel of the container’s life rides this scope.'
+summary: 'Tag 1: the client begins its work on a tool container, once, first, and hands over the arguments, the template id and the image the container runs; the server answers Begun, carrying the secrets the container takes, once the container holds them and, for the life of the connection, Active whenever an MCP exchange is in flight where none was and Inactive, carrying the rotating secrets handed back, whenever the last in flight is answered; every channel of the container’s life rides this scope.'
 order: 1
 draft: false
 ---
 
 The client opens the scope with a request whose payload is the tag
-byte `1` followed by the request as JSON: the arguments and the id of
-the template the container is made from. The server answers with
+byte `1` followed by the request as JSON: the arguments, the id of
+the template the container is made from, and the image the container
+runs, which the client supplies. The server answers with
 exactly one `Begun` response, carrying the secrets the container's
 program takes, once the container holds its arguments; after it
 sends `Active` and `Inactive` as the container's MCP exchanges begin
@@ -33,8 +34,8 @@ beyond the order [Connection](/container-proxy/connection/) provides.
    as [Container Proxy Endpoints](/container-proxy-endpoints/) provides. A begin on a
    connection that has begun is answered by exactly one response, the
    error, and the finish; the first begin continues.
-2. **The server hands the arguments and the template id to the
-   container.** Both are held for the life of the container. A
+2. **The server hands the arguments, the template id and the image
+   to the container.** The three are held for the life of the container. A
    container that refuses them is answered by exactly one response,
    the error in the container's own words, and the finish; the
    connection has not begun.

@@ -29,7 +29,7 @@
 //! names, and the proxy dials it, forwarding what the provider's
 //! server asks: `/register`, `/secrets` and
 //! `/secrets/collect` on either kind of container — [`register`] is
-//! the first's body, the arguments and the template id, and its
+//! the first's body, the arguments, the template id and the image, and its
 //! answer, the dependencies the program declares and the secrets it
 //! takes; [`secrets`] the two over the secrets' values, fed down at
 //! every activation and collected back at every inactive — and, for
