@@ -1,6 +1,6 @@
 ---
 {
-  "type": "tool",
+  "type": "dependency_tool",
   "name": "alarm",
   "description": "Alarms an agent sets to wake itself later, once or on a schedule.",
   "schema": {
@@ -9,7 +9,11 @@
     "description": "The arguments an alarm tool is made with.\n\nNone: every alarm names the agent that set it, and the tool is the\nsame whoever calls it. `{}` is the one value; any member is\nrefused, so a misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that sets alarms, granted `message` over the agents attached\nto it. An eager tool, because it keeps time between the agents' runs;\nany scope serves, since every alarm wakes only its own agent.",
     "type": "object",
     "additionalProperties": false
-  }
+  },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "eager",
+  "scope": "global"
 }
 ---
 # Alarm

@@ -1,6 +1,6 @@
 ---
 {
-  "type": "tool",
+  "type": "dependency_tool",
   "name": "taskboard",
   "description": "A board of tasks shared by the agents that use it.",
   "schema": {
@@ -9,7 +9,11 @@
     "description": "The arguments a taskboard tool is made with.\n\nNone: the board is the tool's database, and the tool is the same\nwhoever calls it. `{}` is the one value; any member is refused, so\na misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that works from the board. Which agents share one board\nfollows from the eager tool's scope, never from anything the tool\ndecides.",
     "type": "object",
     "additionalProperties": false
-  }
+  },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "eager",
+  "scope": "template"
 }
 ---
 # Taskboard

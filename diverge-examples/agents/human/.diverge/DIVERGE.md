@@ -3,14 +3,6 @@
   "type": "agent",
   "name": "human",
   "description": "An agent with no model: a person answers as it, through its web page.",
-  "chat": {
-    "prompt_modalities": {
-      "image": false,
-      "audio": false,
-      "file": false
-    }
-  },
-  "structured_decisions": false,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
@@ -18,7 +10,17 @@
     "type": "object",
     "additionalProperties": false
   },
-  "frontend": true
+  "memory": 536870912,
+  "disk": 1073741824,
+  "frontend": true,
+  "chat": {
+    "prompt_modalities": {
+      "image": false,
+      "audio": false,
+      "file": false
+    }
+  },
+  "structured_decisions": false
 }
 ---
 # Human

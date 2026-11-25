@@ -1,6 +1,6 @@
 ---
 {
-  "type": "tool",
+  "type": "standalone_tool",
   "name": "identity-diverge-network",
   "description": "Signs identities in at identity.diverge.network and publishes images to Diverge's registry, as an account.",
   "schema": {
@@ -10,6 +10,9 @@
     "type": "object",
     "additionalProperties": false
   },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "lazy",
   "frontend": true
 }
 ---

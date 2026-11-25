@@ -1,6 +1,6 @@
 ---
 {
-  "type": "tool",
+  "type": "dependency_tool",
   "name": "memory",
   "description": "A notebook of notes that outlasts an agent's conversation.",
   "schema": {
@@ -9,7 +9,11 @@
     "description": "The arguments a memory tool is made with.\n\nNone: the notebook is the tool's database, and the tool is the\nsame whoever calls it. `{}` is the one value; any member is\nrefused, so a misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool, declared by the image of the agent that\nkeeps the notes; meant to be lazy. Whose notebook it is\nfollows from whose database the tool is given, never from anything\nthe tool decides.",
     "type": "object",
     "additionalProperties": false
-  }
+  },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "lazy",
+  "scope": "instance"
 }
 ---
 # Memory

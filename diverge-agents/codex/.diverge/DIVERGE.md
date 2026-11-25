@@ -3,14 +3,6 @@
   "type": "agent",
   "name": "codex",
   "description": "An agent that runs the OpenAI Codex CLI.",
-  "chat": {
-    "prompt_modalities": {
-      "image": true,
-      "audio": false,
-      "file": false
-    }
-  },
-  "structured_decisions": false,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Agent",
@@ -276,21 +268,21 @@
         ]
       },
       "Template": {
-        "description": "One tool container an agent's program depends on: everything the\ncaller needs to deploy it, as fields and not as words. A tool\ncontainer depends on nothing.\n\nA [`Container`](crate::shared::containers::request::Container) is an\nimage, two limits, mounts and arguments. The image, the limits and\nthe arguments are here, member for member; beside them the secrets\nthe image needs, by name alone — which of them the tool's program\ntakes, and in what mode, is its own answer at registration, and\ntheir values are the caller's, each resolved through the vault key\nthe agent that spawns the tool binds the same name to, fed at every\nactivation. The mounts are not the caller's volumes — a volume is\nnamed in the caller's own listing, and a tool that named one would\nbe dictating the caller's storage — but, for a lazy tool of the\n`instance` scope alone,\nthe AGENT's own files and directories, each a path in the agent\ncontainer served live at a path in the tool container: the caller\nserves the agent container, a `containers::fuse_serve` of the path,\nand mounts the tool, a `fuse::mount` answered from it.\n[`mode`](Self::mode) says which of the two modes the dependency is —\na lazy tool, run while it is used, or an eager one the caller\nkeeps, each with a scope — see [`Mode`]. What the tool may ask\nof the caller is not here: the tool's own program declares it at its\nregistration, every time it starts, as a standalone tool's does —\nsee the `permissions` of the\n[`register`](crate::container_proxy::inside::register) answer.\n\nThere are no instructions. What a template cannot say — the provider\nthe tool runs on, the volumes it is given — is\nthe caller's, and the caller needs no prose to choose it. The\ndaemon's own tool templates are another thing: a record the daemon\nkeeps, named by a hash, made by a request; this is what an image\ndeclares and a caller deploys.\n\nThere is no name. A dependency is named by its ID: the lowercase\nhexadecimal SHA-256 of its [`canonical`](crate::shared::canonical)\nbytes — this template as compact JSON, absent members omitted, the\nimage's `references` absent too, every object key sorted at every\ndepth, the `arguments` and the `secrets` included, the names sorted\nbytewise, the `mode` and\nits members among the keys — sixty-four characters, which the caller\ncomputes over [`hashed`](Self::hashed). Two declarations with one id\nare one dependency, and a list that declares one twice is refused;\nthe same template deployed for the same agent, on whatever provider,\nis the same dependency, and the same template declared under\nthe same scope key, by whatever agent, is the same tool. The\ncaller labels the tool's MCP tools by the id when it merges lists,\nand the program knows which tool serves each by the keys under\n`_meta`, see [`shared::mcp`](crate::shared::mcp).",
+        "description": "One tool container an agent's program depends on: everything the\ncaller needs to deploy it that the tool's image does not say for\nitself, as fields and not as words. A tool container depends on\nnothing.\n\nA [`Container`](crate::shared::containers::request::Container) is an\nimage, two limits, mounts and arguments. The image and the\narguments are here, member for member. The limits are the image's\nown — the `memory` and the `disk` of its\n[document](crate::shared::containers::info::Document) — and what\nthis adds to each. The mounts are not the caller's volumes — a\nvolume is named in the caller's own listing, and a tool that named\none would be dictating the caller's storage — but the AGENT's own\nfiles and directories, each a path in the agent container served\nlive at a path in the tool container: the caller serves the agent\ncontainer, a `containers::fuse_serve` of the path, and mounts the\ntool, a `fuse::mount` answered from it.\n\n# What the image says, and this does not\n\nThe image is a dependency tool's: its document's `type` is\n`dependency_tool`, and a declaration of an image of another kind —\nan agent's, or a standalone tool's — is the registration's error.\nThat document, and not this, says:\n\n1. How the tool is kept running, its\n   [`mode`](crate::shared::containers::info::Mode): lazy or eager.\n2. How far it is shared, its\n   [`scope`](crate::shared::containers::info::Scope): one per\n   agent, one per agent template, or one for all.\n3. Every secret its program could take, each by its name and what\n   it is. Which of them this tool needs is here, by name: see\n   [`secrets`](Self::secrets).\n4. The memory and the disk it needs.\n\nSo two agents that declare one image declare one kind of tool, and\nno declaration says of an image what the image does not.\n\n# The mounts are a lazy tool's of one agent\n\nA mount is the declaring agent's own path, so there must be one\nagent whose path it is, and that agent's run must be the tool's:\nonly an image whose `mode` is `lazy` and whose `scope` is\n`instance` is declared with any. A declaration that names a mount\nof an image of any other mode or scope is the registration's\nerror.\n\nWhat the tool may ask of the caller is not here: the tool's own\nprogram declares it at its registration, every time it starts, as a\nstandalone tool's does — see the `permissions` of the\n[`register`](crate::container_proxy::inside::register) answer.\n\nThere are no instructions. What a declaration cannot say — the\nprovider the tool runs on, the volumes it is given — is the\ncaller's, and the caller needs no prose to choose it. The daemon's\nown tool templates are another thing: a record the daemon keeps,\nnamed by a hash, made by a request, of a standalone tool's image;\nthis is what an agent's program declares and a caller deploys.\n\nThere is no name. A dependency is named by its ID: the lowercase\nhexadecimal SHA-256 of its [`canonical`](crate::shared::canonical)\nbytes — this template as compact JSON, absent members omitted, the\nimage's `references` absent too, every object key sorted at every\ndepth, the `arguments`, the mounts and the `secrets` included, the\nnames sorted bytewise — sixty-four characters, which the caller computes over\n[`hashed`](Self::hashed). Two declarations with one id are one\ndependency, and a list that declares one twice is refused; the same\ntemplate deployed for the same agent, on whatever provider, is the\nsame dependency, and the same template declared under the same\nscope key, by whatever agent, is the same tool. The caller labels\nthe tool's MCP tools by the id when it merges lists, and the\nprogram knows which tool serves each by the keys under `_meta`, see\n[`shared::mcp`](crate::shared::mcp).",
         "type": "object",
         "properties": {
           "image": {
-            "description": "The image: a digest and its references, as a\n`containers::tools::run` request names one.",
+            "description": "The image: a digest and its references, as a\n`containers::tools::run` request names one. A dependency tool's.",
             "$ref": "#/$defs/Image"
           },
-          "memory": {
-            "description": "The memory the tool container needs, in bytes.",
+          "extra_memory": {
+            "description": "The memory the tool container has beyond what its image says it\nneeds, in bytes. `0` gives it what the image needs and no more.\nThe container's limit is the image's own `memory` and this,\nsummed: a sum past 2 to the power 64 less 1 is the\nregistration's error.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
           },
-          "disk": {
-            "description": "The bytes the tool container may write, in bytes.",
+          "extra_disk": {
+            "description": "The bytes the tool container may write beyond what its image\nsays it needs. `0` gives it what the image needs and no more.\nThe container's limit is the image's own `disk` and this,\nsummed, as [`extra_memory`](Self::extra_memory) is.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -299,70 +291,33 @@
             "description": "The arguments the tool container is registered with — the\n`arguments` of the run request that makes it, verbatim."
           },
           "secrets": {
-            "description": "The secrets the image needs, by name, in the order the image\nstates them: names only. Which of them the tool's program takes\nand in what mode is the program's answer at its registration —\nsee [`secrets`](crate::shared::containers::secrets) — and the\nvalue of each is resolved through the vault key the agent the\ntool is spawned for binds the same name to, fed at every\nactivation. Inside the hash, sorted bytewise there. A name is\nnot empty, no two are alike, and every one is a name the\nregistering agent's template declares; a template that says\notherwise is the registration's error. Absent, the image needs\nnone.",
+            "description": "The secrets the tool container needs, by name: all of those its\nimage's document states, or some of them, and none it does not\nstate. Required, and empty for a tool that needs none. Which of\nthem the tool's program takes, and in what mode, is its own\nanswer at its registration — see\n[`secrets`](crate::shared::containers::secrets) — and the value\nof each is resolved through the vault key the agent the tool is\nspawned for binds the same name to, fed at every activation.\nInside the hash, sorted bytewise there. A name is not empty, no\ntwo are alike, every one is a name the tool's image states, and\nevery one is a name the registering agent binds; a declaration\nthat says otherwise is the registration's error.",
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "fuse_file_mounts": {
+            "description": "Files of the agent container served live into the tool\ncontainer, one each over FUSE: see [`Mount`]. The agent's path\nnames a file; the tool's path is where it appears. Only of an\nimage whose `mode` is `lazy` and whose `scope` is `instance`.\nAbsent when empty.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Mount"
+            }
+          },
+          "fuse_directory_mounts": {
+            "description": "Directories of the agent container served live into the tool\ncontainer, one each over FUSE: see [`Mount`]. The agent's path\nnames a directory, whose whole tree the tool sees; the tool's\npath is where it appears. Only of an image whose `mode` is\n`lazy` and whose `scope` is `instance`. Absent when empty.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Mount"
             }
           }
         },
         "required": [
           "image",
-          "memory",
-          "disk",
-          "arguments"
-        ],
-        "oneOf": [
-          {
-            "description": "A tool run while it is used: `\"mode\":\"lazy\"`.",
-            "type": "object",
-            "properties": {
-              "mode": {
-                "type": "string",
-                "const": "lazy"
-              },
-              "scope": {
-                "description": "How far the tool is shared, and its database with it: see\n[`Scope`]. Required.",
-                "$ref": "#/$defs/Scope"
-              },
-              "fuse_file_mounts": {
-                "description": "Files of the agent container served live into the tool\ncontainer, one each over FUSE: see [`Mount`]. The agent's\npath names a file; the tool's path is where it appears.\nOnly where `scope` is `instance`. Absent when empty.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/Mount"
-                }
-              },
-              "fuse_directory_mounts": {
-                "description": "Directories of the agent container served live into the\ntool container, one each over FUSE: see [`Mount`]. The\nagent's path names a directory, whose whole tree the tool\nsees; the tool's path is where it appears. Only where\n`scope` is `instance`. Absent when empty.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/Mount"
-                }
-              }
-            },
-            "required": [
-              "mode",
-              "scope"
-            ]
-          },
-          {
-            "description": "A tool the caller keeps: `\"mode\":\"eager\"`.",
-            "type": "object",
-            "properties": {
-              "mode": {
-                "type": "string",
-                "const": "eager"
-              },
-              "scope": {
-                "description": "How far the tool is shared, and its database with it: see\n[`Scope`]. Required.",
-                "$ref": "#/$defs/Scope"
-              }
-            },
-            "required": [
-              "mode",
-              "scope"
-            ]
-          }
+          "extra_memory",
+          "extra_disk",
+          "arguments",
+          "secrets"
         ]
       },
       "Image": {
@@ -403,26 +358,6 @@
           "name"
         ]
       },
-      "Scope": {
-        "description": "What a dependency tool is one of: one per parent agent, one per\nparent agent template, or one for every agent that declares it,\nwhatever template they are made from. The scope names the tool —\nthe same template declared under the same scope key is the same\ntool, joined and not made again — and names its database scope\nwith it, so what a tool holds is shared exactly as far as the tool\nis. Both modes say one: see\n[`Mode`](super::Mode). Snake case on the wire: `\"instance\"`,\n`\"template\"`, `\"global\"`.",
-        "oneOf": [
-          {
-            "description": "One tool per parent agent: the tool deployed for one agent is\nits own, with a database of its own, and two agents' tools of\nthis template never see each other's. The one scope under\nwhich a lazy tool mounts the agent's files.",
-            "type": "string",
-            "const": "instance"
-          },
-          {
-            "description": "One tool per parent agent template: every agent made from the\nsame agent template that declares this template is attached\nto one tool, which holds one database, so what one writes the\nothers read.",
-            "type": "string",
-            "const": "template"
-          },
-          {
-            "description": "One tool for the template, full stop: every agent that\ndeclares it, from whatever agent template, is attached to the\none tool, and its database is one for all of them.",
-            "type": "string",
-            "const": "global"
-          }
-        ]
-      },
       "Mount": {
         "description": "A path of the agent container, mounted at a path of the tool\ncontainer over FUSE: source before destination, the order a mount\nreads in everywhere else. Which of the two it is — a file or a\ndirectory — is which list of the [`Template`](super::Template) it\nis on.\n\nThe caller serves the agent container's path live — a\n`containers::fuse_serve` of it, or of the directory holding a file —\nand makes the mount in the tool container as a FUSE mount answered\nfrom that FUSE serve, so every read, write, listing, removal, rename and\nnew directory the tool makes is one ask answered from the agent's\nown filesystem, where the agent sees it at once. Nothing is copied:\nthe two containers share the path for as long as both run.",
         "type": "object",
@@ -448,7 +383,35 @@
         ]
       }
     }
-  }
+  },
+  "memory": 536870912,
+  "disk": 1073741824,
+  "secrets": [
+    {
+      "name": "OPENAI_API_KEY",
+      "description": "An OpenAI API key, taken where the arguments choose the `api_key` auth method."
+    },
+    {
+      "name": "CODEX_ACCESS_TOKEN",
+      "description": "A Codex access token, taken where the arguments choose the `access_token` auth method."
+    },
+    {
+      "name": "CODEX_AUTH",
+      "description": "Codex's own auth file, held and written back, taken where the arguments choose the `auth_file` auth method."
+    },
+    {
+      "name": "OPENAI_IDENTITY_TOKEN",
+      "description": "An identity token, taken where the arguments choose the `workload_identity` auth method."
+    }
+  ],
+  "chat": {
+    "prompt_modalities": {
+      "image": true,
+      "audio": false,
+      "file": false
+    }
+  },
+  "structured_decisions": false
 }
 ---
 # Codex

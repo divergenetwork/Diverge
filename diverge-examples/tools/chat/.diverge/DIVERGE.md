@@ -1,6 +1,6 @@
 ---
 {
-  "type": "tool",
+  "type": "standalone_tool",
   "name": "chat",
   "description": "A chat between a person and the agents attached to it, with a live web page.",
   "schema": {
@@ -10,6 +10,9 @@
     "type": "object",
     "additionalProperties": false
   },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "eager",
   "frontend": true
 }
 ---
