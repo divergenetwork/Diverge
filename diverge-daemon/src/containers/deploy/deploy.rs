@@ -26,6 +26,7 @@ use crate::containers::mcp::Served;
 use crate::containers::eager;
 use crate::containers::{Inflight, Key, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, secrets, stop};
 use crate::daemon::{Daemon, Kind};
+use crate::serve::inner;
 use crate::judge::ToolRef;
 use crate::store::agents::{self, Agent};
 use crate::store::dependency_tools::{self, DependencyTool};
@@ -185,8 +186,11 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
 ///    whose `mode` is `lazy` and whose `scope` is `instance`: of any
 ///    other there is no one agent whose files they are, or no run of
 ///    its that the tool's run is.
-/// 3. **Every secret the image needs is one the agent binds**: its
-///    value is taken through the agent's own binding of the name.
+/// 3. **Every secret the declaration names is one the image states,
+///    named once, and one the agent binds**: an image states every
+///    secret its program could take, a declaration names those this
+///    tool needs, and the value of each is taken through the agent's
+///    own binding of the name.
 /// 4. **What the image needs and what the declaration adds is a
 ///    limit**: neither sum is past what one can say.
 ///
@@ -205,7 +209,11 @@ fn holds(template: &Template, document: info::Document, agent: &Agent) -> Result
         return Err("a tool mounts the agent's files only where its image's mode is `lazy` and its scope is `instance`".to_string());
     }
     // Rule 3.
-    secrets::bind(&document.secrets, &agent.secrets)?;
+    inner::declared(&template.secrets)?;
+    if let Some(name) = template.secrets.iter().find(|name| !document.secrets.iter().any(|secret| &secret.name == *name)) {
+        return Err(format!("the secret {name} is none the tool's image states"));
+    }
+    secrets::bind(&template.secrets, &agent.secrets)?;
     // Rule 4.
     document.memory.checked_add(template.extra_memory).ok_or("the image's memory and the template's extra_memory are together more than a limit can be")?;
     document.disk.checked_add(template.extra_disk).ok_or("the image's disk and the template's extra_disk are together more than a limit can be")?;
@@ -343,7 +351,7 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
         disk: limits.1,
     };
     let candidates = provider::candidates(daemon, None, &needs).await.map_err(|error| error.to_string())?;
-    let binding = secrets::bind(&tool.document.secrets, &owner.agent.secrets)?;
+    let binding = secrets::bind(&tool.declared.secrets, &owner.agent.secrets)?;
     let mounts = Arc::new(
         Mounts::build_dependency(daemon, &owner.provider, &owner.container, fuse_file_mounts, fuse_directory_mounts)
             .await
@@ -378,7 +386,7 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             inflight: Arc::clone(&owner.inflight),
             files: Arc::clone(&owner.files),
             kept: Mutex::new(None),
-            declared: tool.document.secrets.clone(),
+            declared: tool.declared.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
         });

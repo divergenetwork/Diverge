@@ -25,8 +25,7 @@ pub struct DependencyTool {
     pub declared: Template,
     /// The document of the template's image: what the image says of
     /// itself, which the template does not — how the tool is kept
-    /// running, the secrets it needs, the memory and the disk it
-    /// needs.
+    /// running, and the memory and the disk it needs.
     pub document: info::DependencyTool,
     /// How far it is shared: what its scope key is made of, as its
     /// image's `scope` said when the tool was made.

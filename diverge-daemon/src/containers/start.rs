@@ -199,7 +199,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
             kept: Mutex::new(None),
-            declared: document.secrets().to_vec(),
+            declared: template.template.secrets.clone(),
             binding: agent.secrets.clone(),
             secrets: Mutex::new(None),
         });
@@ -378,7 +378,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
                 kept: Mutex::new(None),
-                declared: document.secrets().to_vec(),
+                declared: record.template.secrets.clone(),
                 binding: tool.secrets.clone(),
                 secrets: Mutex::new(None),
             });

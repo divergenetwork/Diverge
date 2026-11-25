@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS diverge.agents (
     provider              JSONB,
     fuse_file_mounts      JSONB NOT NULL DEFAULT '[]',
     fuse_directory_mounts JSONB NOT NULL DEFAULT '[]',
-    -- Which vault key each secret the image states is: the
+    -- Which vault key each secret the template declares is: the
     -- secret's name to the key, as the create or the last edit gave
     -- them, in that order.
     secrets               JSONB NOT NULL DEFAULT '{}',
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS diverge.tools (
     name                  TEXT UNIQUE,
     fuse_file_mounts      JSONB NOT NULL DEFAULT '[]',
     fuse_directory_mounts JSONB NOT NULL DEFAULT '[]',
-    -- Which vault key each secret the image states is, as for
+    -- Which vault key each secret the template declares is, as for
     -- an agent.
     secrets               JSONB NOT NULL DEFAULT '{}',
     -- What its container declared it may ask of the daemon at its

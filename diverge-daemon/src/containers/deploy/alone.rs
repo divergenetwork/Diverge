@@ -78,7 +78,7 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             Some(id) => agents::by_id(&mut conn, id, false).await?,
             None => None,
         };
-        let source = if tool.document.secrets.is_empty() {
+        let source = if tool.declared.secrets.is_empty() {
             None
         } else {
             match tool.scope {
@@ -95,8 +95,8 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
         return Err(StartError::Run("the tool's agent is gone".to_string()));
     };
     let binding = match source {
-        Some(source) => secrets::bind(&tool.document.secrets, &source.secrets).map_err(StartError::Unbound)?,
-        None if tool.document.secrets.is_empty() => IndexMap::new(),
+        Some(source) => secrets::bind(&tool.declared.secrets, &source.secrets).map_err(StartError::Unbound)?,
+        None if tool.declared.secrets.is_empty() => IndexMap::new(),
         None => return Err(StartError::Run("no agent attached to the tool spawns it".to_string())),
     };
     let sender = Creator::Tool(creator::Tool::Dependency {
@@ -136,7 +136,7 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             inflight: Arc::new(Inflight::new()),
             files: Arc::new(Inflight::new()),
             kept: Mutex::new(None),
-            declared: tool.document.secrets.clone(),
+            declared: tool.declared.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
         });

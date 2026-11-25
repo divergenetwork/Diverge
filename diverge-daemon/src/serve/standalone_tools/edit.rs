@@ -111,10 +111,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         let Some(template) = tools_templates::by_id(&mut tx, &tool.template, false).await? else {
             return Ok(Frame::Error(reply::failure(&"the tool's template is not on record")));
         };
-        let Some(document) = store::image_info::by_digest(&mut tx, &template.template.image.digest).await? else {
-            return Ok(Frame::Error(reply::failure(&"the document of the tool's image is not on record")));
-        };
-        match inner::secrets(&mut tx, &standing, document.secrets(), &result.secrets).await? {
+        match inner::secrets(&mut tx, &standing, &template.template.secrets, &result.secrets).await? {
             Secrets::Ok => {}
             Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
             Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),

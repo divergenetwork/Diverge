@@ -92,7 +92,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     if let Err(why) = images::limits(&document, template.template.extra_memory, template.template.extra_disk) {
         return Ok(Frame::Error(reply::image(&why)));
     }
-    match inner::secrets(&mut tx, &standing, document.secrets(), &inner.secrets).await? {
+    // Every secret the template declares is one its image states.
+    if let Err(what) = inner::stated(&document, &template.template.secrets) {
+        return Ok(Frame::Error(reply::secrets(&what)));
+    }
+    match inner::secrets(&mut tx, &standing, &template.template.secrets, &inner.secrets).await? {
         Secrets::Ok => {}
         Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
         Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),

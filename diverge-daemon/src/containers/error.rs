@@ -32,7 +32,7 @@ pub enum StartError {
     /// A secret could not be taken: the secret and the key — a key
     /// with no value, or none free — and never a value.
     Secrets(String),
-    /// A secret a dependency tool's image states is not one the agent
+    /// A secret a dependency template declares is not one the agent
     /// that spawns it binds: the secret.
     Unbound(String),
     /// The image's document, which says what a container of it needs,

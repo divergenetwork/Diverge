@@ -31,7 +31,7 @@ pub struct Tool {
     pub fuse_file_mounts: Vec<FuseMount>,
     /// Directories of other providers' volumes, likewise.
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret its image states is.
+    /// Which vault key each secret its template declares is.
     pub secrets: IndexMap<String, String>,
     /// What its container declared it may ask of the daemon when it
     /// last started; empty for one that declared none or has never

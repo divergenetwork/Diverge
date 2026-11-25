@@ -70,10 +70,10 @@ pub struct Answerer {
     /// asked about. What the start settles the agent's attachments
     /// by.
     pub kept: Mutex<Option<Vec<DependencyToolId>>>,
-    /// The names the container's image states: what its
+    /// The names the container's template declares: what its
     /// registration may take.
     pub declared: Vec<String>,
-    /// Each name the image states to the vault key it is bound
+    /// Each name the template declares to the vault key it is bound
     /// to: the record's own binding — a dependency's, the binding of
     /// the agent that spawns it, as of this start.
     pub binding: IndexMap<String, String>,

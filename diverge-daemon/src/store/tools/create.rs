@@ -22,7 +22,7 @@ pub struct New {
     pub fuse_file_mounts: Vec<FuseMount>,
     /// Directories of other providers' volumes.
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret the image states is.
+    /// Which vault key each secret the template declares is.
     pub secrets: IndexMap<String, String>,
     /// Who makes it.
     pub creator: Creator,
