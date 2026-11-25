@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { Key } from "../../../../../../shared/permission/standalone_tools/key.js";
 import { Creator } from "../../../../../creator/creator.js";
-import { Mode } from "../../../templates/mode.js";
+import { Mode } from "../../../../../../shared/containers/info/mode.js";
 
 /**
  * The filter over tools: every member optional, and every one given

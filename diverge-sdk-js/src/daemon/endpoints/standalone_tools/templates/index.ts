@@ -1,7 +1,6 @@
 // Tool templates: what a tool is made from, kept under the hash of
 // itself, with the mode it is kept running in.
 
-export * from "./mode.js";
 export * from "./tool_type.js";
 export * from "./template.js";
 export * as create from "./create/index.js";

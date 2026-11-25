@@ -4,6 +4,8 @@ import { z } from "zod";
 import { Creator } from "../../../../../../daemon/creator/creator.js";
 import { Owner } from "../../../../../../daemon/key/owner.js";
 import { Template } from "../../../../../../shared/containers/dependencies/template.js";
+import { Mode } from "../../../../../../shared/containers/info/mode.js";
+import { Scope } from "../../../../../../shared/containers/info/scope.js";
 import type { Key, Keyed } from "../../../../../../shared/listing/keyed.js";
 import { Grant } from "../../../../../../shared/permission/grant.js";
 import { Attached } from "./attached.js";
@@ -19,8 +21,12 @@ import { Run } from "./run.js";
 export const Listed = z.object({
   /** The template, by id: the lowercase hexadecimal SHA-256 of its canonical bytes, as `dependency_tools` states it. An agent calls the tool's MCP tools by the id's first eight characters, as a prefix. */
   id: z.string(),
-  /** Whose the tool is, as the template's scope decides: the one agent, the one agent template, or nobody. See `key::Owner`. */
+  /** Whose the tool is, as its image's scope decides: the one agent, the one agent template, or nobody. See `key::Owner`. */
   owner: Owner,
+  /** How the tool is kept running, as its image's `mode` says: lazy, run while used, or eager, kept while any agent is attached. */
+  mode: Mode,
+  /** How far the tool is shared, as its image's `scope` says: one per agent, one per agent template, or one for all. */
+  scope: Scope,
   /** Its number among all dependency tools ever made from the template, whatever their owners: the first is `1`, and no number is given twice. The template and the index name the tool once and for all, as an events party does. */
   index: z.number().int().nonnegative(),
   /** When the first registration that declared the template under this owner made the tool. On the wire an RFC 3339 timestamp in UTC. */

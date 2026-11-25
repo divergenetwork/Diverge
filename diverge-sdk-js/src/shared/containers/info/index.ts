@@ -6,5 +6,8 @@ export * from "./false_or.js";
 export * from "./limit.js";
 export * from "./modalities.js";
 export * from "./modality.js";
+export * from "./mode.js";
+export * from "./scope.js";
+export * from "./secret.js";
 export * from "./structured_decisions.js";
 export * as response from "./response/index.js";

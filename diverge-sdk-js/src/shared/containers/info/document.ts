@@ -1,64 +1,79 @@
-// An image's DIVERGE.md, parsed.
+// The image's document, as the wire carries it parsed.
 
 import { z } from "zod";
 
 import { Description } from "../../description.js";
 import { Chat } from "./chat.js";
 import { falseOr } from "./false_or.js";
+import { Mode } from "./mode.js";
+import { Scope } from "./scope.js";
+import { Secret } from "./secret.js";
 import { StructuredDecisions } from "./structured_decisions.js";
 
-/** What an agent's document and a tool's both have. */
+/**
+ * What every document has, whichever of the three it is: the image's
+ * own name, what it is in one line, the JSON Schema of its arguments,
+ * the memory and the disk a container of it needs, in bytes, every
+ * secret its program could take, whether it serves a frontend, and
+ * the prose beneath the frontmatter.
+ */
 const common = {
-  /** The image's own name, as its author states it. */
   name: z.string(),
-  /** What the image is, in one line, as its author states it: the one description an image has. */
   description: Description,
-  /** The arguments' JSON Schema, a JSON object as the parse requires. */
   schema: z.json(),
-  /** Whether the program serves a frontend beneath `/frontend`. Absent, it serves none. */
+  memory: z.number().int().nonnegative(),
+  disk: z.number().int().nonnegative(),
+  secrets: z.array(Secret).optional(),
   frontend: z.boolean().optional(),
-  /** The markdown beneath the frontmatter. */
   body: z.string(),
 };
 
 /**
- * An agent's image's document: `type` is `agent`. What a tool's has,
- * and how the agent's program chats and makes structured decisions.
- * At least one of the two is an object: an agent does at least one.
+ * An agent's image's document: `"type":"agent"`. What every document
+ * has, and how the program chats and makes structured decisions, at
+ * least one of the two an object. It has no `mode` and no `scope`.
  */
 export const Agent = z
   .strictObject({
     type: z.literal("agent"),
     ...common,
-    /** Whether the program chats, and how: `false`, or a `Chat`. Absent, `false`. */
     chat: falseOr(Chat).optional(),
-    /**
-     * Whether the program makes structured decisions, and how:
-     * `false`, or a `StructuredDecisions`. Absent, `false`.
-     */
     structured_decisions: falseOr(StructuredDecisions).optional(),
   })
   .refine((agent) => typeof agent.chat === "object" || typeof agent.structured_decisions === "object");
 export type Agent = z.infer<typeof Agent>;
 
 /**
- * A tool's image's document: `type` is `tool`. It has no `chat` and no
- * `structured_decisions`: one that states either is not a document.
+ * A standalone tool's image's document: `"type":"standalone_tool"`.
+ * A standalone tool is made by hand from a tool template, and is no
+ * agent's dependency. What every document has, and the `mode` its
+ * tools are kept by. It has no `scope`.
  */
-export const Tool = z.strictObject({
-  type: z.literal("tool"),
+export const StandaloneTool = z.strictObject({
+  type: z.literal("standalone_tool"),
   ...common,
+  mode: Mode,
 });
-export type Tool = z.infer<typeof Tool>;
+export type StandaloneTool = z.infer<typeof StandaloneTool>;
 
 /**
- * An image's `/.diverge/DIVERGE.md`, parsed: an agent's document or a
- * tool's, told apart by `type`. Each is the JSON frontmatter — the
- * type, the image's name, the JSON Schema of the arguments the image's
- * program accepts, whether the program serves a frontend, and, in an
- * agent's alone, how its program chats and
- * makes structured decisions — and the markdown body beneath it. A
- * member that is none of its type's is not allowed.
+ * A dependency tool's image's document: `"type":"dependency_tool"`.
+ * A dependency tool is declared by an agent's program, and is made by
+ * nothing else. What a standalone tool's has, and the `scope` its
+ * tools are shared by.
  */
-export const Document = z.union([Agent, Tool]);
+export const DependencyTool = z.strictObject({
+  type: z.literal("dependency_tool"),
+  ...common,
+  mode: Mode,
+  scope: Scope,
+});
+export type DependencyTool = z.infer<typeof DependencyTool>;
+
+/**
+ * `/.diverge/DIVERGE.md`, parsed: an agent's image's document, a
+ * standalone tool's or a dependency tool's, told apart by `type`. An
+ * image is one of the three and never two.
+ */
+export const Document = z.union([Agent, StandaloneTool, DependencyTool]);
 export type Document = z.infer<typeof Document>;

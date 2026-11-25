@@ -4,8 +4,8 @@ import { z } from "zod";
 import { Key } from "../../../../../../shared/permission/dependency_tools/key.js";
 import { Creator } from "../../../../../creator/creator.js";
 import { Owner } from "../../../../../reference/owner.js";
-import { Scope } from "../../../../../../shared/containers/dependencies/scope.js";
-import { Mode } from "./mode.js";
+import { Mode } from "../../../../../../shared/containers/info/mode.js";
+import { Scope } from "../../../../../../shared/containers/info/scope.js";
 
 /**
  * The filter over dependency tools: every member optional, and every one given

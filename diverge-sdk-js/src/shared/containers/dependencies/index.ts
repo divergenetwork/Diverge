@@ -10,6 +10,4 @@
 // bytes. A tool container has no dependencies.
 
 export * from "./template.js";
-export * from "./mode.js";
 export * from "./mount.js";
-export * from "./scope.js";

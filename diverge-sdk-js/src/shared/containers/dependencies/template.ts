@@ -1,52 +1,42 @@
-// One dependency, as an image declares it.
+// One dependency, as an agent's program declares it.
 
 import { z } from "zod";
 import { bytewise, sha256 } from "../../canonical/index.js";
 import { Image, hashed as hashedImage } from "../request/image.js";
-import { Eager, Lazy, refusal } from "./mode.js";
-
-const members = {
-  /** The image: a digest and its references. */
-  image: Image,
-  /** The memory the tool container needs, in bytes. */
-  memory: z.number().int().nonnegative(),
-  /** The bytes the tool container may write, in bytes. */
-  disk: z.number().int().nonnegative(),
-  /** The arguments the tool container is registered with, verbatim: any JSON, `null` included. */
-  arguments: z.json(),
-  /** The secrets the image needs, by name, in the order the image states them. Absent, none. */
-  secrets: z.array(z.string()).optional(),
-};
+import { Mount } from "./mount.js";
 
 /**
  * One tool container an agent's program depends on: everything the
- * caller needs to deploy it, as fields and not as words. The image,
- * the limits and the arguments; beside them the secrets the image
- * needs, by name alone; the `mode`, flat with that mode's own
- * members — the scope, and a lazy tool's mounts of the agent's own
- * paths. What the tool may ask of the caller is not here:
- * its own program declares it at its registration, every time it
- * starts. There is no name: a dependency is named by its
- * id, the SHA-256 of its canonical bytes over `hashed`.
+ * caller needs to deploy it that the tool's image does not say for
+ * itself. The image is a dependency tool's, and its own document says
+ * how the tool is kept running, how far it is shared, every secret
+ * its program could take, and the memory and the disk it needs. Here:
+ * the image, what the container is given beyond what the image needs,
+ * the arguments, the names of those of the image's secrets this tool
+ * needs, and the agent's files and directories served live into it,
+ * which only an image that is lazy and of the `instance` scope is
+ * declared with.
  */
-export const Template = z.discriminatedUnion("mode", [Lazy.extend(members), Eager.extend(members)]).superRefine((template, context) => {
-  const reason = refusal(template);
-  if (reason !== undefined) context.addIssue({ code: "custom", message: reason });
+export const Template = z.object({
+  image: Image,
+  extra_memory: z.number().int().nonnegative(),
+  extra_disk: z.number().int().nonnegative(),
+  arguments: z.json(),
+  secrets: z.array(z.string()),
+  fuse_file_mounts: z.array(Mount).optional(),
+  fuse_directory_mounts: z.array(Mount).optional(),
 });
 export type Template = z.infer<typeof Template>;
 
 /**
  * The template as its id hashes it: the same, with the image's
- * references absent, since where the bytes may be fetched is not
- * what the tool is, and the secrets' names sorted bytewise, since
- * the order an image states them in is not what it needs.
+ * references absent and the secrets' names sorted bytewise.
  */
 export function hashed(template: Template): Template {
-  const secrets = template.secrets === undefined ? {} : { secrets: [...template.secrets].sort(bytewise) };
-  return { ...template, image: hashedImage(template.image), ...secrets };
+  return { ...template, image: hashedImage(template.image), secrets: [...template.secrets].sort(bytewise) };
 }
 
-/** The template's id: sixty-four lowercase hexadecimal characters. */
+/** The template's id: the lowercase hexadecimal SHA-256 of its canonical bytes. */
 export function id(template: Template): Promise<string> {
   return sha256(hashed(template));
 }

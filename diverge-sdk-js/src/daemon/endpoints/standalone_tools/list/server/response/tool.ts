@@ -6,7 +6,7 @@ import { Agent } from "../../../../../../daemon/key/agent.js";
 import { Grant } from "../../../../../../shared/permission/grant.js";
 import type { Keyed } from "../../../../../../shared/listing/keyed.js";
 import { Provider } from "../../../../../agent_log/provider.js";
-import { Mode } from "../../../templates/mode.js";
+import { Mode } from "../../../../../../shared/containers/info/mode.js";
 
 /**
  * One tool of the caller's: what the daemon knows of it.

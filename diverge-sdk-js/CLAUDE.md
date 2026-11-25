@@ -74,8 +74,8 @@ deserialize does. What this SDK adds to MCP — the five exchanges as
 frames, the server's error whole, the attestation in `_meta` — is
 `shared.mcp`. A notification is `ServerNotificationSchema.or(NotificationSchema)`,
 since rmcp reads any `{method, params?}` as a custom notification
-and the specification's nine would refuse one. The one `.default()`
-in the tree is a tool template's `mode`, which serde defaults too.
+and the specification's nine would refuse one. There is no `.default()`
+in the tree: a schema states the wire.
 
 Where a Rust doc is stale against its code, the code wins and the
 doc is not carried: the postgres action is `list`, not
