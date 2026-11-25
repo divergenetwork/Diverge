@@ -6,6 +6,7 @@ import { Description } from "../../description.js";
 import { Chat } from "./chat.js";
 import { falseOr } from "./false_or.js";
 import { Mode } from "./mode.js";
+import { Name } from "./name.js";
 import { Scope } from "./scope.js";
 import { Secret } from "./secret.js";
 import { StructuredDecisions } from "./structured_decisions.js";
@@ -18,7 +19,7 @@ import { StructuredDecisions } from "./structured_decisions.js";
  * the prose beneath the frontmatter.
  */
 const common = {
-  name: z.string(),
+  name: Name,
   description: Description,
   schema: z.json(),
   memory: z.number().int().nonnegative(),

@@ -7,6 +7,7 @@ export * from "./limit.js";
 export * from "./modalities.js";
 export * from "./modality.js";
 export * from "./mode.js";
+export * from "./name.js";
 export * from "./scope.js";
 export * from "./secret.js";
 export * from "./structured_decisions.js";
