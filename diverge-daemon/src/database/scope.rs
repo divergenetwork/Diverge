@@ -4,7 +4,7 @@
 use diverge_sdk::daemon::endpoints::postgres::Container;
 use diverge_sdk::daemon::reference;
 use diverge_sdk::shared::canonical;
-use diverge_sdk::shared::containers::dependencies::Scope;
+use diverge_sdk::shared::containers::info::Scope;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use sqlx::PgConnection;

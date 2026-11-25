@@ -1,5 +1,5 @@
 //! The dependency tool records: a dependency template under one owner,
-//! as the template's scope decides, with the agents attached to it.
+//! as its image's scope decides, with the agents attached to it.
 //!
 //! [`DependencyTool`] is one as the store holds it: the template it is
 //! of, by id and whole, its scope and the owner the scope key names —

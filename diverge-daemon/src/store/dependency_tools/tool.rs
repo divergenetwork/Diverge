@@ -4,7 +4,8 @@ use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::dependency_tools::list::server::response::{Attached, Listed, Run};
 use diverge_sdk::daemon::key;
-use diverge_sdk::shared::containers::dependencies::{Mode, Scope, Template};
+use diverge_sdk::shared::containers::dependencies::Template;
+use diverge_sdk::shared::containers::info::{self, Mode, Scope};
 use diverge_sdk::shared::permission::Grant;
 
 use crate::store::agents::Agent;
@@ -22,8 +23,13 @@ pub struct DependencyTool {
     pub index: u64,
     /// The template, whole.
     pub declared: Template,
+    /// The document of the template's image: what the image says of
+    /// itself, which the template does not — how the tool is kept
+    /// running, the secrets it needs, the memory and the disk it
+    /// needs.
+    pub document: info::DependencyTool,
     /// How far it is shared: what its scope key is made of, as its
-    /// template's `scope` says.
+    /// image's `scope` said when the tool was made.
     pub scope: Scope,
     /// The one agent it is for, when its scope is per agent.
     pub owner_agent: Option<AgentId>,
@@ -50,7 +56,17 @@ impl DependencyTool {
     /// Whether it is an eager tool, kept by the daemon, rather than a
     /// lazy tool, run while it is used.
     pub fn is_eager(&self) -> bool {
-        matches!(self.declared.mode, Mode::Eager { .. })
+        self.document.mode == Mode::Eager
+    }
+
+    /// The memory and the disk its container is to have, in bytes, in
+    /// that order: what its image needs and what its template adds,
+    /// summed. A sum past what a limit can say is the reason, in a
+    /// sentence.
+    pub fn limits(&self) -> Result<(u64, u64), String> {
+        let memory = self.document.memory.checked_add(self.declared.extra_memory).ok_or("the image's memory and the template's extra_memory are together more than a limit can be")?;
+        let disk = self.document.disk.checked_add(self.declared.extra_disk).ok_or("the image's disk and the template's extra_disk are together more than a limit can be")?;
+        Ok((memory, disk))
     }
 
     /// Whether its run is one agent's run's: a lazy tool whose scope
@@ -91,6 +107,8 @@ impl DependencyTool {
         Listed {
             id: self.template.clone(),
             owner,
+            mode: self.document.mode,
+            scope: self.scope,
             index: self.index,
             created: self.created,
             creator: self.creator.clone(),

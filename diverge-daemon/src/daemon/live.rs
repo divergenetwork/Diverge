@@ -124,7 +124,7 @@ pub struct Live {
     /// The tools running now, or joined: records and dependency tools.
     tools: Mutex<HashMap<ToolKey, Arc<ToolRun>>>,
     /// Every eager tool kept since the start, run or no run, by its tool
-    /// — a record whose template's mode is an eager tool, or a dependency
+    /// — a record whose image's mode is an eager tool, or a dependency
     /// tool's row whose template is one: whether it is held, and its
     /// supervisor and its clock.
     eager: Mutex<HashMap<ToolKey, Arc<State>>>,

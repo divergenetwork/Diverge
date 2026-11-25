@@ -1,7 +1,7 @@
 //! Loading dependency tools.
 
 use diverge_sdk::daemon::reference;
-use diverge_sdk::shared::containers::dependencies::Scope;
+use diverge_sdk::shared::containers::info::Scope;
 use sqlx::PgConnection;
 
 use super::row::{self, ORDER, SELECT};

@@ -1,10 +1,9 @@
 //! The dependency tools filter, as a test.
 
-use diverge_sdk::daemon::endpoints::dependency_tools::list::client::request::{Filter, Mode as Which};
+use diverge_sdk::daemon::endpoints::dependency_tools::list::client::request::Filter;
 use diverge_sdk::daemon::endpoints::dependency_tools::list::server::response::{Attached, Run};
 use diverge_sdk::daemon::key;
 use diverge_sdk::daemon::reference;
-use diverge_sdk::shared::containers::dependencies::Mode;
 
 use crate::store::dependency_tools::DependencyTool;
 
@@ -30,10 +29,9 @@ pub struct Facts<'a> {
 /// runs.
 pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
     let tool = facts.tool;
-    let (mode, scope) = match &tool.declared.mode {
-        Mode::Lazy { scope, .. } => (Which::Lazy, *scope),
-        Mode::Eager { scope } => (Which::Eager, *scope),
-    };
+    // How it is kept running is its image's to say; how far it is
+    // shared is what it was made under.
+    let (mode, scope) = (tool.document.mode, tool.scope);
     (filter.tools.is_empty() || filter.tools.iter().any(|key| key.template == tool.template && owned(facts.owner, &key.owner)))
         && (filter.ids.is_empty() || filter.ids.contains(&tool.template))
         && (filter.owners.is_empty() || filter.owners.iter().any(|wanted| owned_by(facts.owner, wanted)))

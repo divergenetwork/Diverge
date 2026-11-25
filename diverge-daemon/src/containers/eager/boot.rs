@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
+use diverge_sdk::shared::containers::info::Mode;
 
 use super::{held, keep};
 use crate::containers::ToolKey;
@@ -12,7 +12,7 @@ use crate::store::{self, dependency_tools, tools};
 /// At the daemon's start: every eager tool on record with an agent or an
 /// agent template attached is kept — its supervisor starts its container — a
 /// dependency tool whose template is an eager tool, and a tool on record
-/// whose template's mode is. One with none attached is left as it is:
+/// whose image's mode is. One with none attached is left as it is:
 /// nothing holds it, and the next attach or connect that holds it
 /// keeps it up.
 pub async fn boot(daemon: &Arc<Daemon>) -> Result<(), store::Error> {

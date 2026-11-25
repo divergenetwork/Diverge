@@ -7,14 +7,17 @@
 //! container of the agent's own: on any connected provider, tried in
 //! random order; its mounts the agent's paths served live from the
 //! agent's container; its secrets the agent's own, by the names its
-//! template declares, bound through the agent's binding and taken at
+//! image states, bound through the agent's binding and taken at
 //! the dependency's own registration, held and written back as any
-//! tool container's; its
-//! database scope the one its template names; its requests to the
+//! tool container's; its limits what its image needs and what its
+//! template adds; its
+//! database scope the one its image's `scope` names; its requests to the
 //! daemon judged by the grants its own program declared at its
 //! registration; served to the agent under
-//! its template's id, short. A template declared twice, or one naming
-//! a secret the agent does not bind, is refused. The first that
+//! its template's id, short. A template declared twice, one of an
+//! image that is no dependency tool's, one naming a mount of an image
+//! that is not lazy and of the `instance` scope, or one of an image
+//! needing a secret the agent does not bind, is refused. The first that
 //! cannot be deployed — an eager tool whose start fails included — is the
 //! run's error, and the rest are stopped. A dependency lives for as
 //! long as the agent's container does, and no longer. A tool

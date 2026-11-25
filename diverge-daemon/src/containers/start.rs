@@ -9,13 +9,13 @@ use diverge_sdk::shared::mcp::attestation;
 use diverge_sdk::shared::relay::Relay;
 use diverge_sdk::daemon::agent_log::{self as log, Item};
 use diverge_sdk::daemon::endpoints::standalone_tools::connect::client::{execute as tools_connect, request as connect_request};
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
+use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::provider::endpoints::containers::agents::run::client::{execute as agents_run, request as agents_request};
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
 use tokio::sync::{Mutex, Notify, watch};
 
 use super::answerers::Answerer;
-use super::images::Pulls;
+use super::images::{self, Pulls};
 use super::capable::Needs;
 use super::fuse::Mounts;
 use super::lifecycle::{self, End};
@@ -144,11 +144,15 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
         (template, attached, connected)
     };
     let volumes = agent.provider.as_ref().map(|provider| provider.volume_mounts.as_slice()).unwrap_or(&[]);
+    // What the container needs is the image's own to say: its
+    // document, and what the template adds to it.
+    let document = images::document(daemon, &build::image(&template.template.image)).await?.map_err(StartError::Document)?;
+    let limits = images::limits(&document, template.template.extra_memory, template.template.extra_disk).map_err(StartError::Document)?;
     let needs = Needs {
         volume_modes: volumes.iter().map(|mount| mount.volume_mode).collect(),
         image: Some(build::image(&template.template.image)),
-        memory: template.template.memory,
-        disk: super::capable::overlay(template.template.disk, volumes),
+        memory: limits.0,
+        disk: super::capable::overlay(limits.1, volumes),
     };
     let candidates = provider::candidates(daemon, agent.provider.as_ref().map(|provider| &provider.identity), &needs)
         .await
@@ -158,7 +162,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             .await
             .map_err(StartError::mounts)?,
     );
-    let container = build::container(&agent.template, &template.template, volumes, &mounts).await;
+    let container = build::container(&agent.template, &template.template, limits, volumes, &mounts).await;
     let image = container.image.clone();
     let served = Arc::new(Mutex::new(Served::new()));
     {
@@ -195,7 +199,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
             kept: Mutex::new(None),
-            declared: template.template.secrets.clone(),
+            declared: document.secrets().to_vec(),
             binding: agent.secrets.clone(),
             secrets: Mutex::new(None),
         });
@@ -307,7 +311,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
 /// lazy tool's idle clock ends it `idle_seconds` after the last
 /// use, nothing in flight and no connect open. A tool declares no
 /// dependencies, so nothing is served to it. Whether the tool is a
-/// eager tool is its template's mode, read here for the run. A start that
+/// eager tool is its image's mode, read here for the run. A start that
 /// fails after its run was made is undone as
 /// [`undo_tool`](stop::undo_tool) states; the start runs in a task of
 /// its own, waited for, as an agent's does. A connected tool's run is
@@ -335,11 +339,16 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 .ok_or_else(|| StartError::NoTemplate(template.clone()))?
         };
         let volumes = pinned.as_ref().map(|provider| provider.volume_mounts.as_slice()).unwrap_or(&[]);
+        // What the container needs, and how it is kept, is the
+        // image's own to say: its document, and what the template
+        // adds to it.
+        let document = images::document(daemon, &build::image(&record.template.image)).await?.map_err(StartError::Document)?;
+        let limits = images::limits(&document, record.template.extra_memory, record.template.extra_disk).map_err(StartError::Document)?;
         let needs = Needs {
             volume_modes: volumes.iter().map(|mount| mount.volume_mode).collect(),
             image: Some(build::image(&record.template.image)),
-            memory: record.template.memory,
-            disk: super::capable::overlay(record.template.disk, volumes),
+            memory: limits.0,
+            disk: super::capable::overlay(limits.1, volumes),
         };
         let candidates = provider::candidates(daemon, pinned.as_ref().map(|provider| &provider.identity), &needs)
             .await
@@ -349,7 +358,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 .await
                 .map_err(StartError::mounts)?,
         );
-        let container = build::container(template, &record.template, volumes, &mounts).await;
+        let container = build::container(template, &record.template, limits, volumes, &mounts).await;
         let image = container.image.clone();
         let mut last = String::new();
         let mut opened = None;
@@ -369,7 +378,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
                 kept: Mutex::new(None),
-                declared: record.template.secrets.clone(),
+                declared: document.secrets().to_vec(),
                 binding: tool.secrets.clone(),
                 secrets: Mutex::new(None),
             });
@@ -399,7 +408,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             index: tool.index,
             name: tool.name.clone(),
         };
-        let eager = record.template.r#type.mode == Mode::Eager;
+        let eager = document.mode() == Some(Mode::Eager);
         (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, secrets, permissions)
     };
     let run = Arc::new(ToolRun {

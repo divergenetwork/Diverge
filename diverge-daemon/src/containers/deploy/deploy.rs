@@ -10,8 +10,8 @@ use diverge_sdk::shared::mcp::attestation;
 use diverge_sdk::daemon::creator::{self, Creator};
 use diverge_sdk::daemon::key;
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
-use diverge_sdk::shared::containers::dependencies;
 use diverge_sdk::shared::containers::dependencies::Template;
+use diverge_sdk::shared::containers::info::{self, Mode, Scope};
 use diverge_sdk::shared::Identity;
 use diverge_sdk::shared::error::Error;
 use futures_util::future;
@@ -27,7 +27,6 @@ use crate::containers::eager;
 use crate::containers::{Inflight, Key, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, secrets, stop};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::ToolRef;
-use crate::serve::inner;
 use crate::store::agents::{self, Agent};
 use crate::store::dependency_tools::{self, DependencyTool};
 use crate::store::{self, AgentId, DependencyToolId, hash};
@@ -93,35 +92,29 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         if !ids.insert(template_id.clone()) {
             return Err(error(&template_id, "declared twice"));
         }
-        // A mount under a scope that is not one agent's: see
-        // `Mode::check`.
-        if let Err(reason) = template.mode.check() {
-            return Err(error(&template_id, reason));
-        }
-        if let Err(reason) = inner::declared(&template.secrets) {
-            return Err(error(&template_id, &reason));
-        }
-        if let Err(reason) = secrets::bind(&template.secrets, &row.secrets) {
-            return Err(error(&template_id, &reason));
-        }
         declared.push((template_id, template));
     }
     // Every dependency's image has a document, found as
     // `images::document` finds it and left on record: asked of all of
     // them at once, since no one's answer bears on another's. The
-    // first, in the order declared, that has none refuses the
-    // declaration before anything is recorded or started.
+    // first, in the order declared, that has none, or whose document
+    // will not do, refuses the declaration before anything is
+    // recorded or started.
     let documents = future::join_all(declared.iter().map(|(_, template)| images::document(daemon, &template.image))).await;
-    for ((template_id, _), document) in declared.iter().zip(documents) {
-        match document {
-            Ok(Ok(document)) if document.agent().is_some() => {
-                return Err(error(template_id, "the image's document is an agent's, and a tool is made of a tool's image"));
-            }
-            Ok(Ok(_)) => {}
-            Ok(Err(reason)) => return Err(error(template_id, &reason)),
-            Err(failure) => return Err(error(template_id, &failure.to_string())),
-        }
+    let mut held = Vec::with_capacity(declared.len());
+    for ((template_id, template), document) in declared.into_iter().zip(documents) {
+        let document = match document {
+            Ok(Ok(document)) => document,
+            Ok(Err(reason)) => return Err(error(&template_id, &reason)),
+            Err(failure) => return Err(error(&template_id, &failure.to_string())),
+        };
+        let document = match holds(&template, document, &row) {
+            Ok(document) => document,
+            Err(reason) => return Err(error(&template_id, &reason)),
+        };
+        held.push((template_id, template, document));
     }
+    let declared = held;
     let (tools, left) = record(daemon, agent, agent_key, &creator, &declared)
         .await
         .map_err(|reason| error("", &reason))?;
@@ -178,6 +171,45 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
     daemon.live.changed(Kind::DependencyTools);
     daemon.live.changed(Kind::StandaloneTools);
     Ok(())
+}
+
+/// Whether a declaration is one the daemon deploys, by its image's
+/// document: the image's own, a dependency tool's, where it is. The
+/// rules, in order:
+///
+/// 1. **The image is a dependency tool's.** An agent's image, or a
+///    standalone tool's, is no dependency: a standalone tool is made
+///    by hand from a tool template, and by nothing else.
+/// 2. **A mount is a lazy tool's of one agent.** A declaration that
+///    names a mount of the agent's files or directories is of an image
+///    whose `mode` is `lazy` and whose `scope` is `instance`: of any
+///    other there is no one agent whose files they are, or no run of
+///    its that the tool's run is.
+/// 3. **Every secret the image needs is one the agent binds**: its
+///    value is taken through the agent's own binding of the name.
+/// 4. **What the image needs and what the declaration adds is a
+///    limit**: neither sum is past what one can say.
+///
+/// The reason it is not, in a sentence.
+fn holds(template: &Template, document: info::Document, agent: &Agent) -> Result<info::DependencyTool, String> {
+    // Rule 1.
+    let document = match document {
+        info::Document::DependencyTool(document) => document,
+        info::Document::Agent(_) => return Err("the image's document is an agent's, and a dependency is a dependency tool's image".to_string()),
+        info::Document::StandaloneTool(_) => {
+            return Err("the image's document is a standalone tool's, which is made from a tool template and is no agent's dependency".to_string());
+        }
+    };
+    // Rule 2.
+    if template.mounts() && !(document.mode == Mode::Lazy && document.scope == Scope::Instance) {
+        return Err("a tool mounts the agent's files only where its image's mode is `lazy` and its scope is `instance`".to_string());
+    }
+    // Rule 3.
+    secrets::bind(&document.secrets, &agent.secrets)?;
+    // Rule 4.
+    document.memory.checked_add(template.extra_memory).ok_or("the image's memory and the template's extra_memory are together more than a limit can be")?;
+    document.disk.checked_add(template.extra_disk).ok_or("the image's disk and the template's extra_disk are together more than a limit can be")?;
+    Ok(document)
 }
 
 /// What a dependency's start takes of the agent — its answerer's and
@@ -246,15 +278,16 @@ async fn record(
     agent: AgentId,
     agent_key: &key::Agent,
     creator: &Creator,
-    declared: &[(String, Template)],
+    declared: &[(String, Template, info::DependencyTool)],
 ) -> Result<(Vec<DependencyTool>, Vec<DependencyToolId>), String> {
     let mut tx = daemon.store.begin().await.map_err(|error| error.to_string())?;
     let mut tools = Vec::with_capacity(declared.len());
-    for (template_id, template) in declared {
+    for (template_id, template, document) in declared {
         store::dependencies::create(&mut tx, template_id, template)
             .await
             .map_err(|error| error.to_string())?;
-        let scope = template.mode.scope();
+        // How far the tool is shared is its image's to say.
+        let scope = document.scope;
         let tool = dependency_tools::find_or_create(
             &mut tx,
             &dependency_tools::Declared {
@@ -294,14 +327,11 @@ async fn record(
 async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, String> {
     let daemon = &owner.daemon;
     let agent_key = &owner.key;
-    let dependencies::Mode::Lazy {
-        fuse_file_mounts,
-        fuse_directory_mounts,
-        ..
-    } = &tool.declared.mode
-    else {
+    if !tool.runs_with_agent() {
         return Err("only a lazy tool of the `instance` scope is started with its agent".to_string());
-    };
+    }
+    let (fuse_file_mounts, fuse_directory_mounts) = (&tool.declared.fuse_file_mounts, &tool.declared.fuse_directory_mounts);
+    let limits = tool.limits()?;
     let key = ToolKey::Dependency(tool.id);
     if let Some(stale) = daemon.live.tool_run(key).await {
         stop::stop_dependencies(daemon, vec![stale], End::Expected).await;
@@ -309,17 +339,17 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
     let needs = Needs {
         volume_modes: Vec::new(),
         image: Some(tool.declared.image.clone()),
-        memory: tool.declared.memory,
-        disk: tool.declared.disk,
+        memory: limits.0,
+        disk: limits.1,
     };
     let candidates = provider::candidates(daemon, None, &needs).await.map_err(|error| error.to_string())?;
-    let binding = secrets::bind(&tool.declared.secrets, &owner.agent.secrets)?;
+    let binding = secrets::bind(&tool.document.secrets, &owner.agent.secrets)?;
     let mounts = Arc::new(
         Mounts::build_dependency(daemon, &owner.provider, &owner.container, fuse_file_mounts, fuse_directory_mounts)
             .await
             .map_err(|error| error.to_string())?,
     );
-    let container = build::dependency(&tool.template, &tool.declared, &mounts).await;
+    let container = build::dependency(&tool.template, &tool.declared, limits, &mounts).await;
     let image = container.image.clone();
     let attestation = attestation::Tool::Dependency {
         image: image.clone(),
@@ -348,7 +378,7 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             inflight: Arc::clone(&owner.inflight),
             files: Arc::clone(&owner.files),
             kept: Mutex::new(None),
-            declared: tool.declared.secrets.clone(),
+            declared: tool.document.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
         });

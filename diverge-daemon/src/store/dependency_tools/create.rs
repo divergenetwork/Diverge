@@ -1,7 +1,7 @@
 //! Making a dependency tool, or finding the one its scope key names.
 
 use diverge_sdk::daemon::creator::Creator;
-use diverge_sdk::shared::containers::dependencies::Scope;
+use diverge_sdk::shared::containers::info::Scope;
 use sqlx::PgConnection;
 use sqlx::types::Json;
 

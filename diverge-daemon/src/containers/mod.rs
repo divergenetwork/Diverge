@@ -29,7 +29,7 @@
 //! dependency tools under their owners and deploys them then and there
 //! — a lazy tool of the agent's own for the agent's run, a
 //! eager tool kept by [`eager tools`] for as long as any agent is attached
-//! to it and stopped after, as a tool on record whose template's mode
+//! to it and stopped after, as a tool on record whose image's mode
 //! is an eager tool is kept while any agent is attached or any connect
 //! is open;
 //! [`fuse`] serves the mounts — another provider's volume bridged, or

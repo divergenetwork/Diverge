@@ -133,3 +133,17 @@ fn asked(read: Result<response::Frame, UnaryError<InfoFrame>>) -> Read {
         Err(error) => Read::Error(reply::failure(&error)),
     }
 }
+
+/// The memory and the disk a container of an image is to have, in
+/// bytes, in that order: what the image's document says it needs and
+/// what its template adds, summed. The rules:
+///
+/// 1. The memory is the document's `memory` and `extra_memory`.
+/// 2. The disk is the document's `disk` and `extra_disk`.
+/// 3. A sum past what a limit can say, 2 to the power 64 less 1, is
+///    no limit: the reason, in a sentence.
+pub fn limits(document: &Document, extra_memory: u64, extra_disk: u64) -> Result<(u64, u64), String> {
+    let memory = document.memory().checked_add(extra_memory).ok_or("the image's memory and the template's extra_memory are together more than a limit can be")?;
+    let disk = document.disk().checked_add(extra_disk).ok_or("the image's disk and the template's extra_disk are together more than a limit can be")?;
+    Ok((memory, disk))
+}

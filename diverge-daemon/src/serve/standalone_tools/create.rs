@@ -63,14 +63,20 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         containers::image(&template.template.image)
     };
     // Rules 2 and 3.
-    match images::document(daemon, &image).await? {
+    let document = match images::document(daemon, &image).await? {
         Err(why) => return Ok(Frame::Error(reply::image(&why))),
         Ok(document) => {
             if document.agent().is_some() {
-                return Ok(Frame::Error(reply::image("the image's document is an agent's, and a tool is made of a tool's image")));
+                return Ok(Frame::Error(reply::image("the image's document is an agent's, and a tool is made of a standalone tool's image")));
             }
+            if document.dependency_tool().is_some() {
+                return Ok(Frame::Error(reply::image(
+                    "the image's document is a dependency tool's, which an agent's program declares for itself and no tool template makes",
+                )));
+            }
+            document
         }
-    }
+    };
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {
         return Ok(Frame::Forbidden);
@@ -82,7 +88,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     let Some(template) = tools_templates::by_id(&mut tx, &inner.template, false).await? else {
         return Ok(Frame::Error(reply::failure(&"the tool template named is none the daemon has")));
     };
-    match inner::secrets(&mut tx, &standing, &template.template.secrets, &inner.secrets).await? {
+    // What the image needs and what the template adds is a limit.
+    if let Err(why) = images::limits(&document, template.template.extra_memory, template.template.extra_disk) {
+        return Ok(Frame::Error(reply::image(&why)));
+    }
+    match inner::secrets(&mut tx, &standing, document.secrets(), &inner.secrets).await? {
         Secrets::Ok => {}
         Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
         Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),

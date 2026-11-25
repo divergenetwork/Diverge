@@ -7,7 +7,7 @@ use std::time::Instant;
 use diverge_sdk::shared::mcp::attestation;
 use diverge_sdk::daemon::creator::{self, Creator};
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
-use diverge_sdk::shared::containers::dependencies::Scope;
+use diverge_sdk::shared::containers::info::Scope;
 use indexmap::IndexMap;
 use tokio::sync::{Mutex, watch};
 
@@ -78,7 +78,7 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             Some(id) => agents::by_id(&mut conn, id, false).await?,
             None => None,
         };
-        let source = if tool.declared.secrets.is_empty() {
+        let source = if tool.document.secrets.is_empty() {
             None
         } else {
             match tool.scope {
@@ -95,22 +95,23 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
         return Err(StartError::Run("the tool's agent is gone".to_string()));
     };
     let binding = match source {
-        Some(source) => secrets::bind(&tool.declared.secrets, &source.secrets).map_err(StartError::Unbound)?,
-        None if tool.declared.secrets.is_empty() => IndexMap::new(),
+        Some(source) => secrets::bind(&tool.document.secrets, &source.secrets).map_err(StartError::Unbound)?,
+        None if tool.document.secrets.is_empty() => IndexMap::new(),
         None => return Err(StartError::Run("no agent attached to the tool spawns it".to_string())),
     };
     let sender = Creator::Tool(creator::Tool::Dependency {
         template: tool.template.clone(),
         owner: owner.clone(),
     });
+    let limits = tool.limits().map_err(StartError::Document)?;
     let needs = Needs {
         image: Some(tool.declared.image.clone()),
-        memory: tool.declared.memory,
-        disk: tool.declared.disk,
+        memory: limits.0,
+        disk: limits.1,
         ..Needs::default()
     };
     let candidates = provider::candidates(daemon, None, &needs).await.map_err(StartError::Provider)?;
-    let container = build::alone(&tool.template, &tool.declared);
+    let container = build::alone(&tool.template, &tool.declared, limits);
     let attestation = attestation::Tool::Dependency {
         image: container.image.clone(),
         template: tool.template.clone(),
@@ -135,7 +136,7 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             inflight: Arc::new(Inflight::new()),
             files: Arc::new(Inflight::new()),
             kept: Mutex::new(None),
-            declared: tool.declared.secrets.clone(),
+            declared: tool.document.secrets.clone(),
             binding: binding.clone(),
             secrets: Mutex::new(None),
         });

@@ -32,9 +32,14 @@ pub enum StartError {
     /// A secret could not be taken: the secret and the key — a key
     /// with no value, or none free — and never a value.
     Secrets(String),
-    /// A secret a dependency template declares is not one the agent
+    /// A secret a dependency tool's image states is not one the agent
     /// that spawns it binds: the secret.
     Unbound(String),
+    /// The image's document, which says what a container of it needs,
+    /// could not be gone by: there is none to read, or what it needs
+    /// and what its template adds is more than a limit can say. Why,
+    /// in a sentence.
+    Document(String),
     /// A provider's capabilities exclude what the run or a mount
     /// needs, and it was not asked: what it lacks, in a sentence.
     Unsupported(String),
@@ -58,6 +63,7 @@ impl fmt::Display for StartError {
             StartError::Mounts(error) => write!(f, "a mount could not be served: {error}"),
             StartError::Secrets(what) => write!(f, "a secret could not be taken: {what}"),
             StartError::Unbound(what) => write!(f, "a secret is not bound: {what}"),
+            StartError::Document(what) => write!(f, "{what}"),
             StartError::Unsupported(what) => write!(f, "a provider's capabilities exclude it: {what}"),
             StartError::Run(error) => write!(f, "the provider did not run the container: {error}"),
             StartError::Logs(error) => write!(f, "the log: {error}"),

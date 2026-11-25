@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::standalone_tools::list::client::request::Filter;
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
+use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::daemon::key;
 
 use crate::store::tools::Tool;
@@ -24,7 +24,8 @@ pub struct Facts<'a> {
     pub index: u64,
     /// Who made it.
     pub creator: &'a Creator,
-    /// Its template's mode; none for a template that is gone.
+    /// Its image's mode; none where its template, or its image's
+    /// document, is gone.
     pub mode: Option<Mode>,
     /// Whether it is active now: a call or a read in flight.
     pub active: bool,
@@ -42,7 +43,7 @@ pub struct Facts<'a> {
 
 impl<'a> Facts<'a> {
     /// A record, given whether it is active now, the agents and the
-    /// agent templates it is attached to, and its template's mode
+    /// agent templates it is attached to, and its image's mode
     /// when it has one.
     pub fn record(tool: &'a Tool, active: bool, deployed: bool, agents: &'a [key::Agent], templates: &'a [String], mode: Option<Mode>) -> Facts<'a> {
         Facts {

@@ -6,7 +6,6 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
-use crate::serve::inner;
 use crate::serve::reply;
 use crate::store::{self, agents_templates};
 use crate::store::hash;
@@ -33,9 +32,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
     };
     if !judge::agents_templates::create(&standing) {
         return Ok(Frame::Forbidden);
-    }
-    if let Err(what) = inner::declared(&frame.template.secrets) {
-        return Ok(Frame::Error(reply::secrets(&what)));
     }
     let id = hash::template_id(&frame.template.hashed()).map_err(store::Error::Json)?;
     let new = agents_templates::New {

@@ -20,7 +20,7 @@ pub async fn resolve(conn: &mut PgConnection, reference: &reference::Tool, lock:
 
 /// Whether the standing may do `action` to the record: whether it is
 /// active now, what it is attached to — agents and agent templates —
-/// and its template's mode, loaded here.
+/// and its image's mode, loaded here.
 pub async fn reaches(conn: &mut PgConnection, daemon: &Daemon, standing: &Standing, action: Over, tool: &Tool) -> Result<bool, store::Error> {
     let agents = agents_of(conn, tool.id).await?;
     let templates = templates_of(conn, tool.id).await?;

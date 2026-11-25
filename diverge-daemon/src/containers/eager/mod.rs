@@ -5,7 +5,7 @@
 //! a dependency tool whose template is an eager tool — one row under its
 //! scope key, the agent, the agent's template, or the template alone,
 //! made by the first registration that declares it there — or a tool
-//! on record whose template's `mode` is an eager tool. What holds its
+//! on record whose image's `mode` is an eager tool. What holds its
 //! container up is not any run: for either, the agents ATTACHED to it
 //! — a dependency tool's by the registrations that declare its
 //! template, a tool on record's by `attach` — and for a tool on

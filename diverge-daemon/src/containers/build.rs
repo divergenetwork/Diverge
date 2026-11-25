@@ -12,20 +12,22 @@ use diverge_sdk::shared::containers::request;
 
 use super::fuse::Mounts;
 
-/// The container to run: the template's image, limits and arguments,
-/// with the template's id, which the container is told at its
-/// registration; the pinned provider's volumes as the record names
+/// The container to run: the template's image and arguments, the
+/// `limits` — its memory and its disk, as
+/// [`images::limits`](super::images::limits) sums what the image
+/// needs and what the template adds — with the template's id, which
+/// the container is told at its registration; the pinned provider's volumes as the record names
 /// them — a mount states which mode it means the volume to have,
 /// which the provider holds the volume to, refusing the run for one
 /// in another mode; and every FUSE mount under the id the daemon
 /// serves it by.
-pub async fn container<T>(template_id: &str, template: &Template<T>, volumes: &[VolumeMount], mounts: &Mounts) -> request::Container {
+pub async fn container<T>(template_id: &str, template: &Template<T>, (memory, disk): (u64, u64), volumes: &[VolumeMount], mounts: &Mounts) -> request::Container {
     let (fuse_file_mounts, fuse_directory_mounts) = mounts.lists().await;
     request::Container {
         image: image(&template.image),
         template: template_id.to_string(),
-        memory: template.memory,
-        disk: template.disk,
+        memory,
+        disk,
         volume_mounts: volumes
             .iter()
             .map(|mount| request::VolumeMount {
@@ -42,17 +44,17 @@ pub async fn container<T>(template_id: &str, template: &Template<T>, volumes: &[
     }
 }
 
-/// The container a lazy dependency of one agent is: its template's image,
-/// limits and arguments, with the template's id, no volume — a
+/// The container a lazy dependency of one agent is: its template's image
+/// and arguments, the `limits`, with the template's id, no volume — a
 /// dependency names none — and every mount of the agent's paths under
 /// the id the daemon serves it by.
-pub async fn dependency(template_id: &str, template: &dependencies::Template, mounts: &Mounts) -> request::Container {
+pub async fn dependency(template_id: &str, template: &dependencies::Template, (memory, disk): (u64, u64), mounts: &Mounts) -> request::Container {
     let (fuse_file_mounts, fuse_directory_mounts) = mounts.lists().await;
     request::Container {
         image: template.image.clone(),
         template: template_id.to_string(),
-        memory: template.memory,
-        disk: template.disk,
+        memory,
+        disk,
         volume_mounts: Vec::new(),
         fuse_file_mounts,
         fuse_directory_mounts,
@@ -62,15 +64,15 @@ pub async fn dependency(template_id: &str, template: &dependencies::Template, mo
 
 /// The container a dependency tool that stands alone of any agent's
 /// run is — an eager tool, or a lazy one shared by many agents: its
-/// template's image, limits and arguments, with the template's id,
+/// template's image and arguments, the `limits`, with the template's id,
 /// and no mount of any kind — it is not one agent's, and names no
 /// volume.
-pub fn alone(template_id: &str, template: &dependencies::Template) -> request::Container {
+pub fn alone(template_id: &str, template: &dependencies::Template, (memory, disk): (u64, u64)) -> request::Container {
     request::Container {
         image: template.image.clone(),
         template: template_id.to_string(),
-        memory: template.memory,
-        disk: template.disk,
+        memory,
+        disk,
         volume_mounts: Vec::new(),
         fuse_file_mounts: Vec::new(),
         fuse_directory_mounts: Vec::new(),

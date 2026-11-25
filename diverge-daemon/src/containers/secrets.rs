@@ -2,7 +2,7 @@
 //! bound to vault keys by the record, and the slots held while the
 //! run is active.
 //!
-//! A template declares names; a record binds each to a vault key; the
+//! An image states names, in its document; a record binds each to a vault key; the
 //! program's registration declares which names it takes and the MODE
 //! of each — `fixed`, a value read and never held, or `rotating`, one
 //! slot of the key held for the run's active period and written back
@@ -59,7 +59,7 @@ pub fn bind(declared: &[String], binding: &IndexMap<String, String>) -> Result<I
 
 /// Whether the program's declaration takes only names the template
 /// declares: the first that is not, in a sentence. A program may
-/// take fewer than the template declares, never more.
+/// take fewer than the image states, never more.
 pub fn declare(template: &[String], declaration: &Declaration) -> Result<(), String> {
     for name in declaration.keys() {
         if !template.contains(name) {

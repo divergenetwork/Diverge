@@ -5,7 +5,7 @@ use std::sync::Arc;
 use diverge_sdk::daemon::endpoints::standalone_tools::attach_agent_template::client::request;
 use diverge_sdk::daemon::endpoints::standalone_tools::attach_agent_template::server::response::Frame;
 use diverge_sdk::daemon::grant::agents_templates::Over as TemplatesOver;
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
+use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::daemon::grant::standalone_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
@@ -35,7 +35,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// attached already left in its place: every agent made from the
 /// template has it from now on — a running one's proxy serves it from
 /// this instant and tells the agent its tool list changed. A tool
-/// whose template's mode is an eager tool is kept from the attach on.
+/// whose image's mode is an eager tool is kept from the attach on.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {

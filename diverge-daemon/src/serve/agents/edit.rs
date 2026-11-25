@@ -132,7 +132,10 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         let Some(template) = agents_templates::by_id(&mut tx, &agent.template, false).await? else {
             return Ok(Frame::Error(reply::failure(&"the agent's template is not on record")));
         };
-        match inner::secrets(&mut tx, &standing, &template.template.secrets, &result.secrets).await? {
+        let Some(document) = store::image_info::by_digest(&mut tx, &template.template.image.digest).await? else {
+            return Ok(Frame::Error(reply::failure(&"the document of the agent's image is not on record")));
+        };
+        match inner::secrets(&mut tx, &standing, document.secrets(), &result.secrets).await? {
             Secrets::Ok => {}
             Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
             Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),

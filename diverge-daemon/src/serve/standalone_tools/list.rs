@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::future::Future;
 
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
 use diverge_sdk::daemon::endpoints::standalone_tools::list::client::request::{self, Filter};
 use diverge_sdk::daemon::endpoints::standalone_tools::list::server::response::{Frame, Tool};
 use diverge_sdk::daemon::grant::standalone_tools::Over;
@@ -16,7 +15,7 @@ use crate::judge::filter::standalone_tools::Facts;
 use crate::judge::{self, Standing, Who, filter};
 use crate::serve::stream::{self, Source};
 use crate::serve::reply;
-use crate::store::{self, ToolId, agents, tools, tools_templates};
+use crate::store::{self, ToolId, agents, tools};
 
 /// Send the list and its changes, then finish the scope.
 pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon: &Daemon) {
@@ -73,11 +72,7 @@ impl Source for Listed<'_> {
         async move {
             let mut conn = self.daemon.store.acquire().await?;
             let all = tools::all(&mut conn).await?;
-            let modes: HashMap<String, Mode> = tools_templates::all(&mut conn)
-                .await?
-                .into_iter()
-                .map(|record| (record.id, record.template.r#type.mode))
-                .collect();
+            let modes = tools::modes(&mut conn).await?;
             let keys: HashMap<_, _> = agents::all(&mut conn).await?.into_iter().map(|agent| (agent.id, agent.key())).collect();
             let mut attached: HashMap<ToolId, Vec<key::Agent>> = HashMap::new();
             for attachment in tools::attachments::all(&mut conn).await? {

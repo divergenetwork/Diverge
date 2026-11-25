@@ -5,7 +5,7 @@ use std::sync::Arc;
 use diverge_sdk::daemon::endpoints::standalone_tools::attach_agent_instance::client::request;
 use diverge_sdk::daemon::endpoints::standalone_tools::attach_agent_instance::server::response::Frame;
 use diverge_sdk::daemon::grant::agents::Over as AgentsOver;
-use diverge_sdk::daemon::endpoints::standalone_tools::templates::Mode;
+use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::daemon::grant::standalone_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
@@ -34,7 +34,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// every tool attached before it — on an active agent as well as an
 /// idle one, whose proxy serves the tool from now on and tells the
 /// agent its tool list changed — and one attached already left in
-/// its place. A tool whose template's mode is an eager tool is kept from
+/// its place. A tool whose image's mode is an eager tool is kept from
 /// the attach on: its supervisor starts its container, and holds it
 /// while any agent or template is attached or any connect is open.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
