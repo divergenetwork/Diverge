@@ -45,13 +45,15 @@ the run goes on, and carries the first values of the secrets.
   server sends the id only after `Fed`.
 - **Verbatim.** The server relays the list and the declaration as the
   proxy sent them and the values as the client sent them, and reads
-  none of them: not the mode, not the scope, not the mounts, not the
-  secrets' names, not their modes, not their values.
-- **Two modes, three scopes.** A template's `mode` is `lazy` or
-  `eager`, and its `scope` is `instance`, `template` or `global`. A
-  tool is made once under the scope key its `scope` names — the
+  none of them: not the mounts, not the secrets' names, not their
+  modes, not their values. The server reads no image's document for
+  a template.
+- **Two modes, three scopes.** The [document](/shared/document/) of a
+  template's image states a `mode`, `lazy` or `eager`, and a `scope`,
+  `instance`, `template` or `global`. A template states neither. A
+  tool is made once under the scope key that `scope` names — the
   agent, the agent's template, or the template alone — and its
-  database scope is shared as far as its scope says. An agent is
+  database scope is shared as far as that scope says. An agent is
   attached to a tool by a registration that declares the template
   and detached by one that no longer does.
 - **A lazy tool.** A lazy tool whose `scope` is `instance` is
@@ -70,12 +72,16 @@ the run goes on, and carries the first values of the secrets.
   mount.
 - **What the client does.** The client runs each dependency as a
   [containers::tools::run](/endpoints/containers-tools-run/) from
-  the template's `image`, `memory`, `disk` and `arguments`, with the
-  template's id as the run's `template`; answers the tool's own
+  the template's `image` and `arguments`, with a `memory` that is the
+  `memory` of the image's document and the template's `extra_memory`,
+  summed, a `disk` that is the `disk` of the image's document and the
+  template's `extra_disk`, summed, and the template's id as the run's
+  `template`; answers the tool's own
   registration with values for the names the tool's program
-  declares, each resolved through the vault key the agent the tool is
-  deployed for binds the same name to; serves, for a lazy tool whose
-  `scope` is `instance`,
+  declares, each a name the template's `secrets` state, each
+  resolved through the vault key the agent the tool is deployed for
+  binds the same name to; serves, for a lazy tool whose `scope` is
+  `instance`,
   the agent container's paths the template's mounts name into the
   tool container live, as [containers::fuse_serve](/endpoints/containers-fuse-serve/)
   serves them and a FUSE mount of the tools run mounts them; gives

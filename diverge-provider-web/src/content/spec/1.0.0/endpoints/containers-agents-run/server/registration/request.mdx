@@ -17,21 +17,38 @@ draft: false
   answered while the channel is open.
 - **`dependencies`.** An array of dependency tool templates, in the
   order the program declared them; absent when empty. Each is an
-  object of five members, the members of its mode, and two that may
-  be absent: `image`, an object of `digest` and `references` as the
+  object of exactly five members, and two further that may be
+  absent: `image`, an object of `digest` and `references` as the
   [request](/endpoints/containers-tools-run/request/) of a tools run
-  names one; `memory` and `disk`, limits in bytes as that request
-  states them; `arguments`, any JSON value, the `arguments` of that
-  request; `secrets`, an array of strings, the names of the secrets
-  the tool's image needs, each a name the agent's template declares,
-  whose values the client supplies when it answers the tool's own
-  registration — absent when empty; `mode`, the string `lazy` or
-  `eager`, which mode the dependency is in, with that mode's own
-  members flat beside it; `scope`, the string `instance`, `template`
-  or `global`, which both modes carry. A template carries no permissions: the
-  tool's own program declares them at the tool's own registration.
-  The volumes of a tools run are not here: the client chooses them.
-  The server relays every member and reads none.
+  names one; `extra_memory` and `extra_disk`, each a whole number of
+  bytes; `arguments`, any JSON value, the `arguments` of that
+  request; `secrets`, an array of zero or more strings, the names of
+  the secrets the tool needs, whose values the client supplies when
+  it answers the tool's own registration; and `fuse_file_mounts` and
+  `fuse_directory_mounts`, arrays of mounts, each absent when empty.
+  A template carries no permissions: the tool's own program declares
+  them at the tool's own registration. The volumes of a tools run are
+  not here: the client chooses them. The server relays every member
+  and reads none.
+- **The image of a template.** The image a template names is a
+  dependency tool's: the `type` of its
+  [document](/shared/document/) is `dependency_tool`. The document
+  states the tool's `mode`, its `scope`, its `memory`, its `disk`
+  and every secret its program takes. A template states none of
+  those. A template whose image's document is an agent's or a
+  standalone tool's is the registration's error, in the client's
+  words.
+- **`extra_memory`, `extra_disk`.** What the tool container is given
+  beyond what its image's document states. The `memory` of the tools
+  run is the document's `memory` and `extra_memory`, summed. The
+  `disk` of the tools run is the document's `disk` and `extra_disk`,
+  summed. A sum over `18446744073709551615` is the registration's
+  error, in the client's words.
+- **`secrets` of a template.** Every name is a `name` of the
+  `secrets` of the image's document, and a name the agent's own
+  template declares. No name is empty, and no two are the same. A
+  template that states otherwise is the registration's error, in the
+  client's words.
 - **`secrets`.** A JSON object whose every member is a secret's name,
   as the container's template declares it, to the mode the program
   takes it in, the string `fixed` or `rotating`, in the order the
@@ -47,29 +64,24 @@ draft: false
   the proxy sent it and reads none of it.
 - **`permissions`.** Absent. An agent container declares no
   permissions, and the server carries none on an agents-run scope.
-- **`scope`.** The string `instance`, `template` or `global`: how far
-  the tool is shared, and its database scope with it — one tool and
-  one scope per agent that declares it, one per agent template whose
-  agents declare it, or one for every agent that declares it, from
-  whatever template. A template of either mode carries exactly one
-  `scope`, and a template with none does not parse.
-- **A lazy tool's members.** `scope`, and `fuse_file_mounts` and
-  `fuse_directory_mounts`, arrays of mounts, each an object of
-  `agent_path` and `tool_path`, both arrays of path components, a
-  file or a directory of the agent container the client serves live
-  at a path of the tool container, each absent when empty. A lazy
-  template names a mount only where its `scope` is `instance`. A
-  lazy template whose `scope` is `template` or `global` and which
-  names one or more mounts does not parse.
-- **An eager tool's members.** `scope` alone. An eager template
-  names no mount.
+- **The mounts.** Each mount of `fuse_file_mounts` and of
+  `fuse_directory_mounts` is an object of `agent_path` and
+  `tool_path`, both arrays of path components: a file or a directory
+  of the agent container the client serves live at a path of the
+  tool container. A template names a mount only where its image's
+  document states the `mode` `lazy` and the `scope` `instance`. A
+  template that names one or more mounts and whose image's document
+  states any other `mode` or any other `scope` is the registration's
+  error, in the client's words. The payload of such a template
+  decodes: the rule is the client's to hold, since the server reads
+  no document for it.
 - **The id of a template.** A template has no name. The client names
   a dependency by the template's id: the lowercase hexadecimal
   SHA-256 of the template as compact JSON with absent members
   omitted, the image's `references` absent too, the keys of every
   object sorted bytewise at every depth, the `arguments` and every
-  object inside them included, and the `secrets` included with their
-  names sorted bytewise. One image under different names is one
+  object inside them included, the mounts included, and the
+  `secrets` included with their names sorted bytewise. One image under different names is one
   template. Two templates with one id are one dependency, and an
   array that holds one id twice is refused by the client as its
   error. The container calls the tool's tools by whatever names the
@@ -96,16 +108,6 @@ and by `diverge-sdk-rs/src/shared/containers/dependencies/template.rs`:
 and by `diverge-sdk-rs/src/shared/containers/dependencies/mount.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/dependencies/mount.rs
-```
-
-and by `diverge-sdk-rs/src/shared/containers/dependencies/mode.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/dependencies/mode.rs
-```
-
-and by `diverge-sdk-rs/src/shared/containers/dependencies/scope.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/dependencies/scope.rs
 ```
 
 and by `diverge-sdk-rs/src/shared/containers/secrets/declaration.rs`:
