@@ -516,7 +516,7 @@ The parse rules, in the order they are checked:
 3. The frontmatter is **one JSON object**.
 4. It has **`type`, required: `"agent"`, `"standalone_tool"` or `"dependency_tool"`**. Missing, or
    anything else (`"tool"` among them), is an error. The type decides which members are allowed.
-5. All three types: `name` (string, required), `description` (string, required: one line, 1 to 132
+5. All three types: `name` (string, required: see rule 6), `description` (string, required: one line, 1 to 132
    characters, no line break or other control character, no space at either end), `schema` (required),
    `memory` and `disk` (each required: a whole number of bytes), `secrets` (optional, none when absent:
    an array of objects, each exactly `{"name": "…", "description": "…"}`, both required),
@@ -527,14 +527,20 @@ The parse rules, in the order they are checked:
    or `structured_decisions` at all, not even as `false`.** An agent's must not have `mode` or `scope`,
    and a standalone tool's must not have `scope`. A missing member, **any member that is not
    one of its type's**, or a wrong type is an error.
-6. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
+6. **`name` is what a repository may be named**: 1 to 128 bytes, lowercase letters `a` to `z` and
+   digits `0` to `9` in runs joined by a separator, where a separator is `.`, `_`, `__` or one or more
+   `-`. It starts and ends with a letter or a digit. No capital, no space, nothing else: `my-agent`,
+   `my_agent.v2` and `tool2` are names; `My-Agent`, `my agent`, `-agent`, `agent-`, `a..b` and `a___b`
+   are not. It is the registry's rule for a repository's name, so an image's name can always be its
+   repository's.
+7. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
    whole template.
-7. Every secret's `name` is one line of plain text, 1 to 75 characters, with no space at either end,
+8. Every secret's `name` is one line of plain text, 1 to 75 characters, with no space at either end,
    and no two secrets have the same name. A secret's `description` follows the rule of the image's own
    `description`: one line, 1 to 132 characters, no space at either end.
-8. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
+9. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
    `false`, both absent, or one `false` and one absent, is an error.
-9. The body is everything after the closing fence, verbatim.
+10. The body is everything after the closing fence, verbatim.
 
 Written out, the members are in this order: `type`, `name`, `description`, `schema`, `memory`, `disk`,
 `secrets`, `mode`, `scope`, `frontend`, `chat`, `structured_decisions`.
