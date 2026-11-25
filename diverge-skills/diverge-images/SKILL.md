@@ -527,12 +527,13 @@ The parse rules, in the order they are checked:
    or `structured_decisions` at all, not even as `false`.** An agent's must not have `mode` or `scope`,
    and a standalone tool's must not have `scope`. A missing member, **any member that is not
    one of its type's**, or a wrong type is an error.
-6. **`name` is what a repository may be named**: 1 to 128 bytes, lowercase letters `a` to `z` and
-   digits `0` to `9` in runs joined by a separator, where a separator is `.`, `_`, `__` or one or more
-   `-`. It starts and ends with a letter or a digit. No capital, no space, nothing else: `my-agent`,
-   `my_agent.v2` and `tool2` are names; `My-Agent`, `my agent`, `-agent`, `agent-`, `a..b` and `a___b`
-   are not. It is the registry's rule for a repository's name, so an image's name can always be its
-   repository's.
+6. **`name` is what a repository may be named, but that it may have capitals**: 1 to 128 bytes,
+   letters `a` to `z` and `A` to `Z` and digits `0` to `9` in runs joined by a separator, where a
+   separator is `.`, `_`, `__` or one or more `-`. It starts and ends with a letter or a digit. No
+   space, nothing else: `my-agent`, `My-Agent`, `my_agent.v2` and `tool2` are names; `my agent`,
+   `-agent`, `agent-`, `a..b` and `a___b` are not. Case is kept: `Agent` and `agent` are two names. A
+   registry's repository name follows the same rule with no capital, so an image's name in lowercase
+   can always be its repository's.
 7. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
    whole template.
 8. Every secret's `name` is one line of plain text, 1 to 75 characters, with no space at either end,
