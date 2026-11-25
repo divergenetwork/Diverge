@@ -1,7 +1,7 @@
 # The agent-loop images: python, lone, openrouter, codex, cc
 
 Reference for five of the six agent-loop images (hermes is in [hermes.md](hermes.md)). For each:
-what it is, its `arguments`, the secrets its program declares and their modes, its dependencies, and
+what it is, its `arguments`, the secrets its image states and the mode its program takes each in, its dependencies, and
 a minimal working **agent template body** for `diverge run agents templates create`.
 
 Conventions used below:
@@ -10,11 +10,15 @@ Conventions used below:
   line (`{"built":{"digest":…}}`).
 - Every body carries a `references` entry naming a registry the provider lists (`docker.io` by
   default), which the daemon requires even for a locally built image.
-- `memory` and `disk` are **bytes** and are required on every template. The values shown are starting
-  points, not measured minimums.
-- A template's `secrets` is a list of **names**. The agent made from it binds each name to a vault
+- `extra_memory` and `extra_disk` are **bytes** and are required on every template: what the container
+  gets beyond the `memory` and `disk` its image's `DIVERGE.md` states. The container's limit is the sum.
+  Each of these five images states `"memory":536870912,"disk":1073741824`, so `0` gives a container
+  512 MiB of memory and 1 GiB of disk. The extras shown are starting points, not measured minimums.
+- A template's `secrets` is a list of **names**, required, `[]` for none: all of the secrets the image's
+  `DIVERGE.md` states, or any subset of them, and none it does not state. The agent made from it binds
+  each name to a vault
   key: `diverge run agents create '{"template":"<id>","name":"x","secrets":{"<NAME>":"<vault key>"}}'`.
-  The create must bind every name the template declares and no other.
+  The create must bind every name the template lists and no other.
 - The authoritative schema of an image's arguments is its `DIVERGE.md` frontmatter:
   `diverge run images read --info --jq '.info? // empty | .schema' '{"image":{…}}'`.
 
@@ -29,42 +33,41 @@ One entry:
 ```json
 {
   "image": { "digest": "sha256:…", "references": [{ "registry": "docker.io", "name": "diverge-local/memory" }] },
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "secrets": [],
-  "mode": "lazy",
-  "scope": "instance"
+  "secrets": []
 }
 ```
 
 | member | meaning |
 |---|---|
-| `image` | the tool's image, same shape as everywhere |
-| `memory`, `disk` | the tool container's limits, in bytes |
+| `image` | the tool's image, same shape as everywhere. It must be a `dependency_tool` image: an agent image or a `standalone_tool` image here fails the registration |
+| `extra_memory`, `extra_disk` | required, in bytes: what the tool container gets beyond the `memory` and `disk` its image's `DIVERGE.md` states. The container's limit is the sum; `0` is what the image needs and no more |
 | `arguments` | handed to the tool's program verbatim; what it may be is the tool image's `DIVERGE.md` schema |
-| `secrets` | names the tool image needs (absent when none). Each must also be a name the **agent's template** declares; the value comes through the vault key the agent binds that name to |
-| `mode` | `"lazy"` or `"eager"`, with that mode's own members flat beside it |
-| `scope` | required: `"instance"`, `"template"` or `"global"`. How far the tool, and its database, is shared |
+| `secrets` | required, `[]` for none: names the tool needs, each one the tool image's `DIVERGE.md` states. Each must also be a name the **agent's own record** binds; the value comes through the vault key the agent binds that name to |
+| `fuse_file_mounts`, `fuse_directory_mounts` | optional: the agent's own paths served into the tool (below) |
 
-`"mode":"lazy"` — runs only while it is used. With `"scope":"instance"` it is deployed when the
+An entry states no `mode` and no `scope`. The tool image's own `DIVERGE.md` states both, and no entry
+says another: read them with `diverge run images read --info`.
+
+`"mode":"lazy"` in the tool image's document — runs only while it is used. With `"scope":"instance"` it is deployed when the
 agent's container starts and stopped with the agent's run. With `"scope":"template"` or `"global"`
 it is one container for every agent the scope covers, started by the first use and stopped once
 nothing has used it for the daemon's idle time.
 
-At the `instance` scope alone it may mount the agent's own files, live over FUSE; a lazy tool of
-another scope that names a mount is refused:
+Where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`, and only there, an entry
+may mount the agent's own files, live over FUSE; an entry that names a mount of an image of any other
+mode or scope is refused:
 
 ```json
-"mode": "lazy",
-"scope": "instance",
 "fuse_file_mounts":      [{ "agent_path": ["root", "notes.md"], "tool_path": ["data", "notes.md"] }],
 "fuse_directory_mounts": [{ "agent_path": ["workspace"],        "tool_path": ["workspace"] }]
 ```
 
-`"mode":"eager"` — made once when the first agent that declares it registers, kept
+`"mode":"eager"` in the tool image's document — made once when the first agent that declares it registers, kept
 running while any agent is attached, and retired after the daemon's idle time once none is. It mounts
-nothing of any agent's. `scope` says how far it, and its database, is shared:
+nothing of any agent's. The document's `scope` says how far the tool, and its database, is shared:
 
 | `scope` | one tool per |
 |---|---|
@@ -75,7 +78,7 @@ nothing of any agent's. `scope` says how far it, and its database, is shared:
 Rules:
 
 - A dependency has no name. It is identified by the hash of its entry (image digest without
-  references, limits, arguments, sorted secrets, mode and its members). Declaring the same entry twice
+  references, `extra_memory`, `extra_disk`, arguments, sorted secrets, mounts). Declaring the same entry twice
   in one list is refused. The same eager tool entry under the same scope key is the same eager tool.
 - What a dependency tool may ask of the daemon (its permissions) is **not** in the entry: the tool's
   own program declares it at its registration. Some committed `DIVERGE.md` schemas still show a
@@ -103,7 +106,7 @@ JSON) must be a list of assistant chunks, for example
 `[{"type":"assistant_tool_call","id":"call_…","name":"<tool>","arguments":"<json string>"}]`. A
 script may never emit `user_*`, `usage` or `tool_response` chunks.
 
-Secrets: **none**. The template need declare no name.
+Secrets: **none**. The image states none, so the template's `secrets` is `[]`.
 
 Minimal template body (an echo agent):
 
@@ -111,11 +114,12 @@ Minimal template body (an echo agent):
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/python" }] },
-  "memory": 536870912,
-  "disk": 1073741824,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {
     "python": "last = input[-1] if input else []\nsaid = ' '.join(b.get('text', '') for b in last if isinstance(b, dict) and b.get('type') == 'text') if isinstance(last, list) else ''\n[{'type': 'assistant_text_content', 'text': 'echo: ' + said}]\n"
-  }
+  },
+  "secrets": []
 }
 ```
 
@@ -155,15 +159,17 @@ Minimal template body:
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/lone" }] },
-  "memory": 8589934592,
-  "disk": 1073741824,
-  "arguments": { "bundle": "/models/lfm3-1.7b", "temperature": 0.0, "max_new_tokens": 512 }
+  "extra_memory": 8053063680,
+  "extra_disk": 0,
+  "arguments": { "bundle": "/models/lfm3-1.7b", "temperature": 0.0, "max_new_tokens": 512 },
+  "secrets": []
 }
 ```
 
 The bundle is mounted on the **agent**, not the template:
 `volume_mounts: [{"volume_name":"models","volume_relative_path":["lfm3-1.7b"],"volume_mode":"persistent","container_path":["models","lfm3-1.7b"]}]`.
-`memory` is a starting point; the 1.7B LUT8 stack measures ~3.5 GB on disk.
+The image states `"memory":536870912`; with this `extra_memory` the container's memory limit is the
+sum, 8589934592 bytes (8 GiB). It is a starting point; the 1.7B LUT8 stack measures ~3.5 GB on disk.
 
 ## openrouter (`diverge-agents/openrouter`)
 
@@ -190,7 +196,7 @@ dependencies).
 | `dependencies` | no | see above |
 
 Secrets: **`OPENROUTER_API_KEY`, fixed** — always, whatever the arguments. The value must be a JSON
-string (the bearer token). The template must declare the name; a missing or non-string value fails
+string (the bearer token). It is the one secret the image states. The template must list the name; a missing or non-string value fails
 the run with an error naming the secret.
 
 Minimal template body:
@@ -199,8 +205,8 @@ Minimal template body:
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/openrouter" }] },
-  "memory": 536870912,
-  "disk": 1073741824,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": { "model": "<vendor/model>", "system_prompt": "You are a concise assistant." },
   "secrets": ["OPENROUTER_API_KEY"]
 }
@@ -230,7 +236,9 @@ MCP server is the caller's tools through the proxy.
 | `provider` | no | `{"base_url": "https://…/v1"}`: an endpoint other than OpenAI's, which must speak the Responses API. **Requires `auth.method` = `api_key`**; any other method beside a provider is refused at registration |
 | `dependencies` | no | see above |
 
-Secrets: **exactly one, chosen by `auth.method`**. The template must declare that name.
+Secrets: the image states four, and the program takes **exactly one, chosen by `auth.method`**. The
+template must list that name; it may list the others too, and each name it lists must then be bound on
+the create.
 
 | `auth` | secret name | mode | value |
 |---|---|---|---|
@@ -249,12 +257,15 @@ Minimal template body (API key):
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/codex" }] },
-  "memory": 2147483648,
-  "disk": 4294967296,
+  "extra_memory": 1610612736,
+  "extra_disk": 3221225472,
   "arguments": { "model": "<model>", "auth": { "method": "api_key" } },
   "secrets": ["OPENAI_API_KEY"]
 }
 ```
+
+The limits are the sums with what the image states: 2147483648 bytes of memory (2 GiB) and 4294967296
+bytes of disk (4 GiB).
 
 With a ChatGPT login instead: `"arguments":{"model":"<model>","auth":{"method":"auth_file"}}`,
 `"secrets":["CODEX_AUTH"]`, and the vault value is the `auth.json` content as a JSON object.
@@ -284,8 +295,8 @@ Always on, with no switch: the caller's MCP tools (attached tools and dependenci
 built-ins, `Skill` (skills are directories mounted under `~/.claude/skills`) and `ToolSearch`. Always
 off: anything that waits on a user or outlives the run (plan mode, questions, cron, artifacts).
 
-Secrets: **none**. Claude Code logs in by itself; no argument names a credential, and a name the
-template declares is one the program never asks for. How a login reaches the container is not
+Secrets: **none**. Claude Code logs in by itself; no argument names a credential, and the image
+states no secret, so the template's `secrets` is `[]`. How a login reaches the container is not
 established (see the main file's "Not verified").
 
 Minimal template body:
@@ -294,11 +305,15 @@ Minimal template body:
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/cc" }] },
-  "memory": 4294967296,
-  "disk": 8589934592,
+  "extra_memory": 3758096384,
+  "extra_disk": 7516192768,
   "arguments": {
     "model": "<model>",
     "tools": { "bash": true, "read": true, "write": true, "edit": true, "glob": true, "grep": true }
-  }
+  },
+  "secrets": []
 }
 ```
+
+The limits are the sums with what the image states: 4294967296 bytes of memory (4 GiB) and 8589934592
+bytes of disk (8 GiB).

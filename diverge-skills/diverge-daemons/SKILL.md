@@ -520,9 +520,11 @@ diverge run agents list '{"relay":["'$ID_B'"]}'       # B's agents (or just "lis
 diverge run daemons get '{"id":"'$ID_B'"}' --jq '.found.connected'    # true once the first relay connected
 
 # --- A tool on B, made through the relay (creator there: ronald.daemon-a's account).
+# The image must be a standalone_tool image, here a notebook of your own. The example image "memory" is a
+# dependency_tool image: a tool template of it is refused when the tool is created.
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' \
-  '{"type":"tool","mode":"lazy","image":{"digest":"sha256:<digest>","references":[{"registry":"docker.io","name":"diverge-local/memory"}]},
-    "memory":268435456,"disk":268435456,"arguments":{},"relay":["'$ID_B'"]}' | tr -d '"')"
+  '{"type":"tool","image":{"digest":"sha256:<digest>","references":[{"registry":"docker.io","name":"<repository of the image>"}]},
+    "extra_memory":0,"extra_disk":0,"arguments":{},"secrets":[],"relay":["'$ID_B'"]}' | tr -d '"')"
 diverge run standalone-tools create '{"template":"'$TPL'","name":"notebook","relay":["'$ID_B'"]}'
 
 # --- Hold B's tool on A, attach it to A's agent "echo", use it.

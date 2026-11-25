@@ -13,7 +13,7 @@ tables. Bare answers are JSON strings; answers with a payload are one-member obj
 
 | leaf | body | answers |
 |---|---|---|
-| `create` | `type:"tool"`, optional `mode`, `image`, `memory`, `disk`, `arguments`, optional `secrets`, `description` | `{"created":"<id>"}`, `{"exists":"<id>"}` |
+| `create` | `type:"tool"`, `image`, `extra_memory`, `extra_disk`, `arguments`, `secrets` (names; `[]` for none) | `{"created":"<id>"}`, `{"exists":"<id>"}` |
 | `get` | `{"id"}` | `{"found":{id, created, creator, tags, template}}`, `"not_found"` |
 | `list` (`--watch`) | `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`, `count` | `{"added":…}`…, `"listed"`; with `--watch` also `{"changed":…}`, `{"removed":…}` |
 | `delete` | `{"id"}` | `"deleted"`, `"not_found"`, `"in_use"` |
@@ -24,7 +24,7 @@ tables. Bare answers are JSON strings; answers with a payload are one-member obj
 
 | leaf | flags | body | answers |
 |---|---|---|---|
-| `create` | | `template`, optional `name`, `secrets`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find |
+| `create` | | `template`, optional `name`, `secrets`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find; `{"error":…}` also when that document's `type` is not `standalone_tool`, or the template names a secret the document does not state |
 | `get` | | `{"tool":<tool>}` | `{"found":<item>}`, `"not_found"` |
 | `list` | `--watch` | filter + `count` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed"}`, `{"removed"}` |
 | `edit` | | `{"tool":<tool>,"patch":[…]}` | `"edited"`, `"not_found"`, `"active"`, `"in_use"` |
@@ -47,7 +47,7 @@ tables. Bare answers are JSON strings; answers with a payload are one-member obj
 | `terminal` | | `{"tool":<tool>,"cols":<n>,"rows":<n>}` | shell output raw on stdout; other answers as a JSON line on stderr |
 | `frontend` | | `{"tool":<tool>,"method":…,"path":"/frontend/…","headers":[[name,value]…]}`, body on stdin | head as a JSON line on stderr, body raw on stdout; `"not_found"`, `"no_frontend"` on stderr |
 
-A standalone tool's list item: `name`, `template`, `index`, `mode`, `provider` (where it runs or last ran),
+A standalone tool's list item: `name`, `template`, `index`, `mode` (what the tool's image says), `provider` (where it runs or last ran),
 `id` (container id while running), `creator`, `created`, `active`, `last_active`, `deployed`,
 `last_deployed`, `attached_agent_instances` (each `{template,index,name}`), `attached_agent_templates`
 (ids), `permissions`, `tags`.
@@ -78,12 +78,15 @@ files already there that the source lacks stay.
 | `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone; `"not_found"` when it does not run |
 | `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone; `"not_found"` when it does not run |
 
+A dependency tool's list item carries `mode` and `scope` as its own members (what the tool's image says),
+beside its `template`. List filter members `modes` and `scopes` match them.
+
 There is no `create`, `edit`, `attach`, `detach` or `connect` in this family: registrations make and attach
 dependency tools, and agents reach them through their own tool list.
 
 ## What starts or holds a tool's container
 
-| trigger | lazy standalone | eager standalone | dependency |
+| trigger | standalone, image says `lazy` | standalone, image says `eager` | dependency |
 |---|---|---|---|
 | `create` | nothing | nothing | (no create) |
 | attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |

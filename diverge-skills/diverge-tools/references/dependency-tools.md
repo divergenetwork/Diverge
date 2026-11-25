@@ -13,12 +13,10 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
 ```json
 {
   "image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/memory"}]},
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "secrets": ["SOME_API_KEY"],
-  "mode": "lazy",
-  "scope": "instance",
+  "secrets": [],
   "fuse_directory_mounts": [{"agent_path": ["workspace"], "tool_path": ["workspace"]}]
 }
 ```
@@ -26,32 +24,37 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
 ```json
 {
   "image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/taskboard"}]},
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 134217728,
+  "extra_disk": 0,
   "arguments": {},
-  "mode": "eager",
-  "scope": "template"
+  "secrets": []
 }
 ```
 
+The first is the `memory` image, whose `DIVERGE.md` says `"mode":"lazy","scope":"instance"`, so it may name
+a mount. The second is the `taskboard` image, whose document says `"mode":"eager","scope":"template"` and
+`"memory":268435456`: with `"extra_memory":134217728` its container's memory limit is the sum, 402653184
+bytes.
+
 | member | meaning |
 |---|---|
-| `image` | digest and references, as in any template. References are not in the id. The image must ship a valid `DIVERGE.md` that the daemon can read; otherwise the registration fails and the agent does not start. |
-| `memory`, `disk` | bytes |
+| `image` | digest and references, as in any template. References are not in the id. The image must ship a valid `DIVERGE.md` that the daemon can read, and that document's `type` must be `dependency_tool`; otherwise the registration fails and the agent does not start. |
+| `extra_memory`, `extra_disk` | bytes, required: what the container gets beyond the `memory` and `disk` its image's document says it needs. The limit is the sum. `0` is what the image needs and no more. |
 | `arguments` | handed to the tool's program verbatim; the tool image's `DIVERGE.md` gives the schema |
-| `secrets` | names only. Every name must also be declared by the **agent's** template; the value comes from the vault key the agent binds that name to. Otherwise the registration fails. |
-| `mode` | `"lazy"` (runs while it is used) or `"eager"` (kept up while any agent is attached). The members of the chosen mode sit flat beside it. |
-| `scope` | required in both modes: `"instance"`, `"template"` or `"global"`. How far the tool, and its database, is shared. |
-| `fuse_file_mounts`, `fuse_directory_mounts` | lazy with scope `instance` only; a lazy tool of another scope that names a mount is refused. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
+| `secrets` | names only, required, `[]` for none. Every name must be one the tool image's document states, and one the **agent's** own record binds; the value comes from the vault key the agent binds that name to. Otherwise the registration fails. |
+| `fuse_file_mounts`, `fuse_directory_mounts` | optional. Allowed only where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`; a declaration that names a mount of an image of any other mode or scope is refused. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
 
-There is no name and no description. The **id** is the lowercase hex SHA-256 of the template's canonical
-JSON: compact, keys sorted at every depth, absent members omitted, image references dropped, secret names
-sorted, `mode` and its members included. Declaring the same template twice in one list is refused. A
+There is no name and no description, and there is no `mode` and no `scope`: the tool image's own
+`DIVERGE.md` states those two (`"mode"`: `"lazy"`, runs while it is used, or `"eager"`, kept up while any
+agent is attached; `"scope"`: `"instance"`, `"template"` or `"global"`, how far the tool, and its database,
+is shared). Read them with `diverge run images read --info`. The **id** is the lowercase hex SHA-256 of the
+template's canonical JSON: compact, keys sorted at every depth, absent members omitted, image references
+dropped, secret names sorted, the mounts included. Declaring the same template twice in one list is refused. A
 dependency template cannot name the caller's volumes or a provider.
 
 ## Mode, scope, owner
 
-| declaration | one tool per | `owner` in references and list items | container runs | database lives as long as |
+| the tool image says | one tool per | `owner` in references and list items | container runs | database lives as long as |
 |---|---|---|---|---|
 | `lazy` + `instance` | agent | `{"agent":{"template":…,"index":…}}` | from the agent's container start to its stop, every run | the agent |
 | `lazy` + `template` | agent template | `{"agent_template":{"template":"<agent template id>"}}` | from its first use until nothing has used it for `idle_seconds`; one container for every agent of that template | the agent template |
@@ -82,6 +85,7 @@ dependency template cannot name the caller's volumes or a provider.
 | `created`, `creator` | when the first declaring registration made it, and the agent that did |
 | `tags` | the tool's own tags (not in the hash) |
 | `template` | the template as the program declared it |
+| `mode`, `scope` | what the tool image's document says: `"lazy"` or `"eager"`, and `"instance"`, `"template"` or `"global"`. Members of the item itself, not of its `template`. |
 | `agents` | the agents attached now, each `{"agent":{template,index,name},"declared":"<time>"}`; absent when none |
 | `active`, `last_active` | a call or read in flight; when that last changed |
 | `deployed`, `last_deployed` | container up; when that last changed |

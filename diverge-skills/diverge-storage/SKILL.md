@@ -270,7 +270,7 @@ judged here only by `relay` over that record; a FUSE mount whose serve is lost e
 A **vault key** is a name and one or more values, each any JSON, numbered from `0` in the order they
 were appended: its **slots**. Secrets reach a container through three statements by three parties:
 
-1. The **template** lists the secret *names* the image needs: `"secrets":["OPENROUTER_API_KEY"]`.
+1. The **template** lists the secret *names* the container needs, each one the image's `DIVERGE.md` states: `"secrets":["OPENROUTER_API_KEY"]`.
 2. The **agent or tool** made from it binds every name to a vault key on its create:
    `"secrets":{"OPENROUTER_API_KEY":"or-key"}`.
 3. The **program**, at registration, declares which names it takes and each one's **mode**.
@@ -283,15 +283,15 @@ were appended: its **slots**. Secrets reach a container through three statements
 So an API key is `fixed`; a login whose refresh token is single-use (an OAuth state document, an
 `auth.json`) is `rotating`, and the refreshed login is what the next activation finds. A lock is on a
 *value*, never on a key: a key with three values serves three rotating holders at once. Which secrets
-an image declares, and in which mode, is in `diverge-images`.
+an image states, and in which mode its program takes each, is in `diverge-images`.
 
 Binding rules (checked at the agent's or tool's create or edit):
 
-- The `secrets` map must bind **every name the template declares and no other**.
+- The `secrets` map must bind **every name the template lists and no other**.
 - Each key must exist in the vault **with at least one value**, and binding it takes the `use` grant
   over it. Otherwise the create answers its secrets error.
 - A dependency tool's secrets are resolved through the binding of the **agent** that spawns it, so a
-  dependency's secret names must be names the agent's template declares.
+  dependency's secret names must be names the agent's own record binds, and names the tool's image states.
 
 What can go wrong at a start (shown as the start error in the agent's or tool's log):
 

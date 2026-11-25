@@ -1,6 +1,6 @@
 ---
 name: diverge-tools
-description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `mode` lazy or eager tool), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (lazy vs eager tool, scope instance/template/global, owner; `dependency-tools get|list|delete|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend (`filetree|download|upload|transfer|exec|terminal|frontend` in both families). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
+description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `extra_memory`, `extra_disk`, the names of the secrets a tool needs), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (the tool image's `mode` lazy or eager and `scope` instance/template/global, owner; `dependency-tools get|list|delete|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend (`filetree|download|upload|transfer|exec|terminal|frontend` in both families). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
 ---
 
 # Diverge tools
@@ -14,14 +14,19 @@ There are three kinds. They are separate families: a request of one family never
 
 | kind | made by | lives | commands |
 |---|---|---|---|
-| **standalone tool** | you: a tool template, then `standalone-tools create`, then an attach | a record until deleted; one container however many agents it is attached to | `diverge run standalone-tools …` |
-| **dependency tool** | the agent's image: its program declares a dependency template when its container registers, and the daemon deploys it | lazy: runs while used. eager: kept up while any agent is attached. Either one per agent, per agent template, or one for all, by its `scope` | `diverge run dependency-tools …` (inspect only; nothing here makes one) |
+| **standalone tool** | you: a tool template of a `standalone_tool` image, then `standalone-tools create`, then an attach | a record until deleted; one container however many agents it is attached to | `diverge run standalone-tools …` |
+| **dependency tool** | the agent's image: its program declares a dependency template of a `dependency_tool` image when its container registers, and the daemon deploys it | lazy: runs while used. eager: kept up while any agent is attached. Either one per agent, per agent template, or one for all. Which of these is the tool image's own `mode` and `scope` | `diverge run dependency-tools …` (inspect only; nothing here makes one) |
 | **connected standalone tool** | you: a record here pointing at a standalone tool on another daemon | a record here; the container is the other daemon's | `diverge run connected-standalone-tools …` — see `diverge-daemons` |
 
 Every command is `diverge run <family> <leaf> '<JSON body>'`, one compact JSON line per answer. Run
 `<leaf> request-schema` / `<leaf> response-schema` for exact shapes. Every body may carry `relay`
 (`diverge-daemons`). Agents and agent templates are in `diverge-agents`; images and each image's
 `DIVERGE.md` are in `diverge-images`.
+
+A tool image is exactly one kind, and its `DIVERGE.md` says which: `"type":"standalone_tool"` or
+`"type":"dependency_tool"`. A standalone tool image is nobody's dependency: an agent that declares it as a
+dependency is refused. A dependency tool image is made into a tool only by an agent's program that declares
+it: a tool template of such an image is refused when a tool is created from it.
 
 ## Naming a tool
 
@@ -39,11 +44,11 @@ Every command is `diverge run <family> <leaf> '<JSON body>'`, one compact JSON l
 # 1. a tool template (type "tool"); answers {"created":"<id>"} or {"exists":"<id>"}
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' '{
   "type": "tool",
-  "mode": "eager",
   "image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/chat"}]},
-  "memory": 268435456,
-  "disk": 268435456,
-  "arguments": {}
+  "extra_memory": 0,
+  "extra_disk": 0,
+  "arguments": {},
+  "secrets": []
 }' | tr -d '"')"
 
 # 2. a tool from it; nothing runs yet
@@ -59,20 +64,33 @@ diverge run agents connect list-tools '{"agent":{"name":"echo"}}'
 
 ### Tool templates
 
-The same shape as an agent template (`image`, `memory` and `disk` in bytes, `arguments`, optional `secrets`
-names and `description`; id = SHA-256 of the canonical JSON; image references not in the hash; cannot be
-edited) with two differences:
+The same shape as an agent template (`image`, `extra_memory` and `extra_disk` in bytes, `arguments`,
+`secrets` names; id = SHA-256 of the canonical JSON; image references not in the hash; cannot be
+edited) with one difference:
 
-- `"type":"tool"`. Agent templates and tool templates are two namespaces; an id of one is not found by the
-  other family.
-- `"mode"`: how every tool made from it is kept running. Absent is `"lazy"`.
-  - `lazy`: the container runs while it is used (an attached agent's loop or call, a connect, a file
-    operation, exec, terminal, frontend) and is stopped `idle_seconds` (default 10) after the last use. An
-    attachment alone keeps nothing running.
-  - `eager`: the container is kept running while the tool is attached to any agent or template, or a
-    connect is open on it: started at the first attach, restarted if it ends, started at daemon boot. It is
-    retired `idle_seconds` after the last attachment or connect leaves. Use it for tools that hold live
-    state between calls (open sockets, timers).
+- `"type":"tool"`, and nothing beside it. Agent templates and tool templates are two namespaces; an id of
+  one is not found by the other family.
+
+A tool template has exactly these six members. It has no `mode`, no `memory`, no `disk` and no
+`description`: the image's `DIVERGE.md` states those.
+
+- `extra_memory`, `extra_disk`: what the container gets beyond what its image's document says it needs.
+  The container's limit is the sum: the image's `memory` plus `extra_memory`, the image's `disk` plus
+  `extra_disk`. `0` is what the image needs and no more.
+- `secrets`: required, `[]` for none. Names only: all of the secrets the image's document states, or any
+  subset of them, and none the image does not state.
+- The image must be a `standalone_tool` image. `templates create` does not read the image; a template of
+  an agent image or of a `dependency_tool` image is refused when a tool is created from it.
+
+How every tool made from the image is kept running is the image's `mode`, stated in its `DIVERGE.md`:
+
+- `lazy`: the container runs while it is used (an attached agent's loop or call, a connect, a file
+  operation, exec, terminal, frontend) and is stopped `idle_seconds` (default 10) after the last use. An
+  attachment alone keeps nothing running.
+- `eager`: the container is kept running while the tool is attached to any agent or template, or a
+  connect is open on it: started at the first attach, restarted if it ends, started at daemon boot. It is
+  retired `idle_seconds` after the last attachment or connect leaves. An image says this when its tool
+  holds live state between calls (open sockets, timers).
 
 `arguments` is whatever the image's `DIVERGE.md` schema says; the example tools all take `{}`.
 
@@ -101,7 +119,7 @@ diverge run standalone-tools untag '{"tool":{"name":"chat"},"tags":["ui"]}'  # "
 diverge run standalone-tools delete '{"tool":{"name":"chat"}}'               # "deleted" | "not_found" | "attached"
 ```
 
-- A list item carries `name`, `template`, `index`, `mode`, `provider`, `id` (container id while it runs),
+- A list item carries `name`, `template`, `index`, `mode` (the image's), `provider`, `id` (container id while it runs),
   `creator`, `created`, `active`, `last_active`, `deployed`, `last_deployed`, `attached_agent_instances`,
   `attached_agent_templates`, `permissions`, `tags`. Filters: `names`, `templates`, `creators`, `modes`,
   `active`, `deployed`, `attached_agent_instances` (agent names; attached to every one),
@@ -145,14 +163,17 @@ container registers, before the agent's first turn.
   "model": "…",
   "dependencies": [
     {"image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/memory"}]},
-     "memory": 268435456, "disk": 268435456, "arguments": {}, "mode": "lazy", "scope": "instance"},
+     "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []},
     {"image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/courier"}]},
-     "memory": 268435456, "disk": 268435456, "arguments": {}, "mode": "eager", "scope": "global"}
+     "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []}
   ]
 }
 ```
 
-| mode | lives | owner | database |
+A declaration states neither `mode` nor `scope`: the tool image's own `DIVERGE.md` does. Here the `memory`
+image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mode":"eager","scope":"global"`.
+
+| the tool image says | lives | owner | database |
 |---|---|---|---|
 | `lazy`, `scope: "instance"` | deployed with each run of the agent, stopped with it | that agent | the agent's own, kept between runs |
 | `lazy`, `scope: "template"` | one container for every agent of the same agent template that declares it; started by the first use, stopped once idle | the agent template | shared by those agents |
@@ -161,14 +182,17 @@ container registers, before the agent's first turn.
 | `eager`, `scope: "template"` | one for every agent of the same agent template that declares it | the agent template | shared by those agents |
 | `eager`, `scope: "global"` | one for every agent that declares it, from any agent template | nobody (`"global"`) | shared by all of them |
 
-- The dependency template's **id** is the SHA-256 of its canonical JSON (mode and scope included). The same
+- The dependency template's **id** is the SHA-256 of its canonical JSON. The same
   declaration under the same owner is the same tool, joined and not made again. Change any member and it is
   a different tool with a different database.
-- `scope` is required in both modes.
-- A lazy dependency of scope `instance` may also mount the agent's own paths live: `fuse_file_mounts` /
-  `fuse_directory_mounts`, each `{"agent_path":[…],"tool_path":[…]}`. No other dependency mounts anything of an agent's; a lazy one of another scope that names a mount is refused.
-- A dependency's `secrets` are names; each must be a name the agent's template also declares, and is
-  resolved through the agent's own binding.
+- The image must be a `dependency_tool` image. A declaration of an agent image or of a `standalone_tool`
+  image fails the registration.
+- `extra_memory` and `extra_disk` are what the tool's container gets beyond what its image's document says
+  it needs: the limit is the sum, and `0` is what the image needs and no more.
+- A declaration whose tool image says `"mode":"lazy"` and `"scope":"instance"` may also mount the agent's own paths live: `fuse_file_mounts` /
+  `fuse_directory_mounts`, each `{"agent_path":[…],"tool_path":[…]}`. No other dependency mounts anything of an agent's; a declaration that names a mount of an image of any other mode or scope is refused.
+- A dependency's `secrets` are names, required, `[]` for none. Each must be a name the tool image's
+  document states and a name the agent's own record binds, and is resolved through the agent's own binding.
 - Every registration **resets** what the agent depends on to exactly what it declared then. An eager tool no
   agent declares any more is retired after `idle_seconds`; its record and database stay until deleted.
 - A dependency that will not deploy fails the agent's start: the message answers `{"error":…}` and the
@@ -206,8 +230,8 @@ is routed by the text before the first `_`:
 
 - Two tools folding to the same prefix: the later one gets `name-2`, `name-3`, …. Direct attachments come
   first in attach order, then the template's, so prefixes are stable from run to run.
-- Example: tool `notebook` running the memory image exposes `notebook_remember`, `notebook_recall`,
-  `notebook_forget`. The same image as a dependency exposes `b6dd4f61_remember` and so on.
+- Example: standalone tool `lobby` running the chat image exposes `lobby_read_messages` and
+  `lobby_send_message`. The memory image, a dependency, exposes `b6dd4f61_remember` and so on.
 - Renaming a standalone tool changes its prefix, and so the names an agent's prompt may rely on.
 - Resources are not renamed: a read is by URI.
 - Each listed tool, resource and result carries who serves it under `_meta` → `diverge.network`:
@@ -223,17 +247,17 @@ This is the scope another daemon uses to reach a tool here (a connected standalo
 CLI it runs one MCP exchange against the tool's own server, unprefixed, as the client:
 
 ```bash
-diverge run standalone-tools connect list-tools     '{"tool":{"name":"notebook"}}'
-diverge run standalone-tools connect call-tool --name remember --arguments '{"text":"hi"}' '{"tool":{"name":"notebook"}}'
-diverge run standalone-tools connect list-resources '{"tool":{"name":"notebook"}}'
-diverge run standalone-tools connect read-resource --uri 'memo://1' '{"tool":{"name":"notebook"}}'
+diverge run standalone-tools connect list-tools     '{"tool":{"name":"chat"}}'
+diverge run standalone-tools connect call-tool --name send_message --arguments '{"text":"hi"}' '{"tool":{"name":"chat"}}'
+diverge run standalone-tools connect list-resources '{"tool":{"name":"chat"}}'
+diverge run standalone-tools connect read-resource --uri '<uri>' '{"tool":{"name":"chat"}}'
 ```
 
 - Starts the tool's container if it is down and holds it while the exchange runs. Prints the MCP result's
   JSON; `--cursor` pages the two lists. Cannot be opened → `"not_found"`, `"forbidden"`, `{"error":…}`.
-- Names here are the tool's own (`remember`), not the prefixed names an agent sees.
+- Names here are the tool's own (`send_message`), not the prefixed names an agent sees.
 - The tool sees the caller as `kind: client` (your account's identity), not as an agent. A tool may refuse
-  that: courier, taskboard and alarm are for agents only and refuse a client over a connect. To call a tool
+  that: the MCP tools of `chat` are for agents only and refuse a client over a connect. To call a tool
   **as an agent**, use `diverge run agents connect call-tool` with the prefixed name.
 - The wire's fifth exchange, the notifications stream, is not carried by the CLI. Notifications a tool sent
   are in its log.
@@ -246,9 +270,9 @@ The daemon keeps a log per tool of every call and read it routed into it. Read i
 command (`diverge-logs` has every filter):
 
 ```bash
-diverge run logs '{"of":{"type":"standalone_tool","name":"notebook"}}'
+diverge run logs '{"of":{"type":"standalone_tool","name":"chat"}}'
 diverge run logs '{"of":{"type":"dependency_tool","template":"<id>","owner":"global"},"type":"call_error"}'
-diverge run logs '{"of":{"type":"standalone_tool","name":"notebook"},"watch":true}'
+diverge run logs '{"of":{"type":"standalone_tool","name":"chat"},"watch":true}'
 ```
 
 Item types: the lifecycle `deployed`, `active`, `inactive`, `undeployed` (as for an agent; a tool is
@@ -320,18 +344,20 @@ Each is an image under `diverge-examples/` with a `DIVERGE.md` (read it with `di
 `arguments: {}` and no secrets. Details and the exact MCP tools of each are in
 [references/example-tools.md](references/example-tools.md).
 
-| example | what it is | meant to run as |
+| example | what it is | what its `DIVERGE.md` says it is |
 |---|---|---|
-| `courier` | an inbox between agents; notifies the recipient by messaging it | dependency, `eager`, `global` |
-| `taskboard` | a shared board of tasks agents post, claim and complete | dependency, `eager`, `template` or `global` |
-| `memory` | an agent's notebook: remember, recall, forget | dependency, `lazy`, `instance` |
-| `alarm` | an agent sets alarms that message it later (once or cron) | dependency, `eager`, any scope |
-| `chat` | a person chats with attached agents through the tool's frontend | standalone tool, `eager`, has a frontend |
+| `courier` | an inbox between agents; notifies the recipient by messaging it | `dependency_tool`, `eager`, `global` |
+| `taskboard` | a shared board of tasks agents post, claim and complete | `dependency_tool`, `eager`, `template` |
+| `memory` | an agent's notebook: remember, recall, forget | `dependency_tool`, `lazy`, `instance` |
+| `alarm` | an agent sets alarms that message it later (once or cron) | `dependency_tool`, `eager`, `global` |
+| `chat` | a person chats with attached agents through the tool's frontend | `standalone_tool`, `eager`, has a frontend |
 | `human` | not a tool: an **agent** image with no model, driven by a person at its frontend | agent (`diverge-agents`) |
 
 ## Pitfalls
 
 - Creating a standalone tool does nothing for any agent until it is attached.
+- `memory`, `courier`, `taskboard` and `alarm` are `dependency_tool` images: none can be made from a tool
+  template. `chat` is a `standalone_tool` image: no agent can declare it as a dependency.
 - A standalone-tools request never finds a dependency or connected tool, and the reverse. Pick the family by
   how the tool came to be.
 - Deleting order: detach → delete tool → delete tool template. Each earlier step blocks the later one
@@ -353,9 +379,6 @@ Each is an image under `diverge-examples/` with a `DIVERGE.md` (read it with `di
 
 ## Not verified
 
-- Running `memory`, `courier`, `taskboard` or `alarm` as a **standalone** tool: their `DIVERGE.md` documents
-  them as dependency tools. Both kinds are MCP tool containers, so it is expected to work for `memory`, but
-  the three agent-only tools decide for themselves which callers they accept.
 - `standalone-tools terminal`, `frontend` and every `dependency-tools` container leaf were not run live while
   writing this; behaviour is from the CLI and SDK source.
 - Whether a dependency tool's exposed prefix escalates (`-2`) when two dependency template ids share their

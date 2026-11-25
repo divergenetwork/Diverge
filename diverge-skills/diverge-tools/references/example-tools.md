@@ -1,10 +1,15 @@
 # The example tools
 
 Six images under `diverge-examples/` in the repository. Five are tools; `human` is an agent image listed here because
-it is used with them. Each image's `/.diverge/DIVERGE.md` states its name, its one-line description, its arguments schema and whether it serves
+it is used with them. Each image's `/.diverge/DIVERGE.md` states its type, its name, its one-line description, its arguments schema, the memory and disk it needs, for a tool its `mode` (and for a dependency tool its `scope`), and whether it serves
 a frontend; read it from a running daemon with `diverge run images read --info` (`diverge-images`), which is also
 where you get the digest to put in a template. All take `arguments: {}` (any member is refused) and no
-secrets.
+secrets. Each tool image states `"memory":268435456,"disk":268435456`.
+
+An image is exactly one kind. `memory`, `taskboard`, `courier` and `alarm` are `dependency_tool` images: an
+agent's program declares them, and a tool template of one is refused when a tool is created from it. `chat`
+is a `standalone_tool` image: it is made from a tool template, and an agent that declares it as a dependency
+is refused.
 
 In every example below `<digest>` is the image's digest in the provider's store, and the `references` entry
 must name a registry the provider lists (for locally built images that is typically `docker.io` with the
@@ -20,8 +25,8 @@ local repository name; nothing is pulled when the provider already holds the dig
 
 - Permissions: none. The notes are in the tool's database, which it reaches through its container's proxy,
   not through the daemon.
-- The tool records no owner: whoever reaches the same database shares the notes. As a `lazy`
-  dependency of scope `instance` the database is the declaring agent's own, and it persists between the agent's runs.
+- The tool records no owner: whoever reaches the same database shares the notes. Its document says
+  `"mode":"lazy","scope":"instance"`, so the database is the declaring agent's own, and it persists between the agent's runs.
 
 Declare it in an agent template (python agent-loop image shown; `openrouter`, `cc` and the others take the
 same `dependencies` member):
@@ -30,21 +35,22 @@ same `dependencies` member):
 diverge run agents templates create '{
   "type": "agent",
   "image": {"digest": "<python digest>", "references": [{"registry": "docker.io", "name": "diverge-local/python"}]},
-  "memory": 536870912, "disk": 1073741824,
+  "extra_memory": 0, "extra_disk": 0,
   "arguments": {
     "python": "…agent script…",
     "dependencies": [
       {"image": {"digest": "<memory digest>", "references": [{"registry": "docker.io", "name": "diverge-local/memory"}]},
-       "memory": 268435456, "disk": 268435456, "arguments": {}, "mode": "lazy", "scope": "instance"}
+       "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []}
     ]
-  }
+  },
+  "secrets": []
 }'
 # → {"created":"<agent template id>"}; then agents create, agents message
 diverge run agents connect list-tools '{"agent":{"name":"echo"}}'      # <8 hex>_remember, <8 hex>_recall, <8 hex>_forget
 diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 ```
 
-## taskboard — a shared board (dependency, eager tool)
+## taskboard — a shared board (dependency, eager, template)
 
 | MCP tool | parameters | does |
 |---|---|---|
@@ -58,11 +64,10 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 | `list_comments` | `task` | a task's comments, oldest first |
 
 - Permissions: none. Pull only: nothing is sent to an agent when the board changes.
-- Callers are recorded as the daemon attests them. Only agents may use it; a client over
-  `standalone-tools connect` is refused.
-- Which agents share a board is decided only by the scope: `"mode":"eager","scope":"template"` is one
-  board per agent template; `"scope":"global"` is one board for every agent that declares this exact
-  template. Never `"scope":"instance"` (that database is one agent's).
+- Callers are recorded as the daemon attests them. Only agents may use it.
+- Which agents share a board is decided only by the scope, and the image states it: its document says
+  `"mode":"eager","scope":"template"`, one board per agent template. A declaration cannot say another
+  scope.
 
 ## courier — an inbox between agents (dependency, eager, global)
 
@@ -90,12 +95,12 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
   that has never run, so one can be written to before its first start. An agent that has run and does not
   declare the courier is unreachable, and an agent whose image never declares it can be written to but can
   never read its mail.
-- Declare it as `"mode":"eager","scope":"global"` in **every** participating agent's template, with the
+- Its document says `"mode":"eager","scope":"global"`. Declare it in **every** participating agent's template, with the
   byte-identical template: the dependency template's id is what the mail is kept under, so any difference
-  (arguments, limits, digest) is a separate mail system.
-- Only agents may use it; a client over a connect is refused.
+  (arguments, `extra_memory`, `extra_disk`, digest) is a separate mail system.
+- Only agents may use it.
 
-## alarm — wake me later (dependency, eager tool)
+## alarm — wake me later (dependency, eager, global)
 
 | MCP tool | parameters | does |
 |---|---|---|
@@ -106,11 +111,11 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 - When due, the tool messages the agent that set it exactly `<alarm>\n{note}\n</alarm>`; the daemon starts
   the agent if it is idle.
 - Permissions it declares: `[{"agents":{"actions":["message"],"within":"attached"}}]`.
-- Must be `eager` (a lazy tool stops when nothing uses it and would keep no time). Any scope works,
-  since each alarm wakes only the agent that set it.
+- Its document says `"mode":"eager"` (a lazy tool stops when nothing uses it and would keep no time) and
+  `"scope":"global"`. Each alarm wakes only the agent that set it.
 - An alarm that cannot be sent when due is dropped. Alarms that fell due while the tool was down fire once
   when it returns; missed repeats of a cron alarm are skipped.
-- Only agents may use it; a client over a connect is refused.
+- Only agents may use it.
 
 ## chat — a person talks to agents (standalone tool, eager, frontend)
 
@@ -121,15 +126,15 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 
 - The person writes in the tool's frontend (one tab per attached agent). On each message the tool messages
   the agent exactly `<chat>\nYou have a new message\n</chat>`; the agent then calls `read_messages`.
-- Its `DIVERGE.md` declares `"frontend": true`.
+- Its `DIVERGE.md` declares `"type": "standalone_tool"`, `"mode": "eager"` and `"frontend": true`.
 - Permissions it declares: `get`, `list` and `message` over the agents attached to it, `get` over agent
   templates, `read` over providers and `relay` over remote daemons.
 
 ```bash
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' '{
-  "type": "tool", "mode": "eager",
+  "type": "tool",
   "image": {"digest": "<chat digest>", "references": [{"registry": "docker.io", "name": "diverge-local/chat"}]},
-  "memory": 268435456, "disk": 268435456, "arguments": {}
+  "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []
 }' | tr -d '"')"
 diverge run standalone-tools create "{\"template\":\"$TPL\",\"name\":\"chat\"}"
 diverge run standalone-tools attach-agent-instance '{"tool":{"name":"chat"},"agent":{"name":"echo"}}'
@@ -162,9 +167,9 @@ quickest way to exercise a tool exactly as an agent would without a model: so is
 
 | need | use |
 |---|---|
-| private state for one agent that survives its restarts | a `lazy` dependency, `scope: "instance"` (memory) |
-| state shared by all agents of one template | a dependency of `scope: "template"` (taskboard); `lazy` if it only needs to run while used, `eager` if it must stay up |
-| state or messaging shared across templates | a dependency of `scope: "global"` (courier) |
-| something that must keep running between agent runs | a `eager`, dependency or standalone (alarm, chat) |
+| private state for one agent that survives its restarts | a dependency tool image that says `lazy`, `scope: "instance"` (memory) |
+| state shared by all agents of one template | a dependency tool image of `scope: "template"` (taskboard); `lazy` if it only needs to run while used, `eager` if it must stay up |
+| state or messaging shared across templates | a dependency tool image of `scope: "global"` (courier) |
+| something that must keep running between agent runs | an image that says `eager`, dependency or standalone (alarm, chat) |
 | a tool you pick per agent at runtime, or that has a page for people | a standalone tool, attached (chat) |
 | a tool that lives on another daemon | a connected standalone tool (`diverge-daemons`) |

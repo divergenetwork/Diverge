@@ -1,6 +1,6 @@
 ---
 name: diverge-images
-description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `name`, `description`, `schema`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
+description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `type` of `agent`, `standalone_tool` or `dependency_tool`, `name`, `description`, `schema`, `memory`, `disk`, `secrets`, a tool's `mode`, a dependency tool's `scope`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, secrets and their modes (fixed/rotating), dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` or `secrets` an image takes, when you build or rebuild an image, or when you read an image's DIVERGE.md.
 ---
 
 # Diverge images
@@ -170,8 +170,9 @@ a Store is found by its digest, so it needs no `references`:
 ```json
 {"type":"agent",
  "image":{"digest":"sha256:…"},
- "memory":536870912,"disk":1073741824,
- "arguments":{"python":"[{\"type\":\"assistant_text_content\",\"text\":\"hello\"}]"}}
+ "extra_memory":0,"extra_disk":0,
+ "arguments":{"python":"[{\"type\":\"assistant_text_content\",\"text\":\"hello\"}]"},
+ "secrets":[]}
 ```
 
 ## Listing the daemon's Stores: `diverge run images list`
@@ -445,15 +446,19 @@ Grant: `publish` over images, reaching the provider it is done on.
 Every image ships one file in the folder `.diverge` at the root of its filesystem, `/.diverge/DIVERGE.md`.
 In a source tree the same folder sits beside the Containerfile (`.diverge/DIVERGE.md`), and the
 Containerfile copies the folder whole: `COPY .diverge /.diverge`. It is how a caller learns
-what `arguments` an image accepts without knowing the image.
+what `arguments` an image accepts, what kind of image it is, and what a container of it needs,
+without knowing the image.
 
 ```text
 ---
 {
-  "type": "tool",
+  "type": "standalone_tool",
   "name": "chat",
   "description": "A chat between a person and the agents attached to it, with a live web page.",
   "schema": { "type": "object", "additionalProperties": false, "description": "…" },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "eager",
   "frontend": true
 }
 ---
@@ -462,6 +467,46 @@ what `arguments` an image accepts without knowing the image.
 Prose: what the image runs, its tools, the secrets it declares, how to run it.
 ```
 
+A dependency tool's frontmatter, and an agent's that states a secret:
+
+```json
+{
+  "type": "dependency_tool",
+  "name": "memory",
+  "description": "A notebook of notes that outlasts an agent's conversation.",
+  "schema": { "type": "object", "additionalProperties": false },
+  "memory": 268435456,
+  "disk": 268435456,
+  "mode": "lazy",
+  "scope": "instance"
+}
+```
+
+```json
+{
+  "type": "agent",
+  "name": "openrouter",
+  "description": "An agent that runs a chat-completions loop against OpenRouter.",
+  "schema": { "type": "object" },
+  "memory": 536870912,
+  "disk": 1073741824,
+  "secrets": [
+    { "name": "OPENROUTER_API_KEY", "description": "The OpenRouter API key every completion is asked with." }
+  ],
+  "chat": { "prompt_modalities": { "image": true, "audio": true, "file": true } }
+}
+```
+
+An image is exactly one of three kinds:
+
+- `"type": "agent"`: an agent. An agent template names it.
+- `"type": "standalone_tool"`: a tool made by hand from a tool template. It is nobody's dependency: an
+  agent that declares it as a dependency is refused.
+- `"type": "dependency_tool"`: a tool an agent's program declares for itself. Nothing else makes one: a
+  tool template of such an image is refused when a tool is created from it.
+
+`"type": "tool"` is not a type.
+
 The parse rules, in the order they are checked:
 
 1. The first line is exactly `---` (a line ends at `\n`; a trailing space or a carriage return makes
@@ -469,25 +514,37 @@ The parse rules, in the order they are checked:
 2. The frontmatter is every line up to the next line that is exactly `---`. No such line is an
    unterminated frontmatter.
 3. The frontmatter is **one JSON object**.
-4. It has **`type`, required: `"agent"` or `"tool"`**. Missing, or anything else, is an error. The type
-   decides which members are allowed.
-5. Both types: `name` (string, required), `description` (string, required: one line, 1 to 132
+4. It has **`type`, required: `"agent"`, `"standalone_tool"` or `"dependency_tool"`**. Missing, or
+   anything else (`"tool"` among them), is an error. The type decides which members are allowed.
+5. All three types: `name` (string, required), `description` (string, required: one line, 1 to 132
    characters, no line break or other control character, no space at either end), `schema` (required),
+   `memory` and `disk` (each required: a whole number of bytes), `secrets` (optional, none when absent:
+   an array of objects, each exactly `{"name": "…", "description": "…"}`, both required),
    `frontend` (boolean, optional, `false` when absent). An agent's also: `chat` and `structured_decisions` (each
-   `false` or an object, never `true`; optional, `false` when absent). **A tool's must not have `chat`
-   or `structured_decisions` at all, not even as `false`.** A missing member, **any member that is not
+   `false` or an object, never `true`; optional, `false` when absent). A standalone tool's also: `mode`
+   (required: `"lazy"` or `"eager"`; there is no default). A dependency tool's also: `mode`, the same,
+   and `scope` (required: `"instance"`, `"template"` or `"global"`). **A tool's must not have `chat`
+   or `structured_decisions` at all, not even as `false`.** An agent's must not have `mode` or `scope`,
+   and a standalone tool's must not have `scope`. A missing member, **any member that is not
    one of its type's**, or a wrong type is an error.
 6. `schema` must be a JSON object: it is the **JSON Schema of the image's `arguments`**, not of the
    whole template.
-7. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
+7. Every secret's `name` is one line of plain text, 1 to 75 characters, with no space at either end,
+   and no two secrets have the same name. A secret's `description` follows the rule of the image's own
+   `description`: one line, 1 to 132 characters, no space at either end.
+8. **An agent's must have at least one of `chat` and `structured_decisions` as an object.** Both
    `false`, both absent, or one `false` and one absent, is an error.
-8. The body is everything after the closing fence, verbatim.
+9. The body is everything after the closing fence, verbatim.
+
+Written out, the members are in this order: `type`, `name`, `description`, `schema`, `memory`, `disk`,
+`secrets`, `mode`, `scope`, `frontend`, `chat`, `structured_decisions`.
 
 There is no `icons` member: an `icons` in the frontmatter is an unknown member, and an error.
 
 An image whose document breaks a rule has no document as far as a provider is concerned: `--info`
 answers `{"error":…}`, and the daemon refuses to create an agent or a tool from it. The daemon also
-refuses an agent made from a tool's image, and a tool made from an agent's.
+refuses an agent made from a tool's image, a standalone tool made from an image that is not a
+`standalone_tool` image, and a dependency declared of an image that is not a `dependency_tool` image.
 
 **Size limit: 1048576 bytes (2^20) per file.** It applies to `DIVERGE.md` and to each icon, each by
 itself, measured as the file's length in the image. A provider reads none of a larger file and answers
@@ -495,8 +552,8 @@ that it is too large: `"too_large"` for an icon, and for the document, through `
 
 What each member means:
 
-- `type` — `agent` or `tool`: what the image's program is. It comes back in the parsed document, so a
-  caller can tell the two apart without knowing the image.
+- `type` — `agent`, `standalone_tool` or `dependency_tool`: what the image's program is. It comes back in the parsed document, so a
+  caller can tell the three apart without knowing the image.
 - `name` — what the image calls itself. Nothing makes it unique.
 - `description` — what the image is, in one line. It is the only description an image has: it travels
   inside the image to every provider and registry, and nothing outside the image can set or change it.
@@ -506,6 +563,19 @@ What each member means:
   `arguments` to the program unread; the program validates them at its registration, so arguments
   that break the schema surface as a start error in the agent's or tool's log, not at
   `templates create`.
+- `memory`, `disk` — whole numbers of bytes: what a container of the image needs. A template or a
+  dependency declaration does not repeat them. It states `extra_memory` and `extra_disk`, what the
+  container gets beyond them, and the container's limit is the sum.
+- `secrets` — every secret the program could ever take, whatever its arguments, each by its `name` and
+  a one-line `description` of what it is. A template or a dependency declaration names the ones its
+  container needs: all of them or any subset, and none the image does not state. Absent means the
+  image takes no secret.
+- `mode` — a tool's image only. `lazy`: every tool made from the image runs while it is used. `eager`:
+  it is kept running while anything holds it. No template and no declaration says another (see
+  `diverge-tools`).
+- `scope` — a dependency tool's image only. How far every tool made from the image, and its database,
+  is shared: `instance` (one per agent), `template` (one per agent template) or `global` (one for all).
+  No declaration says another.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
   commands in `diverge-agents` / `diverge-tools`). To look like the rest of Diverge in the person's
   theme, the page links `<link rel="stylesheet" href="/diverge/theme.css">` and
@@ -539,7 +609,9 @@ What each member means:
 - **The document is required.** `agents create`, `standalone-tools create` and an agent's dependency
   declaration each read the image's document and refuse an image that ships none, that nobody in
   reach holds, or whose document does not parse. An agent is also refused when its image's document
-  is a tool's, and a standalone or dependency tool when it is an agent's. A template is not checked: `templates create` takes any
+  is a tool's, a standalone tool when its image's document is not a `standalone_tool`'s, and a
+  dependency tool when its image's document is not a `dependency_tool`'s. A template or declaration
+  that names a secret the document does not state is refused the same way. A template is not checked: `templates create` takes any
   image.
 - **Both are enforced** on `agents message`: `chat` for a request of type `chat`, and
   `structured_decisions` for one of type `structured_decisions` (see `diverge-agents`). A request for a mode the image says
@@ -557,15 +629,16 @@ What each member means:
   parts, a decision as its `user_structured_decisions` chunk, each under the `key` it was handed. The echo
   is how the daemon logs the request with its sender, and how a sender watching (`"watch":true`) finds its
   request in the log. A request accepted and never echoed is answered `"dropped"` to a watcher.
-- The body states, in prose, the tools the image serves and the **secrets it declares** with their
-  modes. Read it before writing a template.
+- The body states, in prose, the tools the image serves and the mode (`fixed` or `rotating`) its
+  program takes each secret in. The frontmatter's `secrets` lists every secret the image states. Read
+  both before writing a template.
 
 The images in this repository generate their schema from their Rust argument types; running the
 image's program with `--schema` prints the same schema as the frontmatter carries.
 
 ## `diverge run images read`: can the daemon supply an image, and one ask of it
 
-When: you have a digest and need the image's `DIVERGE.md` (its argument schema, the secrets it declares),
+When: you have a digest and need the image's `DIVERGE.md` (its type, its argument schema, the memory and disk it needs, the secrets it states, a tool's mode and scope),
 or you need to know whether any source the daemon reaches can supply the image at all. It is the one way
 to an image's document. Its manifests, blobs and possession proof are on the same command and are rarely
 needed by hand: they are how providers move images between each other.
@@ -624,7 +697,7 @@ Lines printed: first the daemon's answer; after a `{"held":…}`, any further `{
 | `"not_found"` | no source the daemon asked holds any platform wanted |
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
 | `{"error":…}` | a failure; after a `held`, the source could not read the document, or it is not one |
-| `{"info":{"type":"agent","name":…,"description":"…","schema":{…},"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent` or `tool`; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
+| `{"info":{"type":"agent","name":…,"description":"…","schema":{…},"memory":N,"disk":N,"secrets":[{"name":…,"description":…}],"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent`, `standalone_tool` or `dependency_tool`; `secrets` absent when none; `mode` in a tool's, `scope` in a dependency tool's; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
 | `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
@@ -665,20 +738,24 @@ over daemons: `relay` is the one grant to use a remote daemon.
 Each image's directory holds its `Containerfile` and its `DIVERGE.md`. Build any of them as shown
 above with `-f <dir>/Containerfile .`.
 
-| image dir | `name` | kind | required `arguments` | secrets the program declares |
+| image dir | `name` | kind | required `arguments` | secrets the image states |
 |---|---|---|---|---|
 | `diverge-agents/python` | `python` | agent, no model | `python` | none |
 | `diverge-agents/lone` | `lone` | agent, local LoNE bundle (macOS) | `bundle` | none |
-| `diverge-agents/openrouter` | `openrouter` | agent | `model` | `OPENROUTER_API_KEY` (fixed) |
-| `diverge-agents/codex` | `codex` | agent | `model`, `auth` | one, by `auth.method`: `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`, `OPENAI_IDENTITY_TOKEN` (fixed) or `CODEX_AUTH` (rotating) |
-| `diverge-agents/hermes` | `hermes` | agent | `provider`, `model` | selected by the provider and the toolsets chosen |
+| `diverge-agents/openrouter` | `openrouter` | agent | `model` | one: `OPENROUTER_API_KEY` (fixed) |
+| `diverge-agents/codex` | `codex` | agent | `model`, `auth` | four, of which the program takes one, by `auth.method`: `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`, `OPENAI_IDENTITY_TOKEN` (fixed) or `CODEX_AUTH` (rotating) |
+| `diverge-agents/hermes` | `hermes` | agent | `provider`, `model` | 51, one per provider credential and toolset credential; which the program takes is selected by the provider and the toolsets chosen |
 | `diverge-agents/cc` | `cc` | agent (Claude Code) | `model` | none |
-| `diverge-examples/tools/courier` | `courier` | dependency tool: eager, `global` | `{}` | none |
-| `diverge-examples/tools/taskboard` | `taskboard` | dependency tool: eager, `template` (or `global`) | `{}` | none |
-| `diverge-examples/tools/memory` | `memory` | dependency tool: lazy, `instance` | `{}` | none |
-| `diverge-examples/tools/alarm` | `alarm` | dependency tool: eager, any scope | `{}` | none |
-| `diverge-examples/tools/chat` | `chat` | standalone tool: eager, has a frontend | `{}` | none |
+| `diverge-examples/tools/courier` | `courier` | `dependency_tool`: eager, `global` | `{}` | none |
+| `diverge-examples/tools/taskboard` | `taskboard` | `dependency_tool`: eager, `template` | `{}` | none |
+| `diverge-examples/tools/memory` | `memory` | `dependency_tool`: lazy, `instance` | `{}` | none |
+| `diverge-examples/tools/alarm` | `alarm` | `dependency_tool`: eager, `global` | `{}` | none |
+| `diverge-examples/tools/chat` | `chat` | `standalone_tool`: eager, has a frontend | `{}` | none |
+| `diverge-tools/identity-diverge-network` | `identity-diverge-network` | `standalone_tool`: lazy, has a frontend | `{}` | none |
 | `diverge-examples/agents/human` | `human` | agent, no model, has a frontend | `{}` | none |
+
+Each agent image states `"memory":536870912,"disk":1073741824`. Each tool image states
+`"memory":268435456,"disk":268435456`.
 
 Full per-image detail — every argument, every secret with its mode and value shape, dependencies and
 a minimal working template body:
@@ -692,16 +769,19 @@ a minimal working template body:
 
 ### How secrets work for an image (summary)
 
-Three parties, three statements:
+Four parties, four statements:
 
-1. The **template** lists secret **names** (`"secrets":["OPENROUTER_API_KEY"]`).
-2. The **agent or tool** made from it binds each name to a **vault key**
+1. The **image's document** states every secret its program could ever take, whatever its arguments,
+   each as `{"name": "…", "description": "…"}` in the frontmatter's `secrets`.
+2. The **template** lists secret **names** (`"secrets":["OPENROUTER_API_KEY"]`): all of those the image
+   states, or any subset of them, and none the image does not state. The member is required; `[]` is none.
+3. The **agent or tool** made from it binds each name its template lists, and no other, to a **vault key**
    (`"secrets":{"OPENROUTER_API_KEY":"my-or-key"}` on its create).
-3. The **program**, at its registration, declares which of those names it takes and each one's
+4. The **program**, at its registration, declares which of those names it takes and each one's
    **mode**: `fixed` (a value read at every activation, never locked) or `rotating` (one value locked
    to the container while it is active and written back when it goes inactive).
 
-A program may take fewer names than the template declares, never more: a name the program declares
+A program may take fewer names than the template lists, never more: a name the program declares
 that the template does not is a start error. Secrets are never arguments and never environment the
 caller sets. The vault side (keys, slots, locks, `use` grant) is in `diverge-storage`.
 
@@ -709,9 +789,9 @@ caller sets. The vault side (keys, slots, locks, `use` grant) is in `diverge-sto
 
 Every agent-loop image accepts a `dependencies` argument: a list of dependency tool templates the
 daemon deploys and serves to the agent as MCP servers. Each entry is
-`{"image":{…},"memory":N,"disk":N,"arguments":{…},"secrets":[…],"mode":"lazy"|"eager","scope":"instance"|"template"|"global"}`. A dependency's secrets are resolved
+`{"image":{…},"extra_memory":N,"extra_disk":N,"arguments":{…},"secrets":[…]}`, and its image must be a `dependency_tool` image. It states no `mode` and no `scope`: the tool image's own document does. A dependency's secrets are names the tool image states, resolved
 through the **agent's** binding, so every name a dependency lists must also be a name the agent's
-template declares. Details and lifecycle are in `diverge-tools`; the entry shape is in
+own record binds. Details and lifecycle are in `diverge-tools`; the entry shape is in
 [references/agent-loop-images.md](references/agent-loop-images.md).
 
 ## Troubleshooting
@@ -721,7 +801,7 @@ template declares. Details and lifecycle are in `diverge-tools`; the entry shape
 | Start error "the provider pulls from no registry the image's references name" or "the image names no registry" | The image body has no `references` entry naming a registry the provider lists. Add one (`docker.io` for the default provider). |
 | Start error saying the image is unavailable | The digest is not in the daemon's Store on that provider and no listed registry serves it. Build it with `diverge run images build` on that provider and use the digest it prints. |
 | The image deploys but its program misbehaves against the proxy | The image predates the current inside-container contract. Rebuild it from current source. |
-| Start error naming a secret the template does not declare | The program's arguments select a secret (see the per-image reference) that the template's `secrets` omits. Add the name to the template (a new template id) and bind it on the create. |
+| Start error naming a secret the template does not list | The program's arguments select a secret (see the per-image reference) that the template's `secrets` omits. Add the name to the template (a new template id) and bind it on the create. |
 | `images read` answers `"not_found"` for a local image | No connected provider has the image in the daemon's Store or serves it from a listed registry, and no remote daemon holds it. An image only in a provider's cache does not count. Build it on a connected provider with `diverge run images build`. |
 | A rebuilt image has the same tag but templates still run the old one | Templates name digests. A rebuild is a new digest: make a new template with it. |
 
@@ -737,7 +817,7 @@ template declares. Details and lifecycle are in `diverge-tools`; the entry shape
 - macOS and Linux build commands are from code and the setup report, not run live.
 - `diverge-agents/cc` declares no secret and says Claude Code logs in by itself; how a login
   reaches the container (for example a mount of its credential directory) was not established.
-- Suggested `memory` / `disk` values in the references are starting points, not measured minimums.
+- The `memory` / `disk` values the images state are starting points, not measured minimums.
 
 ## When this task is done
 

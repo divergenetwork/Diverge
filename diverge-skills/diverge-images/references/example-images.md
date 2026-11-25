@@ -1,20 +1,29 @@
 # The example images under `diverge-examples/`
 
 Six small images that show what a tool or an agent container can be. All take `arguments` `{}`
-(any member is refused, so a misspelled setting is never silently ignored) and declare **no secrets**.
+(any member is refused, so a misspelled setting is never silently ignored) and state **no secrets**.
 Build each from the workspace root: `-f diverge-examples/tools/<name>/Containerfile .` (`diverge-examples/agents/human/Containerfile` for `human`) (see the main file).
 
-Four are **dependency tools**: an agent declares them in its own `arguments.dependencies`, and the
-daemon deploys them. One is a **standalone tool** made by hand. One is an **agent**.
+Four are **dependency tools** (`"type":"dependency_tool"` in their `DIVERGE.md`): an agent declares them in its own `arguments.dependencies`, and the
+daemon deploys them. A tool template of one is refused when a tool is created from it. One is a
+**standalone tool** (`"type":"standalone_tool"`) made by hand from a tool template; an agent that
+declares it as a dependency is refused. One is an **agent**.
+
+The mode and scope below are what each tool image's own document states. No template and no
+dependency entry says another.
 
 | image | kind | mode / scope | permissions it declares at registration | database |
 |---|---|---|---|---|
 | `courier` | dependency tool | eager, `global` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
-| `taskboard` | dependency tool | eager, `template` or `global` | none | yes |
+| `taskboard` | dependency tool | eager, `template` | none | yes |
 | `memory` | dependency tool | lazy, `instance` | none | yes |
-| `alarm` | dependency tool | eager, any scope | `message` over agents `attached` | yes |
+| `alarm` | dependency tool | eager, `global` | `message` over agents `attached` | yes |
 | `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
 | `human` | agent, frontend | — | — (an agent asks the daemon nothing) | yes |
+
+Each tool image states `"memory":268435456,"disk":268435456`; `human` states
+`"memory":536870912,"disk":1073741824`. Every body below gives `"extra_memory":0,"extra_disk":0`: what
+the image needs and no more.
 
 A tool's permissions are declared by its own program each time it starts; neither a template nor an
 agent states them. "Database" means the tool keeps its state in its own Postgres scope, reached
@@ -50,22 +59,20 @@ Dependency entry (put it in each participating agent's `arguments.dependencies`)
 ```json
 {
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/courier" }] },
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "mode": "eager",
-  "scope": "global"
+  "secrets": []
 }
 ```
 
-- One courier container and one database for every agent that declares this exact entry, from any
+- The image's document says `"mode":"eager","scope":"global"`: one courier container and one database for every agent that declares this exact entry, from any
   agent template. The entry's hash is what the mail is kept under, so a different entry (another
-  digest, other limits) is a different mail system.
+  digest, other extras) is a different mail system.
 - `attached` reaches agents whose last registration declared the courier; `never_active` reaches
   agents that have never run, so they can be written to before their first start. An agent that has
   run and does not declare the courier is reachable by neither.
-- Every sender is recorded as the daemon attests the caller. Only agents may use it; a client over a
-  `connect` is refused.
+- Every sender is recorded as the daemon attests the caller. Only agents may use it.
 
 ## taskboard — a shared board of tasks
 
@@ -88,17 +95,15 @@ Dependency entry:
 ```json
 {
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/taskboard" }] },
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "mode": "eager",
-  "scope": "template"
+  "secrets": []
 }
 ```
 
-- `"scope":"template"` is one board for every agent made from the same agent template; `"global"` is
-  one board for every agent that declares this taskboard. Never `"instance"`, whose database is one
-  agent's.
+- The image's document says `"mode":"eager","scope":"template"`: one board for every agent made from
+  the same agent template. An entry cannot say another scope.
 - Only the holder completes or releases a task; only the poster deletes one. Only agents may use it.
 
 ## memory — a notebook that outlasts the conversation
@@ -114,22 +119,19 @@ Dependency entry:
 ```json
 {
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/memory" }] },
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "mode": "lazy",
-  "scope": "instance"
+  "secrets": []
 }
 ```
 
-- Lazy, `instance`: deployed with each run of the agent and stopped with it. The notes stay in the
-  database between runs, because the database scope is the parent agent's. `"scope":"template"` or
-  `"global"` is one notebook shared by every agent the scope covers.
+- The image's document says `"mode":"lazy","scope":"instance"`: deployed with each run of the agent and stopped with it. The notes stay in the
+  database between runs, because the database scope is the parent agent's.
 - The tool tells no caller apart: every agent that reaches the same database shares the same notes.
-  Whose notebook it is follows from the mode and scope, never from anything the tool decides.
-- The setup report also runs this image as a standalone tool
-  (`standalone-tools templates create` with `"type":"tool","mode":"lazy"`); that use is assumed
-  to work and was not run live.
+  Whose notebook it is follows from the image's mode and scope, never from anything the tool decides.
+- It is a `dependency_tool` image, so it cannot be made into a standalone tool: a tool template of it
+  is refused when a tool is created from it.
 
 ## alarm — alarms an agent sets to wake itself
 
@@ -154,15 +156,14 @@ Dependency entry:
 ```json
 {
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/alarm" }] },
-  "memory": 268435456,
-  "disk": 268435456,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {},
-  "mode": "eager",
-  "scope": "global"
+  "secrets": []
 }
 ```
 
-- An eager tool, never lazy: it keeps time while no agent is using it. Any scope works, since every
+- The image's document says `"mode":"eager","scope":"global"`. An eager tool, never lazy: it keeps time while no agent is using it. Every
   alarm wakes only the agent that set it.
 - Cron is five fields in UTC; a seconds or year field is refused. An alarm that cannot be sent when
   due is dropped (a recurring one moves on). Alarms that fell due while the tool was down fire once
@@ -183,16 +184,17 @@ You have a new message
 | `read_messages` | `include_read` (optional, false) | the person's messages to the caller, oldest first; unread ones handed back are marked read |
 | `send_message` | `text` | sends the person a message, shown in every open page at once |
 
-A standalone tool, made by hand. Tool template body for `diverge run standalone-tools templates create`:
+A standalone tool, made by hand. Its document says `"type":"standalone_tool"` and `"mode":"eager"`, so
+the template states no mode. Tool template body for `diverge run standalone-tools templates create`:
 
 ```json
 {
   "type": "tool",
-  "mode": "eager",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/chat" }] },
-  "memory": 268435456,
-  "disk": 268435456,
-  "arguments": {}
+  "extra_memory": 0,
+  "extra_disk": 0,
+  "arguments": {},
+  "secrets": []
 }
 ```
 
@@ -214,9 +216,10 @@ Agent template body for `diverge run agents templates create`:
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/human" }] },
-  "memory": 268435456,
-  "disk": 268435456,
-  "arguments": {}
+  "extra_memory": 0,
+  "extra_disk": 0,
+  "arguments": {},
+  "secrets": []
 }
 ```
 

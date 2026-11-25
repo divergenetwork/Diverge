@@ -20,6 +20,10 @@ mounts under `/root/.hermes/external-skills/`, one directory per skill holding i
 
 ## Secrets
 
+The image's `DIVERGE.md` states 51 secrets, one per provider credential and toolset credential in the
+tables below, each with its name and a one-line description. A template lists the ones its arguments
+select, and may list no name the image does not state.
+
 The program computes its declaration from the arguments: the provider's secrets plus each enabled
 toolset's. **The template's `secrets` must list every name selected**, and the agent's create must
 bind each to a vault key. A name selected twice (for example `XAI_API_KEY` by the `xai` provider and
@@ -119,8 +123,8 @@ when used.
 {
   "type": "agent",
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/hermes" }] },
-  "memory": 4294967296,
-  "disk": 8589934592,
+  "extra_memory": 3758096384,
+  "extra_disk": 7516192768,
   "arguments": {
     "provider": { "provider": "openrouter" },
     "model": "<vendor/model>",
@@ -129,6 +133,9 @@ when used.
   "secrets": ["OPENROUTER_API_KEY"]
 }
 ```
+
+The image states `"memory":536870912,"disk":1073741824`. The container's limits are the sums:
+4294967296 bytes of memory (4 GiB) and 8589934592 bytes of disk (8 GiB).
 
 ```bash
 diverge run vault insert '{"key":"or-key","value":"sk-or-…"}'

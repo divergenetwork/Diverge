@@ -1,6 +1,6 @@
 ---
 name: diverge-agents
-description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, memory, disk, arguments, secrets; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts, secret bindings), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, `agents frontend`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
+description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, extra_memory, extra_disk, arguments, secrets; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts, secret bindings), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, `agents frontend`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
 ---
 
 # Diverge agents
@@ -51,27 +51,28 @@ can be shared between daemons and hashes the same anywhere.
 ```bash
 diverge run agents templates create '{
   "type": "agent",
-  "description": "Echo agent. Needs no volumes.",
   "image": {"digest": "sha256:b031dd…", "references": [{"registry": "docker.io", "name": "diverge-local/python"}]},
-  "memory": 536870912,
-  "disk": 1073741824,
+  "extra_memory": 0,
+  "extra_disk": 0,
   "arguments": {"python": "…script source…"},
-  "secrets": ["OPENROUTER_API_KEY"]
+  "secrets": []
 }'
 ```
 
 | member | meaning |
 |---|---|
 | `type` | `"agent"`. Required; a tool template (`"type":"tool"`) is a different namespace and hashes apart. |
-| `image` | `{"digest":"<algorithm>:<hex>","references":[{"registry":…,"name":…}]}`. The digest is the image. References only say where the bytes may be fetched and are not in the hash. The daemon refuses to start a run unless a reference names a registry the provider lists, so include one even for a locally built image. |
-| `memory` | Bytes. A hard ceiling: a process over it is killed. |
-| `disk` | Bytes the container may write over its image. Mounted volumes are not counted. |
+| `image` | `{"digest":"<algorithm>:<hex>","references":[{"registry":…,"name":…}]}`. The digest is the image. References only say where the bytes may be fetched and are not in the hash. The daemon refuses to start a run unless a reference names a registry the provider lists, so include one even for a locally built image. The image must be an agent image: its `DIVERGE.md` says `"type":"agent"`. |
+| `extra_memory` | Bytes, required: the memory the container gets beyond what its image's `DIVERGE.md` says it needs. The container's limit is the sum of the image's `memory` and this. `0` is what the image needs and no more. The limit is a hard ceiling: a process over it is killed. |
+| `extra_disk` | Bytes, required: what the container may write over its image beyond what the image's `DIVERGE.md` says it needs. The limit is the sum of the image's `disk` and this. `0` is what the image needs and no more. Mounted volumes are not counted. |
 | `arguments` | Any JSON value, handed to the image's program verbatim. Its shape is the image's own: read the image's `DIVERGE.md` (`diverge run images read --info`, see `diverge-images`). |
-| `secrets` | Names only, e.g. `["OPENROUTER_API_KEY"]`. Each agent binds every name to a vault key at create. Optional. |
-| `description` | Free text for whoever creates agents from it (which mounts it needs, and so on). In the hash. Optional. |
+| `secrets` | Names only, required, `[]` for none. All of the secrets the image's `DIVERGE.md` states, or any subset of them, and none the image does not state: e.g. `["OPENROUTER_API_KEY"]` for the `openrouter` image. Each agent binds every name to a vault key at create. |
+
+A template has exactly these six members. It has no `description`, no `memory` and no `disk`: the image's
+own `DIVERGE.md` states its description and the memory and disk it needs.
 
 Answers: `{"created":"<id>"}`, `{"exists":"<id>"}` (the same template was made before; not a failure),
-`"forbidden"`, `{"error":…}`. The image is not checked here; `agents create` checks it. The **id** is the lowercase hex SHA-256 of the template's canonical JSON
+`"forbidden"`, `{"error":…}`. The image is not checked here; `agents create` checks it, and refuses a template whose image is not an agent image or whose `secrets` name one the image does not state. The **id** is the lowercase hex SHA-256 of the template's canonical JSON
 (64 characters). Capture it:
 
 ```bash
@@ -82,9 +83,9 @@ A template cannot be edited: a changed body is a new template with a new id.
 
 **Dependencies are not a template member.** The tools an agent depends on are declared by the agent's
 *program* when its container registers. For the agent-loop images in this repository that declaration is
-copied from `arguments.dependencies`, a list of dependency tool templates (image, memory, disk, arguments,
-secrets, a `mode` of `lazy` or `eager`, and a `scope` of `instance`, `template` or `global`; a lazy
-tool of the `instance` scope may also mount the agent's own paths). The daemon deploys them when the agent's container starts.
+copied from `arguments.dependencies`, a list of dependency tool templates (image, extra_memory, extra_disk, arguments,
+secrets; the tool image's own `DIVERGE.md` states its `mode` of `lazy` or `eager` and its `scope` of `instance`, `template` or `global`; a tool
+whose image says lazy and `instance` may also mount the agent's own paths). Each image must be a `dependency_tool` image. The daemon deploys them when the agent's container starts.
 See `diverge-tools` for the full shape and what each mode and scope means.
 
 Other template leaves:
@@ -122,7 +123,7 @@ diverge run agents create '{
 
 - `template` (required): an agent template id of the caller's. A tool template's id is an error.
 - `name` (optional): unique among the caller's agents; taken → `"in_use"`.
-- `secrets`: every name the template declares, and no other, each mapped to a vault key that exists with at
+- `secrets`: every name the template lists, and no other, each mapped to a vault key that exists with at
   least one value. Naming a key needs the `use` grant over it. Wrong or missing names are the create's error.
 - `provider`: pins the agent to one provider (by `{"issuer","subject"}`) and mounts that provider's volumes.
   Absent, the daemon picks a provider at each start and the agent mounts no volume.
@@ -375,7 +376,7 @@ hand as that agent. Body is `{"agent":<reference>}`; the exchange is the subcomm
 
 ```bash
 diverge run agents connect list-tools '{"agent":{"name":"echo"}}'
-diverge run agents connect call-tool --name notebook_remember --arguments '{"text":"hi"}' '{"agent":{"name":"echo"}}'
+diverge run agents connect call-tool --name b6dd4f61_remember --arguments '{"text":"hi"}' '{"agent":{"name":"echo"}}'
 diverge run agents connect list-resources '{"agent":{"name":"echo"}}'
 diverge run agents connect read-resource --uri 'memo://1' '{"agent":{"name":"echo"}}'
 ```
