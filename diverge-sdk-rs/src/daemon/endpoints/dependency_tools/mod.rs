@@ -1,18 +1,20 @@
 //! Dependency tools: one per dependency template and owner, as far as
-//! the template's scope shares it, with the agents that depend on it
+//! its image's scope shares it, with the agents that depend on it
 //! and the tool running from it.
 //!
 //! A dependency template is a
 //! [`Template`](crate::shared::containers::dependencies::Template) an
-//! agent's program declares at its registration — lazy, run while it
-//! is used, or eager, kept while any agent is attached, either under
-//! the scope its `scope` names — held by its id, the hash of its canonical bytes, so the
-//! same template declared twice is one. A DEPENDENCY TOOL is that
-//! template under one OWNER, which the template's scope decides: a
-//! template whose scope is `instance` is one tool per agent instance,
-//! owned by that agent; one whose scope is `template` is one tool per
-//! agent template, owned by it; one whose scope is `global` is one
-//! tool, owned by nobody.
+//! agent's program declares at its registration, of a dependency
+//! tool's image — lazy, run while it is used, or eager, kept while
+//! any agent is attached, as the image's `mode` says, under the scope
+//! the image's `scope` names — held by its id, the hash of its
+//! canonical bytes, so the same template declared twice is one. A
+//! DEPENDENCY TOOL is that template under one OWNER, which the
+//! image's scope decides: a template of an image whose scope is
+//! `instance` is one tool per agent instance, owned by that agent;
+//! one whose scope is `template` is one tool per agent template,
+//! owned by it; one whose scope is `global` is one tool, owned by
+//! nobody.
 //! Nothing on this wire makes one: the first registration that
 //! declares the template under that owner does, and every registration
 //! RESETS what the agent depends on — exactly the tools of the

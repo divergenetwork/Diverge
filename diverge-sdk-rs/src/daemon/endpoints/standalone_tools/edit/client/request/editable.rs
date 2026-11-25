@@ -33,9 +33,9 @@ pub struct Editable {
     /// daemon, mounted one each over FUSE: see [`FuseMount`].
     #[serde(default)]
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret the template declares is, as the
+    /// Which vault key each secret the image states is, as the
     /// create's [`secrets`](crate::daemon::create::Inner::secrets)
-    /// gave them: every name the template declares and no other, else
+    /// gave them: every name the image states and no other, else
     /// the edit's `secrets` error; a key named anew takes the `use`
     /// grant over it, and must be one the vault holds with at least
     /// one value, else the same error. Resolved at the container's

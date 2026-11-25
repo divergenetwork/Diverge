@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::shared::listing::Keyed;
 use crate::daemon::agent_log::Provider;
 use crate::daemon::creator::Creator;
-use crate::daemon::endpoints::standalone_tools::templates::Mode;
+use crate::shared::containers::info::Mode;
 use crate::daemon::key;
 use crate::shared::permission::Grant;
 
@@ -41,7 +41,7 @@ pub struct Tool {
     /// and the index together name the tool once and for all, where a
     /// name is free again once the tool is deleted.
     pub index: u64,
-    /// How the tool is kept running, as its template's `mode` says:
+    /// How the tool is kept running, as its image's `mode` says:
     /// lazy, run while used, or eager, kept while any agent is
     /// attached or any connect is open. See [`Mode`].
     pub mode: Mode,

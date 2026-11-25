@@ -2,12 +2,14 @@
 //! hash.
 //!
 //! A template is everything about an agent or a tool that is not its
-//! name, not the provider it runs on and not its mounts: the image,
-//! the limits, the arguments, the secrets it needs by name, and — in
-//! words, for whoever makes one —
-//! what the create has to bring that the template cannot name — so
-//! that a template is shareable, the same template on any daemon
-//! hashing the same. The shape is one, [`Template`], written once
+//! name, not the provider it runs on, not its mounts, and not what
+//! its image says of itself: the image, what a container of it is
+//! given beyond what the image needs, and the arguments — so that a
+//! template is shareable, the same template on any daemon hashing the
+//! same. What the image says of itself, in its
+//! [document](crate::shared::containers::info::Document), no template
+//! says again: the memory and the disk it needs, the secrets it needs
+//! by name, and how a tool is kept running. The shape is one, [`Template`], written once
 //! here; which of the two it is for is its `type`, the first member,
 //! `"agent"` for an [agent
 //! template](crate::daemon::endpoints::agents::templates) and `"tool"`
@@ -23,8 +25,7 @@
 //! absent members omitted, the image's `references` absent too, since
 //! one image under different names is one template, no whitespace,
 //! every object key sorted at every depth, the `arguments` and every
-//! map inside them included, the `secrets` sorted bytewise;
-//! see [`Template::hashed`]. Sixty-four
+//! map inside them included; see [`Template::hashed`]. Sixty-four
 //! characters. The daemon computes it on a create and
 //! answers it; a caller may compute it the same way and need not.
 

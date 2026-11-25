@@ -30,7 +30,7 @@
 //! # One container per tool
 //!
 //! However many agents a tool is attached to, one tool container runs,
-//! and what keeps it running is its template's `mode`. A lazy
+//! and what keeps it running is its image's `mode`. A lazy
 //! tool's container runs while it is used — an agent's call in
 //! flight, a file operation, a connect scope open on it — and is
 //! stopped `idle_seconds` after the last use; an attachment alone

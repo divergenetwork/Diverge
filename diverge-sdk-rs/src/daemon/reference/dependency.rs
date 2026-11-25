@@ -6,7 +6,7 @@ use super::Owner;
 
 /// One dependency tool of the caller's: its template, by id, and
 /// whose it is — the one agent, the agent template, or nobody — see
-/// [`Owner`]. A tool is whose its template's `scope` says. The pair names the tool, which the
+/// [`Owner`]. A tool is whose its image's `scope` says. The pair names the tool, which the
 /// [`dependency_tools`](crate::daemon::endpoints::dependency_tools)
 /// list reports one item for: a template that is none, and an owner
 /// the template has no tool under, are each the request's `NotFound`,

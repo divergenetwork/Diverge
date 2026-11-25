@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::daemon::creator::Creator;
-use crate::daemon::endpoints::standalone_tools::templates::Mode;
+use crate::shared::containers::info::Mode;
 
 /// The filter over tools: every member optional, and every one given a
 /// condition a tool passes or does not. In a [list
@@ -38,8 +38,8 @@ pub struct Filter {
     /// and then made by anybody.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub creators: Vec<Creator>,
-    /// Made from a template whose `mode` is any one of these,
-    /// lazy or eager: see [`Mode`]. Absent when empty, and
+    /// Of an image whose `mode` is any one of these, lazy or eager:
+    /// see [`Mode`]. Absent when empty, and
     /// then either.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modes: Vec<Mode>,

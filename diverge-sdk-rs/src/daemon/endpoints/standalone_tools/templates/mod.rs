@@ -1,11 +1,13 @@
 //! Tool templates: what a tool is made from, held by its hash.
 //!
 //! The shape and the id are the daemon's one
-//! [`template`](crate::daemon::template), typed `"tool"` here, with
-//! the [`Mode`] its tools are kept by beside — lazy, run while
-//! used, or eager, kept while any agent is attached or any
-//! connect is open: everything about a tool that is not its name, not
-//! the provider it runs on and not its own mounts. A caller makes one
+//! [`template`](crate::daemon::template), typed `"tool"` here:
+//! everything about a tool that is not its name, not the provider it
+//! runs on, not its own mounts, and not what its image says of
+//! itself — the [`Mode`](crate::shared::containers::info::Mode) its
+//! tools are kept by among it, lazy, run while used, or eager, kept
+//! while any agent is attached or any connect is open. The image is a
+//! standalone tool's: its document's `type` is `standalone_tool`. A caller makes one
 //! with [`create`] and names it afterwards by its id, so the same
 //! template made twice is one template; a [`tool`](super) is created
 //! from a template by that id, with a name, a provider and mounts of
@@ -17,10 +19,8 @@
 //! each family lists and deletes its own, and the `type` keeps their
 //! ids apart.
 
-mod mode;
 mod tool_type;
 
-pub use mode::*;
 pub use tool_type::*;
 
 pub mod create;

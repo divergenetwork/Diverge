@@ -17,9 +17,9 @@ use crate::shared::permission::Grant;
 /// mounts say, on the database and under the grants it names — and
 /// serves to the container under the template's id among the MCP
 /// servers it answers the container's tool calls with. Each secret
-/// is a name the container's template declares, bound by the
+/// is a name the container's image states, bound by the
 /// caller's record to a vault key: the caller checks the name is one
-/// the template declares, locks a free value of the key for a
+/// the image states, locks a free value of the key for a
 /// `rotating` one and reads one for a `fixed` one, and answers every
 /// name with its value — the container's first feed, which the
 /// provider hands it before the id goes out. Each permission is a

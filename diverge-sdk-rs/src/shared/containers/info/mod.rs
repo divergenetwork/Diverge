@@ -5,18 +5,23 @@
 //! the root of its filesystem, `/.diverge/DIVERGE.md` — the folder is
 //! where an image keeps what it says of itself, and this file is the
 //! one thing of it read: a frontmatter between two `---` lines
-//! that is one JSON object — `type`, which is `agent` or `tool` and
-//! says which of the two documents this is; `name`, what the image
-//! calls itself; `description`, what it is, in one line (a
-//! [`Description`](crate::shared::description::Description)); and
+//! that is one JSON object — `type`, which is `agent`,
+//! `standalone_tool` or `dependency_tool` and says which of the three
+//! documents this is; `name`, what the image calls itself;
+//! `description`, what it is, in one line (a
+//! [`Description`](crate::shared::description::Description));
 //! `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
-//! the image's program accepts, all four required; `frontend` where
-//! the program serves one; and, in an agent's and
-//! in no tool's, `chat` and `structured_decisions`, each `false` or
-//! what the agent says of itself ([`Chat`], [`StructuredDecisions`]),
-//! at least one of them said; and no member besides — and then a
-//! markdown body: what the image runs, and the secrets it declares.
+//! the image's program accepts; `memory` and `disk`, what a container
+//! of the image needs, in bytes; all six required; `secrets`, the
+//! names of those the program needs, where it needs any; `frontend`
+//! where the program serves one; in an agent's and in no tool's,
+//! `chat` and `structured_decisions`, each `false` or what the agent
+//! says of itself ([`Chat`], [`StructuredDecisions`]), at least one of
+//! them said; in a tool's of either kind and in no agent's, `mode`,
+//! how its tools are kept running ([`Mode`]); in a dependency tool's
+//! alone, `scope`, how far its tools are shared ([`Scope`]); and no
+//! member besides — and then a markdown body: what the image runs.
 //! The description and the body are the short and the long account of
 //! the image, and both are the image's own: no party keeps another.
 //! [`Document`] is that file parsed, and [`Document::parse`] states
@@ -49,24 +54,30 @@
 
 mod agent;
 mod chat;
+mod dependency_tool;
 mod document;
 mod false_or;
 mod limit;
 mod modalities;
 mod modality;
+mod mode;
 mod parse_error;
+mod scope;
+mod standalone_tool;
 mod structured_decisions;
-mod tool;
 
 pub mod response;
 
 pub use agent::*;
 pub use chat::*;
+pub use dependency_tool::*;
 pub use document::*;
 pub use false_or::*;
 pub use limit::*;
 pub use modalities::*;
 pub use modality::*;
+pub use mode::*;
 pub use parse_error::*;
+pub use scope::*;
+pub use standalone_tool::*;
 pub use structured_decisions::*;
-pub use tool::*;

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Agent;
 
-/// Whose a dependency tool is, as its template's `scope` named it:
+/// Whose a dependency tool is, as its image's `scope` named it:
 /// the one agent it is for, where the `scope` is `instance`, the agent template whose
 /// agents it is for, or nobody in particular, every agent that
 /// declares it being attached to the one. Externally tagged on the

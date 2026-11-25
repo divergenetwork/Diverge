@@ -7,8 +7,10 @@ use super::{Chat, FalseOr, StructuredDecisions};
 use crate::shared::description::Description;
 
 /// The document of an image whose program is an agent: its `type` is
-/// `agent`. What a tool's has, and how the agent's program chats and
-/// makes structured decisions.
+/// `agent`. What every image says of itself — its name, what it is, what
+/// it takes, what it needs — and how the agent's program chats and
+/// makes structured decisions. It has no `mode` and no `scope`: those
+/// are a tool's.
 ///
 /// An agent does at least one of the two: at least one of `chat` and
 /// `structured_decisions` is an object. [`Document::parse`](super::Document::parse)
@@ -36,6 +38,44 @@ pub struct Agent {
     /// a schema is a document in its own vocabulary and this crate has
     /// no business restating it.
     pub schema: Value,
+    /// The memory the image's program needs, in BYTES: what a
+    /// container of the image has before anyone gives it more.
+    /// Required.
+    ///
+    /// A container's limit is this and what its template adds — the
+    /// `extra_memory` of a
+    /// [daemon's template](crate::daemon::template::Template) or of a
+    /// [dependency's declaration](crate::shared::containers::dependencies::Template)
+    /// — summed, and the sum is the
+    /// [`memory`](crate::shared::containers::request::Container::memory)
+    /// of the run request. So an image run with nothing added runs
+    /// with what it says it needs, and no template says less.
+    ///
+    /// Bytes rather than megabytes because a unit that has to be
+    /// spelled out in prose is a unit half of everyone gets wrong.
+    pub memory: u64,
+    /// The bytes the image's program needs to WRITE, in BYTES: its
+    /// container's own filesystem, over the image it came from, before
+    /// anyone gives it more. Required.
+    ///
+    /// A container's limit is this and its template's `extra_disk`,
+    /// summed, as [`memory`](Self::memory) is, and the sum is the
+    /// [`disk`](crate::shared::containers::request::Container::disk)
+    /// of the run request. The image's layers are read-only and are
+    /// not counted, and no mount is.
+    pub disk: u64,
+    /// The secrets the image needs, by name, in the order its author
+    /// states them: names only. Which of them the program takes, and
+    /// in what mode — read once per activation, or held and written
+    /// back — is the program's own answer at its registration, see
+    /// [`secrets`](crate::shared::containers::secrets); the value of
+    /// each is the vault key whoever makes a container of the image
+    /// binds the name to, fed at every activation. A name is not
+    /// empty, and no two are alike:
+    /// [`Document::parse`](super::Document::parse) refuses a
+    /// frontmatter that says otherwise. Absent, the image needs none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub secrets: Vec<String>,
     /// Whether the program serves a frontend beneath `/frontend` (see
     /// [`frontend`](crate::shared::containers::frontend)): `true` only
     /// where the frontmatter says so. Absent, `false`.

@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::daemon::creator::Creator;
 use crate::daemon::reference;
-use crate::shared::containers::dependencies::Scope;
-use super::Mode;
+use crate::shared::containers::info::{Mode, Scope};
 
 /// The filter over dependency tools: every member optional, and every
 /// one given a condition a tool passes or does not. In a [list
@@ -45,11 +44,11 @@ pub struct Filter {
     /// made by anybody.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub creators: Vec<Creator>,
-    /// Of any one of these modes, lazy or eager: see
-    /// [`Mode`]. Absent when empty, and then either.
+    /// Of an image whose `mode` is any one of these, lazy or eager:
+    /// see [`Mode`]. Absent when empty, and then either.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modes: Vec<Mode>,
-    /// A tool whose `scope` is any one of these: see [`Scope`]. Absent
+    /// Of an image whose `scope` is any one of these: see [`Scope`]. Absent
     /// when empty, and then any scope.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub scopes: Vec<Scope>,

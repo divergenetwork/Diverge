@@ -23,17 +23,17 @@ pub struct Inner {
     /// error. The template's image, limits and arguments are
     /// the container's for its life.
     pub template: String,
-    /// Which vault key each secret the template declares is: the
+    /// Which vault key each secret the image states is: the
     /// secret's name, as the template's `secrets` names it, to the
     /// key as [`vault`](crate::daemon::endpoints::vault) holds it.
-    /// Every name the template declares, and no other, else the
+    /// Every name the image states, and no other, else the
     /// create's `secrets` error; naming a key takes the `use` grant
     /// over it, and the key must be one the vault holds with at least
     /// one value, else the same error. Which values the container is
     /// fed, and whether it holds them or reads them, is decided at
     /// every activation by the mode its program declared for the
     /// name; see [`secrets`](crate::shared::containers::secrets).
-    /// Ordered as given, and kept so. Absent, the template declares
+    /// Ordered as given, and kept so. Absent, the image states
     /// none.
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub secrets: IndexMap<String, String>,

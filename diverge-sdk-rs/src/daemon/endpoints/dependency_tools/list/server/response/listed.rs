@@ -7,6 +7,7 @@ use crate::shared::listing::Keyed;
 use crate::daemon::creator::Creator;
 use crate::daemon::key;
 use crate::shared::containers::dependencies::Template;
+use crate::shared::containers::info::{Mode, Scope};
 use crate::shared::permission::Grant;
 use super::{Attached, Run};
 
@@ -24,9 +25,17 @@ pub struct Listed {
     /// states it. An agent calls the tool's MCP tools by the id's
     /// first eight characters, as a prefix.
     pub id: String,
-    /// Whose the tool is, as the template's scope decides: the one
+    /// Whose the tool is, as its image's scope decides: the one
     /// agent, the one agent template, or nobody. See [`key::Owner`].
     pub owner: key::Owner,
+    /// How the tool is kept running, as its image's `mode` says: lazy,
+    /// run while used, or eager, kept while any agent is attached. See
+    /// [`Mode`].
+    pub mode: Mode,
+    /// How far the tool is shared, as its image's `scope` says: one
+    /// per agent, one per agent template, or one for all. See
+    /// [`Scope`].
+    pub scope: Scope,
     /// Its number among all dependency tools ever made from the
     /// template, whatever their owners: the first is `1`, and no
     /// number is given twice. The template and the index name the tool

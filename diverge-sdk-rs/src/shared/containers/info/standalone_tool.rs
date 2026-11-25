@@ -1,18 +1,23 @@
-//! A tool's image's document.
+//! A standalone tool's image's document.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::Mode;
 use crate::shared::description::Description;
 
-/// The document of an image whose program is a tool: its `type` is
-/// `tool`. It has no `chat` and no `structured_decisions`: those are
-/// an agent's, and a tool's frontmatter that states either, whatever
-/// its value, is not a document.
+/// The document of an image whose program is a standalone tool: its
+/// `type` is `standalone_tool`. A standalone tool is made by hand, from
+/// a tool template of the image, and is nobody's dependency: an agent's
+/// program that declares the image as one is refused. It has no
+/// `scope`, which is a [`DependencyTool`](super::DependencyTool)'s, and
+/// no `chat` and no `structured_decisions`, which are an agent's: a
+/// frontmatter that states any of the three, whatever its value, is not
+/// this document.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct Tool {
+pub struct StandaloneTool {
     /// The image's own name, as its author states it. Nothing makes it
     /// unique: two images may say the same name, and the digest is
     /// still what an image is.
@@ -32,6 +37,22 @@ pub struct Tool {
     /// a schema is a document in its own vocabulary and this crate has
     /// no business restating it.
     pub schema: Value,
+    /// The memory the image's program needs, in BYTES: see
+    /// [`Agent::memory`](super::Agent::memory), which this is, member
+    /// for member.
+    pub memory: u64,
+    /// The bytes the image's program needs to write, in BYTES: see
+    /// [`Agent::disk`](super::Agent::disk), which this is, member for
+    /// member.
+    pub disk: u64,
+    /// The secrets the image needs, by name: see
+    /// [`Agent::secrets`](super::Agent::secrets), which this is, member
+    /// for member.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub secrets: Vec<String>,
+    /// How every tool made from the image is kept running: lazy or
+    /// eager. See [`Mode`]. Required.
+    pub mode: Mode,
     /// Whether the program serves a frontend beneath `/frontend` (see
     /// [`frontend`](crate::shared::containers::frontend)): `true` only
     /// where the frontmatter says so. Absent, `false`.
