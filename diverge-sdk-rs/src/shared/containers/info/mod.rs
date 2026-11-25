@@ -13,8 +13,9 @@
 //! `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
 //! the image's program accepts; `memory` and `disk`, what a container
-//! of the image needs, in bytes; all six required; `secrets`, the
-//! names of those the program needs, where it needs any; `frontend`
+//! of the image needs, in bytes; all six required; `secrets`, every
+//! secret the program could take, each by its name and what it is
+//! ([`Secret`]), where it takes any; `frontend`
 //! where the program serves one; in an agent's and in no tool's,
 //! `chat` and `structured_decisions`, each `false` or what the agent
 //! says of itself ([`Chat`], [`StructuredDecisions`]), at least one of
@@ -63,6 +64,7 @@ mod modality;
 mod mode;
 mod parse_error;
 mod scope;
+mod secret;
 mod standalone_tool;
 mod structured_decisions;
 
@@ -79,5 +81,6 @@ pub use modality::*;
 pub use mode::*;
 pub use parse_error::*;
 pub use scope::*;
+pub use secret::*;
 pub use standalone_tool::*;
 pub use structured_decisions::*;

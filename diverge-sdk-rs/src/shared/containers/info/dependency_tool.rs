@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Mode, Scope};
+use super::{Mode, Scope, Secret};
 use crate::shared::description::Description;
 
 /// The document of an image whose program is a dependency tool: its
@@ -46,15 +46,14 @@ pub struct DependencyTool {
     /// [`Agent::disk`](super::Agent::disk), which this is, member for
     /// member.
     pub disk: u64,
-    /// The secrets the image needs, by name: see
-    /// [`Agent::secrets`](super::Agent::secrets), which this is, member
-    /// for member. The value of each is resolved through the vault key
-    /// the agent the tool is spawned for binds the same name to, so
-    /// every one is a name that agent's image states too; an agent
-    /// whose image does not is refused the dependency at its
-    /// registration.
+    /// Every secret the image's program could take, each by its name
+    /// and what it is: see [`Agent::secrets`](super::Agent::secrets),
+    /// which this is, member for member. Which of them a tool needs is
+    /// its declaration's to say, by name; the value of each is
+    /// resolved through the vault key the agent the tool is spawned
+    /// for binds the same name to.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub secrets: Vec<String>,
+    pub secrets: Vec<Secret>,
     /// How every tool made from the image is kept running: lazy or
     /// eager. See [`Mode`]. Required.
     pub mode: Mode,

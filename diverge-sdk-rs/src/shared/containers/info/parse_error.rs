@@ -26,8 +26,9 @@ pub enum ParseError {
     Neither,
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
-    /// The frontmatter's `secrets` names a secret by an empty name, or
-    /// names one twice.
+    /// The frontmatter's `secrets` names a secret by what is no
+    /// secret's name — empty, too long, of more than one line, or not
+    /// trimmed — or names one twice.
     Secrets,
 }
 
@@ -40,7 +41,7 @@ impl fmt::Display for ParseError {
             ParseError::Type => f.write_str("document frontmatter does not say its type, `agent`, `standalone_tool` or `dependency_tool`"),
             ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
-            ParseError::Secrets => f.write_str("document secrets name one by an empty name, or one twice"),
+            ParseError::Secrets => f.write_str("document secrets name one by what is no secret's name, or one twice"),
         }
     }
 }

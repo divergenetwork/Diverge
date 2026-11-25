@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, StandaloneTool, StructuredDecisions};
+use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, Secret, StandaloneTool, StructuredDecisions};
 use crate::shared::description::Description;
 
 /// `/.diverge/DIVERGE.md`, parsed: an agent's image's document, a
@@ -65,7 +65,7 @@ struct AgentFrontmatter {
     memory: u64,
     disk: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<String>,
+    secrets: Vec<Secret>,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -85,7 +85,7 @@ struct StandaloneToolFrontmatter {
     memory: u64,
     disk: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<String>,
+    secrets: Vec<Secret>,
     mode: Mode,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
@@ -102,7 +102,7 @@ struct DependencyToolFrontmatter {
     memory: u64,
     disk: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<String>,
+    secrets: Vec<Secret>,
     mode: Mode,
     scope: Scope,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -131,13 +131,13 @@ fn is_fence(line: &str) -> bool {
 }
 
 /// Rules 6 and 7 of [`Document::parse`]: `schema` is an object, and
-/// `secrets` names each secret once, by a name that is not empty.
-fn held(schema: &Value, secrets: &[String]) -> Result<(), ParseError> {
+/// every secret's name is a secret's name, and its own.
+fn held(schema: &Value, secrets: &[Secret]) -> Result<(), ParseError> {
     if !schema.is_object() {
         return Err(ParseError::NotObject);
     }
-    let alike = |index: usize, name: &String| secrets[..index].contains(name);
-    if secrets.iter().enumerate().any(|(index, name)| name.is_empty() || alike(index, name)) {
+    let alike = |index: usize, secret: &Secret| secrets[..index].iter().any(|before| before.name == secret.name);
+    if secrets.iter().enumerate().any(|(index, secret)| !Secret::named(&secret.name) || alike(index, secret)) {
         return Err(ParseError::Secrets);
     }
     Ok(())
@@ -169,9 +169,11 @@ impl Document {
     ///      [`DESCRIPTION_CHARACTERS`](crate::shared::description::DESCRIPTION_CHARACTERS)
     ///      characters; `schema`; `memory` and `disk`, each a whole
     ///      number of bytes from 0 to 2 to the power 64 less 1; all
-    ///      five required. And perhaps `secrets`, an array of strings,
-    ///      empty when absent; and perhaps `frontend`, a boolean,
-    ///      `false` when absent.
+    ///      five required. And perhaps `secrets`, an array of objects,
+    ///      each of exactly `name`, a string, and `description`, a
+    ///      string that is a [`Description`], both required: see
+    ///      [`Secret`]. Empty when absent. And perhaps `frontend`, a
+    ///      boolean, `false` when absent.
     ///    - An agent's has, besides, perhaps `chat` and perhaps
     ///      `structured_decisions`, each `false` or an object as
     ///      [`FalseOr`] reads one, `false` when absent.
@@ -190,8 +192,12 @@ impl Document {
     ///    [`ParseError::Json`].
     /// 6. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
-    /// 7. No name in `secrets` is empty, and no two are alike.
-    ///    Otherwise [`ParseError::Secrets`].
+    /// 7. Every name in `secrets` is a secret's name — one line of
+    ///    plain text, trimmed, of one to
+    ///    [`SECRET_NAME_CHARACTERS`](super::SECRET_NAME_CHARACTERS)
+    ///    characters — and no two are alike. Otherwise
+    ///    [`ParseError::Secrets`]. A secret's `description` that is no
+    ///    [`Description`] is rule 5's, [`ParseError::Json`].
     /// 8. In an agent's, at least one of `chat` and
     ///    `structured_decisions` is an object. Both `false`, both
     ///    absent, or one `false` and the other absent, is
@@ -361,9 +367,15 @@ impl Document {
         }
     }
 
-    /// The secrets the image needs, by name, in the order it states
-    /// them, whichever type it is. Empty where it needs none.
-    pub fn secrets(&self) -> &[String] {
+    /// Whether the image states a secret of the name `name`: one a
+    /// template of the image may name.
+    pub fn states(&self, name: &str) -> bool {
+        self.secrets().iter().any(|secret| secret.name == name)
+    }
+
+    /// Every secret the image's program could take, in the order it
+    /// states them, whichever type it is. Empty where it takes none.
+    pub fn secrets(&self) -> &[Secret] {
         match self {
             Document::Agent(agent) => &agent.secrets,
             Document::StandaloneTool(tool) => &tool.secrets,

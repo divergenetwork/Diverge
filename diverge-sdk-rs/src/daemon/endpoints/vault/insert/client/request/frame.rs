@@ -25,7 +25,7 @@ pub struct Frame {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot: Option<u32>,
     /// The value: any JSON, held as given and handed to a container
-    /// that takes the key under the name its image states.
+    /// that takes the key under the name its template declares.
     pub value: Value,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]

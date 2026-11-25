@@ -4,15 +4,16 @@
 //! An AGENT container's program answers its registration with the tools
 //! it depends on — each a [`Template`]: a tool container the caller
 //! runs, by its image — a digest, and where its bytes may be fetched —
-//! what it is given beyond what the image needs, its arguments, and
-//! the agent's files and directories the caller serves live into a
-//! lazy tool of one agent — and named by its id, the hash of its
+//! what it is given beyond what the image needs, its arguments, which
+//! of the image's secrets it needs, by name, and the agent's files and
+//! directories the caller serves live into a lazy tool of one agent —
+//! and named by its id, the hash of its
 //! canonical bytes, which the caller serves it to the program under.
 //! What kind of tool it is, is not the declaration's to say: the
 //! image is a dependency tool's, and its own
 //! [document](crate::shared::containers::info::Document) says how it
-//! is kept running, how far it is shared, the secrets it needs and
-//! the memory and the disk it needs. The proxy carries the list on the agents
+//! is kept running, how far it is shared, every secret its program
+//! could take and the memory and the disk it needs. The proxy carries the list on the agents
 //! begin's `Begun`, beside the secrets the program declared; the
 //! provider carries both to the caller in one
 //! [`registration`](super::registration) ask on the run scope, and the

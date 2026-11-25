@@ -1,9 +1,11 @@
-//! The secrets a container is handed: named by its image, moded by
-//! its program, valued by the caller.
+//! The secrets a container is handed: stated by its image, named by
+//! its template, moded by its program, valued by the caller.
 //!
-//! An image states its secrets by NAME alone, in its
-//! [document](crate::shared::containers::info::Document), and the
-//! record made of it binds each name to a vault key of the caller's. Neither
+//! An image states every secret its program could take, in its
+//! [document](crate::shared::containers::info::Document); a template
+//! declares those a container needs, by NAME alone, all of the
+//! image's or some; and the record made from the template binds each
+//! name to a vault key of the caller's. Neither
 //! says what the program does with a secret: that is the program's
 //! own answer at its registration, a [`Declaration`] — each name it
 //! takes, to the [`Mode`] it takes it in. A `fixed` secret is read

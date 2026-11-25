@@ -36,12 +36,9 @@ use super::super::request::Image;
 /// 2. How far it is shared, its
 ///    [`scope`](crate::shared::containers::info::Scope): one per
 ///    agent, one per agent template, or one for all.
-/// 3. The secrets it needs, by name. Which of them the tool's program
-///    takes, and in what mode, is its own answer at registration, and
-///    their values are the caller's, each resolved through the vault
-///    key the agent that spawns the tool binds the same name to, fed
-///    at every activation. Every one is a name the registering agent's
-///    own image states; otherwise the registration's error.
+/// 3. Every secret its program could take, each by its name and what
+///    it is. Which of them this tool needs is here, by name: see
+///    [`secrets`](Self::secrets).
 /// 4. The memory and the disk it needs.
 ///
 /// So two agents that declare one image declare one kind of tool, and
@@ -72,8 +69,8 @@ use super::super::request::Image;
 /// hexadecimal SHA-256 of its [`canonical`](crate::shared::canonical)
 /// bytes — this template as compact JSON, absent members omitted, the
 /// image's `references` absent too, every object key sorted at every
-/// depth, the `arguments` and the mounts included — sixty-four
-/// characters, which the caller computes over
+/// depth, the `arguments`, the mounts and the `secrets` included, the
+/// names sorted bytewise — sixty-four characters, which the caller computes over
 /// [`hashed`](Self::hashed). Two declarations with one id are one
 /// dependency, and a list that declares one twice is refused; the same
 /// template deployed for the same agent, on whatever provider, is the
@@ -102,6 +99,19 @@ pub struct Template {
     /// The arguments the tool container is registered with — the
     /// `arguments` of the run request that makes it, verbatim.
     pub arguments: Value,
+    /// The secrets the tool container needs, by name: all of those its
+    /// image's document states, or some of them, and none it does not
+    /// state. Required, and empty for a tool that needs none. Which of
+    /// them the tool's program takes, and in what mode, is its own
+    /// answer at its registration — see
+    /// [`secrets`](crate::shared::containers::secrets) — and the value
+    /// of each is resolved through the vault key the agent the tool is
+    /// spawned for binds the same name to, fed at every activation.
+    /// Inside the hash, sorted bytewise there. A name is not empty, no
+    /// two are alike, every one is a name the tool's image states, and
+    /// every one is a name the registering agent binds; a declaration
+    /// that says otherwise is the registration's error.
+    pub secrets: Vec<String>,
     /// Files of the agent container served live into the tool
     /// container, one each over FUSE: see [`Mount`]. The agent's path
     /// names a file; the tool's path is where it appears. Only of an
@@ -121,10 +131,14 @@ pub struct Template {
 impl Template {
     /// The template as its id hashes it: the same, with the image's
     /// references absent, since where the bytes may be fetched is not
-    /// what the tool is.
+    /// what the tool is, and the secrets' names sorted bytewise, since
+    /// the order they are named in is not what is needed.
     pub fn hashed(&self) -> Template {
+        let mut secrets = self.secrets.clone();
+        secrets.sort_unstable();
         Template {
             image: self.image.hashed(),
+            secrets,
             ..self.clone()
         }
     }
