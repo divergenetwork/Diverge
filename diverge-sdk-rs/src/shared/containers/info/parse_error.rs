@@ -21,15 +21,19 @@ pub enum ParseError {
     /// `agent`, the string `standalone_tool` or the string
     /// `dependency_tool`.
     Type,
-    /// An agent's frontmatter in which neither `chat` nor
-    /// `structured_decisions` is an object.
-    Neither,
+    /// The frontmatter's `name` is no image's name: empty, over
+    /// [`NAME_BYTES`](super::NAME_BYTES) bytes, or of anything but
+    /// runs of `a` to `z` and `0` to `9` joined by separators.
+    Name,
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
     /// The frontmatter's `secrets` names a secret by what is no
     /// secret's name — empty, too long, of more than one line, or not
     /// trimmed — or names one twice.
     Secrets,
+    /// An agent's frontmatter in which neither `chat` nor
+    /// `structured_decisions` is an object.
+    Neither,
 }
 
 impl fmt::Display for ParseError {
@@ -39,9 +43,10 @@ impl fmt::Display for ParseError {
             ParseError::Unterminated => f.write_str("document frontmatter is never closed by a `---` line"),
             ParseError::Json(error) => write!(f, "document frontmatter is not what its type's is: {error}"),
             ParseError::Type => f.write_str("document frontmatter does not say its type, `agent`, `standalone_tool` or `dependency_tool`"),
-            ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),
+            ParseError::Name => f.write_str("document name is no image's name: 1 to 128 bytes, of lowercase letters and digits joined by `.`, `_`, `__` or hyphens"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
             ParseError::Secrets => f.write_str("document secrets name one by what is no secret's name, or one twice"),
+            ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),
         }
     }
 }
@@ -50,7 +55,7 @@ impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ParseError::Json(error) => Some(error),
-            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Neither | ParseError::NotObject | ParseError::Secrets => None,
+            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Name | ParseError::NotObject | ParseError::Secrets | ParseError::Neither => None,
         }
     }
 }

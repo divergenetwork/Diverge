@@ -7,7 +7,8 @@
 //! one thing of it read: a frontmatter between two `---` lines
 //! that is one JSON object — `type`, which is `agent`,
 //! `standalone_tool` or `dependency_tool` and says which of the three
-//! documents this is; `name`, what the image calls itself;
+//! documents this is; `name`, what the image calls itself, which is
+//! what a repository may be named ([`named`]);
 //! `description`, what it is, in one line (a
 //! [`Description`](crate::shared::description::Description));
 //! `schema`, the JSON Schema of the
@@ -62,6 +63,7 @@ mod limit;
 mod modalities;
 mod modality;
 mod mode;
+mod name;
 mod parse_error;
 mod scope;
 mod secret;
@@ -79,6 +81,7 @@ pub use limit::*;
 pub use modalities::*;
 pub use modality::*;
 pub use mode::*;
+pub use name::*;
 pub use parse_error::*;
 pub use scope::*;
 pub use secret::*;

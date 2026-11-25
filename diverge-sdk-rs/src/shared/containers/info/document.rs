@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, Secret, StandaloneTool, StructuredDecisions};
+use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, Secret, StandaloneTool, StructuredDecisions, named};
 use crate::shared::description::Description;
 
 /// `/.diverge/DIVERGE.md`, parsed: an agent's image's document, a
@@ -130,9 +130,13 @@ fn is_fence(line: &str) -> bool {
     line.strip_suffix('\n').unwrap_or(line) == "---"
 }
 
-/// Rules 6 and 7 of [`Document::parse`]: `schema` is an object, and
-/// every secret's name is a secret's name, and its own.
-fn held(schema: &Value, secrets: &[Secret]) -> Result<(), ParseError> {
+/// Rules 6 to 8 of [`Document::parse`]: `name` is an image's name,
+/// `schema` is an object, and every secret's name is a secret's name,
+/// and its own.
+fn held(name: &str, schema: &Value, secrets: &[Secret]) -> Result<(), ParseError> {
+    if !named(name) {
+        return Err(ParseError::Name);
+    }
     if !schema.is_object() {
         return Err(ParseError::NotObject);
     }
@@ -190,21 +194,27 @@ impl Document {
     ///    of its type's, a member of the wrong type, or a
     ///    `description` that is no [`Description`], is
     ///    [`ParseError::Json`].
-    /// 6. `schema` is an object, since a JSON Schema is one; any other
+    /// 6. `name` is an image's name, as [`named`] states one: 1 to
+    ///    [`NAME_BYTES`](super::NAME_BYTES) bytes, of runs of `a` to
+    ///    `z` and `0` to `9` joined by `.`, `_`, `__` or one or more
+    ///    `-`, neither beginning nor ending with one of those. It is
+    ///    the rule of a registry's repository name, and the same
+    ///    function. Otherwise [`ParseError::Name`].
+    /// 7. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
-    /// 7. Every name in `secrets` is a secret's name — one line of
+    /// 8. Every name in `secrets` is a secret's name — one line of
     ///    plain text, trimmed, of one to
     ///    [`SECRET_NAME_CHARACTERS`](super::SECRET_NAME_CHARACTERS)
     ///    characters — and no two are alike. Otherwise
     ///    [`ParseError::Secrets`]. A secret's `description` that is no
     ///    [`Description`] is rule 5's, [`ParseError::Json`].
-    /// 8. In an agent's, at least one of `chat` and
+    /// 9. In an agent's, at least one of `chat` and
     ///    `structured_decisions` is an object. Both `false`, both
     ///    absent, or one `false` and the other absent, is
     ///    [`ParseError::Neither`].
-    /// 9. The body is everything after the closing line, as the author
-    ///    left it: nothing is trimmed, and a document whose closing
-    ///    line is its last has an empty body.
+    /// 10. The body is everything after the closing line, as the
+    ///     author left it: nothing is trimmed, and a document whose
+    ///     closing line is its last has an empty body.
     ///
     /// The text's size is not among them: whoever reads the file out
     /// of an image holds it to [`MAX_BYTES`](super::MAX_BYTES) before
@@ -227,7 +237,7 @@ impl Document {
         }
     }
 
-    /// Rules 3 to 8 of [`parse`](Self::parse), over the frontmatter's
+    /// Rules 3 to 9 of [`parse`](Self::parse), over the frontmatter's
     /// text, with the body it closes over.
     fn of(frontmatter: &str, body: String) -> Result<Document, ParseError> {
         // Rule 3.
@@ -238,12 +248,12 @@ impl Document {
             _ => return Err(ParseError::Type),
         };
         let members = Value::Object(members);
-        // Rules 5 to 8.
+        // Rules 5 to 9.
         Ok(match kind.as_str() {
             "agent" => {
                 let AgentFrontmatter { name, description, schema, memory, disk, secrets, frontend, chat, structured_decisions } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&schema, &secrets)?;
+                held(&name, &schema, &secrets)?;
                 if chat.is_false() && structured_decisions.is_false() {
                     return Err(ParseError::Neither);
                 }
@@ -252,13 +262,13 @@ impl Document {
             "standalone_tool" => {
                 let StandaloneToolFrontmatter { name, description, schema, memory, disk, secrets, mode, frontend } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&schema, &secrets)?;
+                held(&name, &schema, &secrets)?;
                 Document::StandaloneTool(StandaloneTool { name, description, schema, memory, disk, secrets, mode, frontend, body })
             }
             "dependency_tool" => {
                 let DependencyToolFrontmatter { name, description, schema, memory, disk, secrets, mode, scope, frontend } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&schema, &secrets)?;
+                held(&name, &schema, &secrets)?;
                 Document::DependencyTool(DependencyTool { name, description, schema, memory, disk, secrets, mode, scope, frontend, body })
             }
             _ => return Err(ParseError::Type),
