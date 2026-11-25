@@ -196,10 +196,12 @@ impl Document {
     ///    [`ParseError::Json`].
     /// 6. `name` is an image's name, as [`named`] states one: 1 to
     ///    [`NAME_BYTES`](super::NAME_BYTES) bytes, of runs of `a` to
-    ///    `z` and `0` to `9` joined by `.`, `_`, `__` or one or more
-    ///    `-`, neither beginning nor ending with one of those. It is
-    ///    the rule of a registry's repository name, and the same
-    ///    function. Otherwise [`ParseError::Name`].
+    ///    `z`, `A` to `Z` and `0` to `9` joined by `.`, `_`, `__` or
+    ///    one or more `-`, neither beginning nor ending with one of
+    ///    those. It is the rule of a registry's repository name, but
+    ///    that a repository's has no capital:
+    ///    [`named_lowercase`](super::named_lowercase). Otherwise
+    ///    [`ParseError::Name`].
     /// 7. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
     /// 8. Every name in `secrets` is a secret's name — one line of

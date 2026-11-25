@@ -23,7 +23,7 @@ pub enum ParseError {
     Type,
     /// The frontmatter's `name` is no image's name: empty, over
     /// [`NAME_BYTES`](super::NAME_BYTES) bytes, or of anything but
-    /// runs of `a` to `z` and `0` to `9` joined by separators.
+    /// runs of letters and digits joined by separators.
     Name,
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
@@ -43,7 +43,7 @@ impl fmt::Display for ParseError {
             ParseError::Unterminated => f.write_str("document frontmatter is never closed by a `---` line"),
             ParseError::Json(error) => write!(f, "document frontmatter is not what its type's is: {error}"),
             ParseError::Type => f.write_str("document frontmatter does not say its type, `agent`, `standalone_tool` or `dependency_tool`"),
-            ParseError::Name => f.write_str("document name is no image's name: 1 to 128 bytes, of lowercase letters and digits joined by `.`, `_`, `__` or hyphens"),
+            ParseError::Name => f.write_str("document name is no image's name: 1 to 128 bytes, of letters and digits joined by `.`, `_`, `__` or hyphens"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
             ParseError::Secrets => f.write_str("document secrets name one by what is no secret's name, or one twice"),
             ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),

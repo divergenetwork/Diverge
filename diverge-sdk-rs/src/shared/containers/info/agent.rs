@@ -20,8 +20,9 @@ use crate::shared::description::Description;
 #[serde(deny_unknown_fields)]
 pub struct Agent {
     /// The image's own name, as its author states it: what a
-    /// repository may be named, which [`named`](super::named) states
-    /// and [`Document::parse`](super::Document::parse) holds it to.
+    /// repository may be named, but that it may have capitals, which
+    /// [`named`](super::named) states and
+    /// [`Document::parse`](super::Document::parse) holds it to.
     /// Nothing makes it unique: two images may say the same name, and
     /// the digest is still what an image is.
     pub name: String,

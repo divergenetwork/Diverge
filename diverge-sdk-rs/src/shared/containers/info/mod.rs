@@ -8,7 +8,8 @@
 //! that is one JSON object — `type`, which is `agent`,
 //! `standalone_tool` or `dependency_tool` and says which of the three
 //! documents this is; `name`, what the image calls itself, which is
-//! what a repository may be named ([`named`]);
+//! what a repository may be named but that it may have capitals
+//! ([`named`]);
 //! `description`, what it is, in one line (a
 //! [`Description`](crate::shared::description::Description));
 //! `schema`, the JSON Schema of the
