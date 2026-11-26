@@ -1,14 +1,12 @@
-//! `diverge run dependency-tools delete`: deleting a dependency
-//! template's tools, by the template's id, as
-//! [`delete`](diverge_sdk::daemon::endpoints::dependency_tools::delete)
-//! states it.
+//! `diverge run postgres compartments tag`: putting tags on a compartment, as
+//! [`tag`](diverge_sdk::daemon::endpoints::postgres::compartments::tag) states it.
 
 use clap::Args;
-use diverge_sdk::daemon::endpoints::dependency_tools::delete::{client::request, server::response};
+use diverge_sdk::daemon::endpoints::postgres::compartments::tag::{client::request, server::response};
 
 use crate::run::{Below, Emitter, Error, Target, body, request_schema, response_schema, shape};
 
-/// Deleting a dependency template's tools, by the template's id.
+/// Putting tags on a compartment.
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 #[command(subcommand_negates_reqs = true, args_conflicts_with_subcommands = true)]
 pub struct Arguments {
@@ -32,15 +30,10 @@ pub async fn run(
 ) -> Result<(), Error> {
     match arguments.below {
         Some(Below::RequestSchema(_)) => {
-            return request_schema::<request::Frame>("diverge run dependency-tools delete", emitter)
-                .await;
+            return request_schema::<request::Frame>("diverge run postgres compartments tag", emitter).await;
         }
         Some(Below::ResponseSchema(_)) => {
-            return response_schema::<response::Frame>(
-                "diverge run dependency-tools delete",
-                emitter,
-            )
-            .await;
+            return response_schema::<response::Frame>("diverge run postgres compartments tag", emitter).await;
         }
         None => {}
     }

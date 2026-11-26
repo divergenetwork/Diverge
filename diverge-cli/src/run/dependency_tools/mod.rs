@@ -7,7 +7,6 @@ use clap::Subcommand;
 
 use crate::run::{Emitter, Error, Target};
 
-pub mod delete;
 pub mod download;
 pub mod exec;
 pub mod filetree;
@@ -23,8 +22,6 @@ pub mod upload;
 /// The requests over dependency tools.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum DependencyTools {
-    /// Deleting a dependency template's tools, by the template's id.
-    Delete(delete::Arguments),
     /// Downloading a file or a directory out of a dependency tool.
     Download(download::Arguments),
     /// Watching a dependency tool's container's filesystem, whole.
@@ -58,7 +55,6 @@ pub async fn run(
     emitter: &mut Emitter,
 ) -> Result<(), Error> {
     match command {
-        DependencyTools::Delete(arguments) => delete::run(arguments, target, emitter).await,
         DependencyTools::Download(arguments) => download::run(arguments, target, emitter).await,
         DependencyTools::Exec(arguments) => exec::run(arguments, target, emitter).await,
         DependencyTools::Frontend(arguments) => frontend::run(arguments, target, emitter).await,

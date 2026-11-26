@@ -387,7 +387,7 @@ CREATE TABLE IF NOT EXISTS diverge.image_icons (
 
 -- A dependency template, by the hash of its own JSON: the body every
 -- dependency tool of it shares. Made by the first registration that
--- declares it, gone with the template's delete.
+-- declares it, gone with the delete of the template's compartment.
 CREATE TABLE IF NOT EXISTS diverge.dependencies (
     id       TEXT PRIMARY KEY,
     template JSONB NOT NULL

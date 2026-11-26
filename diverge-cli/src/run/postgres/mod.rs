@@ -7,12 +7,16 @@ use clap::Subcommand;
 
 use crate::run::{Emitter, Error, Target};
 
+pub mod compartments;
 pub mod get;
 pub mod list;
 
 /// The requests over the database.
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum Postgres {
+    /// The requests over the database's compartments.
+    #[command(subcommand)]
+    Compartments(compartments::Compartments),
     /// Reading which database the daemon serves.
     Get(get::Arguments),
     /// Listing the container connections open through the database, and
@@ -27,6 +31,7 @@ pub async fn run(
     emitter: &mut Emitter,
 ) -> Result<(), Error> {
     match command {
+        Postgres::Compartments(command) => compartments::run(command, target, emitter).await,
         Postgres::Get(arguments) => get::run(arguments, target, emitter).await,
         Postgres::List(arguments) => list::run(arguments, target, emitter).await,
     }
