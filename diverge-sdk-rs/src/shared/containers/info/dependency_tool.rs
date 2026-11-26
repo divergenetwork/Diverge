@@ -60,9 +60,8 @@ pub struct DependencyTool {
     /// How every tool made from the image is kept running: lazy or
     /// eager. See [`Mode`]. Required.
     pub mode: Mode,
-    /// How far every tool made from the image is shared, and its
-    /// database with it: one per agent, one per agent template, or one
-    /// for all. See [`Scope`]. Required.
+    /// How far every tool made from the image is shared: one per
+    /// agent, or one for all. See [`Scope`]. Required.
     pub scope: Scope,
     /// Whether the program serves a frontend beneath `/frontend` (see
     /// [`frontend`](crate::shared::containers::frontend)): `true` only

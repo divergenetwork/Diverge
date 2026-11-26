@@ -5,9 +5,8 @@ use serde::{Deserialize, Serialize};
 
 /// The actions over dependency tools that exist, which a grant
 /// reaches as far as its `within` says: each tool is judged on its
-/// own, by the tools list filter; a delete, which is by template,
-/// takes the action over every tool of the template.
-/// Snake case on the wire: `"get"`, `"delete"`, `"list"`,
+/// own, by the tools list filter.
+/// Snake case on the wire: `"get"`, `"list"`,
 /// `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"logs"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -17,10 +16,6 @@ pub enum Over {
     /// [`dependencies::get`](crate::daemon::endpoints::dependency_tools::get)
     /// does.
     Get,
-    /// Delete every tool of a template, as
-    /// [`dependencies::delete`](crate::daemon::endpoints::dependency_tools::delete)
-    /// does.
-    Delete,
     /// List them, as
     /// [`dependencies::list`](crate::daemon::endpoints::dependency_tools::list)
     /// does; the list sends what the grant reaches.

@@ -172,8 +172,6 @@ pub enum ClientRequest<'a> {
     DependencyToolsList(dependency_tools::list::client::request::Frame),
     /// Tag `90`. Get one dependency template.
     DependencyToolsGet(dependency_tools::get::client::request::Frame),
-    /// Tag `91`. Delete a dependency template no tool runs from.
-    DependencyToolsDelete(dependency_tools::delete::client::request::Frame),
     /// Tag `92`. Put tags on a dependency template.
     DependencyToolsTag(dependency_tools::tag::client::request::Frame),
     /// Tag `93`. Take tags off a dependency template.
@@ -324,6 +322,16 @@ pub enum ClientRequest<'a> {
     ConnectedStandaloneToolsAttachAgentTemplate(connected_standalone_tools::attach_agent_template::client::request::Frame),
     /// Tag `156`. Detach a connected tool from every agent of a template.
     ConnectedStandaloneToolsDetachAgentTemplate(connected_standalone_tools::detach_agent_template::client::request::Frame),
+    /// Tag `168`. List the database's compartments, narrowed.
+    PostgresCompartmentsList(postgres::compartments::list::client::request::Frame),
+    /// Tag `169`. Get one compartment.
+    PostgresCompartmentsGet(postgres::compartments::get::client::request::Frame),
+    /// Tag `170`. Put tags on a compartment.
+    PostgresCompartmentsTag(postgres::compartments::tag::client::request::Frame),
+    /// Tag `171`. Take tags off a compartment.
+    PostgresCompartmentsUntag(postgres::compartments::untag::client::request::Frame),
+    /// Tag `172`. Delete a compartment.
+    PostgresCompartmentsDelete(postgres::compartments::delete::client::request::Frame),
     /// No tag of its own. It is not a request a client sends — it is
     /// what a request BECOMES when the daemon cannot make one of the
     /// others out of it, so it carries the payload verbatim and
@@ -416,7 +424,6 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::StandaloneToolsDetachAgentTemplate(frame) => frame.encode(out),
             ClientRequest::DependencyToolsList(frame) => frame.encode(out),
             ClientRequest::DependencyToolsGet(frame) => frame.encode(out),
-            ClientRequest::DependencyToolsDelete(frame) => frame.encode(out),
             ClientRequest::DependencyToolsTag(frame) => frame.encode(out),
             ClientRequest::DependencyToolsUntag(frame) => frame.encode(out),
             ClientRequest::DependencyToolsFiletree(frame) => frame.encode(out),
@@ -485,6 +492,11 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::ConnectedStandaloneToolsAttachAgentTemplate(frame) => frame.encode(out),
             ClientRequest::ConnectedStandaloneToolsDetachAgentTemplate(frame) => frame.encode(out),
             ClientRequest::IdentitiesLogin(frame) => frame.encode(out),
+            ClientRequest::PostgresCompartmentsList(frame) => frame.encode(out),
+            ClientRequest::PostgresCompartmentsGet(frame) => frame.encode(out),
+            ClientRequest::PostgresCompartmentsTag(frame) => frame.encode(out),
+            ClientRequest::PostgresCompartmentsUntag(frame) => frame.encode(out),
+            ClientRequest::PostgresCompartmentsDelete(frame) => frame.encode(out),
             ClientRequest::Invalid(bytes) => {
                 out.extend_from_slice(bytes);
                 Ok(())
@@ -725,9 +737,6 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             90 => dependency_tools::get::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DependencyToolsGet)
                 .ok(),
-            91 => dependency_tools::delete::client::request::Frame::decode(bytes)
-                .map(ClientRequest::DependencyToolsDelete)
-                .ok(),
             92 => dependency_tools::tag::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DependencyToolsTag)
                 .ok(),
@@ -938,6 +947,21 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             128 => identities::login::client::request::Frame::decode(bytes)
                 .map(ClientRequest::IdentitiesLogin)
                 .ok(),
+            168 => postgres::compartments::list::client::request::Frame::decode(bytes)
+                .map(ClientRequest::PostgresCompartmentsList)
+                .ok(),
+            169 => postgres::compartments::get::client::request::Frame::decode(bytes)
+                .map(ClientRequest::PostgresCompartmentsGet)
+                .ok(),
+            170 => postgres::compartments::tag::client::request::Frame::decode(bytes)
+                .map(ClientRequest::PostgresCompartmentsTag)
+                .ok(),
+            171 => postgres::compartments::untag::client::request::Frame::decode(bytes)
+                .map(ClientRequest::PostgresCompartmentsUntag)
+                .ok(),
+            172 => postgres::compartments::delete::client::request::Frame::decode(bytes)
+                .map(ClientRequest::PostgresCompartmentsDelete)
+                .ok(),
             _ => None,
         };
         Ok(request.unwrap_or(ClientRequest::Invalid(bytes)))
@@ -1021,7 +1045,6 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::StandaloneToolsDetachAgentTemplate(_) => f.write_str("standalone tools detach agent template"),
             ClientRequest::DependencyToolsList(_) => f.write_str("dependency tools list"),
             ClientRequest::DependencyToolsGet(_) => f.write_str("dependency tools get"),
-            ClientRequest::DependencyToolsDelete(_) => f.write_str("dependency tools delete"),
             ClientRequest::DependencyToolsTag(_) => f.write_str("dependency tools tag"),
             ClientRequest::DependencyToolsUntag(_) => f.write_str("dependency tools untag"),
             ClientRequest::DependencyToolsFiletree(_) => f.write_str("dependency tools filetree"),
@@ -1090,6 +1113,11 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::ConnectedStandaloneToolsAttachAgentTemplate(_) => f.write_str("connected standalone tools attach agent template"),
             ClientRequest::ConnectedStandaloneToolsDetachAgentTemplate(_) => f.write_str("connected standalone tools detach agent template"),
             ClientRequest::IdentitiesLogin(_) => f.write_str("identities login"),
+            ClientRequest::PostgresCompartmentsList(_) => f.write_str("postgres compartments list"),
+            ClientRequest::PostgresCompartmentsGet(_) => f.write_str("postgres compartments get"),
+            ClientRequest::PostgresCompartmentsTag(_) => f.write_str("postgres compartments tag"),
+            ClientRequest::PostgresCompartmentsUntag(_) => f.write_str("postgres compartments untag"),
+            ClientRequest::PostgresCompartmentsDelete(_) => f.write_str("postgres compartments delete"),
             ClientRequest::Invalid(_) => f.write_str("an invalid request"),
         }
     }
@@ -1174,7 +1202,6 @@ pub fn tag(path: &str) -> Option<u8> {
         "daemons/list" => Some(84),
         "dependency_tools/list" => Some(89),
         "dependency_tools/get" => Some(90),
-        "dependency_tools/delete" => Some(91),
         "dependency_tools/tag" => Some(92),
         "dependency_tools/untag" => Some(93),
         "dependency_tools/filetree" => Some(94),
@@ -1245,6 +1272,11 @@ pub fn tag(path: &str) -> Option<u8> {
         "connected_standalone_tools/attach_agent_template" => Some(155),
         "connected_standalone_tools/detach_agent_template" => Some(156),
         "identities/login" => Some(128),
+        "postgres/compartments/list" => Some(168),
+        "postgres/compartments/get" => Some(169),
+        "postgres/compartments/tag" => Some(170),
+        "postgres/compartments/untag" => Some(171),
+        "postgres/compartments/delete" => Some(172),
         _ => None,
     }
 }
@@ -1328,7 +1360,6 @@ impl ClientRequest<'_> {
             ClientRequest::StandaloneToolsDetachAgentTemplate(_) => "standalone_tools/detach_agent_template",
             ClientRequest::DependencyToolsList(_) => "dependency_tools/list",
             ClientRequest::DependencyToolsGet(_) => "dependency_tools/get",
-            ClientRequest::DependencyToolsDelete(_) => "dependency_tools/delete",
             ClientRequest::DependencyToolsTag(_) => "dependency_tools/tag",
             ClientRequest::DependencyToolsUntag(_) => "dependency_tools/untag",
             ClientRequest::DependencyToolsFiletree(_) => "dependency_tools/filetree",
@@ -1397,6 +1428,11 @@ impl ClientRequest<'_> {
             ClientRequest::ConnectedStandaloneToolsAttachAgentTemplate(_) => "connected_standalone_tools/attach_agent_template",
             ClientRequest::ConnectedStandaloneToolsDetachAgentTemplate(_) => "connected_standalone_tools/detach_agent_template",
             ClientRequest::IdentitiesLogin(_) => "identities/login",
+            ClientRequest::PostgresCompartmentsList(_) => "postgres/compartments/list",
+            ClientRequest::PostgresCompartmentsGet(_) => "postgres/compartments/get",
+            ClientRequest::PostgresCompartmentsTag(_) => "postgres/compartments/tag",
+            ClientRequest::PostgresCompartmentsUntag(_) => "postgres/compartments/untag",
+            ClientRequest::PostgresCompartmentsDelete(_) => "postgres/compartments/delete",
             ClientRequest::Invalid(_) => "",
         }
     }

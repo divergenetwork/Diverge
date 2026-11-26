@@ -20,7 +20,8 @@
 ///   the connected tools list's `Key`;
 /// - a dependency tool: its template's id and its owner;
 /// - a volume: its provider and its name, as `reference::Volume`;
-/// - a postgres connection, an event: the daemon's number for it.
+/// - a postgres connection, an event: the daemon's number for it;
+/// - a postgres compartment: itself, as its `Compartment` names it.
 pub trait Keyed {
     /// The key, owned: compared, never read into.
     type Key: Eq;

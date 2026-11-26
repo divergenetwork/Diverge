@@ -9,14 +9,14 @@
 //! | [`agents`] | create an agent under a name; get one; delete one; send one a message; list them, narrowed; change what one mounts; tag one and untag one; make, get, list, delete, tag and untag the templates agents are made from; download files out of one, upload files into one, transfer files out of one; watch one's container whole |
 //! | [`standalone_tools`] | create a tool under a name; get one; change what one mounts; attach one to an agent, or to every agent of a template; detach one from either; delete one; list them, narrowed; tag one and untag one; serve one to another daemon; make, get, list, delete, tag and untag the templates tools are made from; download files out of one, upload files into one, transfer files out of one; watch one's container whole |
 //! | [`connected_standalone_tools`] | hold another daemon's standalone tool under a name; get one; change its name; attach one to an agent, or to every agent of a template; detach one from either; delete one; list them, narrowed; tag one and untag one |
-//! | [`dependency_tools`] | list the dependency tools agents' programs declare, one per template and owner, narrowed, each with the agents that depend on it and its run; get one; delete every tool of a template none of which runs; tag one and untag one; watch a running one's container whole; download files out of one, upload files into one, transfer files out of one |
+//! | [`dependency_tools`] | list the dependency tools agents' programs declare, one per template and owner, narrowed, each with the agents that depend on it and its run; get one; tag one and untag one; watch a running one's container whole; download files out of one, upload files into one, transfer files out of one |
 //! | [`providers`] | add a provider's record, get one, list them, edit one, delete a disabled one, enable one, disable one, tag one and untag one; list the identities their listings hold, listen for the messages sent to the daemon through them, and send one through them |
 //! | [`daemons`] | record a remote daemon, get one, list them, edit one, delete one, tag one and untag one |
 //! | [`accounts`] | create an account — a name, a credential, or both — with its roles; get one; list them, narrowed; delete one; change one; tag one and untag one |
 //! | [`roles`] | create a role, a named list of grants; get one; list them, narrowed; delete one; change one; tag one and untag one |
 //! | [`vault`] | insert a value into a key — making the key, appending the value or replacing a slot's; get one key with every value and who holds each; list them by name, narrowed, never by value; delete one no agent or tool binds, or one free value of it; tag one and untag one |
 //! | [`volumes`] | create a volume on a provider; get one; list them across providers, narrowed; delete one; change its size or mode; walk one for its use and its hash; download files out of one, upload files into one, transfer files out of one; see one's tree |
-//! | [`postgres`] | see which database containers are served, the daemon's own or a remote one, as the daemon is configured; list the container connections open through it |
+//! | [`postgres`] | see which database containers are served, the daemon's own or a remote one, as the daemon is configured; list the container connections open through it; list the compartments those connections reach, get one, tag one and untag one, and delete one |
 //! | [`events`] | list the events — who sent what to whom through the daemon, a message, an MCP call or an MCP read, and how often — narrowed, the latest so many, and keep the list |
 //! | [`images`] | ask whether an image can be supplied, and read it: its manifests, its blobs, its proof and its DIVERGE.md; build one on a provider, push one there, list the daemon's Stores and get one image of them |
 //! | [`info`] | say what the daemon is: its version |
@@ -122,7 +122,7 @@
 //! | `88` | unused |
 //! | `89` | [`dependency_tools::list`] |
 //! | `90` | [`dependency_tools::get`] |
-//! | `91` | [`dependency_tools::delete`] |
+//! | `91` | unused |
 //! | `92` | [`dependency_tools::tag`] |
 //! | `93` | [`dependency_tools::untag`] |
 //! | `94` | [`dependency_tools::filetree`] |
@@ -198,9 +198,16 @@
 //! | `165` | [`requests::listen`] |
 //! | `166` | [`requests::create`] |
 //! | `167` | [`images::merge`] |
+//! | `168` | [`postgres::compartments::list`] |
+//! | `169` | [`postgres::compartments::get`] |
+//! | `170` | [`postgres::compartments::tag`] |
+//! | `171` | [`postgres::compartments::untag`] |
+//! | `172` | [`postgres::compartments::delete`] |
 //!
-//! One hundred and sixty-seven, so far, the value `110` standing empty
-//! where an image's document was once its own request. Every one of them carries the optional
+//! One hundred and seventy-two, so far, the value `110` standing empty
+//! where an image's document was once its own request and `91` where a
+//! dependency template's tools were once deleted by a request of their
+//! own. Every one of them carries the optional
 //! member `relay` — see [`Relay`](crate::shared::relay::Relay) — by
 //! which a daemon serves it on another daemon, as an account it holds
 //! there, as a conduit; the member is taken out before the request

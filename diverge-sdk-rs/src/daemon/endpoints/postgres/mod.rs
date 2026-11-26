@@ -16,7 +16,8 @@
 //! Postgres the daemon runs itself, beside it; or REMOTE, one the
 //! daemon dials at a URL its configuration gives. [`get`] answers the
 //! mode; [`list`] lists the container connections open through
-//! the database now. Nothing on this wire changes the mode: a daemon
+//! the database now; [`compartments`] are what those connections
+//! reach. Nothing on this wire changes the mode: a daemon
 //! that is to serve another database is configured and started again,
 //! and what the old database holds stays there.
 //!
@@ -25,28 +26,31 @@
 //! Nothing of this. A container's driver dials its own proxy, on the
 //! proxy's
 //! [`POSTGRES_LOOPBACK_PORT`](crate::container_proxy::inside::POSTGRES_LOOPBACK_PORT),
-//! as the one [user](crate::container_proxy::inside::POSTGRES_USER) and
-//! [database](crate::container_proxy::inside::POSTGRES_DATABASE) every
-//! container names; which Postgres is behind that is the daemon's to
-//! decide, and the mode changes nothing the container is told.
+//! as the one [user](crate::container_proxy::inside::POSTGRES_USER)
+//! every container names, and names one of its three
+//! [databases](crate::container_proxy::inside::Database); which
+//! Postgres is behind that is the daemon's to decide, and the mode
+//! changes nothing the container is told.
 //!
-//! # One scope per container
+//! # Three compartments per container
 //!
-//! What a container reaches is one schema of its own, made at its
-//! first connection — a dependency tool's the scope its owner names,
-//! shared as far as its
-//! template's `scope` says, see [`Container`] — and dropped by the
-//! delete of what owns it, a tool's or a dependency template's, and
-//! by no other: one login role and one
-//! schema of the same name, owned by the role, with the role's search
-//! path pinned to that schema alone. An unqualified table name lands
-//! in it and resolves in it; another container's table is `permission
+//! What a connection reaches is one compartment: one login role and
+//! one schema of the same name, owned by the role, with the role's
+//! search path pinned to that schema alone, made at the first
+//! connection that names it. Which compartment is the database the
+//! driver named — `instance`, the container's own; `template`, its
+//! template's; `image`, its image's — and the daemon's alone to
+//! resolve: see [`compartments`], which also lists them, tags them and
+//! deletes them. An unqualified table name lands in the compartment
+//! and resolves in it; another compartment's table is `permission
 //! denied`, as Postgres says it; the role is a member of nothing, so
-//! no `SET ROLE` reaches further. The container holds no credential:
-//! its driver is asked no password, and the daemon authenticates
-//! toward the database for it, from the run scope the connection
-//! arrived on. Two containers never share a scope; what is shared is a
-//! volume, never a table.
+//! no `SET ROLE` reaches further, and no one connection reaches two.
+//! The container holds no credential: its driver is asked no password,
+//! and the daemon authenticates toward the database for it, from the
+//! run scope the connection arrived on. A name that is none of the
+//! three, and `instance` from a dependency tool whose image's `scope`
+//! is `global`, are refused in Postgres's own words for a database
+//! that does not exist.
 //!
 //! # The URL is never answered whole
 //!
@@ -63,5 +67,6 @@ pub use connection::*;
 pub use container::*;
 pub use mode::*;
 
+pub mod compartments;
 pub mod get;
 pub mod list;

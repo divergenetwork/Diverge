@@ -26,15 +26,14 @@ pub struct Listed {
     /// first eight characters, as a prefix.
     pub id: String,
     /// Whose the tool is, as its image's scope decides: the one
-    /// agent, the one agent template, or nobody. See [`key::Owner`].
+    /// agent, or nobody. See [`key::Owner`].
     pub owner: key::Owner,
     /// How the tool is kept running, as its image's `mode` says: lazy,
     /// run while used, or eager, kept while any agent is attached. See
     /// [`Mode`].
     pub mode: Mode,
     /// How far the tool is shared, as its image's `scope` says: one
-    /// per agent, one per agent template, or one for all. See
-    /// [`Scope`].
+    /// per agent, or one for all. See [`Scope`].
     pub scope: Scope,
     /// Its number among all dependency tools ever made from the
     /// template, whatever their owners: the first is `1`, and no
@@ -83,9 +82,8 @@ pub struct Listed {
     /// deployed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_deployed: Option<DateTime<Utc>>,
-    /// Its run, while it is deployed: see [`Run`]. What a
-    /// [`delete`](crate::daemon::endpoints::dependency_tools::delete)
-    /// answers `InUse` for. Absent while it does not run.
+    /// Its run, while it is deployed: see [`Run`]. Absent while it
+    /// does not run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run: Option<Run>,
     /// What its container declared it may ask of the daemon, at its

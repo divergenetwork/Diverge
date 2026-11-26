@@ -142,6 +142,7 @@ pub mod roles;
 pub mod vault;
 pub mod volumes;
 pub use crate::shared::permission::postgres;
+pub mod postgres_compartments;
 pub use crate::shared::permission::events;
 pub mod images;
 pub mod identities;

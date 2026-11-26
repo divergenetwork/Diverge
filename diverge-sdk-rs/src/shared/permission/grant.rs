@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{accounts, agents, agents_templates, connected_standalone_tools, dependency_tools, daemons, events, identities, images, postgres, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
+use super::{accounts, agents, agents_templates, connected_standalone_tools, dependency_tools, daemons, events, identities, images, postgres, postgres_compartments, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
 
 /// One grant: a permission over one kind of thing the daemon holds,
 /// reaching all, the records it lists, or by tags — or, over agents,
@@ -15,7 +15,8 @@ use super::{accounts, agents, agents_templates, connected_standalone_tools, depe
 /// `"standalone_tools_templates"`, `"connected_standalone_tools"`,
 /// `"dependency_tools"`,
 /// `"providers"`, `"providers_daemons"`, `"daemons"`, `"accounts"`,
-/// `"roles"`, `"volumes"`, `"vault"`, `"postgres"`, `"events"`, `"images"`,
+/// `"roles"`, `"volumes"`, `"vault"`, `"postgres"`, `"postgres_compartments"`,
+/// `"events"`, `"images"`,
 /// `"identities"` — the
 /// kinds of the daemon's [`Grant`](crate::daemon::grant::Grant), which
 /// is made of these.
@@ -54,6 +55,9 @@ pub enum Grant {
     Vault(vault::Permission),
     /// Over the database: see [`postgres::Permission`].
     Postgres(postgres::Permission),
+    /// Over the database's compartments: see
+    /// [`postgres_compartments::Permission`].
+    PostgresCompartments(postgres_compartments::Permission),
     /// Over the events: see [`events::Permission`].
     Events(events::Permission),
     /// Over images: see [`images::Permission`].

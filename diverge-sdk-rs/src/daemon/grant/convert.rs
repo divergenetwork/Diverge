@@ -1,6 +1,6 @@
 //! A tool's declared grants, as grants of the daemon's.
 
-use super::{Grant, accounts, agents, agents_templates, connected_standalone_tools, daemons, dependency_tools, identities, images, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
+use super::{Grant, accounts, agents, agents_templates, connected_standalone_tools, daemons, dependency_tools, identities, images, postgres_compartments, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
 use crate::shared::permission::{self, Tags, Within};
 
 /// A tool's grants, as its container declared them at registration and
@@ -106,6 +106,17 @@ fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
             permission::connected_standalone_tools::Permission::Tags { actions, within, tags } => connected_standalone_tools::Permission::Tags {
                 actions,
                 within: connected_standalone_tools_within(within),
+                tags,
+            },
+        }),
+        permission::Grant::PostgresCompartments(permission) => Grant::PostgresCompartments(match permission {
+            permission::postgres_compartments::Permission::Over { actions, within } => postgres_compartments::Permission::Over {
+                actions,
+                within: postgres_compartments_within(within),
+            },
+            permission::postgres_compartments::Permission::Tags { actions, within, tags } => postgres_compartments::Permission::Tags {
+                actions,
+                within: postgres_compartments_within(within),
                 tags,
             },
         }),
@@ -412,6 +423,21 @@ fn volumes_within(within: permission::Reach<permission::volumes::Listed>) -> Wit
             ..Default::default()
         },
         |tags| crate::daemon::endpoints::volumes::list::client::request::Filter {
+            all_tags: tags.all_tags,
+            any_tags: tags.any_tags,
+            ..Default::default()
+        },
+    )
+}
+
+fn postgres_compartments_within(within: permission::Reach<permission::postgres_compartments::Listed>) -> Within<crate::daemon::endpoints::postgres::compartments::list::client::request::Filter> {
+    reach(
+        within,
+        |listed| crate::daemon::endpoints::postgres::compartments::list::client::request::Filter {
+            compartments: listed.compartments,
+            ..Default::default()
+        },
+        |tags| crate::daemon::endpoints::postgres::compartments::list::client::request::Filter {
             all_tags: tags.all_tags,
             any_tags: tags.any_tags,
             ..Default::default()

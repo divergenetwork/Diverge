@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::shared::listing::Keyed;
 use super::Container;
+use super::compartments::Compartment;
 
 /// One connection a container holds open through the database now: the
-/// daemon's number for it, the container, and when the connection was
-/// opened. A container holding several is listed once per connection,
+/// daemon's number for it, the container, which of its compartments
+/// the connection reaches, and when the connection was opened. A container holding several is listed once per connection,
 /// each by its id. A list sends them oldest opened first.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -20,6 +21,9 @@ pub struct Connection {
     pub id: u64,
     /// The container holding it: see [`Container`].
     pub container: Container,
+    /// The compartment it reaches, the one the container's driver
+    /// named: see [`Compartment`].
+    pub compartment: Compartment,
     /// When the container opened it, by the daemon's clock. On the wire
     /// an RFC 3339 timestamp in UTC.
     pub opened: DateTime<Utc>,

@@ -34,7 +34,7 @@ pub struct Filter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ids: Vec<String>,
     /// Owned by any one of these: an agent, by name or once and for
-    /// all, an agent template, or nobody — see [`reference::Owner`].
+    /// all, or nobody — see [`reference::Owner`].
     /// Absent when empty, and then any owner.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub owners: Vec<reference::Owner>,
@@ -62,10 +62,7 @@ pub struct Filter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub agents: Vec<String>,
     /// Whether its container runs now — the tool has a `run` on its
-    /// list item, and a
-    /// [`delete`](crate::daemon::endpoints::dependency_tools::delete)
-    /// of its template answers `InUse` — `true`, or not, `false`;
-    /// absent, either.
+    /// list item — `true`, or not, `false`; absent, either.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub in_use: Option<bool>,
     /// Every one of these among the tool's tags, as

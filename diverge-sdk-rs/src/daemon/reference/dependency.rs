@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::Owner;
 
 /// One dependency tool of the caller's: its template, by id, and
-/// whose it is — the one agent, the agent template, or nobody — see
+/// whose it is — the one agent, or nobody — see
 /// [`Owner`]. A tool is whose its image's `scope` says. The pair names the tool, which the
 /// [`dependency_tools`](crate::daemon::endpoints::dependency_tools)
 /// list reports one item for: a template that is none, and an owner

@@ -22,7 +22,7 @@
 //! asks the daemon nothing — Postgres, the
 //! caller's database on the container's loopback, whose methods in
 //! `postgres.rs` are the address and the URL the program's driver
-//! dials.
+//! dials, one URL for each of the container's three databases.
 //!
 //! The program's own server is not here. Every container's program
 //! is its own HTTP server, on the loopback at the port [`port()`]

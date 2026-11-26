@@ -104,6 +104,7 @@ pub mod events;
 pub mod identities;
 pub mod images;
 pub mod postgres;
+pub mod postgres_compartments;
 pub mod providers;
 pub mod providers_daemons;
 pub mod roles;

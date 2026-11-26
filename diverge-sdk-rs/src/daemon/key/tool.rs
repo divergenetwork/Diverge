@@ -28,8 +28,8 @@ use super::Owner;
 /// one for as long as any agent is attached to it. What names it
 /// once and for all is its template's id and its [`Owner`]: the
 /// agent, itself once and for all, for a tool whose template's
-/// `scope` is `instance`; the agent template or everyone for the
-/// other two scopes.
+/// `scope` is `instance`; everyone for one whose `scope` is
+/// `global`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]

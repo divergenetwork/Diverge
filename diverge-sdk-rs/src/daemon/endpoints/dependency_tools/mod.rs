@@ -12,26 +12,23 @@
 //! DEPENDENCY TOOL is that template under one OWNER, which the
 //! image's scope decides: a template of an image whose scope is
 //! `instance` is one tool per agent instance, owned by that agent;
-//! one whose scope is `template` is one tool per agent template,
-//! owned by it; one whose scope is `global` is one tool, owned by
-//! nobody.
+//! one whose scope is `global` is one tool, owned by nobody.
 //! Nothing on this wire makes one: the first registration that
 //! declares the template under that owner does, and every registration
 //! RESETS what the agent depends on — exactly the tools of the
 //! templates it declared then, each noting when the agent last
 //! declared it, and a tool it declared before and not again is its
-//! dependency no more. A tool outlives the registrations: it holds
-//! its database scope until it is deleted. An instance tool goes with
-//! its agent's delete and a per-template tool with its agent
-//! template's, scope and all; a global tool goes with nothing but the
-//! template's [`delete`], which removes every tool of the template
-//! under every owner and is refused `InUse` while any of them runs.
+//! dependency no more. A tool outlives the registrations. An instance
+//! tool goes with its agent's delete, its `instance` compartment with
+//! it; no request here deletes a tool, and what removes a template's
+//! every tool, the global one among them, is the delete of the
+//! dependency template's
+//! [compartment](crate::daemon::endpoints::postgres::compartments::delete).
 //! [`get`] answers one tool by its template and its owner, as a list
 //! would report it; [`list`] lists them, narrowed, each with the
 //! agents that depend on it — at most one for an instance tool, every
-//! agent of the one agent template for a per-template one, every agent
-//! for a global one — and the one run from it, if its container is
-//! up; [`tag`] and [`untag`] change one tool's tags, which are the
+//! agent for a global one — and the one run from it, if its container
+//! is up; [`tag`] and [`untag`] change one tool's tags, which are the
 //! tool's and not in the template's hash.
 //!
 //! # The run
@@ -53,7 +50,6 @@
 //! nothing. [`logs`](super::logs) reads what the daemon kept of every
 //! call and read it routed into one, running or not.
 
-pub mod delete;
 pub mod download;
 pub mod exec;
 pub mod filetree;

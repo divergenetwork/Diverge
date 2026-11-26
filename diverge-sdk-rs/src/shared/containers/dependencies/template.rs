@@ -35,7 +35,7 @@ use super::super::request::Image;
 ///    [`mode`](crate::shared::containers::info::Mode): lazy or eager.
 /// 2. How far it is shared, its
 ///    [`scope`](crate::shared::containers::info::Scope): one per
-///    agent, one per agent template, or one for all.
+///    agent, or one for all.
 /// 3. Every secret its program could take, each by its name and what
 ///    it is. Which of them this tool needs is here, by name: see
 ///    [`secrets`](Self::secrets).
