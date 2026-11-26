@@ -48,19 +48,18 @@ the run goes on, and carries the first values of the secrets.
   none of them: not the mounts, not the secrets' names, not their
   modes, not their values. The server reads no image's document for
   a template.
-- **Two modes, three scopes.** The [document](/shared/document/) of a
+- **Two modes, two scopes.** The [document](/shared/document/) of a
   template's image states a `mode`, `lazy` or `eager`, and a `scope`,
-  `instance`, `template` or `global`. A template states neither. A
-  tool is made once under the scope key that `scope` names — the
-  agent, the agent's template, or the template alone — and its
-  database scope is shared as far as that scope says. An agent is
+  `instance` or `global`. A template states neither. A tool is made
+  once under the scope key that `scope` names: the agent and the
+  template, or the template alone. An agent is
   attached to a tool by a registration that declares the template
   and detached by one that no longer does.
 - **A lazy tool.** A lazy tool whose `scope` is `instance` is
   deployed for the one run of the one agent that declared it and
   stopped with that run; it alone may name the agent's files and
-  directories as mounts. A lazy tool whose `scope` is `template` or
-  `global` is one container for every agent its scope covers: the
+  directories as mounts. A lazy tool whose `scope` is `global` is
+  one container for every agent that declares its template: the
   client starts it for the first exchange an attached agent sends
   it, stops it after its idle time with no exchange in flight, and
   starts it again for the next. It names no mount.
@@ -84,8 +83,7 @@ the run goes on, and carries the first values of the secrets.
   `instance`,
   the agent container's paths the template's mounts name into the
   tool container live, as [containers::fuse_serve](/endpoints/containers-fuse-serve/)
-  serves them and a FUSE mount of the tools run mounts them; gives
-  the tool the database scope its `scope` names; holds the tool to the
+  serves them and a FUSE mount of the tools run mounts them; holds the tool to the
   permissions its own program declares at the tool's own
   registration; and serves the tool to the container under
   the template's id among the MCP servers the client answers the
