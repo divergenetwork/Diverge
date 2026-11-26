@@ -15,7 +15,7 @@ There are three kinds. They are separate families: a request of one family never
 | kind | made by | lives | commands |
 |---|---|---|---|
 | **standalone tool** | you: a tool template of a `standalone_tool` image, then `standalone-tools create`, then an attach | a record until deleted; one container however many agents it is attached to | `diverge run standalone-tools …` |
-| **dependency tool** | the agent's image: its program declares a dependency template of a `dependency_tool` image when its container registers, and the daemon deploys it | lazy: runs while used. eager: kept up while any agent is attached. Either one per agent, per agent template, or one for all. Which of these is the tool image's own `mode` and `scope` | `diverge run dependency-tools …` (inspect only; nothing here makes one) |
+| **dependency tool** | the agent's image: its program declares a dependency template of a `dependency_tool` image when its container registers, and the daemon deploys it | lazy: runs while used. eager: kept up while any agent is attached. Either one per agent, or one for all. Which of these is the tool image's own `mode` and `scope` | `diverge run dependency-tools …` (inspect only; nothing here makes one) |
 | **connected standalone tool** | you: a record here pointing at a standalone tool on another daemon | a record here; the container is the other daemon's | `diverge run connected-standalone-tools …` — see `diverge-daemons` |
 
 Every command is `diverge run <family> <leaf> '<JSON body>'`, one compact JSON line per answer. Run
@@ -35,7 +35,7 @@ it: a tool template of such an image is refused when a tool is created from it.
   (its number among all tools ever made from that template; always works, never reused).
 - Dependency tool, `"dependency": {"template":"<dependency template id>","owner":<owner>}` where owner is
   `{"agent":{"name":"alice"}}`, `{"agent":{"template":"<agent template id>","index":1}}`,
-  `{"agent_template":{"template":"<agent template id>"}}`, or the string `"global"`.
+  or the string `"global"`.
 - Agents are named as in `diverge-agents`: `{"name":…}` or `{"template":…,"index":…}`.
 
 ## Standalone tools: the whole path
@@ -173,18 +173,21 @@ container registers, before the agent's first turn.
 A declaration states neither `mode` nor `scope`: the tool image's own `DIVERGE.md` does. Here the `memory`
 image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mode":"eager","scope":"global"`.
 
-| the tool image says | lives | owner | database |
-|---|---|---|---|
-| `lazy`, `scope: "instance"` | deployed with each run of the agent, stopped with it | that agent | the agent's own, kept between runs |
-| `lazy`, `scope: "template"` | one container for every agent of the same agent template that declares it; started by the first use, stopped once idle | the agent template | shared by those agents |
-| `lazy`, `scope: "global"` | the same, for every agent that declares it, from any agent template | nobody (`"global"`) | shared by all of them |
-| `eager`, `scope: "instance"` | kept while its agent declares it | that agent | one per agent |
-| `eager`, `scope: "template"` | one for every agent of the same agent template that declares it | the agent template | shared by those agents |
-| `eager`, `scope: "global"` | one for every agent that declares it, from any agent template | nobody (`"global"`) | shared by all of them |
+| the tool image says | lives | owner |
+|---|---|---|
+| `lazy`, `scope: "instance"` | deployed with each run of the agent, stopped with it | that agent |
+| `lazy`, `scope: "global"` | one container for every agent that declares it, from any agent template; started by the first use, stopped once idle | nobody (`"global"`) |
+| `eager`, `scope: "instance"` | kept while its agent declares it | that agent |
+| `eager`, `scope: "global"` | one for every agent that declares it, from any agent template | nobody (`"global"`) |
+
+`scope` decides how far the **container** is shared, not the data. Every dependency tool reaches the
+same databases by name (`instance`, `template`, `image`; see `postgres` in `diverge-storage`):
+`template` is shared by every tool of the same dependency template across all agents, and `image` by
+every tool of the same image. A `global` tool has no `instance` database.
 
 - The dependency template's **id** is the SHA-256 of its canonical JSON. The same
   declaration under the same owner is the same tool, joined and not made again. Change any member and it is
-  a different tool with a different database.
+  a different tool, with different `instance` and `template` databases.
 - The image must be a `dependency_tool` image. A declaration of an agent image or of a `standalone_tool`
   image fails the registration.
 - `extra_memory` and `extra_disk` are what the tool's container gets beyond what its image's document says
@@ -194,11 +197,12 @@ image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mod
 - A dependency's `secrets` are names, required, `[]` for none. Each must be a name the tool image's
   document states and a name the agent's own record binds, and is resolved through the agent's own binding.
 - Every registration **resets** what the agent depends on to exactly what it declared then. An eager tool no
-  agent declares any more is retired after `idle_seconds`; its record and database stay until deleted.
+  agent declares any more is retired after `idle_seconds`; its record and its databases stay.
 - A dependency that will not deploy fails the agent's start: the message answers `{"error":…}` and the
   agent's log keeps an `error` naming the dependency.
-- An instance tool is deleted with its agent, a per-template tool with its agent template. A global tool
-  goes only with `dependency-tools delete`.
+- An instance tool is deleted with its agent. A global tool's record goes only when its dependency
+  template's `template` compartment is deleted (`postgres compartments delete`, in `diverge-storage`),
+  which removes every tool of that template.
 - A tool declares no dependencies of its own.
 
 ```bash
@@ -207,13 +211,9 @@ diverge run dependency-tools list '{"modes":["eager"],"in_use":true}'
 diverge run dependency-tools get '{"dependency":{"template":"<id>","owner":"global"}}'
 diverge run dependency-tools tag '{"dependency":{"template":"<id>","owner":{"agent":{"name":"echo"}}},"tags":["keep"]}'
 diverge run dependency-tools untag '{"dependency":{"template":"<id>","owner":"global"},"tags":["keep"]}'
-diverge run dependency-tools delete '{"id":"<dependency template id>"}'   # "deleted" | "not_found" | "in_use"
 ```
 
-`delete` takes the template's `id` (not a reference) and removes **every** tool of that template under
-every owner, each with its database and what it held. It answers `"in_use"` while any of them runs: wait for
-the agents to go idle and retry. An agent that declares the template again at its next start gets a new,
-empty tool. List item fields and filters are in
+There is no `dependency-tools delete`. List item fields and filters are in
 [references/dependency-tools.md](references/dependency-tools.md).
 
 ## How an agent sees a tool's MCP tools

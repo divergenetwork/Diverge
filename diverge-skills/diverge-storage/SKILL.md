@@ -1,6 +1,6 @@
 ---
 name: diverge-storage
-description: Storage in Diverge through the `diverge` CLI — volumes (`diverge run volumes create|get|list|edit|delete|stat|tag|untag|filetree|download|upload|transfer`; modes persistent/ephemeral/read_only, sizes in bytes and the provider's 4 MiB floor, stored vs fixed volumes, mounting a volume into an agent or tool as a volume mount or a FUSE mount, what the provider's volume capabilities mean, `held` and `in_use` answers), the vault (`diverge run vault insert|get|list|delete|tag|untag`; keys, slots, who holds a slot, how a template's `secrets` names bind to vault keys through the agent's or tool's `secrets` map, fixed vs rotating secrets, what happens at activation and at inactive), and postgres (`diverge run postgres get|list`; the one database the daemon serves, each container's own schema, listing open container connections). Load it when you create or resize a volume, put files into or take files out of a volume, mount storage into a container, store an API key or a login for an agent, debug a start error about a secret or a volume, or need to know where a container's database is.
+description: Storage in Diverge through the `diverge` CLI — volumes (`diverge run volumes create|get|list|edit|delete|stat|tag|untag|filetree|download|upload|transfer`; modes persistent/ephemeral/read_only, sizes in bytes and the provider's 4 MiB floor, stored vs fixed volumes, mounting a volume into an agent or tool as a volume mount or a FUSE mount, what the provider's volume capabilities mean, `held` and `in_use` answers), the vault (`diverge run vault insert|get|list|delete|tag|untag`; keys, slots, who holds a slot, how a template's `secrets` names bind to vault keys through the agent's or tool's `secrets` map, fixed vs rotating secrets, what happens at activation and at inactive), and postgres (`diverge run postgres get|list` and `diverge run postgres compartments list|get|tag|untag|delete`; the one database the daemon serves, the three compartments every container reaches by naming `instance`, `template` or `image`, which of them are shared, how each is removed, listing open container connections). Load it when you create or resize a volume, put files into or take files out of a volume, mount storage into a container, store an API key or a login for an agent, debug a start error about a secret or a volume, or need to know where a container's database is.
 ---
 
 # Diverge storage: volumes, the vault, postgres
@@ -12,8 +12,8 @@ Three kinds of state outlive a container:
 - The **vault** is the *daemon's* store of secrets: named keys, each holding one or more JSON values
   (slots). Containers are handed values at every activation; they never ask for one and are never
   told a key.
-- **Postgres** is the one database the *daemon* serves into its containers. Each container reaches a
-  schema of its own with no credential.
+- **Postgres** is the one database the *daemon* serves into its containers. Each container reaches
+  three compartments of it with no credential: its own, its template's and its image's.
 
 Every command is `diverge run <family> <leaf> [BODY]`, the body one JSON object. `request-schema` and
 `response-schema` beneath any leaf print the exact shapes and dial nothing. Global flags
@@ -401,22 +401,49 @@ Which database is the daemon's `postgres` setting (`diverge daemon postgres get`
 Postgres the daemon runs beside itself, the default; or `remote`, one it dials), read at start.
 Nothing on the wire changes it; see `diverge-config`.
 
-What a container sees: its driver dials its own proxy at `127.0.0.1:81`, user `diverge`, database
-`diverge`, **no password**. The daemon authenticates toward the real database for it. What it
-reaches is one **schema of its own** (a login role and a schema of the same name, search path pinned
-to it): unqualified table names land there, another container's tables are `permission denied`.
+What a container sees: its driver dials its own proxy at `127.0.0.1:81`, user `diverge`, **no
+password**, and names one of three databases. The daemon authenticates toward the real database for
+it. Each name is one **compartment**: a login role and a schema of the same name, search path pinned
+to it. Unqualified table names land there, and another compartment's tables are `permission denied`.
 
-Which scope a container gets:
+```
+postgres://diverge@127.0.0.1:81/instance?sslmode=disable
+postgres://diverge@127.0.0.1:81/template?sslmode=disable
+postgres://diverge@127.0.0.1:81/image?sslmode=disable
+```
 
-| container | scope |
+Which compartment each name is:
+
+| container | `instance` | `template` | `image` |
+|---|---|---|---|
+| an agent | that agent's own | every agent's of the same agent template | every agent's of the same image digest |
+| a standalone tool | that tool's own | every tool's of the same tool template | every tool's of the same image digest |
+| a dependency tool, scope `instance` | that agent's, for that dependency template | every tool's of that dependency template, across all agents | every tool's of the same image digest |
+| a dependency tool, scope `global` | **none**: the connection is refused | the same | the same |
+
+- One connection reaches exactly one compartment. A program may hold any number of connections to
+  each, so a pool per database is the ordinary case. No single query reaches two compartments.
+- Any other database name, `diverge` included, is refused with Postgres's own error for a database
+  that does not exist (SQLSTATE `3D000`). So is `instance` from a `global` dependency tool, which runs
+  for no one agent.
+- A compartment is on record from the moment its agent, tool or dependency tool is made. Its role and
+  schema are made at the first connection that names it.
+- A program built with the Rust SDK asks for the URL with
+  `client.postgres_url(Database::Instance)` (or `Template`, `Image`).
+
+How each compartment goes away:
+
+| compartment | removed |
 |---|---|
-| an agent | its own, one per agent |
-| a standalone tool | its own, one per tool |
-| a dependency tool, lazy or eager | as far as its `scope` says: per agent (`instance`), per agent template (`template`), or one for all (`global`) |
+| an agent's `instance` | with the agent's delete |
+| an agent's `template` | with the agent template's delete |
+| a standalone tool's `instance` | with the tool's delete |
+| a standalone tool's `template` | with the tool template's delete |
+| a dependency tool's `instance` | with its agent's delete |
+| a dependency template's `template` | only by `postgres compartments delete`, and only while no agent's latest registration declares that dependency template |
+| an `image` | only by `postgres compartments delete`. An agent's or a standalone tool's image: only while no existing template contains the digest. A dependency tool's image: only while no agent's latest registration declares a dependency template of that digest |
 
-A scope is made at the container's first connection and dropped only by the delete of what owns it:
-a tool's by the tool's delete, a dependency tool's by its dependency template's delete. **An agent's
-delete drops no scope.** Two containers never share a scope; share a volume instead.
+Removing a compartment drops its role, its schema and every table in it. It cannot be undone.
 
 ## `postgres get`: which database
 
@@ -441,10 +468,89 @@ One line per connection a container holds open through the database now, oldest 
 ```
 
 `container` is `{"agent":…}`, `{"tool":…}` (each by template and index) or
-`{"dependency":{"template":…,"owner":…}}`. A container holding a pool is listed once per connection,
+`{"dependency":{"template":…,"owner":…}}`. `compartment` is which of the container's three the
+connection reaches, in the form below. A container holding a pool is listed once per connection,
 told apart by `id`. There is no filter and no count. With `--watch`, connections are printed as
 `{"added":…}` when they open and `{"removed":…}` when they close. Use it to see which containers are
 actually using their database. Grant: `{"postgres":["list"]}`.
+
+## `postgres compartments`: list, get, tag, untag, delete
+
+A compartment is named by one JSON object, its one member saying which of the three it is:
+
+| form | names |
+|---|---|
+| `{"instance":{"agent":<agent>}}` | an agent's own. `<agent>` is `{"name":…}` or `{"template":…,"index":…}` |
+| `{"instance":{"tool":<tool>}}` | a standalone tool's own, named the same two ways |
+| `{"instance":{"dependency":{"template":"<dependency template id>","owner":{"agent":<agent>}}}}` | a dependency tool's own |
+| `{"template":{"kind":"agent"\|"standalone_tool"\|"dependency_tool","template":"<id>"}}` | a template's |
+| `{"image":{"digest":"sha256:…"}}` | an image's |
+
+The daemon always answers an agent or a tool by template and index. A list filter and a grant's
+`within` match that form only.
+
+```bash
+diverge run postgres compartments list                              # {"added":…}… "listed"
+diverge run postgres compartments list '{"deletable":true}'         # what a delete would be allowed for now
+diverge run postgres compartments list '{"databases":["image"]}' --watch
+diverge run postgres compartments get '{"compartment":{"image":{"digest":"sha256:…"}}}'
+diverge run postgres compartments tag '{"compartment":{"template":{"kind":"dependency_tool","template":"<id>"}},"tags":["keep"]}'
+diverge run postgres compartments untag '{"compartment":{"instance":{"agent":{"name":"echo"}}},"tags":["keep"]}'
+diverge run postgres compartments delete '{"compartment":{"image":{"digest":"sha256:…"}}}'
+```
+
+One list item:
+
+```json
+{"added":{"compartment":{"image":{"digest":"sha256:…"}},"kind":"agent","created":"2026-11-25T09:01:02Z","deletable":false,"connections":2}}
+```
+
+| member | meaning |
+|---|---|
+| `compartment` | which one, in the form above |
+| `kind` | `"agent"`, `"standalone_tool"` or `"dependency_tool"`: what kind of container it is of. For an `image`, the `type` of the image's document |
+| `tags` | absent when empty |
+| `created` | since when it is on record |
+| `deletable` | whether `delete` would be allowed now, connections apart. Always `false` for the compartments that go with an agent, a tool or their template |
+| `connections` | how many connections containers hold through it now |
+
+List filter, all optional; a list matches any one of its items:
+
+| member | matches |
+|---|---|
+| `compartments` | exactly these, each in the answered form |
+| `databases` | `"instance"`, `"template"`, `"image"` |
+| `kinds` | `"agent"`, `"standalone_tool"`, `"dependency_tool"` |
+| `templates` | template ids: a `template` compartment's own, an agent's or a tool's `instance`'s template, a dependency tool's `instance`'s dependency template |
+| `images` | image digests: an `image` compartment's own |
+| `deletable` | `true` or `false` |
+| `all_tags`, `any_tags` | tags |
+| `created_from`, `created_to` | inclusive RFC 3339 bounds |
+| `count` | keep to the first N that match |
+
+Answers:
+
+| leaf | answers |
+|---|---|
+| `list` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed":…}`, `{"removed":…}` |
+| `get` | `{"found":<item>}`, `"not_found"` |
+| `tag` | `"tagged"`, `"not_found"` |
+| `untag` | `"untagged"`, `"not_found"` |
+| `delete` | `"deleted"`, `"not_found"`, `"not_deletable"`, `"in_use"` |
+
+- `"not_deletable"`: the compartment goes with what it is of, or what keeps it is still there (a
+  template that contains the image, an agent that declares the dependency template). Nothing changed.
+- `"in_use"`: a container holds a connection through it, or a dependency tool of its template runs.
+  Nothing changed. Wait for the container to stop and retry. An eager dependency tool stays up until
+  it has been unattached for `idle_seconds`.
+- Deleting a dependency template's `template` compartment also removes **every tool of that
+  template** (the global one, and any instance ones no agent declares any more, each with its own
+  `instance` compartment) and the stored template. An agent that declares the template again at its
+  next start gets a new tool with new, empty compartments. This is the only way a `global`
+  dependency tool's record goes away.
+
+Grants: `{"postgres_compartments":{"actions":["get","list","delete"],"within":…}}` and the tagging
+shape, as for the vault.
 
 ---
 
@@ -455,6 +561,7 @@ actually using their database. Grant: `{"postgres":["list"]}`.
 | `volumes` | `create` | `get`, `list`, `delete`, `edit`, `stat`, `download`, `upload`, `transfer`, `filetree`, `mount`, `fuse_serve` | `tag`, `untag` |
 | `vault` | `insert` (a new key) | `get`, `list`, `insert`, `delete`, `use` | `tag`, `untag` |
 | `postgres` | — | bare array: `get`, `list` | — |
+| `postgres_compartments` | — | `get`, `list`, `delete` | `tag`, `untag` |
 
 `mount` (volumes) and `use` (vault) are not commands: they are what naming a volume in a mount, or a
 key in a `secrets` binding, takes. `fuse_serve` (volumes) is what **another daemon's account** holds here

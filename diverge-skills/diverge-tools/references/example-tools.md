@@ -23,10 +23,10 @@ local repository name; nothing is pulled when the provider already holds the dig
 | `recall` | `query` (optional), `tags` (optional), `limit` (default 20) | notes carrying every tag given; with `query`, a text search, best match first; otherwise newest first |
 | `forget` | `id` | deletes a note |
 
-- Permissions: none. The notes are in the tool's database, which it reaches through its container's proxy,
-  not through the daemon.
-- The tool records no owner: whoever reaches the same database shares the notes. Its document says
-  `"mode":"lazy","scope":"instance"`, so the database is the declaring agent's own, and it persists between the agent's runs.
+- Permissions: none. The notes are in the tool's `instance` database, which it reaches through its
+  container's proxy, not through the daemon.
+- The tool records no owner. Its document says `"mode":"lazy","scope":"instance"` and it keeps its notes
+  in `instance`, which is the declaring agent's own and persists between the agent's runs.
 
 Declare it in an agent template (python agent-loop image shown; `openrouter`, `cc` and the others take the
 same `dependencies` member):
@@ -65,9 +65,9 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 
 - Permissions: none. Pull only: nothing is sent to an agent when the board changes.
 - Callers are recorded as the daemon attests them. Only agents may use it.
-- Which agents share a board is decided only by the scope, and the image states it: its document says
-  `"mode":"eager","scope":"template"`, one board per agent template. A declaration cannot say another
-  scope.
+- Its document says `"mode":"eager","scope":"global"`: one container for every agent that declares it.
+  The board is in the tool's `template` database, so every agent that declares the byte-identical
+  template works from one board, and a different declaration is a different board.
 
 ## courier — an inbox between agents (dependency, eager, global)
 
@@ -167,9 +167,9 @@ quickest way to exercise a tool exactly as an agent would without a model: so is
 
 | need | use |
 |---|---|
-| private state for one agent that survives its restarts | a dependency tool image that says `lazy`, `scope: "instance"` (memory) |
-| state shared by all agents of one template | a dependency tool image of `scope: "template"` (taskboard); `lazy` if it only needs to run while used, `eager` if it must stay up |
-| state or messaging shared across templates | a dependency tool image of `scope: "global"` (courier) |
+| private state for one agent that survives its restarts | a dependency tool image that says `lazy`, `scope: "instance"`, keeping its state in its `instance` database (memory) |
+| state shared by every agent that declares the same dependency template | any dependency tool image keeping its state in its `template` database (taskboard, courier); `scope: "global"` if one container should serve them all |
+| state shared by every tool of an image, whatever its arguments | its `image` database |
 | something that must keep running between agent runs | an image that says `eager`, dependency or standalone (alarm, chat) |
 | a tool you pick per agent at runtime, or that has a page for people | a standalone tool, attached (chat) |
 | a tool that lives on another daemon | a connected standalone tool (`diverge-daemons`) |

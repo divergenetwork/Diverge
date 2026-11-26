@@ -15,7 +15,7 @@ dependency entry says another.
 | image | kind | mode / scope | permissions it declares at registration | database |
 |---|---|---|---|---|
 | `courier` | dependency tool | eager, `global` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
-| `taskboard` | dependency tool | eager, `template` | none | yes |
+| `taskboard` | dependency tool | eager, `global` | none | yes |
 | `memory` | dependency tool | lazy, `instance` | none | yes |
 | `alarm` | dependency tool | eager, `global` | `message` over agents `attached` | yes |
 | `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
@@ -26,8 +26,9 @@ Each tool image states `"memory":268435456,"disk":268435456`; `human` states
 the image needs and no more.
 
 A tool's permissions are declared by its own program each time it starts; neither a template nor an
-agent states them. "Database" means the tool keeps its state in its own Postgres scope, reached
-through the proxy (see `postgres` in `diverge-storage`); whose data it is follows from the scope.
+agent states them. "Database" means the program keeps its state in Postgres, reached through the proxy,
+in one of its three databases (see `postgres` in `diverge-storage`): `courier`, `taskboard` and `alarm`
+in `template`, the rest in `instance`.
 
 In every dependency entry below, `<digest>` is that image's digest and the `references` entry names a
 registry the provider lists.
@@ -102,8 +103,9 @@ Dependency entry:
 }
 ```
 
-- The image's document says `"mode":"eager","scope":"template"`: one board for every agent made from
-  the same agent template. An entry cannot say another scope.
+- The image's document says `"mode":"eager","scope":"global"`: one container for every agent that
+  declares this exact entry, from any agent template. The board is kept in the tool's `template`
+  database, so a different entry is a different board. An entry cannot say another scope.
 - Only the holder completes or releases a task; only the poster deletes one. Only agents may use it.
 
 ## memory — a notebook that outlasts the conversation
@@ -127,9 +129,8 @@ Dependency entry:
 ```
 
 - The image's document says `"mode":"lazy","scope":"instance"`: deployed with each run of the agent and stopped with it. The notes stay in the
-  database between runs, because the database scope is the parent agent's.
-- The tool tells no caller apart: every agent that reaches the same database shares the same notes.
-  Whose notebook it is follows from the image's mode and scope, never from anything the tool decides.
+  tool's `instance` database between runs, which is the parent agent's own.
+- The tool tells no caller apart and records no owner: each agent that declares it has a notebook of its own.
 - It is a `dependency_tool` image, so it cannot be made into a standalone tool: a tool template of it
   is refused when a tool is created from it.
 

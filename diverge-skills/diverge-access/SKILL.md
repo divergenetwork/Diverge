@@ -94,7 +94,7 @@ Which member names records differs per kind; the table and the narrowing members
 
 `agents`, `agents_templates`, `standalone_tools`, `standalone_tools_templates`, `connected_standalone_tools`,
 `dependency_tools`, `providers`, `providers_daemons`, `daemons`, `accounts`, `roles`, `volumes`, `vault`,
-`postgres`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `exec` or `terminal`
+`postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `exec` or `terminal`
 kind: those are *actions* inside the kinds that have them (`logs` over agents, tools and accounts;
 `frontend` and `exec` over agents, standalone tools and dependency tools; a terminal is judged as `exec`).
 

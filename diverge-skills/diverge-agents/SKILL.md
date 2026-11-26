@@ -475,7 +475,7 @@ changed. A list is never partially forbidden: it sends only what the account's `
 
 - The exact JSON of the line `download` prints per file written (it carries the file's path and byte count;
   run `agents download response-schema`).
-- That a stopped container's own disk is discarded (so only mounts, the tools' databases and the log carry
+- That a stopped container's own disk is discarded (so only mounts, the agent's and the tools' databases and the log carry
   state between runs). This follows from the template and create documentation ("its state is its
   conversation … and nothing on any provider's disk") but was not tested.
 - `agents frontend` and `agents terminal` were not run live while writing this; behaviour is from the CLI and

@@ -52,8 +52,8 @@ An entry states no `mode` and no `scope`. The tool image's own `DIVERGE.md` stat
 says another: read them with `diverge run images read --info`.
 
 `"mode":"lazy"` in the tool image's document — runs only while it is used. With `"scope":"instance"` it is deployed when the
-agent's container starts and stopped with the agent's run. With `"scope":"template"` or `"global"`
-it is one container for every agent the scope covers, started by the first use and stopped once
+agent's container starts and stopped with the agent's run. With `"scope":"global"`
+it is one container for every agent that declares it, started by the first use and stopped once
 nothing has used it for the daemon's idle time.
 
 Where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`, and only there, an entry
@@ -67,12 +67,11 @@ mode or scope is refused:
 
 `"mode":"eager"` in the tool image's document — made once when the first agent that declares it registers, kept
 running while any agent is attached, and retired after the daemon's idle time once none is. It mounts
-nothing of any agent's. The document's `scope` says how far the tool, and its database, is shared:
+nothing of any agent's. The document's `scope` says how far the tool's container is shared:
 
 | `scope` | one tool per |
 |---|---|
 | `"instance"` | parent agent |
-| `"template"` | parent agent template (every agent of that template shares it) |
 | `"global"` | dependency template, full stop (every agent that declares it, from any template) |
 
 Rules:

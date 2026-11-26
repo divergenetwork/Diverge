@@ -6,8 +6,8 @@ Every leaf has `request-schema` and `response-schema` beneath it and takes the g
 tables. Bare answers are JSON strings; answers with a payload are one-member objects.
 
 `<tool>` is `{"name":…}` or `{"template":…,"index":…}`. `<agent>` is the same two forms over agents.
-`<dep>` is `{"template":"<dependency template id>","owner":<owner>}` with owner `{"agent":<agent>}`,
-`{"agent_template":{"template":…}}` or `"global"`.
+`<dep>` is `{"template":"<dependency template id>","owner":<owner>}` with owner `{"agent":<agent>}`
+or `"global"`.
 
 ## `diverge run standalone-tools templates`
 
@@ -67,7 +67,6 @@ files already there that the source lacks stay.
 |---|---|---|---|
 | `get` | | `{"dependency":<dep>}` | `{"found":<item>}`, `"not_found"` |
 | `list` | `--watch` | filter + `count` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed"}`, `{"removed"}` |
-| `delete` | | `{"id":"<dependency template id>"}` | `"deleted"`, `"not_found"`, `"in_use"` |
 | `tag` | | `{"dependency":<dep>,"tags":[…]}` | `"tagged"`, `"not_found"` |
 | `untag` | | `{"dependency":<dep>,"tags":[…]}` | `"untagged"`, `"not_found"` |
 | `filetree` | `--watch` | `{"dependency":<dep>}` | as standalone; `"not_found"` also when it does not run |
@@ -81,8 +80,9 @@ files already there that the source lacks stay.
 A dependency tool's list item carries `mode` and `scope` as its own members (what the tool's image says),
 beside its `template`. List filter members `modes` and `scopes` match them.
 
-There is no `create`, `edit`, `attach`, `detach` or `connect` in this family: registrations make and attach
-dependency tools, and agents reach them through their own tool list.
+There is no `create`, `edit`, `delete`, `attach`, `detach` or `connect` in this family: registrations make
+and attach dependency tools, agents reach them through their own tool list, and a tool's record goes with
+its agent or with its dependency template's compartment (`postgres compartments delete`, in `diverge-storage`).
 
 ## What starts or holds a tool's container
 
@@ -90,11 +90,11 @@ dependency tools, and agents reach them through their own tool list.
 |---|---|---|---|
 | `create` | nothing | nothing | (no create) |
 | attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |
-| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `template` or `global`) is started |
+| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `global`) is started |
 | `connect` exchange | started, held while open | held while open | (no connect) |
 | `exec`, `terminal`, `frontend` | started, held while running | already up or started | must already run |
 | `filetree`, `download`, `upload`, `transfer` | started, stopped after | used as it runs, or started and stopped after | must already run |
-| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `template`/`global`: stopped; eager: retired once no agent is attached |
+| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `global`: stopped; eager: retired once no agent is attached |
 
 ## Grants by leaf
 
@@ -107,7 +107,7 @@ dependency tools, and agents reach them through their own tool list.
 | `attach-agent-instance`, `detach-agent-instance` | `attach` / `detach` over the tool and `edit` over the agent |
 | `attach-agent-template`, `detach-agent-template` | `attach` / `detach` over the tool and `attach` over the agent template |
 | reading a tool's log | `logs` over the tool |
-| `dependency-tools get`, `list`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them) |
+| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them) |
 | `dependency-tools exec`, `terminal` | `exec` over `dependency_tools` |
 | a transfer's destination | `upload` over the agent, tool, dependency tool or volume it lands in |
 

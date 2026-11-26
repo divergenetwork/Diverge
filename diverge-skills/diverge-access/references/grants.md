@@ -40,7 +40,8 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | `standalone_tools` | `tools` | `{"template":"<tool template id>","index":<n>}` |
 | `standalone_tools_templates` | `ids` | the template's id |
 | `connected_standalone_tools` | `tools` | `{"daemon":"<daemon id>","tool":<the tool as that daemon names it>,"index":<n>}` |
-| `dependency_tools` | `tools` | `{"template":"<dependency template id>","owner":<owner>}`; owner is `{"agent":{"template":…,"index":…}}`, `{"agent_template":{"template":…}}` or `"global"` |
+| `dependency_tools` | `tools` | `{"template":"<dependency template id>","owner":<owner>}`; owner is `{"agent":{"template":…,"index":…}}` or `"global"` |
+| `postgres_compartments` | `compartments` | a compartment as the daemon answers it: `{"instance":…}`, `{"template":{"kind":…,"template":…}}` or `{"image":{"digest":…}}`, an agent or a tool in it by template and index |
 | `daemons` | `ids` | the remote daemon's id |
 | `identities` | `identities` | `{"issuer":…,"subject":…}` |
 | `roles` | `names` | the role's name |
@@ -140,7 +141,6 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Shape | Action | Allows |
 |---|---|---|
 | Over | `get`, `list` | `dependency-tools get` / `list` |
-| Over | `delete` | `dependency-tools delete` (by template: needs the action over every tool of the template) |
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests on a running tool |
 | Over | `exec` | `dependency-tools exec` and `terminal` |
 | Over | `frontend` | `dependency-tools frontend` |
@@ -291,6 +291,21 @@ A grant reaches a volume or a container whole; it cannot narrow by path.
 
 Examples: `{"postgres":["get","list"]}`, `{"events":["list"]}`.
 
+## postgres_compartments
+
+No making shape: a compartment is on record when its agent, tool or dependency tool is made.
+
+| Shape | Action | Allows |
+|---|---|---|
+| Over | `get`, `list` | `postgres compartments get` / `list` |
+| Over | `delete` | `postgres compartments delete`. Deleting a dependency template's compartment also removes that template's tools; this one grant covers it |
+| Tagging | `tag`, `untag` | `postgres compartments tag` / `untag` |
+
+`within`: `compartments` (exact), `databases`, `kinds`, `templates`, `images`, `deletable`, `all_tags`,
+`any_tags`, `created_from`, `created_to`.
+
+Example: `{"postgres_compartments":{"actions":["get","list"],"within":"any"}}`.
+
 ## identities
 
 The identities signed in on the daemon's host.
@@ -323,6 +338,7 @@ The identities signed in on the daemon's host.
  {"volumes":{"actions":["get","list","stat"],"within":"any"}},
  {"vault":{"actions":["list"],"within":"any"}},
  {"postgres":["get","list"]},
+ {"postgres_compartments":{"actions":["get","list"],"within":"any"}},
  {"events":["list"]},
  {"identities":{"actions":["list"],"within":"any"}}]}
 ```

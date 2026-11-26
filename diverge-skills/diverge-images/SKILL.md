@@ -580,9 +580,10 @@ What each member means:
 - `mode` — a tool's image only. `lazy`: every tool made from the image runs while it is used. `eager`:
   it is kept running while anything holds it. No template and no declaration says another (see
   `diverge-tools`).
-- `scope` — a dependency tool's image only. How far every tool made from the image, and its database,
-  is shared: `instance` (one per agent), `template` (one per agent template) or `global` (one for all).
-  No declaration says another.
+- `scope` — a dependency tool's image only. How far every tool container made from the image is shared:
+  `instance` (one per agent) or `global` (one for all). No declaration says another. It does not decide
+  what the tool's databases are (see `postgres` in `diverge-storage`), except that a `global` tool has
+  no `instance` database.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
   commands in `diverge-agents` / `diverge-tools`). To look like the rest of Diverge in the person's
   theme, the page links `<link rel="stylesheet" href="/diverge/theme.css">` and
