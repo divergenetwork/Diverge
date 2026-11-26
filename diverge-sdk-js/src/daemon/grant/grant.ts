@@ -6,6 +6,7 @@ import * as events from "../../shared/permission/events/index.js";
 import * as identities from "./identities/index.js";
 import * as images from "./images/index.js";
 import * as postgres from "../../shared/permission/postgres/index.js";
+import * as postgres_compartments from "./postgres_compartments/index.js";
 import * as providers from "./providers/index.js";
 import * as providers_daemons from "./providers_daemons/index.js";
 import * as accounts from "./accounts/index.js";
@@ -40,6 +41,7 @@ export const Grant = z.union([
   z.strictObject({ volumes: volumes.Permission }),
   z.strictObject({ vault: vault.Permission }),
   z.strictObject({ postgres: postgres.Permission }),
+  z.strictObject({ postgres_compartments: postgres_compartments.Permission }),
   z.strictObject({ events: events.Permission }),
   z.strictObject({ images: images.Permission }),
   z.strictObject({ identities: identities.Permission }),

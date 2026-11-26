@@ -5,10 +5,12 @@
 // carried out to the daemon, which holds the database and relays it;
 // which database is the daemon's `Mode`, its configuration. `get`
 // answers the mode; `list` lists the container connections open
-// through the database now.
+// through the database now; `compartments` are what those connections
+// reach, three to a container.
 
 export * from "./mode.js";
 export * from "./container.js";
 export * from "./connection.js";
 export * as get from "./get/index.js";
 export * as list from "./list/index.js";
+export * as compartments from "./compartments/index.js";

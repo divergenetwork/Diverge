@@ -21,11 +21,11 @@ import { Run } from "./run.js";
 export const Listed = z.object({
   /** The template, by id: the lowercase hexadecimal SHA-256 of its canonical bytes, as `dependency_tools` states it. An agent calls the tool's MCP tools by the id's first eight characters, as a prefix. */
   id: z.string(),
-  /** Whose the tool is, as its image's scope decides: the one agent, the one agent template, or nobody. See `key::Owner`. */
+  /** Whose the tool is, as its image's scope decides: the one agent, or nobody. See `key::Owner`. */
   owner: Owner,
   /** How the tool is kept running, as its image's `mode` says: lazy, run while used, or eager, kept while any agent is attached. */
   mode: Mode,
-  /** How far the tool is shared, as its image's `scope` says: one per agent, one per agent template, or one for all. */
+  /** How far the tool is shared, as its image's `scope` says: one per agent, or one for all. */
   scope: Scope,
   /** Its number among all dependency tools ever made from the template, whatever their owners: the first is `1`, and no number is given twice. The template and the index name the tool once and for all, as an events party does. */
   index: z.number().int().nonnegative(),
@@ -47,7 +47,7 @@ export const Listed = z.object({
   deployed: z.boolean(),
   /** When that last changed; absent for one never deployed. */
   last_deployed: z.iso.datetime({ offset: true }).optional(),
-  /** Its run, while it is deployed: see `Run`. What a `delete` answers `InUse` for. Absent while it does not run. */
+  /** Its run, while it is deployed: see `Run`. Absent while it does not run. */
   run: Run.optional(),
   /** What its container declared it may ask of the daemon, at its registration when it last started. Declared anew at every start. Absent when empty — none declared, or never started. */
   permissions: z.array(Grant).optional(),
@@ -61,13 +61,10 @@ export type Listed = z.infer<typeof Listed>;
  */
 export const key: Keyed<Listed> = (listed) => ({ id: listed.id, owner: ownerKey(listed.owner) });
 
-/** The owner as a key: the agent by template and index, the template by id, or `global`. */
+/** The owner as a key: the agent by template and index, or `global`. */
 function ownerKey(owner: Owner): Key {
   if (owner === "global") {
     return owner;
   }
-  if ("agent" in owner) {
-    return { agent: { template: owner.agent.template, index: owner.agent.index } };
-  }
-  return { agent_template: { template: owner.agent_template.template } };
+  return { agent: { template: owner.agent.template, index: owner.agent.index } };
 }

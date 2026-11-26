@@ -20,7 +20,7 @@ export const Filter = z.object({
   tools: z.array(Key).optional(),
   /** Of any one of these templates, by id. */
   ids: z.array(z.string()).optional(),
-  /** Owned by any one of these: an agent, named either way, an agent template, or nobody. Absent when empty, and then any owner. */
+  /** Owned by any one of these: an agent, named either way, or nobody. Absent when empty, and then any owner. */
   owners: z.array(Owner).optional(),
   /** Made by any one of these, directly. Absent when empty, and then made by anybody. */
   creators: z.array(Creator).optional(),

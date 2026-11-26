@@ -1,16 +1,16 @@
 // Dependency tools: those an agent's program declared.
 //
 // A dependency tool is a dependency template under one owner — an
-// agent, an agent template, or nobody, as the template's scope
-// decides — made by the first registration that declared it there,
-// never by a request. Its container runs with its agent's, or as a
-// eager tool the daemon keeps; the file operations find it running or
-// answer `not_found`, and start nothing. A delete is of the template
-// and every tool of it.
+// agent, or nobody, as the template's image's scope decides — made by
+// the first registration that declared it there, never by a request.
+// Its container runs with its agent's, or as an eager tool the daemon
+// keeps; the file operations find it running or answer `not_found`,
+// and start nothing. No request here deletes one: an instance tool
+// goes with its agent, and a template's every tool with the delete of
+// the dependency template's compartment of the database.
 
 export * as list from "./list/index.js";
 export * as get from "./get/index.js";
-export * as delete from "./delete/index.js";
 export * as tag from "./tag/index.js";
 export * as untag from "./untag/index.js";
 export * as exec from "./exec/index.js";
