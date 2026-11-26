@@ -28,10 +28,17 @@ pub const AUTHENTICATION_OK: [u8; 9] = [b'R', 0, 0, 0, 8, 0, 0, 0, 0];
 /// What the container's first packet was.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Packet {
-    /// A startup message: its parameters, in order, with `user`,
-    /// `database`, `replication` and `options` taken out — those are
-    /// the daemon's or nobody's.
-    Startup(Vec<(String, String)>),
+    /// A startup message: the database it names, which says which of
+    /// the container's compartments it means, and its parameters, in
+    /// order, with `user`, `database`, `replication` and `options`
+    /// taken out — those are the daemon's or nobody's to send on.
+    Startup {
+        /// The `database` parameter, as the driver wrote it; absent
+        /// where the driver named none.
+        database: Option<String>,
+        /// Every other parameter the container may set.
+        parameters: Vec<(String, String)>,
+    },
     /// A cancel request for a backend the container's session was
     /// given.
     Cancel {
@@ -73,7 +80,10 @@ pub async fn read_startup(from: &mut Receiver<Bytes>, to: &Sender<Bytes>) -> Opt
                         secret_key: i32::from_be_bytes([packet[12], packet[13], packet[14], packet[15]]),
                     });
                 }
-                PROTOCOL_3_0 => return Some(Packet::Startup(parameters(&packet[8..]))),
+                PROTOCOL_3_0 => {
+                    let (database, parameters) = parameters(&packet[8..]);
+                    return Some(Packet::Startup { database, parameters });
+                }
                 _ => return None,
             }
         }
@@ -84,8 +94,10 @@ pub async fn read_startup(from: &mut Receiver<Bytes>, to: &Sender<Bytes>) -> Opt
 
 /// The parameters of a startup message: NUL-terminated names and
 /// values, alternating, ended by an empty name; the four that are not
-/// the container's to set left out.
-fn parameters(body: &[u8]) -> Vec<(String, String)> {
+/// the container's to send on left out, and the `database` among them
+/// handed back beside, since it is what names the compartment.
+fn parameters(body: &[u8]) -> (Option<String>, Vec<(String, String)>) {
+    let mut database = None;
     let mut parameters = Vec::new();
     let mut fields = body.split(|byte| *byte == 0);
     while let Some(name) = fields.next() {
@@ -96,12 +108,16 @@ fn parameters(body: &[u8]) -> Vec<(String, String)> {
             break;
         };
         let name = String::from_utf8_lossy(name).into_owned();
-        if matches!(name.as_str(), "user" | "database" | "replication" | "options") {
+        if name == "database" {
+            database = Some(String::from_utf8_lossy(value).into_owned());
+            continue;
+        }
+        if matches!(name.as_str(), "user" | "replication" | "options") {
             continue;
         }
         parameters.push((name, String::from_utf8_lossy(value).into_owned()));
     }
-    parameters
+    (database, parameters)
 }
 
 /// An `ErrorResponse` of the daemon's own: `FATAL`, the SQLSTATE

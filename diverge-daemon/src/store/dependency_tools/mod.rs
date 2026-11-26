@@ -3,7 +3,7 @@
 //!
 //! [`DependencyTool`] is one as the store holds it: the template it is
 //! of, by id and whole, its scope and the owner the scope key names —
-//! the one agent, the one agent template, or nobody — its tags, who
+//! the one agent, or nobody — its tags, who
 //! first made it and when. Beside the row are its [`attachments`] to
 //! agents, in attach order, each noting when the agent's registration
 //! last declared the template: every agent whose last registration did,
@@ -11,12 +11,11 @@
 //! declared it last, which is the agent that spawns the eager tool's next
 //! run. The container is work made from the row and is nowhere in it;
 //! what runs is the live state's. [`all`], [`by_id`], [`by_scope`],
-//! [`by_reference`], [`of_template`], [`of_owner_template`] and
+//! [`by_reference`], [`of_template`], [`of_owner_agent`] and
 //! [`of_agent`] load; [`find_or_create`] makes one under its scope key,
-//! or finds the one there is; [`delete_of_template`],
-//! [`delete_of_owner_agent`] and [`delete_of_owner_template`] remove,
-//! each answering the rows removed so their scopes can be dropped and
-//! their states retired; [`set_tags`] writes the tags;
+//! or finds the one there is; [`delete_of_template`] and
+//! [`delete_of_owner_agent`] remove, each answering the rows removed
+//! so their states can be retired; [`set_tags`] writes the tags;
 //! [`set_permissions`] keeps what its container last declared it may
 //! ask of the daemon.
 //!

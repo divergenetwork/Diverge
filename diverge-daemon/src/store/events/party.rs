@@ -75,13 +75,6 @@ pub async fn resolve(conn: &mut PgConnection, creator: &Creator) -> Result<Optio
             .fetch_optional(&mut *conn)
             .await?
         }
-        Creator::Tool(creator::Tool::Dependency { template, owner: Owner::AgentTemplate { template: owner } }) => {
-            sqlx::query_scalar("SELECT id FROM diverge.dependency_tools WHERE template = $1 AND scope = 'template' AND owner_template = $2")
-                .bind(template)
-                .bind(owner)
-                .fetch_optional(&mut *conn)
-                .await?
-        }
         Creator::Tool(creator::Tool::Dependency { template, owner: Owner::Global }) => {
             sqlx::query_scalar("SELECT id FROM diverge.dependency_tools WHERE template = $1 AND scope = 'global'")
                 .bind(template)

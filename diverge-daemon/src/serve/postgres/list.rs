@@ -25,7 +25,8 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 
 /// One `Forbidden` without the `list` grant; else every connection a
 /// container holds open now, oldest opened first, one frame each, the
-/// container named as the database names it, then the word that the
+/// container named as the database names it and the compartment the
+/// connection reaches beside, then the word that the
 /// list is whole — at once, when none is open — and from then on each
 /// connection added as it opens and removed as it closes, until the
 /// client cancels. One whose container's record is gone is not
@@ -63,9 +64,9 @@ impl Source for Open<'_> {
             let open = self.daemon.live.connections().await;
             let mut conn = self.daemon.store.acquire().await?;
             let mut listed = Vec::with_capacity(open.len());
-            for (id, key, opened) in open {
+            for (id, key, compartment, opened) in open {
                 if let Some(container) = database::container_of(&mut conn, key).await? {
-                    listed.push((id, Connection { id, container, opened }));
+                    listed.push((id, Connection { id, container, compartment, opened }));
                 }
             }
             Ok(listed)

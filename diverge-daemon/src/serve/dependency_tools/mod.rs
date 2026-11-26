@@ -1,6 +1,6 @@
-//! The nine requests over dependency tools, served: [`list`], [`get`],
-//! [`delete`], [`tag`] and [`untag`] over the rows — one per template
-//! and owner, the delete by template over every row of it — and
+//! The requests over dependency tools, served: [`list`], [`get`],
+//! [`tag`] and [`untag`] over the rows — one per template and owner —
+//! and
 //! [`filetree`], [`download`], [`upload`] and [`transfer`] over a
 //! running one, named by its template and whose it is. One handler
 //! per request, each the shape [`serve`](crate::serve) states. What a
@@ -17,7 +17,6 @@ mod resolve;
 pub use facts::*;
 pub use resolve::*;
 
-pub mod delete;
 pub mod download;
 pub mod exec;
 pub mod filetree;

@@ -37,8 +37,10 @@
 //! the provider's asks on a run — the container's `/daemon`
 //! connections, its tool calls, its mounts, its dependencies — are
 //! answered by [`containers`]; its database
-//! connections reach one scope of its own, the handshake the daemon's
-//! and the rest relayed unread, by [`database`]. Every connection
+//! connections each reach one of its three compartments — its own,
+//! its template's or its image's, as the connection names — the
+//! handshake the daemon's and the rest relayed unread, by
+//! [`database`]. Every connection
 //! opens with the [`handshake`](diverge_sdk::wire::handshake): each
 //! end presents its own token, and the daemon presents that of its
 //! one `identity`, whatever issuer the other end's is from. The

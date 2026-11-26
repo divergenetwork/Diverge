@@ -81,7 +81,15 @@ pub async fn ensure(conn: &mut PgConnection, role: &str, password: &str) -> Resu
 /// in a block that catches its failure: the block is a subtransaction
 /// of its own, its failure undoes the drop alone, and the caller's
 /// transaction goes on to its commit.
+///
+/// It takes the lock [`ensure`] takes, for the caller's transaction,
+/// so that a connection making the role anew waits for the drop to be
+/// committed and makes it whole, and never finds it half gone.
 pub async fn drop(conn: &mut PgConnection, role: &str) -> Result<(), store::Error> {
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(lock_key(role))
+        .execute(&mut *conn)
+        .await?;
     sqlx::query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = $1 AND pid <> pg_backend_pid()")
         .bind(role)
         .execute(&mut *conn)

@@ -73,6 +73,7 @@ pub mod identities;
 pub mod image_icons;
 pub mod image_info;
 pub mod in_use;
+pub mod postgres_compartments;
 pub mod providers;
 pub mod roles;
 pub mod tags;

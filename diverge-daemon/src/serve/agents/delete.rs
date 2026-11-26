@@ -29,13 +29,14 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// `Forbidden` with no `delete` grant at all; `NotFound`; `Forbidden`
 /// for an agent the grants do not reach; `Active` while a loop runs
 /// in it; else the agent gone — its container stopped if it was up,
-/// its attachments with it, the dependency tools it owns gone with
-/// their database scopes and their every table, each eager tool among
-/// them retired, every other dependency tool and every tool on record
+/// its attachments with it, its own compartment of the database
+/// dropped with its every table, the dependency tools it owns gone
+/// with theirs, each eager tool among them retired, every other dependency tool and every tool on record
 /// it was attached to told,
 /// its name free, its MCP session in every tool running forgotten,
 /// every watch on its log ended and the log removed.
-/// Its own database scope stays: nothing drops an agent's own.
+/// Its template's compartment and its image's stay: they are every
+/// agent's of the template, and of the image.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, Failure> {
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {
@@ -57,14 +58,14 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     let attached = dependency_tools::of_agent(&mut tx, agent.id).await?;
     let detached = tools::attachments::of_agent(&mut tx, agent.id).await?;
     for tool in dependency_tools::of_owner_agent(&mut tx, agent.id).await? {
-        if let Some(container) = database::container_of_dependency_tool(&tool, Some(&agent)) {
-            database::provision::drop(&mut tx, &database::role_of(&container)).await?;
+        if let Some(instance) = database::instance_of_dependency_tool(&tool, Some(&agent)) {
+            database::remove(daemon, &mut tx, &instance).await?;
         }
     }
+    database::remove(daemon, &mut tx, &database::instance_of_agent(&agent)).await?;
     let removed = dependency_tools::delete_of_owner_agent(&mut tx, agent.id).await?;
     agents::delete(&mut tx, agent.id).await?;
     tx.commit().await?;
-    daemon.live.forget_scope(containers::Key::Agent(agent.id)).await;
     containers::stop_agent(daemon, agent.id).await;
     let left = attached
         .iter()
@@ -85,5 +86,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     daemon.live.changed(Kind::DependencyTools);
     daemon.live.changed(Kind::Volumes);
     daemon.live.changed(Kind::Vault);
+    daemon.live.changed(Kind::PostgresCompartments);
     Ok(Frame::Deleted)
 }

@@ -11,7 +11,7 @@
 //! the dependency's own registration, held and written back as any
 //! tool container's; its limits what its image needs and what its
 //! template adds; its
-//! database scope the one its image's `scope` names; its requests to the
+//! compartments of the database the three every container has, less its own where its image's `scope` is `global`; its requests to the
 //! daemon judged by the grants its own program declared at its
 //! registration; served to the agent under
 //! its template's id, short. A template declared twice, one of an

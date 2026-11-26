@@ -26,6 +26,7 @@ use crate::containers::{AgentRun, ConnectionId, Key, ToolKey, ToolRun};
 use crate::daemons::Peer;
 use crate::judge::AgentState;
 use crate::database::Scope;
+use diverge_sdk::daemon::endpoints::postgres::compartments::Compartment;
 use crate::store::agents::Agent;
 use crate::store::{self, AccountId, AgentId, Store};
 use crate::listings::Listings;
@@ -128,15 +129,17 @@ pub struct Live {
     /// tool's row whose template is one: whether it is held, and its
     /// supervisor and its clock.
     eager: Mutex<HashMap<ToolKey, Arc<State>>>,
-    /// Every container's database scope touched since the start: its
-    /// password, in memory only.
-    scopes: Mutex<HashMap<Key, Arc<Scope>>>,
+    /// Every compartment's role touched since the start, by the role:
+    /// its password, in memory only. By the role and not by the
+    /// container, since a role two containers reach has one password.
+    scopes: Mutex<HashMap<String, Arc<Scope>>>,
     /// The backend key of every container session open now, and
     /// whose it is: what a cancel is judged by.
     backends: Mutex<HashMap<(i32, i32), Key>>,
     /// Every container connection open through the database now, by
-    /// a number of the daemon's, and when it was opened.
-    connections: Mutex<HashMap<u64, (Key, DateTime<Utc>)>>,
+    /// a number of the daemon's: whose it is, the compartment it
+    /// reaches, and when it was opened.
+    connections: Mutex<HashMap<u64, (Key, Compartment, DateTime<Utc>)>>,
     /// The next connection number.
     next_connection: Mutex<u64>,
     /// The volumes a download, an upload or a transfer of the daemon's
@@ -974,16 +977,16 @@ impl Live {
         self.eager.lock().await.values().cloned().collect()
     }
 
-    /// The container's database scope, live: the one there is, or one
-    /// made now for the role `role` names, with a fresh password.
-    pub async fn scope(&self, key: Key, role: impl FnOnce() -> String) -> Arc<Scope> {
+    /// The role's password, live: the one there is, or one minted
+    /// now.
+    pub async fn scope(&self, role: String) -> Arc<Scope> {
         let mut scopes = self.scopes.lock().await;
-        Arc::clone(scopes.entry(key).or_insert_with(|| Arc::new(Scope::new(role()))))
+        Arc::clone(scopes.entry(role.clone()).or_insert_with(|| Arc::new(Scope::new(role))))
     }
 
-    /// The container is deleted: its scope is forgotten.
-    pub async fn forget_scope(&self, key: Key) {
-        self.scopes.lock().await.remove(&key);
+    /// The compartment is removed: its role's password is forgotten.
+    pub async fn forget_scope(&self, role: &str) {
+        self.scopes.lock().await.remove(role);
     }
 
     /// A container session was given the backend key.
@@ -1001,15 +1004,15 @@ impl Live {
         self.backends.lock().await.get(&backend).copied()
     }
 
-    /// A container connection is open through the database: its
-    /// number, to close it by.
-    pub async fn open_connection(&self, key: Key) -> u64 {
+    /// A container connection is open through the database, reaching
+    /// the compartment: its number, to close it by.
+    pub async fn open_connection(&self, key: Key, compartment: Compartment) -> u64 {
         let id = {
             let mut next = self.next_connection.lock().await;
             *next += 1;
             *next
         };
-        self.connections.lock().await.insert(id, (key, Utc::now()));
+        self.connections.lock().await.insert(id, (key, compartment, Utc::now()));
         self.changes.changed(Kind::Postgres);
         id
     }
@@ -1023,16 +1026,23 @@ impl Live {
 
     /// Every container connection open now, oldest opened first, each
     /// by the daemon's own number for it.
-    pub async fn connections(&self) -> Vec<(u64, Key, DateTime<Utc>)> {
-        let mut all: Vec<(u64, Key, DateTime<Utc>)> = self
+    pub async fn connections(&self) -> Vec<(u64, Key, Compartment, DateTime<Utc>)> {
+        let mut all: Vec<(u64, Key, Compartment, DateTime<Utc>)> = self
             .connections
             .lock()
             .await
             .iter()
-            .map(|(id, (key, opened))| (*id, *key, *opened))
+            .map(|(id, (key, compartment, opened))| (*id, *key, compartment.clone(), *opened))
             .collect();
-        all.sort_by_key(|(id, _, opened)| (*opened, *id));
+        all.sort_by_key(|(id, _, _, opened)| (*opened, *id));
         all
+    }
+
+    /// How many connections containers hold through the compartment
+    /// now.
+    pub async fn connections_through(&self, compartment: &Compartment) -> u64 {
+        let open = self.connections.lock().await.values().filter(|(_, reached, _)| reached == compartment).count();
+        u64::try_from(open).unwrap_or(u64::MAX)
     }
 
     /// Whether a running container has the volume: one whose record

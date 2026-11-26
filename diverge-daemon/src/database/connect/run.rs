@@ -11,18 +11,28 @@ use tokio::sync::watch;
 use super::{AUTHENTICATION_OK, Packet, auth, cancel, dial, error_response, read_startup, relay};
 use crate::containers::{self, Key};
 use crate::daemon::Daemon;
-use crate::database::scope;
+use crate::database::{Refusal, scope};
+use diverge_sdk::container_proxy::inside::Database;
 
 /// Serve one container connection: everything the container writes
 /// arrives on `from_container`, everything the database says goes
 /// out on `to_container`, and dropping the sender is the connection
-/// closed. The scope made if it was not; the startup packet read; a
-/// cancel sent on and done; else the database dialled and the
-/// handshake performed as the container's role, the container
-/// answered `AuthenticationOk` and what the database said, and the
-/// rest relayed. A failure before the relay is an `ErrorResponse` to
-/// the container, in the server's words when there are any, and the
-/// end; for an agent, also an `error` item in its log.
+/// closed. In order:
+///
+/// 1. The startup packet is read. A cancel is sent on and done.
+/// 2. The database it names is one of the container's three, or the
+///    connection is refused as Postgres refuses a database that does
+///    not exist, SQLSTATE `3D000`: a name that is none of them, no
+///    name at all, and `instance` from a dependency tool whose
+///    image's scope is `global`.
+/// 3. The compartment is made if it was not.
+/// 4. The database is dialled and the handshake performed as the
+///    compartment's role, the container answered `AuthenticationOk`
+///    and what the database said, and the rest relayed.
+///
+/// A failure before the relay is an `ErrorResponse` to the container,
+/// in the server's words when there are any, and the end; for an
+/// agent, also an `error` item in its log.
 pub async fn run(
     daemon: Arc<Daemon>,
     key: Key,
@@ -30,24 +40,39 @@ pub async fn run(
     to_container: Sender<Bytes>,
     touched: watch::Sender<Instant>,
 ) {
-    let scope = match scope(&daemon, key).await {
-        Ok(scope) => scope,
-        Err(why) => {
-            let _ = to_container.send(error_response("08004", &why)).await;
-            note(&daemon, key, &why).await;
-            return;
-        }
-    };
+    // Rule 1.
     let Some(packet) = read_startup(&mut from_container, &to_container).await else {
         return;
     };
-    let parameters = match packet {
-        Packet::Startup(parameters) => parameters,
+    let (named, parameters) = match packet {
+        Packet::Startup { database, parameters } => (database, parameters),
         Packet::Cancel { process_id, secret_key } => {
             cancel::cancel(&daemon, key, process_id, secret_key).await;
             return;
         }
     };
+    // Rule 2.
+    let named = named.unwrap_or_default();
+    let Some(database) = Database::named(&named) else {
+        let why = format!("database \"{named}\" does not exist: a container's databases are `instance`, `template` and `image`");
+        let _ = to_container.send(error_response("3D000", &why)).await;
+        note(&daemon, key, &why).await;
+        return;
+    };
+    // Rule 3.
+    let (scope, compartment) = match scope(&daemon, key, database).await {
+        Ok(reached) => reached,
+        Err(refusal) => {
+            let (code, why) = match refusal {
+                Refusal::Absent(why) => ("3D000", why),
+                Refusal::Failed(why) => ("08004", why),
+            };
+            let _ = to_container.send(error_response(code, &why)).await;
+            note(&daemon, key, &why).await;
+            return;
+        }
+    };
+    // Rule 4.
     let (mut server, encrypted) = match dial::dial(&daemon.database).await {
         Ok(dialled) => dialled,
         Err(why) => {
@@ -79,7 +104,7 @@ pub async fn run(
     if let Some(backend) = backend {
         daemon.live.register_backend(backend, key).await;
     }
-    let opened = daemon.live.open_connection(key).await;
+    let opened = daemon.live.open_connection(key, compartment).await;
     touched.send_replace(Instant::now());
     relay::relay(server, from_container, to_container, touched).await;
     daemon.live.close_connection(opened).await;

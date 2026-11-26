@@ -83,7 +83,7 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
         } else {
             match tool.scope {
                 Scope::Instance => owner_agent.clone(),
-                Scope::Template | Scope::Global => match attachments::latest(&mut conn, tool.id).await? {
+                Scope::Global => match attachments::latest(&mut conn, tool.id).await? {
                     Some(attachment) => agents::by_id(&mut conn, attachment.agent, false).await?,
                     None => None,
                 },

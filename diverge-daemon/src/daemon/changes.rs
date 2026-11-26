@@ -44,6 +44,8 @@ pub enum Kind {
     Vault,
     /// The container connections open through the database.
     Postgres,
+    /// The database's compartments: the records, and their tags.
+    PostgresCompartments,
     /// Events: the graph, an edge added or its count raised.
     Events,
     /// Listings: a provider's daemons list changed, ended, or was

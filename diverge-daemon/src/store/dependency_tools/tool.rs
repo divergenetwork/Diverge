@@ -32,9 +32,6 @@ pub struct DependencyTool {
     pub scope: Scope,
     /// The one agent it is for, when its scope is per agent.
     pub owner_agent: Option<AgentId>,
-    /// The one agent template it is for, when its scope is per agent
-    /// template.
-    pub owner_template: Option<String>,
     /// Its tags, sorted bytewise.
     pub tags: Vec<String>,
     /// What its container declared it may ask of the daemon when it
@@ -79,14 +76,11 @@ impl DependencyTool {
 
     /// Whose it is, as the wire names it: the owner agent, handed in
     /// by the caller for a per-agent tool since a name is as it is
-    /// called now, its agent template, or nobody. `None` for a
-    /// per-agent tool whose owner the caller did not hand in.
+    /// called now, or nobody. `None` for a per-agent tool whose owner
+    /// the caller did not hand in.
     pub fn owner(&self, owner_agent: Option<&Agent>) -> Option<key::Owner> {
         Some(match self.scope {
             Scope::Instance => key::Owner::Agent(owner_agent?.key()),
-            Scope::Template => key::Owner::AgentTemplate {
-                template: self.owner_template.clone().unwrap_or_default(),
-            },
             Scope::Global => key::Owner::Global,
         })
     }
@@ -129,17 +123,15 @@ impl DependencyTool {
 pub fn scope_name(scope: Scope) -> &'static str {
     match scope {
         Scope::Instance => "instance",
-        Scope::Template => "template",
         Scope::Global => "global",
     }
 }
 
 /// The scope a column's word names, or `None` for a word that is
-/// none of the three.
+/// neither.
 pub fn scope_of(name: &str) -> Option<Scope> {
     match name {
         "instance" => Some(Scope::Instance),
-        "template" => Some(Scope::Template),
         "global" => Some(Scope::Global),
         _ => None,
     }

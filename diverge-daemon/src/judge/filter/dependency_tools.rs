@@ -51,27 +51,24 @@ pub fn test(filter: &Filter, facts: &Facts<'_>) -> bool {
 }
 
 /// Whether the owner is the one the reference names: an agent by its
-/// name as it is called now or by its template and index, an agent
-/// template by id, or nobody.
+/// name as it is called now or by its template and index, or nobody.
 pub fn owned_by(owner: &key::Owner, reference: &reference::Owner) -> bool {
     match (owner, reference) {
         (key::Owner::Agent(agent), reference::Owner::Agent(reference::Agent::Name { name })) => agent.name.as_ref() == Some(name),
         (key::Owner::Agent(agent), reference::Owner::Agent(reference::Agent::TemplateIndex { template, index })) => {
             &agent.template == template && agent.index == *index
         }
-        (key::Owner::AgentTemplate { template: owned }, reference::Owner::AgentTemplate { template }) => owned == template,
         (key::Owner::Global, reference::Owner::Global) => true,
         _ => false,
     }
 }
 
 /// Whether `owner` is the one a listed tool's key names: an agent by
-/// its template and index, an agent template by id, or nobody.
+/// its template and index, or nobody.
 fn owned(owner: &key::Owner, wanted: &diverge_sdk::shared::permission::dependency_tools::Owner) -> bool {
     use diverge_sdk::shared::permission::dependency_tools::Owner;
     match (owner, wanted) {
         (key::Owner::Agent(agent), Owner::Agent(key)) => agent.template == key.template && agent.index == key.index,
-        (key::Owner::AgentTemplate { template: owned }, Owner::AgentTemplate { template }) => owned == template,
         (key::Owner::Global, Owner::Global) => true,
         _ => false,
     }

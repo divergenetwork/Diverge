@@ -19,8 +19,8 @@
 //! runs, and `idle_seconds` after the last hold left with none since
 //! it is RETIRED: its run stopped and its state let go, its record
 //! kept, to be kept up again by the next hold. A dependency tool's
-//! row and its database scope go with the row's delete: its agent's,
-//! its agent template's, or its template's; a tool on record's
+//! row goes with its agent's delete, or with the delete of its
+//! template's compartment of the database; a tool on record's
 //! keeping ends with the tool's delete.
 //!
 //! [`settle`] is what a start does when the program declared nothing,

@@ -7,8 +7,7 @@
 //! [`filter::dependency_tools::test`] reads it, over the [`Facts`] of
 //! the row, its owner, the agents attached to it and its run, which
 //! the caller knows; a tagging action by a grant that holds it,
-//! reaches the tool, and covers every tag named. A delete, by
-//! template, is judged over every tool of the template.
+//! reaches the tool, and covers every tag named.
 
 use diverge_sdk::daemon::endpoints::dependency_tools::list::client::request::Filter;
 use diverge_sdk::daemon::grant::dependency_tools::{Over, Permission};

@@ -122,10 +122,13 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         creator: standing.creator.clone(),
     };
     match tools::create(&mut tx, &new).await? {
-        tools::Created::Created(..) => {}
+        tools::Created::Created(id, _) => {
+            crate::database::register(&mut tx, crate::containers::Key::Tool(crate::containers::ToolKey::Record(id))).await?
+        }
         tools::Created::Exists => return Ok(Frame::InUse),
     }
     tx.commit().await?;
+    daemon.live.changed(Kind::PostgresCompartments);
     daemon.live.changed(Kind::StandaloneTools);
     daemon.live.changed(Kind::Volumes);
     daemon.live.changed(Kind::Vault);

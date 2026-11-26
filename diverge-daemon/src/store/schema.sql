@@ -77,6 +77,22 @@ CREATE TABLE IF NOT EXISTS diverge.counters (
     next        BIGINT NOT NULL
 );
 
+-- A compartment of the database a container reaches: one login role
+-- and one schema of the same name, which `role` is. On record from
+-- the moment what it is of is made — an agent, a tool, a dependency
+-- tool — whether or not its role has been made yet, which the first
+-- connection that names it does. `compartment` is it whole, as the
+-- wire names it, an agent in it by its template and index; `kind` is
+-- what kind of container it is of: `agent`, `standalone_tool` or
+-- `dependency_tool`.
+CREATE TABLE IF NOT EXISTS diverge.postgres_compartments (
+    role        TEXT PRIMARY KEY,
+    compartment JSONB NOT NULL,
+    kind        TEXT NOT NULL,
+    tags        TEXT[] NOT NULL DEFAULT '{}',
+    created     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- The vault: keys, each holding one or more JSON values, handed to
 -- the containers whose records bind the key to a secret. A key some
 -- record binds is not deleted, which the records say, not a
@@ -183,24 +199,22 @@ CREATE TABLE IF NOT EXISTS diverge.template_attachments (
 CREATE INDEX IF NOT EXISTS template_attachments_template ON diverge.template_attachments (template);
 
 -- A dependency tool: a dependency template under one owner, as the
--- template's scope decides — an `instance` tool one per agent, a
--- `template` tool one per agent template, a `global` tool one for
--- all, lazy or eager alike — made by the first registration
--- that declares the template under that owner. An instance tool goes
--- with its agent; a per-template tool with its agent template, by the
--- template's delete; a global tool with nothing but the dependency
--- template's delete, which takes every tool of the template. The
--- container is work made from the row, never the row.
+-- template's image's scope decides — an `instance` tool one per
+-- agent, a `global` tool one for all, lazy or eager alike — made by
+-- the first registration that declares the template under that owner.
+-- An instance tool goes with its agent; every tool of a template,
+-- the global one among them, with the delete of the dependency
+-- template's compartment. The container is work made from the row,
+-- never the row.
 CREATE TABLE IF NOT EXISTS diverge.dependency_tools (
     id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     template       TEXT NOT NULL,
     -- Its number among the dependency tools ever made from the
     -- template, whatever their owners.
     index          BIGINT NOT NULL,
-    -- `instance`, `template` or `global`.
+    -- `instance` or `global`.
     scope          TEXT NOT NULL,
     owner_agent    BIGINT REFERENCES diverge.agents(id) ON DELETE CASCADE,
-    owner_template TEXT,
     tags           TEXT[] NOT NULL DEFAULT '{}',
     -- What its container declared it may ask of the daemon at its
     -- registration when it last started; empty for none.
@@ -212,15 +226,12 @@ CREATE TABLE IF NOT EXISTS diverge.dependency_tools (
     created        TIMESTAMPTZ NOT NULL DEFAULT now(),
     creator        JSONB NOT NULL,
     CONSTRAINT dependency_tools_scope_owner CHECK (
-        (scope = 'instance' AND owner_agent IS NOT NULL AND owner_template IS NULL)
-        OR (scope = 'template' AND owner_agent IS NULL AND owner_template IS NOT NULL)
-        OR (scope = 'global' AND owner_agent IS NULL AND owner_template IS NULL)
+        (scope = 'instance' AND owner_agent IS NOT NULL)
+        OR (scope = 'global' AND owner_agent IS NULL)
     )
 );
 CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_per_agent
     ON diverge.dependency_tools (template, owner_agent) WHERE scope = 'instance';
-CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_per_template
-    ON diverge.dependency_tools (template, owner_template) WHERE scope = 'template';
 CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_global
     ON diverge.dependency_tools (template) WHERE scope = 'global';
 CREATE INDEX IF NOT EXISTS dependency_tools_template ON diverge.dependency_tools (template);

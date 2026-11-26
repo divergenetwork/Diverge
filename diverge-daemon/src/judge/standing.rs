@@ -215,6 +215,14 @@ impl Standing {
         })
     }
 
+    /// The grants over the database's compartments.
+    pub fn postgres_compartments(&self) -> impl Iterator<Item = &grant::postgres_compartments::Permission> {
+        self.grants.iter().filter_map(|grant| match grant {
+            Grant::PostgresCompartments(permission) => Some(permission),
+            _ => None,
+        })
+    }
+
     /// The grants over the events.
     pub fn events(&self) -> impl Iterator<Item = &grant::events::Permission> {
         self.grants.iter().filter_map(|grant| match grant {

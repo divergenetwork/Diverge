@@ -4,8 +4,8 @@
 //! A template is the body alone: its tags, when it was made and who
 //! made it are each [tool](crate::store::dependency_tools)'s. [`create`]
 //! puts a body on record, or finds it there; [`by_id`] loads one;
-//! [`delete`] removes one, which the template's delete does after its
-//! tools.
+//! [`delete`] removes one, which the delete of the template's
+//! compartment of the database does after its tools.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.

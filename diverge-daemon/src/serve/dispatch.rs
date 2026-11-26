@@ -30,7 +30,7 @@ use crate::judge::Who;
 ///
 /// One arm per request of the wire, so that a request added to the
 /// SDK is a request this cannot compile without. Every one of the
-/// hundred and thirty-four has a handler. A payload that is no request at all is
+/// requests has a handler. A payload that is no request at all is
 /// finished with nothing before it, which is what the wire means by a
 /// request that was not served.
 pub async fn dispatch(scope: ScopeHandle, payload: &[u8], mut turn: Turn, who: Who, daemon: &Arc<Daemon>) {
@@ -151,12 +151,16 @@ pub async fn dispatch(scope: ScopeHandle, payload: &[u8], mut turn: Turn, who: W
         ClientRequest::VolumesFiletree(frame) => volumes::filetree::handle(scope, frame, who, daemon).await,
         ClientRequest::PostgresGet(frame) => postgres::get::handle(scope, frame, who, daemon).await,
         ClientRequest::PostgresList(frame) => postgres::list::handle(scope, frame, who, daemon).await,
+        ClientRequest::PostgresCompartmentsList(frame) => postgres::compartments::list::handle(scope, frame, who, daemon).await,
+        ClientRequest::PostgresCompartmentsGet(frame) => postgres::compartments::get::handle(scope, frame, who, daemon).await,
+        ClientRequest::PostgresCompartmentsTag(frame) => postgres::compartments::tag::handle(scope, frame, who, daemon).await,
+        ClientRequest::PostgresCompartmentsUntag(frame) => postgres::compartments::untag::handle(scope, frame, who, daemon).await,
+        ClientRequest::PostgresCompartmentsDelete(frame) => postgres::compartments::delete::handle(scope, frame, who, daemon).await,
         ClientRequest::StandaloneToolsConnect(frame) => standalone_tools::connect::handle(scope, frame, who, daemon).await,
         ClientRequest::DaemonsGet(frame) => daemons::get::handle(scope, frame, who, daemon).await,
         ClientRequest::DaemonsList(frame) => daemons::list::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsList(frame) => dependency_tools::list::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsGet(frame) => dependency_tools::get::handle(scope, frame, who, daemon).await,
-        ClientRequest::DependencyToolsDelete(frame) => dependency_tools::delete::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsTag(frame) => dependency_tools::tag::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsUntag(frame) => dependency_tools::untag::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsFiletree(frame) => dependency_tools::filetree::handle(scope, frame, who, daemon).await,

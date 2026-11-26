@@ -7,7 +7,7 @@ use diverge_sdk::daemon::lifecycle::Reason;
 use futures_util::future;
 
 use super::lifecycle::{self, End};
-use super::{AgentRun, Key, ToolHandle, ToolKey, ToolRun, secrets, eager, tool_log};
+use super::{AgentRun, ToolHandle, ToolKey, ToolRun, secrets, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::store::{AgentId, agents, connected_standalone_tools as connected_records, tools as tool_records};
 
@@ -132,9 +132,8 @@ pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>,
 /// word that it ended said — which finishes every connect scope on it
 /// — its mounts let go; a record's told where and when it last ran; a
 /// lazy dependency tool's taken out of its agent's served set,
-/// which tells the agent its tools changed, and its scope's password
-/// forgotten, since its row is next run from a new agent run; a
-/// eager tool's scope and its place in every served set kept for the
+/// which tells the agent its tools changed; an
+/// eager tool's place in every served set kept for the
 /// next run, which its supervisor starts while any agent is attached.
 /// Every session's notifications reader is ended, and the tool marked
 /// working no more, whatever its log said. Done once, and only for the
@@ -198,7 +197,6 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
                     agent.served.lock().await.remove_lazy(&run);
                 }
             }
-            daemon.live.forget_scope(Key::Tool(run.id)).await;
         }
         (ToolKey::Dependency(_), _) => {}
     }

@@ -3,13 +3,12 @@
 use std::sync::Arc;
 
 use crate::containers::lifecycle::End;
-use crate::containers::{Key, ToolKey, stop};
+use crate::containers::{ToolKey, stop};
 use crate::daemon::{Daemon, Kind};
 
 /// Retire the eager tool: its state taken out of the live set and its
 /// supervisor stilled first, so that nothing starts it again; its
-/// run, if one is up, stopped and taken down; its scope's password
-/// forgotten, since its key is seen again only by a new keeping; and
+/// run, if one is up, stopped and taken down; and
 /// the clock stilled last, since the clock is what calls this. Its
 /// row stays — a dependency tool's to go with the row's delete, a
 /// tool on record's for its life — and the next attach or connect
@@ -28,7 +27,6 @@ pub async fn retire(daemon: &Arc<Daemon>, key: ToolKey) {
         run.handle.wait().await;
         stop::ended_tool(daemon, run).await;
     }
-    daemon.live.forget_scope(Key::Tool(key)).await;
     daemon.live.changed(Kind::DependencyTools);
     daemon.live.changed(Kind::StandaloneTools);
     if let Some(state) = state {

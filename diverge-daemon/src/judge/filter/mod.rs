@@ -31,6 +31,7 @@ pub mod identities;
 pub mod images;
 pub mod daemons;
 pub mod providers;
+pub mod postgres_compartments;
 pub mod roles;
 pub mod standalone_tools;
 pub mod standalone_tools_templates;

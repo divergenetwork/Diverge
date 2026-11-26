@@ -116,7 +116,7 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         held.push((template_id, template, document));
     }
     let declared = held;
-    let (tools, left) = record(daemon, agent, agent_key, &creator, &declared)
+    let (tools, left) = record(daemon, agent, &creator, &declared)
         .await
         .map_err(|reason| error("", &reason))?;
     let owner = Owner {
@@ -284,7 +284,6 @@ async fn start_all(owner: Owner, own: Vec<DependencyTool>) -> Result<Vec<Arc<Too
 async fn record(
     daemon: &Daemon,
     agent: AgentId,
-    agent_key: &key::Agent,
     creator: &Creator,
     declared: &[(String, Template, info::DependencyTool)],
 ) -> Result<(Vec<DependencyTool>, Vec<DependencyToolId>), String> {
@@ -302,12 +301,14 @@ async fn record(
                 template: template_id,
                 scope,
                 agent,
-                agent_template: &agent_key.template,
                 creator,
             },
         )
         .await
         .map_err(|error| error.to_string())?;
+        crate::database::register(&mut tx, crate::containers::Key::Tool(crate::containers::ToolKey::Dependency(tool.id)))
+            .await
+            .map_err(|error| error.to_string())?;
         dependency_tools::attachments::attach(&mut tx, tool.id, agent)
             .await
             .map_err(|error| error.to_string())?;

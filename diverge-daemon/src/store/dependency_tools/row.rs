@@ -17,7 +17,7 @@ use diverge_sdk::shared::permission::Grant;
 /// by its digest. The document is on record before the tool is: the
 /// registration that declares a template reads its image's document
 /// first, and what is read is recorded.
-pub(super) const SELECT: &str = "SELECT t.id, t.template, t.index, d.template AS declared, i.document AS document, t.scope, t.owner_agent, t.owner_template, t.tags, t.permissions, t.last_deployed, t.last_active, t.created, t.creator \
+pub(super) const SELECT: &str = "SELECT t.id, t.template, t.index, d.template AS declared, i.document AS document, t.scope, t.owner_agent, t.tags, t.permissions, t.last_deployed, t.last_active, t.created, t.creator \
      FROM diverge.dependency_tools t JOIN diverge.dependencies d ON d.id = t.template \
      JOIN diverge.image_info i ON i.digest = d.template->'image'->>'digest'";
 
@@ -48,7 +48,6 @@ pub(super) fn tool(row: &PgRow) -> Result<DependencyTool, Error> {
         document,
         scope,
         owner_agent: owner_agent.map(AgentId),
-        owner_template: row.try_get("owner_template")?,
         tags: row.try_get("tags")?,
         permissions,
         last_deployed: row.try_get("last_deployed")?,

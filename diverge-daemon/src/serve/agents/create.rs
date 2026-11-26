@@ -116,10 +116,11 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         creator: standing.creator.clone(),
     };
     match agents::create(&mut tx, &new).await? {
-        agents::Created::Created(..) => {}
+        agents::Created::Created(id, _) => crate::database::register(&mut tx, crate::containers::Key::Agent(id)).await?,
         agents::Created::Exists => return Ok(Frame::InUse),
     }
     tx.commit().await?;
+    daemon.live.changed(Kind::PostgresCompartments);
     daemon.live.changed(Kind::Agents);
     daemon.live.changed(Kind::Volumes);
     daemon.live.changed(Kind::Vault);

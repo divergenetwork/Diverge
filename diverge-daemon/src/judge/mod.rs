@@ -65,6 +65,7 @@ pub mod postgres;
 pub mod daemons;
 pub mod providers;
 pub mod providers_daemons;
+pub mod postgres_compartments;
 pub mod roles;
 pub mod standalone_tools;
 pub mod standalone_tools_templates;

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::{held, retire};
 use crate::containers::lifecycle::End;
-use crate::containers::{Key, ToolKey, stop};
+use crate::containers::{ToolKey, stop};
 use crate::daemon::Daemon;
 use crate::store::dependency_tools::DependencyTool;
 use crate::store::{DependencyToolId, ToolId};
@@ -25,12 +25,10 @@ pub async fn agent_deleted(daemon: &Arc<Daemon>, removed: Vec<DependencyTool>, l
     }
 }
 
-/// The agent template, or the dependency template, is deleted, and
-/// `removed` were the dependency tools whose rows went with it — the
-/// agent template's per-template ones, or every one of the dependency
-/// template: each eager tool among them is retired, its run with it; a
-/// lazy tool among them has no keeping to end, and only its
-/// scope's password to forget.
+/// `removed` were the dependency tools whose rows went — an agent's
+/// own with the agent, or every one of a dependency template with its
+/// compartment: each eager tool among them is retired, its run with
+/// it; a lazy tool among them has no keeping to end.
 pub async fn template_deleted(daemon: &Arc<Daemon>, removed: Vec<DependencyTool>) {
     for tool in removed {
         if tool.is_eager() {
@@ -41,7 +39,6 @@ pub async fn template_deleted(daemon: &Arc<Daemon>, removed: Vec<DependencyTool>
             if let Some(run) = daemon.live.tool_run(ToolKey::Dependency(tool.id)).await {
                 stop::stop_dependencies(daemon, vec![run], End::Expected).await;
             }
-            daemon.live.forget_scope(Key::Tool(ToolKey::Dependency(tool.id))).await;
         }
     }
 }
