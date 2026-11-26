@@ -285,7 +285,7 @@ async fn run(
 
     let pool = match sqlx::postgres::PgPoolOptions::new()
         .max_connections(1)
-        .connect(&client.postgres_url())
+        .connect(&client.postgres_url(diverge_sdk::container_proxy::inside::Database::Instance))
         .await
     {
         Ok(pool) => pool,

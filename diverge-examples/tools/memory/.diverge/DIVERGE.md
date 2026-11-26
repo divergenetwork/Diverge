@@ -31,10 +31,10 @@ three tools:
 
 ## Whose notes they are
 
-The notebook is the tool's database, and nothing narrower: the tool
-tells no caller apart and records no owner. Every agent that reaches
-the same database shares the same notes; whose notebook it is follows
-from how the tool is declared, never from anything the tool decides.
+The notebook is the tool's `instance` database, and nothing narrower:
+the tool tells no caller apart and records no owner. That database is
+one agent's, so each agent that declares the tool has a notebook of
+its own.
 
 ## Running it
 
@@ -60,6 +60,5 @@ containers in this repository that is an entry in the agent's
   not through the daemon, so the tool asks the daemon for nothing.
 - **Mode and scope:** `lazy`, `instance`. The tool is deployed with
   each run of the agent and stopped with it; the notes stay in the
-  database between runs. Scope `template` or `global` is one notebook
-  shared by every agent the scope covers, its container started by
-  the first use and stopped once idle.
+  tool's `instance` database between runs, which is that agent's and
+  no other's.

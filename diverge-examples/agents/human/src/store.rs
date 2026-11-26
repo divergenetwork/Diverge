@@ -33,7 +33,7 @@ impl Store {
     async fn pool(&self, client: &Client) -> Result<&PgPool, String> {
         self.pool
             .get_or_try_init(|| async {
-                let pool = PgPoolOptions::new().max_connections(2).connect(&client.postgres_url()).await.map_err(|error| error.to_string())?;
+                let pool = PgPoolOptions::new().max_connections(2).connect(&client.postgres_url(diverge_sdk::container_proxy::inside::Database::Instance)).await.map_err(|error| error.to_string())?;
                 sqlx::query(CREATE).execute(&pool).await.map_err(|error| error.to_string())?;
                 Ok::<_, String>(pool)
             })

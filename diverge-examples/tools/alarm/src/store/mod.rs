@@ -28,7 +28,7 @@ impl Store {
     pub async fn pool(&self, client: &Client) -> Result<&PgPool, Failure> {
         self.pool
             .get_or_try_init(|| async {
-                let pool = PgPoolOptions::new().max_connections(4).connect(&client.postgres_url()).await?;
+                let pool = PgPoolOptions::new().max_connections(4).connect(&client.postgres_url(diverge_sdk::container_proxy::inside::Database::Template)).await?;
                 schema::ensure(&pool).await?;
                 Ok::<_, Failure>(pool)
             })

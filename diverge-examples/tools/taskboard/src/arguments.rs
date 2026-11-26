@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 /// # How it runs
 ///
 /// As a dependency tool: an eager tool, declared by the image of every
-/// agent that works from the board. Which agents share one board
-/// follows from the eager tool's scope, never from anything the tool
-/// decides.
+/// agent that works from the board. The board is kept in the
+/// tool's `template` database, so every agent that declares this
+/// taskboard works from the one board, whatever template it is made from.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Arguments {}

@@ -6,14 +6,14 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
-    "description": "The arguments a taskboard tool is made with.\n\nNone: the board is the tool's database, and the tool is the same\nwhoever calls it. `{}` is the one value; any member is refused, so\na misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that works from the board. Which agents share one board\nfollows from the eager tool's scope, never from anything the tool\ndecides.",
+    "description": "The arguments a taskboard tool is made with.\n\nNone: the board is the tool's database, and the tool is the same\nwhoever calls it. `{}` is the one value; any member is refused, so\na misspelled setting is never silently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool, declared by the image of every\nagent that works from the board. The board is kept in the\ntool's `template` database, so every agent that declares this\ntaskboard works from the one board, whatever template it is made from.",
     "type": "object",
     "additionalProperties": false
   },
   "memory": 268435456,
   "disk": 268435456,
   "mode": "eager",
-  "scope": "template"
+  "scope": "global"
 }
 ---
 # Taskboard
@@ -44,10 +44,10 @@ The board is kept in the tool's database, through eight tools:
 
 ## Whose board it is
 
-The board is the tool's database, and nothing narrower: every agent
-that reaches the same database works from the same board. Which
-agents those are follows from how the tool is declared, never from
-anything the tool decides.
+The board is the tool's `template` database, and nothing narrower:
+every agent that declares the same taskboard works from the same
+board. Which agents those are follows from how the tool is declared,
+never from anything the tool decides.
 
 ## Running it
 
@@ -63,7 +63,7 @@ containers in this repository that is an entry in the agent's
   "disk": 268435456,
   "arguments": {},
   "mode": "eager",
-  "scope": "template"
+  "scope": "global"
 }
 ```
 
@@ -71,8 +71,8 @@ containers in this repository that is an entry in the agent's
 - **Secrets:** none.
 - **Permissions:** none. The database is reached through the proxy,
   not through the daemon, so the tool asks the daemon for nothing.
-- **Mode and scope:** `eager`. A board is shared, so its scope is
-  never `instance`, whose database is one agent's. Scope `template` is one
-  board for every agent of the agent's template; `global` is one board
-  for every agent that declares this taskboard, from any template.
+- **Mode and scope:** `eager`, `global`. One taskboard container for
+  every agent that declares this taskboard, from any agent template.
+  The board is kept in the tool's `template` database, which is the
+  declaration's own: a different declaration is a different board.
 - Only agents may use it; a client over a connect is refused.
