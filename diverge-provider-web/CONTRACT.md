@@ -192,7 +192,7 @@ including image manifests and blobs, the bytes of writes, reads and
 transfers, filesystem trees, database traffic, commands and
 their items, FUSE asks and their answers on a
 mount and on a `volumes::fuse_serve`, MCP exchanges, prompts, arguments,
-the names, modes and values of secrets, dependency declarations, and
+dependency declarations, declared permissions, and
 loop chunks.
 
 1.19 **"Relayed Exchange"** means any exchange the Specification
@@ -1162,8 +1162,8 @@ Deployment is the run's error.
 (d) **Connect to the Proxy.** The Provider shall open exactly one
 WebSocket connection to TCP port 14979 of the Container and, on it
 before any other Scope, the begin Scope of the Container's family,
-carrying the request's `arguments`, `template` and `image` verbatim
-and no secret, and shall await its answer. A Proxy that does not accept the
+carrying the request's `arguments`, `template` and `image` verbatim,
+and shall await its answer. A Proxy that does not accept the
 connection, or that answers the begin Scope with an error, is a
 Container that did not come up: the Provider shall stop the Container
 and treat the failure as the run's error. The Provider shall open no
@@ -1206,10 +1206,7 @@ verbatim, its `references` included, in the same begin Scope's
 request, so that the Container's program is told which image it runs
 as. The Provider supplies that value itself, from the request it is
 serving: the Provider shall ask no other party for it and shall
-substitute no other value for it. The request carries no secret, and the Provider shall
-hold none: which secrets a Container takes is its program's answer
-at its registration, and their values are the Client's, carried
-under paragraphs (h) and (i). A begin the Proxy answers with an
+substitute no other value for it. A begin the Proxy answers with an
 error is the run's error, and the Provider shall stop the Container.
 
 (h) **Register the Container.** On every run Scope of either family,
@@ -1218,24 +1215,21 @@ enter the Container among those it runs, so that a
 `containers::fuse_serve` request naming the id is answered from this
 step on; the Provider shall list an agent Container to nobody. When
 the Proxy's answer to the begin Scope carries one or more dependency
-tool templates or one or more declared secrets, the Provider shall
+tool templates or one or more permissions, the Provider shall
 open exactly one `registration` Channel on the run Scope carrying the
-id, the templates and the declaration verbatim — every template
-whole, its image, limits, arguments, mode, scope, mounts and secrets
-unread; every declared secret's name and mode unread —
+id, the templates and the permissions verbatim — every template
+whole, its image, limits, arguments and mounts
+unread; every permission unread —
 before the id is sent and beside the FUSE Mounts, and shall read the
-Client's answer to its finish. Where the answer is the byte `0`
-followed by the secrets' values, the Provider shall open exactly one
-`secrets` Channel on the begin Scope carrying those values verbatim
-and unread, and shall read the Proxy's answer to its finish; the
-Proxy's `Fed` lets the run go on. The Provider shall treat the byte
-`1` on either Channel, a Bare Finish on either, and a Client that is
+Client's answer to its finish. The byte `0`, which nothing follows,
+lets the run go on. The Provider shall treat the byte
+`1` on the Channel, a Bare Finish on it, and a Client that is
 gone as the run's error and shall stop the Container. The Provider
-shall open no `registration` Channel and feed nothing when the
-templates, the declaration and the permissions are all empty. On a
+shall open no `registration` Channel when the
+templates and the permissions are both empty. On a
 `containers::tools::run` Scope the templates are always empty — a tool
 Container declares no dependencies, and its begin's answer carries
-none — and the `registration` Channel carries the declaration and the
+none — and the `registration` Channel carries the
 permissions the tool Container's program declared, verbatim and
 unread. On a `containers::agents::run` Scope the permissions are always
 empty.
@@ -1244,8 +1238,7 @@ empty.
 among the Containers it is running and not derivable from the
 request, from the Identity, or from any other id, and the Provider
 shall send it as exactly one Response, the same id the `registration`
-Channel carried, and only after that Channel has ended and its feed,
-where there was one, has been answered `Fed`; a run refused under
+Channel carried, and only after that Channel has ended; a run refused under
 paragraph (a) has the refusal there stated — the byte `1`, `2`, `3`,
 `4` or `5` followed by the name of the Volume — as its only Response,
 and a run that fails before the id has the error, the byte `6`
@@ -1254,19 +1247,14 @@ is running for the Client and shall be findable by a
 `containers::fuse_serve` request of the Client's naming the id. After
 the id the Provider shall send, for a tool container, the byte `7`
 whenever the Proxy sends `Active` on the begin Scope's main stream and
-the byte `8` followed by the values verbatim whenever the Proxy sends
+the byte `8` whenever the Proxy sends
 `Inactive`, and no other Response; and, for an agent container, every
 chunk the Proxy sends on the begin Scope's main stream as one
 Response, the byte `7` followed by the chunk verbatim, in the order
 the Proxy sent them, bracketed by the byte `8` before each loop and
-the byte `9` followed by the values verbatim after it, and no other
-Response; save that, where the Proxy ends the begin Scope with an
-error after `Begun`, the Provider shall send that error as one
-Response, the byte `6` followed by it verbatim, and the Response
-Finish after it. The Provider shall relay every `secrets` Channel the
-Client opens on the run Scope as exactly one `secrets` Channel on the
-begin Scope, the values verbatim and unread, and shall answer the
-Client's Channel as the Proxy answers the Provider's.
+the byte `9` after it, and no other
+Response. The Provider shall send no error on the main stream after
+the id.
 
 (j) **Serve the Scope.** For as long as the Scope lives, and
 concurrently, the Provider shall relay every Channel the Proxy opens
@@ -1494,19 +1482,11 @@ frame; that answers exactly one begin Scope per connection, holding the
 arguments, the template id and the image it carries for the
 Container's life
 and answering, for an agent Container, with the dependency tool
-templates and the secrets the program declared, unread, and, for a
-tool Container, with the secrets the program declared, unread, and no
-dependencies; that hands the values of every `secrets` Channel to the
-program as they are, unread, and answers `Fed` only once the program
-holds them; that, from `Begun` and from every `Inactive`, delivers
-nothing to a program that declared a secret — no message, no MCP
-exchange — until the next `secrets` Channel is answered `Fed`; that
-collects from the program the value of every `rotating` secret it
-declared at the end of every loop of an agent Container and at the
-end of the last MCP exchange in flight of a tool Container, and
-carries them on the `Inactive`; that, where it cannot collect every
-such value, ends the begin Scope with an error naming the secret and
-carrying no value; that marks a tool Container's activity with
+templates the program declared, unread, and, for a
+tool Container, with the permissions the program declared, unread, and no
+dependencies; that sends no error on the begin Scope after `Begun`;
+that marks an agent Container's loops with `Active` before the first
+chunk of each and `Inactive` after the last; that marks a tool Container's activity with
 `Active` before the first exchange in flight is delivered and
 `Inactive` after the last is answered; that opens no daemon Channel for an agent Container
 and no MCP Channel outward for a tool Container, answering the

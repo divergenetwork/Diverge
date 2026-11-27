@@ -1,23 +1,19 @@
 ---
 title: 'Registration'
-summary: 'Tag 15: the server asks the client to register the container, carrying the run’s id, the secrets the program takes, each by name to its mode, and the permissions it declared, verbatim and with no dependencies; the client answers with exactly one channel response, deployed with the secrets’ first values or an error, and the channel response finish; the server feeds the values to the container before it sends the id, and anything but a deploy and a feed is the run’s error.'
+summary: 'Tag 15: the server asks the client to register the container, carrying the run’s id and the permissions the program declared, verbatim and with no dependencies; the client answers with exactly one channel response, deployed or an error, and the channel response finish; the server sends the id only after a deploy, and anything but a deploy is the run’s error.'
 order: 15
 draft: false
 ---
 
 The server opens this channel when the `Begun` the proxy answered its
-begin with carries one or more secrets or one or more permissions: the
-secrets the container's program declared it takes when it was
-registered, each by name to the mode it takes it in, whose values the
-client supplies; and the grants the program declared it holds over
-the client. The client's answer decides whether the run goes on, and
-carries the first values of the secrets.
+begin with carries one or more permissions: the grants the
+container's program declared, when it was registered, that it holds over
+the client. The client's answer decides whether the run goes on.
 
 - **When.** After the begin has been answered and before the id is
   sent, beside the FUSE mounts. Exactly once per run, and never on a
   connect scope. The server opens no registration channel when the
-  declaration of secrets and the permissions are both empty, and
-  feeds nothing to such a container.
+  list of permissions is empty.
 - **No dependencies.** A tool container declares no dependencies: the
   `dependencies` member of the request is absent on every
   registration channel of a tools-run scope, and a list the
@@ -27,34 +23,19 @@ carries the first values of the secrets.
   asks: a [containers::fuse_serve](/endpoints/containers-fuse-serve/) naming
   the id is answered while the channel is open. The id the request
   carries is the id the server sends as the response after the
-  channel has ended and the values have been fed, and no other. The
+  channel has ended, and no other. The
   container is listed by nothing and found by no connect before the
   response.
-- **The request.** The tag byte `15` followed by the run's id, the
-  declaration and the permissions as JSON.
+- **The request.** The tag byte `15` followed by the run's id and
+  the permissions as JSON.
   [Request](/endpoints/containers-tools-run/server/registration/request/) states its form.
-- **The response.** Exactly one channel response, deployed with the
-  values or an error, and the channel response finish.
+- **The response.** Exactly one channel response, deployed
+  or an error, and the channel response finish.
   [Response](/endpoints/containers-tools-run/server/registration/response/) states the sequence.
-- **The feed.** When the answer is the byte `0`, the server opens
-  exactly one [secrets](/container-proxy-endpoints/tools-begin/client/secrets/)
-  channel on the begin scope of the container's proxy, carrying the
-  values the answer carried, verbatim, and reads its answer to its
-  finish. The proxy's `Fed` lets the run go on to its id. The proxy's
-  error, and a channel response finish that no channel response
-  precedes, are the run's error: the server stops the container. The
-  server sends the id only after `Fed`.
-- **Verbatim.** The server relays the declaration and the permissions
-  as the proxy sent them and the values as the client sent them, and
-  reads none of them: not the names, not the modes, not the values,
-  not the grants.
-- **What the client does.** The client answers, under every name the
-  declaration carries, one value: for a `rotating` name a value it
-  locks to the container until the `Inactive` that ends the
-  container's activity hands it back, and for a `fixed` name a value
-  it reads and never takes back. A tool container running as a
-  dependency of an agent is answered with values resolved through
-  the vault key that agent binds the same name to. The client holds
+- **Verbatim.** The server relays the permissions
+  as the proxy sent them, and
+  reads none of them.
+- **What the client does.** The client holds
   the container to the permissions it declared for the run: they are
   the whole of what the tool's program may ask of the client. The
   word `attached` reaches the agents attached to the tool, and a

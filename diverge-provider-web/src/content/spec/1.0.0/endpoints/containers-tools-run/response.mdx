@@ -1,6 +1,6 @@
 ---
 title: 'Response'
-summary: 'The server sends the id, one of six refusals, the failed nonce check, or an error, as the first response; after the id it sends active whenever an exchange is in flight where none was and inactive carrying the rotating secrets whenever the last in flight is answered, and nothing else until the finish but the proxy’s error, relayed, when the secrets could not be collected; the finish carries no error.'
+summary: 'The server sends the id, one of six refusals, the failed nonce check, or an error, as the first response; after the id it sends active whenever an exchange is in flight where none was and inactive whenever the last in flight is answered, and nothing else until the finish; the finish carries no error.'
 order: 2
 draft: false
 ---
@@ -10,8 +10,7 @@ refusal to run containers, or the volume that refused the run,
 named, and why; or the word that the nonce check failed; or an error; and, after the id,
 zero or more periods of activity: for each, the word that an MCP
 exchange is in flight where none was, and the word that the last in
-flight was answered, carrying the rotating secrets the program
-handed back, for the life of the run. The response finish ends the
+flight was answered, for the life of the run. The response finish ends the
 scope. No frame bearing the scope follows the finish.
 
 ```text
@@ -21,9 +20,9 @@ scope. No frame bearing the scope follows the finish.
 [3][volume-fuse-served JSON …]          once, when a FUSE serve holds a named volume and the server does not mount a volume of its mode beside one
 [4][volume-mount-unsupported JSON …]    once, when the server does not mount a volume of a named volume's mode
 [5][volume-mode JSON …]                 once, when a named volume is not in the mode its mount names
-[6][error JSON …]                       once, when it is not running for another reason, or after the id when the proxy ends the begin with an error
+[6][error JSON …]                       once, when it is not running for another reason
 [7]                                     active: an exchange is in flight where none was
-[8][values JSON …]                      inactive: the last exchange in flight was answered, and these are the rotating secrets
+[8]                                     inactive: the last exchange in flight was answered
 [9]                                     unsupported: once, when the server runs no containers
 [10]                                    proof failed: once, when the nonce check failed
 ```
@@ -33,15 +32,12 @@ scope. No frame bearing the scope follows the finish.
   `ProofFailed`, or an error. A refusal, `ProofFailed` and an error
   before the id are each followed by the response finish, and the container is not running and will not
   be. After the id, the server sends zero or more periods of
-  activity, and no other response until the finish but, at most
-  once, the error with which the proxy ended the begin scope, the
-  byte `6` followed by it, which the response finish follows. A
+  activity, and no other response until the finish. A
   period of activity is exactly one response whose payload is the
   byte `7` and nothing else, followed by exactly one response whose
-  first byte is `8`, or, where the proxy could not collect the
-  rotating secrets, by the error. The finish carries no error: a run
+  payload is the byte `8` and nothing else. The finish carries no error: a run
   that ended after its id ended by the client's cancel, by the
-  container's own end, by the proxy's error, or by the client's
+  container's own end, or by the client's
   connection ending. A response finish that no response precedes
   states that the request was not served, as
   [Endpoints](/endpoints/) provides, or that the run ended before the
@@ -53,8 +49,7 @@ scope. No frame bearing the scope follows the finish.
   exactly the string `"store"`, exactly the string `"client"`, or an
   object with the one member `registry`, an object with the one
   member `reference`, a string. The server sends it after every FUSE mount is complete and after the
-  container is registered and, where its program declared a secret,
-  fed, as [containers::tools::run](/endpoints/containers-tools-run/)
+  container is registered, as [containers::tools::run](/endpoints/containers-tools-run/)
   states.
 - **The refusals, and their order.** A server that does not hold
   out [`containers`](/capabilities/#containers) sends the byte `9`
@@ -122,12 +117,8 @@ scope. No frame bearing the scope follows the finish.
 - **The error.** A payload whose first byte is `6` carries an error
   after that byte, exactly one JSON value in the form defined on the
   [volumes::list response](/endpoints/volumes-list/response/) page.
-  Before the id, this revision prescribes nothing about its content.
-  After the id, the server sends it only when the proxy ends the
-  begin scope with an error, as the
-  [begin response](/container-proxy-endpoints/tools-begin/response/)
-  states, and the bytes after the byte `6` are the proxy's error
-  verbatim: it names a secret and carries no value.
+  The server sends it only before the id, and this revision
+  prescribes nothing about its content.
 - **Active and inactive.** A payload that is the byte `7` and
   nothing else states that an MCP exchange is in flight where none
   was: one of the four exchanges the client opens into the
@@ -139,32 +130,20 @@ scope. No frame bearing the scope follows the finish.
   channel; an
   [mcp-notifications](/endpoints/containers-tools-run/client/mcp-notifications/)
   channel is no exchange — is about to be delivered, and none was in
-  flight. A payload whose first byte is `8` states that the last
-  exchange in flight was answered and the program handed back its
-  rotating secrets. The server sends each exactly as the proxy sent
+  flight. A payload that is the byte `8` and nothing else states that the last
+  exchange in flight was answered. The server sends each exactly as the proxy sent
   it on the
   [begin response](/container-proxy-endpoints/tools-begin/response/),
   where the proxy produces both and relays neither from the program.
   The server sends no byte `7` before the id, none while a period of
   activity is open, and no byte `8` while none is.
-- **The values.** The bytes after the byte `8` are a JSON object
-  whose every member is the name of a secret the container's program
-  declared `rotating`, to the value the program leaves in it, any
-  JSON value: every `rotating` name the program declared, and no
-  other; the empty object for a program that declared none
-  `rotating`. The server sends the object exactly as the proxy sent
-  it and reads none of it. From the byte `8` the container holds no
-  values, and the proxy delivers no exchange to a program that
-  declared a secret until the client feeds them again on the
-  [secrets](/endpoints/containers-tools-run/client/secrets/) channel.
 - **Malformed.** A payload with no byte, a payload whose first byte
   is none of `0` to `10`, a payload whose bytes after `0` do not parse
   as the id, a payload whose bytes after `1`, `2`, `3`, `4` or `5` do
-  not parse as that refusal, a payload whose bytes after `8` do not
-  parse as the values, and a payload whose bytes after `6` are not
+  not parse as that refusal, and a payload whose bytes after `6` are not
   one JSON value are malformed. A payload whose first byte is `7` is
   read by that byte alone; bytes after it are not read. A payload
-  whose first byte is `9` or `10` is read the same way.
+  whose first byte is `8`, `9` or `10` is read the same way.
 
 The response is defined by `diverge-sdk-rs/src/provider/endpoints/containers/tools/run/server/response/frame.rs`:
 
@@ -204,9 +183,4 @@ and by `diverge-sdk-rs/src/shared/containers/response/volume_mount_unsupported.r
 and by `diverge-sdk-rs/src/shared/containers/response/volume_mode.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/response/volume_mode.rs
-```
-
-and by `diverge-sdk-rs/src/shared/containers/secrets/values.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/secrets/values.rs
 ```

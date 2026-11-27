@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload of the channel request the server sends: the tag byte 3 and the ask, the run’s id, the dependency tool templates and the declaration of secrets as JSON.'
+summary: 'The payload of the channel request the server sends: the tag byte 3 and the ask, the run’s id and the dependency tool templates as JSON.'
 order: 1
 draft: false
 ---
@@ -11,20 +11,18 @@ draft: false
 
 - **`id`.** A string: the id of the run the container is registered
   for, as the server minted it and as the response carries it after
-  the channel has ended and the values have been fed. The server has
+  the channel has ended. The server has
   entered the container among those it runs when it sends this, so a
   [containers::fuse_serve](/endpoints/containers-fuse-serve/) naming the id is
   answered while the channel is open.
 - **`dependencies`.** An array of dependency tool templates, in the
   order the program declared them; absent when empty. Each is an
-  object of exactly five members, and two further that may be
+  object of exactly four members, and two further that may be
   absent: `image`, an object of `digest` and `references` as the
   [request](/endpoints/containers-tools-run/request/) of a tools run
   names one; `extra_memory` and `extra_disk`, each a whole number of
   bytes; `arguments`, any JSON value, the `arguments` of that
-  request; `secrets`, an array of zero or more strings, the names of
-  the secrets the tool needs, whose values the client supplies when
-  it answers the tool's own registration; and `fuse_file_mounts` and
+  request; and `fuse_file_mounts` and
   `fuse_directory_mounts`, arrays of mounts, each absent when empty.
   A template carries no permissions: the tool's own program declares
   them at the tool's own registration. The volumes of a tools run are
@@ -33,8 +31,7 @@ draft: false
 - **The image of a template.** The image a template names is a
   dependency tool's: the `type` of its
   [document](/shared/document/) is `dependency_tool`. The document
-  states the tool's `mode`, its `scope`, its `memory`, its `disk`
-  and every secret its program takes. A template states none of
+  states the tool's `mode`, its `scope`, its `memory` and its `disk`. A template states none of
   those. A template whose image's document is an agent's or a
   standalone tool's is the registration's error, in the client's
   words.
@@ -44,24 +41,6 @@ draft: false
   `disk` of the tools run is the document's `disk` and `extra_disk`,
   summed. A sum over `18446744073709551615` is the registration's
   error, in the client's words.
-- **`secrets` of a template.** Every name is a `name` of the
-  `secrets` of the image's document, and a name the agent's own
-  template declares. No name is empty, and no two are the same. A
-  template that states otherwise is the registration's error, in the
-  client's words.
-- **`secrets`.** A JSON object whose every member is a secret's name,
-  as the container's template declares it, to the mode the program
-  takes it in, the string `fixed` or `rotating`, in the order the
-  program declared them; absent when empty. A `fixed` secret is read:
-  the client hands the container one value at every activation and
-  takes nothing back. A `rotating` secret is held: the client locks
-  one value to the container at every activation, and the container
-  hands it back, as the program leaves it, on the `Inactive` that
-  ends the loop. A name the template does not declare is the
-  registration's error, in the client's words. A name the template
-  declares and the declaration omits is a secret the program does
-  not take, and is never fed. The server relays the declaration as
-  the proxy sent it and reads none of it.
 - **`permissions`.** Absent. An agent container declares no
   permissions, and the server carries none on an agents-run scope.
 - **The mounts.** Each mount of `fuse_file_mounts` and of
@@ -80,8 +59,7 @@ draft: false
   SHA-256 of the template as compact JSON with absent members
   omitted, the image's `references` absent too, the keys of every
   object sorted bytewise at every depth, the `arguments` and every
-  object inside them included, the mounts included, and the
-  `secrets` included with their names sorted bytewise. One image under different names is one
+  object inside them included, and the mounts included. One image under different names is one
   template. Two templates with one id are one dependency, and an
   array that holds one id twice is refused by the client as its
   error. The container calls the tool's tools by whatever names the
@@ -108,14 +86,4 @@ and by `diverge-sdk-rs/src/shared/containers/dependencies/template.rs`:
 and by `diverge-sdk-rs/src/shared/containers/dependencies/mount.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/dependencies/mount.rs
-```
-
-and by `diverge-sdk-rs/src/shared/containers/secrets/declaration.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/secrets/declaration.rs
-```
-
-and by `diverge-sdk-rs/src/shared/containers/secrets/mode.rs`:
-
-```rust include=diverge-sdk-rs/src/shared/containers/secrets/mode.rs
 ```
