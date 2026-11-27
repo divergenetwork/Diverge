@@ -30,7 +30,7 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
 ```
 
 The first is the `memory` image, whose `DIVERGE.md` says `"mode":"lazy","scope":"instance"`, so it may name
-a mount. The second is the `taskboard` image, whose document says `"mode":"eager","scope":"global"` and
+a mount. The second is the `taskboard` image, whose document says `"mode":"eager","scope":"template"` and
 `"memory":268435456`: with `"extra_memory":134217728` its container's memory limit is the sum, 402653184
 bytes.
 
@@ -43,7 +43,7 @@ bytes.
 
 There is no name and no description, and there is no `mode` and no `scope`: the tool image's own
 `DIVERGE.md` states those two (`"mode"`: `"lazy"`, runs while it is used, or `"eager"`, kept up while any
-agent is attached; `"scope"`: `"instance"` or `"global"`, how far the tool's container is shared). Read them with `diverge run images read --info`. The **id** is the lowercase hex SHA-256 of the
+agent is attached; `"scope"`: `"instance"` or `"template"`, how far the tool's container is shared). Read them with `diverge run images read --info`. The **id** is the lowercase hex SHA-256 of the
 template's canonical JSON: compact, keys sorted at every depth, absent members omitted, image references
 dropped, the mounts included. Declaring the same template twice in one list is refused. A
 dependency template cannot name the caller's volumes or a provider.
@@ -53,16 +53,16 @@ dependency template cannot name the caller's volumes or a provider.
 | the tool image says | one tool per | `owner` in references and list items | container runs |
 |---|---|---|---|
 | `lazy` + `instance` | agent | `{"agent":{"template":…,"index":…}}` | from the agent's container start to its stop, every run |
-| `lazy` + `global` | dependency template | `"global"` | from its first use until nothing has used it for `idle_seconds`; one container for every agent that declares it |
+| `lazy` + `template` | dependency template | `"template"` | from its first use until nothing has used it for `idle_seconds`; one container for every agent that declares it |
 | `eager` + `instance` | agent | `{"agent":{…}}` | while that agent is attached (declares it) |
-| `eager` + `global` | dependency template | `"global"` | while any agent at all is attached |
+| `eager` + `template` | dependency template | `"template"` | while any agent at all is attached |
 
 What a dependency tool keeps in Postgres does not follow its scope. Its program names a database, as
 every container does (see `postgres` in `diverge-storage`):
 
 | database | shared by | removed |
 |---|---|---|
-| `instance` | that one agent's tool of this dependency template. A `global` tool has none: the connection is refused | with the agent |
+| `instance` | that one agent's tool of this dependency template. A `template` tool has none: the connection is refused | with the agent |
 | `template` | every tool of this dependency template, across all agents | by `postgres compartments delete`, only while no agent declares the template |
 | `image` | every tool of the same image digest | by `postgres compartments delete`, only while no agent declares a dependency template of that image |
 
@@ -90,7 +90,7 @@ answers `"forbidden"`, and a `list` answers `"forbidden"` unless the grant reach
 | `created`, `creator` | when the first declaring registration made it, and the agent that did |
 | `tags` | the tool's own tags (not in the hash) |
 | `template` | the template as the program declared it; its `arguments` only when the request said `"arguments": true` |
-| `mode`, `scope` | what the tool image's document says: `"lazy"` or `"eager"`, and `"instance"` or `"global"`. Members of the item itself, not of its `template`. |
+| `mode`, `scope` | what the tool image's document says: `"lazy"` or `"eager"`, and `"instance"` or `"template"`. Members of the item itself, not of its `template`. |
 | `agents` | the agents attached now, each `{"agent":{template,index,name},"declared":"<time>"}`; absent when none |
 | `active`, `last_active` | a call or read in flight; when that last changed |
 | `deployed`, `last_deployed` | container up; when that last changed |
@@ -104,10 +104,10 @@ All optional; lists match any one of, except where noted.
 | member | matches |
 |---|---|
 | `ids` | of any of these dependency template ids |
-| `owners` | owned by any of these (`{"agent":…}`, `"global"`) |
+| `owners` | owned by any of these (`{"agent":…}`, `"template"`) |
 | `creators` | first declared by any of these |
 | `modes` | `"lazy"`, `"eager"` |
-| `scopes` | `"instance"`, `"global"` |
+| `scopes` | `"instance"`, `"template"` |
 | `depended` | `true`: some agent is attached; `false`: none |
 | `agents` | agent names; the tool must be depended on by **every** one |
 | `in_use` | `true`: its container runs now |
@@ -123,7 +123,7 @@ whose last registration declared a template, and each agent's item lists its `de
 There is no `dependency-tools delete`.
 
 - An `instance` tool goes with its agent.
-- Every tool of a dependency template, the `global` one included, goes when that template's `template`
+- Every tool of a dependency template, the `template` one included, goes when that template's `template`
   compartment is deleted:
   `diverge run postgres compartments delete '{"compartment":{"template":{"kind":"dependency_tool","template":"<dependency template id>"}}}'`.
   It answers `"not_deletable"` while any agent's latest registration declares the template, and

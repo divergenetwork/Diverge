@@ -37,7 +37,7 @@ pub enum Entry {
     /// `instance`: running for the agent's run.
     Lazy(Arc<ToolRun>),
     /// A lazy dependency tool the agent shares with others, its scope
-    /// `template` or `global`: its run looked up at every use and
+    /// `template`: its run looked up at every use and
     /// started at the first that finds none.
     Shared {
         /// The row.

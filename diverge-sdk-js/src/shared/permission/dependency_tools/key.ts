@@ -6,12 +6,12 @@ import { Key as Agent } from "../agents/key.js";
 /**
  * Whose a listed dependency tool is: the one agent it is for, or
  * nobody in particular. Externally tagged:
- * `{"agent":{"template":…,"index":…}}`, or the string `"global"`. An
+ * `{"agent":{"template":…,"index":…}}`, or the string `"template"`. An
  * agent is named by its template and index and never by its name.
  */
 export const Owner = z.union([
   z.strictObject({ agent: Agent }),
-  z.literal("global"),
+  z.literal("template"),
 ]);
 
 export type Owner = z.infer<typeof Owner>;

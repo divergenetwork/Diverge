@@ -10,8 +10,8 @@ import { z } from "zod";
  * same declaration under the same scope key is the same tool, joined
  * and not made again. It does not name the tool's databases, which
  * are the same three for every container, but for one thing: a
- * global tool runs for no one agent, and has no `instance` database.
- * Snake case on the wire: `"instance"`, `"global"`.
+ * template-scoped tool runs for no one agent, and has no `instance` database.
+ * Snake case on the wire: `"instance"`, `"template"`.
  */
-export const Scope = z.enum(["instance", "global"]);
+export const Scope = z.enum(["instance", "template"]);
 export type Scope = z.infer<typeof Scope>;

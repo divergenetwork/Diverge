@@ -58,7 +58,7 @@ pub fn owned_by(owner: &key::Owner, reference: &reference::Owner) -> bool {
         (key::Owner::Agent(agent), reference::Owner::Agent(reference::Agent::TemplateIndex { template, index })) => {
             &agent.template == template && agent.index == *index
         }
-        (key::Owner::Global, reference::Owner::Global) => true,
+        (key::Owner::Template, reference::Owner::Template) => true,
         _ => false,
     }
 }
@@ -69,7 +69,7 @@ fn owned(owner: &key::Owner, wanted: &diverge_sdk::shared::permission::dependenc
     use diverge_sdk::shared::permission::dependency_tools::Owner;
     match (owner, wanted) {
         (key::Owner::Agent(agent), Owner::Agent(key)) => agent.template == key.template && agent.index == key.index,
-        (key::Owner::Global, Owner::Global) => true,
+        (key::Owner::Template, Owner::Template) => true,
         _ => false,
     }
 }

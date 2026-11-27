@@ -169,7 +169,7 @@ impl Document {
     ///    - A standalone tool's has, besides, `mode`, the string `lazy`
     ///      or the string `eager`, required.
     ///    - A dependency tool's has, besides, `mode`, the same, and
-    ///      `scope`, the string `instance` or `global`,
+    ///      `scope`, the string `instance` or `template`,
     ///      both required.
     ///
     ///    A member of another type's is a member that is none of this

@@ -13,7 +13,7 @@
   "memory": 268435456,
   "disk": 268435456,
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ---
 # Alarm
@@ -63,7 +63,7 @@ agent containers in this repository that is an entry in the agent's
   "disk": 268435456,
   "arguments": {},
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ```
 
@@ -72,7 +72,7 @@ agent containers in this repository that is an entry in the agent's
   so it is never `lazy`, which stops when nothing uses it. An eager tool is
   kept running while any agent that declares it is attached.
 - **Scope:** any. Every alarm names the agent it wakes, so agents that
-  share one tool never see or wake to each other's; `global` is one
+  share one tool never see or wake to each other's; `template` is one
   container for every agent that declares it.
 - **Permissions:** the tool declares its own, at its registration; an
   agent declares none for it. It is `message` over `attached`, the

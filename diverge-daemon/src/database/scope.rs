@@ -26,7 +26,7 @@ use crate::store::{self, agents, agents_templates, dependency_tools, tools, tool
 ///    the tool itself, the dependency template under its one agent;
 ///    `template` the dependency template, whichever agent declares
 ///    it; `image` the template's image.
-/// 4. **A dependency tool's whose scope is `global`.** No `instance`:
+/// 4. **A dependency tool's whose scope is `template`.** No `instance`:
 ///    it runs for no one agent. `template` and `image` as rule 3.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Reached {
@@ -108,7 +108,7 @@ pub fn container_of_dependency_tool(tool: &DependencyTool, owner: Option<&Agent>
                 index: owner.index,
             })
         }
-        Scope::Global => reference::Owner::Global,
+        Scope::Template => reference::Owner::Template,
     };
     Some(Container::Dependency(reference::Dependency {
         template: tool.template.clone(),
@@ -131,7 +131,7 @@ pub fn instance_of_tool(tool: &Tool) -> Compartment {
 pub fn instance_of_dependency_tool(tool: &DependencyTool, owner: Option<&Agent>) -> Option<Compartment> {
     match tool.scope {
         Scope::Instance => container_of_dependency_tool(tool, owner).map(Compartment::Instance),
-        Scope::Global => None,
+        Scope::Template => None,
     }
 }
 
@@ -235,7 +235,7 @@ pub async fn canonical_of(conn: &mut PgConnection, compartment: &Compartment) ->
                     }),
                 })
             }),
-            reference::Owner::Global => Some(container.clone()),
+            reference::Owner::Template => Some(container.clone()),
         },
     };
     Ok(container.map(Compartment::Instance))

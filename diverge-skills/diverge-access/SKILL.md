@@ -266,7 +266,7 @@ diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{
   "account_tags":["oncall"],
   "standalone_tools":[{"name":"reviewer"}],
   "standalone_tool_tags":[],
-  "dependency_tools":[{"template":"<dependency template id>","owner":"global"}],
+  "dependency_tools":[{"template":"<dependency template id>","owner":"template"}],
   "dependency_tool_tags":[]}}}'
 
 # Listen. Prints each request made of this account; answers are read from standard input, one JSON object a line.

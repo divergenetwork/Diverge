@@ -6,7 +6,7 @@ import { Agent } from "../../../../../../daemon/key/agent.js";
 /**
  * One agent whose last registration declared the tool's template, and
  * when it last did. An instance tool has at most one, its owner; a
- * global tool every agent that declares it.
+ * template-scoped tool every agent that declares it.
  */
 export const Attached = z.object({
   /** The agent, by its `key`: its template and its index, with its name beside when it has one. */

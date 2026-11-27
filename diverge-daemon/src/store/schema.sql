@@ -170,10 +170,10 @@ CREATE INDEX IF NOT EXISTS template_attachments_template ON diverge.template_att
 
 -- A dependency tool: a dependency template under one owner, as the
 -- template's image's scope decides — an `instance` tool one per
--- agent, a `global` tool one for all, lazy or eager alike — made by
+-- agent, a `template` tool one for all, lazy or eager alike — made by
 -- the first registration that declares the template under that owner.
 -- An instance tool goes with its agent; every tool of a template,
--- the global one among them, with the delete of the dependency
+-- the template-scoped one among them, with the delete of the dependency
 -- template's compartment. The container is work made from the row,
 -- never the row.
 CREATE TABLE IF NOT EXISTS diverge.dependency_tools (
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS diverge.dependency_tools (
     -- Its number among the dependency tools ever made from the
     -- template, whatever their owners.
     index          BIGINT NOT NULL,
-    -- `instance` or `global`.
+    -- `instance` or `template`.
     scope          TEXT NOT NULL,
     owner_agent    BIGINT REFERENCES diverge.agents(id) ON DELETE CASCADE,
     tags           TEXT[] NOT NULL DEFAULT '{}',
@@ -197,13 +197,13 @@ CREATE TABLE IF NOT EXISTS diverge.dependency_tools (
     creator        JSONB NOT NULL,
     CONSTRAINT dependency_tools_scope_owner CHECK (
         (scope = 'instance' AND owner_agent IS NOT NULL)
-        OR (scope = 'global' AND owner_agent IS NULL)
+        OR (scope = 'template' AND owner_agent IS NULL)
     )
 );
 CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_per_agent
     ON diverge.dependency_tools (template, owner_agent) WHERE scope = 'instance';
-CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_global
-    ON diverge.dependency_tools (template) WHERE scope = 'global';
+CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_per_template
+    ON diverge.dependency_tools (template) WHERE scope = 'template';
 CREATE INDEX IF NOT EXISTS dependency_tools_template ON diverge.dependency_tools (template);
 CREATE UNIQUE INDEX IF NOT EXISTS dependency_tools_index ON diverge.dependency_tools (template, index);
 

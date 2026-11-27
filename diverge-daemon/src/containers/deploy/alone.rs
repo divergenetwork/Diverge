@@ -23,7 +23,7 @@ use crate::store::dependency_tools::DependencyTool;
 
 /// The run of a dependency tool that is no one agent's run's — an
 /// eager tool, of any scope, or a lazy tool whose scope is `template`
-/// or `global` — started now if it was not up.
+/// — started now if it was not up.
 ///
 /// The rules:
 ///

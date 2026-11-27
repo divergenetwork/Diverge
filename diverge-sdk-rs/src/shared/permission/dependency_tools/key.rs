@@ -21,7 +21,7 @@ pub struct Key {
 
 /// Whose a listed dependency tool is: the one agent it is for, or
 /// nobody in particular. Externally tagged on the wire, snake case:
-/// `{"agent":{"template":…,"index":…}}`, or the string `"global"`. An
+/// `{"agent":{"template":…,"index":…}}`, or the string `"template"`. An
 /// agent is named by its template and index and never by its name,
 /// which may be given again.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -33,6 +33,6 @@ pub enum Owner {
     /// template's `scope` is `instance`.
     Agent(agents::Key),
     /// Every agent that declares the template: a tool's whose
-    /// template's `scope` is `global`.
-    Global,
+    /// template's `scope` is `template`.
+    Template,
 }

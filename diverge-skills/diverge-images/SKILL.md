@@ -517,7 +517,7 @@ The parse rules, in the order they are checked:
    `frontend` (boolean, optional, `false` when absent). An agent's also: `chat` and `structured_decisions` (each
    `false` or an object, never `true`; optional, `false` when absent). A standalone tool's also: `mode`
    (required: `"lazy"` or `"eager"`; there is no default). A dependency tool's also: `mode`, the same,
-   and `scope` (required: `"instance"` or `"global"`). **A tool's must not have `chat`
+   and `scope` (required: `"instance"` or `"template"`). **A tool's must not have `chat`
    or `structured_decisions` at all, not even as `false`.** An agent's must not have `mode` or `scope`,
    and a standalone tool's must not have `scope`. A missing member, **any member that is not
    one of its type's** (`secrets` among them: no document has one), or a wrong type is an error.
@@ -568,8 +568,8 @@ What each member means:
   it is kept running while anything holds it. No template and no declaration says another (see
   `diverge-tools`).
 - `scope` — a dependency tool's image only. How far every tool container made from the image is shared:
-  `instance` (one per agent) or `global` (one for all). No declaration says another. It does not decide
-  what the tool's databases are (see `postgres` in `diverge-storage`), except that a `global` tool has
+  `instance` (one per agent) or `template` (one for all). No declaration says another. It does not decide
+  what the tool's databases are (see `postgres` in `diverge-storage`), except that a `template` tool has
   no `instance` database.
 - `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
   commands in `diverge-agents` / `diverge-tools`). To look like the rest of Diverge in the person's
@@ -739,10 +739,10 @@ above with `-f <dir>/Containerfile .`.
 | `diverge-agents/codex` | `codex` | agent | `model`, `auth` | one, inside `auth`, by `auth.method`: `api_key`, `access_token`, `identity_token`, or `auth` (a whole `auth.json`, whose refreshed login the agent keeps itself) |
 | `diverge-agents/hermes` | `hermes` | agent | `provider`, `model` | inside `provider` and inside each toolset that needs one; see the hermes reference |
 | `diverge-agents/cc` | `cc` | agent (Claude Code) | `model` | none |
-| `diverge-examples/tools/courier` | `courier` | `dependency_tool`: eager, `global` | `{}` | none |
-| `diverge-examples/tools/taskboard` | `taskboard` | `dependency_tool`: eager, `global` | `{}` | none |
+| `diverge-examples/tools/courier` | `courier` | `dependency_tool`: eager, `template` | `{}` | none |
+| `diverge-examples/tools/taskboard` | `taskboard` | `dependency_tool`: eager, `template` | `{}` | none |
 | `diverge-examples/tools/memory` | `memory` | `dependency_tool`: lazy, `instance` | `{}` | none |
-| `diverge-examples/tools/alarm` | `alarm` | `dependency_tool`: eager, `global` | `{}` | none |
+| `diverge-examples/tools/alarm` | `alarm` | `dependency_tool`: eager, `template` | `{}` | none |
 | `diverge-examples/tools/chat` | `chat` | `standalone_tool`: eager, has a frontend | `{}` | none |
 | `diverge-tools/identity-diverge-network` | `identity-diverge-network` | `standalone_tool`: lazy, has a frontend | `{}` | none |
 | `diverge-examples/agents/human` | `human` | agent, no model, has a frontend | `{}` | none |

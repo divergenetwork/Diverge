@@ -285,12 +285,12 @@ Which compartment each name is:
 | an agent | that agent's own | every agent's of the same agent template | every agent's of the same image digest |
 | a standalone tool | that tool's own | every tool's of the same tool template | every tool's of the same image digest |
 | a dependency tool, scope `instance` | that agent's, for that dependency template | every tool's of that dependency template, across all agents | every tool's of the same image digest |
-| a dependency tool, scope `global` | **none**: the connection is refused | the same | the same |
+| a dependency tool, scope `template` | **none**: the connection is refused | the same | the same |
 
 - One connection reaches exactly one compartment. A program may hold any number of connections to
   each, so a pool per database is the ordinary case. No single query reaches two compartments.
 - Any other database name, `diverge` included, is refused with Postgres's own error for a database
-  that does not exist (SQLSTATE `3D000`). So is `instance` from a `global` dependency tool, which runs
+  that does not exist (SQLSTATE `3D000`). So is `instance` from a `template` dependency tool, which runs
   for no one agent.
 - A compartment is on record from the moment its agent, tool or dependency tool is made. Its role and
   schema are made at the first connection that names it.
@@ -410,9 +410,9 @@ Answers:
   Nothing changed. Wait for the container to stop and retry. An eager dependency tool stays up until
   it has been unattached for `idle_seconds`.
 - Deleting a dependency template's `template` compartment also removes **every tool of that
-  template** (the global one, and any instance ones no agent declares any more, each with its own
+  template** (the template-scoped one, and any instance ones no agent declares any more, each with its own
   `instance` compartment) and the stored template. An agent that declares the template again at its
-  next start gets a new tool with new, empty compartments. This is the only way a `global`
+  next start gets a new tool with new, empty compartments. This is the only way a `template`
   dependency tool's record goes away.
 
 Grants: `{"postgres_compartments":{"actions":["get","list","delete"],"within":…}}` and the tagging

@@ -8,7 +8,7 @@ use super::Agent;
 /// one agent it is for, where the `scope` is `instance`, or nobody in
 /// particular, every agent that declares it being attached to the
 /// one. Externally tagged on the wire, snake case:
-/// `{"agent":{"template":…,"index":…}}`, or the string `"global"`.
+/// `{"agent":{"template":…,"index":…}}`, or the string `"template"`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -17,6 +17,6 @@ pub enum Owner {
     /// `instance`.
     Agent(Agent),
     /// Every agent that declares the template: a tool's whose
-    /// template's `scope` is `global`.
-    Global,
+    /// template's `scope` is `template`.
+    Template,
 }

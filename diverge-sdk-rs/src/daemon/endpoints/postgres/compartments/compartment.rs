@@ -26,7 +26,7 @@ pub use crate::container_proxy::inside::Database;
 /// | an agent | the agent | its agent template | its image |
 /// | a standalone tool | the tool | its tool template | its image |
 /// | a dependency tool, scope `instance` | the agent and the dependency template | the dependency template | its image |
-/// | a dependency tool, scope `global` | none: the connection is refused | the dependency template | its image |
+/// | a dependency tool, scope `template` | none: the connection is refused | the dependency template | its image |
 ///
 /// A request names an agent either way, by name or by template and
 /// index; the daemon answers the form that always names, template and
@@ -36,7 +36,7 @@ pub use crate::container_proxy::inside::Database;
 #[serde(rename_all = "snake_case")]
 pub enum Compartment {
     /// One container's own: see [`Container`]. A dependency tool's
-    /// owner is an agent, never `"global"`: a global tool has none.
+    /// owner is an agent, never `"template"`: a template-scoped tool has none.
     Instance(Container),
     /// Every container's made from one template.
     Template {

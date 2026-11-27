@@ -38,7 +38,7 @@ pub const POSTGRES_USER: &str = "diverge";
 ///    template.** An agent template's, a tool template's, or a
 ///    dependency template's across every agent that declares it.
 /// 3. **`image` is every container's of the same image**, by digest.
-/// 4. **A dependency tool whose image's `scope` is `global` has no
+/// 4. **A dependency tool whose image's `scope` is `template` has no
 ///    `instance`.** It runs for no one agent, and a connection that
 ///    names `instance` is refused, as a database that does not exist
 ///    is.

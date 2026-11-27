@@ -1,6 +1,6 @@
 ---
 name: diverge-tools
-description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `extra_memory`, `extra_disk`, the required `arguments` choice on `get` and `list`), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (the tool image's `mode` lazy or eager and `scope` instance or global, owner; `dependency-tools get|list|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend (`filetree|download|upload|transfer|exec|terminal|frontend` in both families). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
+description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `extra_memory`, `extra_disk`, the required `arguments` choice on `get` and `list`), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (the tool image's `mode` lazy or eager and `scope` instance or template, owner; `dependency-tools get|list|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend (`filetree|download|upload|transfer|exec|terminal|frontend` in both families). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
 ---
 
 # Diverge tools
@@ -35,7 +35,7 @@ it: a tool template of such an image is refused when a tool is created from it.
   (its number among all tools ever made from that template; always works, never reused).
 - Dependency tool, `"dependency": {"template":"<dependency template id>","owner":<owner>}` where owner is
   `{"agent":{"name":"alice"}}`, `{"agent":{"template":"<agent template id>","index":1}}`,
-  or the string `"global"`.
+  or the string `"template"`.
 - Agents are named as in `diverge-agents`: `{"name":…}` or `{"template":…,"index":…}`.
 
 ## Standalone tools: the whole path
@@ -176,19 +176,19 @@ container registers, before the agent's first turn.
 ```
 
 A declaration states neither `mode` nor `scope`: the tool image's own `DIVERGE.md` does. Here the `memory`
-image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mode":"eager","scope":"global"`.
+image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mode":"eager","scope":"template"`.
 
 | the tool image says | lives | owner |
 |---|---|---|
 | `lazy`, `scope: "instance"` | deployed with each run of the agent, stopped with it | that agent |
-| `lazy`, `scope: "global"` | one container for every agent that declares it, from any agent template; started by the first use, stopped once idle | nobody (`"global"`) |
+| `lazy`, `scope: "template"` | one container for every agent that declares it, from any agent template; started by the first use, stopped once idle | nobody (`"template"`) |
 | `eager`, `scope: "instance"` | kept while its agent declares it | that agent |
-| `eager`, `scope: "global"` | one for every agent that declares it, from any agent template | nobody (`"global"`) |
+| `eager`, `scope: "template"` | one for every agent that declares it, from any agent template | nobody (`"template"`) |
 
 `scope` decides how far the **container** is shared, not the data. Every dependency tool reaches the
 same databases by name (`instance`, `template`, `image`; see `postgres` in `diverge-storage`):
 `template` is shared by every tool of the same dependency template across all agents, and `image` by
-every tool of the same image. A `global` tool has no `instance` database.
+every tool of the same image. A `template` tool has no `instance` database.
 
 - The dependency template's **id** is the SHA-256 of its canonical JSON. The same
   declaration under the same owner is the same tool, joined and not made again. Change any member and it is
@@ -203,7 +203,7 @@ every tool of the same image. A `global` tool has no `instance` database.
   agent declares any more is retired after `idle_seconds`; its record and its databases stay.
 - A dependency that will not deploy fails the agent's start: the message answers `{"error":…}` and the
   agent's log keeps an `error` naming the dependency.
-- An instance tool is deleted with its agent. A global tool's record goes only when its dependency
+- An instance tool is deleted with its agent. A template-scoped tool's record goes only when its dependency
   template's `template` compartment is deleted (`postgres compartments delete`, in `diverge-storage`),
   which removes every tool of that template.
 - A tool declares no dependencies of its own.
@@ -211,9 +211,9 @@ every tool of the same image. A `global` tool has no `instance` database.
 ```bash
 diverge run dependency-tools list '{"arguments":false}'             # {"added":…}… "listed"
 diverge run dependency-tools list '{"arguments":false,"modes":["eager"],"in_use":true}'
-diverge run dependency-tools get '{"dependency":{"template":"<id>","owner":"global"},"arguments":false}'
+diverge run dependency-tools get '{"dependency":{"template":"<id>","owner":"template"},"arguments":false}'
 diverge run dependency-tools tag '{"dependency":{"template":"<id>","owner":{"agent":{"name":"echo"}}},"tags":["keep"]}'
-diverge run dependency-tools untag '{"dependency":{"template":"<id>","owner":"global"},"tags":["keep"]}'
+diverge run dependency-tools untag '{"dependency":{"template":"<id>","owner":"template"},"tags":["keep"]}'
 ```
 
 There is no `dependency-tools delete`. List item fields and filters are in
@@ -274,7 +274,7 @@ command (`diverge-logs` has every filter):
 
 ```bash
 diverge run logs '{"of":{"type":"standalone_tool","name":"chat"}}'
-diverge run logs '{"of":{"type":"dependency_tool","template":"<id>","owner":"global"},"type":"call_error"}'
+diverge run logs '{"of":{"type":"dependency_tool","template":"<id>","owner":"template"},"type":"call_error"}'
 diverge run logs '{"of":{"type":"standalone_tool","name":"chat"},"watch":true}'
 ```
 
@@ -323,7 +323,7 @@ diverge run standalone-tools exec --raw '{"tool":{"name":"chat"},"argv":["ls","-
 diverge run standalone-tools terminal '{"tool":{"name":"chat"},"cols":120,"rows":40}'
 diverge run standalone-tools frontend '{"tool":{"name":"chat"},"method":"GET","path":"/frontend/","headers":[]}' </dev/null
 
-diverge run dependency-tools exec --raw '{"dependency":{"template":"<id>","owner":"global"},"argv":["env"]}'
+diverge run dependency-tools exec --raw '{"dependency":{"template":"<id>","owner":"template"},"argv":["env"]}'
 diverge run dependency-tools download --path ./out '{"dependency":{"template":"<id>","owner":{"agent":{"name":"echo"}}},"path":["data"]}'
 ```
 
@@ -353,10 +353,10 @@ Each is an image under `diverge-examples/` with a `DIVERGE.md` (read it with `di
 
 | example | what it is | what its `DIVERGE.md` says it is |
 |---|---|---|
-| `courier` | an inbox between agents; notifies the recipient by messaging it | `dependency_tool`, `eager`, `global` |
+| `courier` | an inbox between agents; notifies the recipient by messaging it | `dependency_tool`, `eager`, `template` |
 | `taskboard` | a shared board of tasks agents post, claim and complete | `dependency_tool`, `eager`, `template` |
 | `memory` | an agent's notebook: remember, recall, forget | `dependency_tool`, `lazy`, `instance` |
-| `alarm` | an agent sets alarms that message it later (once or cron) | `dependency_tool`, `eager`, `global` |
+| `alarm` | an agent sets alarms that message it later (once or cron) | `dependency_tool`, `eager`, `template` |
 | `chat` | a person chats with attached agents through the tool's frontend | `standalone_tool`, `eager`, has a frontend |
 | `human` | not a tool: an **agent** image with no model, driven by a person at its frontend | agent (`diverge-agents`) |
 

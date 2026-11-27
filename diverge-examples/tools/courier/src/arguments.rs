@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # How it runs
 ///
-/// As a dependency tool: an eager tool whose scope is `global`, declared
+/// As a dependency tool: an eager tool whose scope is `template`, declared
 /// by the image of every agent that takes part. One container, one
 /// database, shared by every agent that declares it.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]

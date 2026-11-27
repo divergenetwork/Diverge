@@ -12,7 +12,7 @@
 //! DEPENDENCY TOOL is that template under one OWNER, which the
 //! image's scope decides: a template of an image whose scope is
 //! `instance` is one tool per agent instance, owned by that agent;
-//! one whose scope is `global` is one tool, owned by nobody.
+//! one whose scope is `template` is one tool, owned by nobody.
 //! Nothing on this wire makes one: the first registration that
 //! declares the template under that owner does, and every registration
 //! RESETS what the agent depends on — exactly the tools of the
@@ -21,13 +21,13 @@
 //! dependency no more. A tool outlives the registrations. An instance
 //! tool goes with its agent's delete, its `instance` compartment with
 //! it; no request here deletes a tool, and what removes a template's
-//! every tool, the global one among them, is the delete of the
+//! every tool, the template-scoped one among them, is the delete of the
 //! dependency template's
 //! [compartment](crate::daemon::endpoints::postgres::compartments::delete).
 //! [`get`] answers one tool by its template and its owner, as a list
 //! would report it; [`list`] lists them, narrowed, each with the
 //! agents that depend on it — at most one for an instance tool, every
-//! agent for a global one — and the one run from it, if its container
+//! agent for a template-scoped one — and the one run from it, if its container
 //! is up; [`tag`] and [`untag`] change one tool's tags, which are the
 //! tool's and not in the template's hash.
 //!

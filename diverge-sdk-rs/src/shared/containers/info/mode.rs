@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 /// it, a file operation. A dependency tool's is by its
 /// [`Scope`](super::Scope): of the `instance` scope it is the agent's
 /// run's, deployed when the agent's container starts and stopped with
-/// it; of the `template` or `global` scope it is one container for
+/// it; of the `template` scope it is one container for
 /// every agent the scope covers, started for the first exchange an
 /// attached agent sends it and stopped once the caller's idle time has
 /// passed with nothing using it.

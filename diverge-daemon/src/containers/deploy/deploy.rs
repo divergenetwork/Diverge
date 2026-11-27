@@ -54,7 +54,7 @@ use crate::store::{self, AgentId, DependencyToolId, hash};
 /// 4. An eager tool is kept up, its hold recomputed, and its run
 ///    waited for — live already, or its supervisor's next start up —
 ///    and served the same way.
-/// 5. A lazy tool whose scope is `template` or `global` is many
+/// 5. A lazy tool whose scope is `template` is many
 ///    agents': it is not started here. It is served idle, and the
 ///    first use starts it — see
 ///    [`use_shared`](crate::containers::tools::use_shared).

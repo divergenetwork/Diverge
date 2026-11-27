@@ -38,7 +38,7 @@ the run goes on.
   a template.
 - **Two modes, two scopes.** The [document](/shared/document/) of a
   template's image states a `mode`, `lazy` or `eager`, and a `scope`,
-  `instance` or `global`. A template states neither. A tool is made
+  `instance` or `template`. A template states neither. A tool is made
   once under the scope key that `scope` names: the agent and the
   template, or the template alone. An agent is
   attached to a tool by a registration that declares the template
@@ -46,7 +46,7 @@ the run goes on.
 - **A lazy tool.** A lazy tool whose `scope` is `instance` is
   deployed for the one run of the one agent that declared it and
   stopped with that run; it alone may name the agent's files and
-  directories as mounts. A lazy tool whose `scope` is `global` is
+  directories as mounts. A lazy tool whose `scope` is `template` is
   one container for every agent that declares its template: the
   client starts it for the first exchange an attached agent sends
   it, stops it after its idle time with no exchange in flight, and

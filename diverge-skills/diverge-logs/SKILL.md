@@ -58,7 +58,7 @@ subject that does not exist is an error, not `not_found`).
 | `agent` | `"name":…` or `"template":…,"index":…` | agent log | `logs` over agents |
 | `standalone_tool` | `"name":…` or `"template":…,"index":…` | tool log | `logs` over standalone tools |
 | `connected_standalone_tool` | `"name":…` or `"daemon":"<id>","tool":{…},"index":…` | tool log (calls this daemon routed into the remote tool) | `logs` over connected tools |
-| `dependency_tool` | `"template":"<dependency template id>","owner":…` where owner is `{"agent":{"name":…}}` or `"global"` | tool log | `logs` over dependency tools |
+| `dependency_tool` | `"template":"<dependency template id>","owner":…` where owner is `{"agent":{"name":…}}` or `"template"` | tool log | `logs` over dependency tools |
 | `account` | `"issuer":…,"subject":…` | command log | `logs` over accounts |
 | `admin` | `"issuer":…,"subject":…` | an administrator's command log | administrators only |
 

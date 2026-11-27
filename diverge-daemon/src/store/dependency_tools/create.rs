@@ -33,7 +33,7 @@ pub struct Declared<'a> {
 pub async fn find_or_create(conn: &mut PgConnection, declared: &Declared<'_>) -> Result<DependencyTool, Error> {
     let owner_agent = match declared.scope {
         Scope::Instance => Some(declared.agent),
-        Scope::Global => None,
+        Scope::Template => None,
     };
     if let Some(found) = by_scope(conn, declared.template, declared.scope, owner_agent, false).await? {
         return Ok(found);

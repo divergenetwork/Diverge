@@ -6,14 +6,14 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Arguments",
-    "description": "The arguments a courier tool is made with.\n\nNone: the courier is the same for every caller, and what it keeps\nis told apart by the template the tool was made from. `{}` is the\none value; any member is refused, so a misspelled setting is never\nsilently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool whose scope is `global`, declared\nby the image of every agent that takes part. One container, one\ndatabase, shared by every agent that declares it.",
+    "description": "The arguments a courier tool is made with.\n\nNone: the courier is the same for every caller, and what it keeps\nis told apart by the template the tool was made from. `{}` is the\none value; any member is refused, so a misspelled setting is never\nsilently ignored.\n\n# How it runs\n\nAs a dependency tool: an eager tool whose scope is `template`, declared\nby the image of every agent that takes part. One container, one\ndatabase, shared by every agent that declares it.",
     "type": "object",
     "additionalProperties": false
   },
   "memory": 268435456,
   "disk": 268435456,
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ---
 # Courier
@@ -47,7 +47,7 @@ notification cannot be sent fails, and nothing is kept.
 
 ## Running it
 
-The courier is a **dependency tool**: a global eager tool that every
+The courier is a **dependency tool**: a template-scoped eager tool that every
 agent taking part declares, through its own image, at its
 registration. For the agent containers in this repository that is
 an entry in the agent's `dependencies` argument:
@@ -59,12 +59,12 @@ an entry in the agent's `dependencies` argument:
   "disk": 268435456,
   "arguments": {},
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ```
 
 - **Arguments:** none; `{}`.
-- **Mode and scope:** `eager`, `global`. One courier container and
+- **Mode and scope:** `eager`, `template`. One courier container and
   one database for every agent that declares this template, from any
   agent template. The template's id is what the courier keeps its mail
   under, so a different template is a different mail system.

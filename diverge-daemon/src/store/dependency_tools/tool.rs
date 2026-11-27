@@ -81,7 +81,7 @@ impl DependencyTool {
     pub fn owner(&self, owner_agent: Option<&Agent>) -> Option<key::Owner> {
         Some(match self.scope {
             Scope::Instance => key::Owner::Agent(owner_agent?.key()),
-            Scope::Global => key::Owner::Global,
+            Scope::Template => key::Owner::Template,
         })
     }
 
@@ -124,7 +124,7 @@ impl DependencyTool {
 pub fn scope_name(scope: Scope) -> &'static str {
     match scope {
         Scope::Instance => "instance",
-        Scope::Global => "global",
+        Scope::Template => "template",
     }
 }
 
@@ -133,7 +133,7 @@ pub fn scope_name(scope: Scope) -> &'static str {
 pub fn scope_of(name: &str) -> Option<Scope> {
     match name {
         "instance" => Some(Scope::Instance),
-        "global" => Some(Scope::Global),
+        "template" => Some(Scope::Template),
         _ => None,
     }
 }

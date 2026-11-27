@@ -8,7 +8,7 @@
 //! random order; its mounts the agent's paths served live from the
 //! agent's container; its limits what its image needs and what its
 //! template adds; its
-//! compartments of the database the three every container has, less its own where its image's `scope` is `global`; its requests to the
+//! compartments of the database the three every container has, less its own where its image's `scope` is `template`; its requests to the
 //! daemon judged by the grants its own program declared at its
 //! registration; served to the agent under
 //! its template's id, short. A template declared twice, one of an

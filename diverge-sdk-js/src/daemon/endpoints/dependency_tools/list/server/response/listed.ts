@@ -61,9 +61,9 @@ export type Listed = z.infer<typeof Listed>;
  */
 export const key: Keyed<Listed> = (listed) => ({ id: listed.id, owner: ownerKey(listed.owner) });
 
-/** The owner as a key: the agent by template and index, or `global`. */
+/** The owner as a key: the agent by template and index, or `template`. */
 function ownerKey(owner: Owner): Key {
-  if (owner === "global") {
+  if (owner === "template") {
     return owner;
   }
   return { agent: { template: owner.agent.template, index: owner.agent.index } };

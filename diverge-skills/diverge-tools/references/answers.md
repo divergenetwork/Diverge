@@ -7,7 +7,7 @@ tables. Bare answers are JSON strings; answers with a payload are one-member obj
 
 `<tool>` is `{"name":…}` or `{"template":…,"index":…}`. `<agent>` is the same two forms over agents.
 `<dep>` is `{"template":"<dependency template id>","owner":<owner>}` with owner `{"agent":<agent>}`
-or `"global"`.
+or `"template"`.
 
 ## `diverge run standalone-tools templates`
 
@@ -90,11 +90,11 @@ its agent or with its dependency template's compartment (`postgres compartments 
 |---|---|---|---|
 | `create` | nothing | nothing | (no create) |
 | attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |
-| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `global`) is started |
+| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `template`) is started |
 | `connect` exchange | started, held while open | held while open | (no connect) |
 | `exec`, `terminal`, `frontend` | started, held while running | already up or started | must already run |
 | `filetree`, `download`, `upload`, `transfer` | started, stopped after | used as it runs, or started and stopped after | must already run |
-| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `global`: stopped; eager: retired once no agent is attached |
+| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `template`: stopped; eager: retired once no agent is attached |
 
 ## Grants by leaf
 

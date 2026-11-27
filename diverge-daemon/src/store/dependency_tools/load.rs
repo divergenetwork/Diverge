@@ -59,7 +59,7 @@ pub async fn by_reference(conn: &mut PgConnection, reference: &reference::Depend
             };
             by_scope(conn, template, Scope::Instance, Some(agent.id), lock).await
         }
-        reference::Owner::Global => by_scope(conn, template, Scope::Global, None, lock).await,
+        reference::Owner::Template => by_scope(conn, template, Scope::Template, None, lock).await,
     }
 }
 

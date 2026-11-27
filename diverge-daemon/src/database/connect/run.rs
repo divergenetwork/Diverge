@@ -24,7 +24,7 @@ use diverge_sdk::container_proxy::inside::Database;
 ///    connection is refused as Postgres refuses a database that does
 ///    not exist, SQLSTATE `3D000`: a name that is none of them, no
 ///    name at all, and `instance` from a dependency tool whose
-///    image's scope is `global`.
+///    image's scope is `template`.
 /// 3. The compartment is made if it was not.
 /// 4. The database is dialled and the handshake performed as the
 ///    compartment's role, the container answered `AuthenticationOk`

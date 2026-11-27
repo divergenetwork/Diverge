@@ -16,7 +16,7 @@
 //! `template`, every container's made from its template; `image`,
 //! every container's of its image. Which those are for each kind of
 //! container is [`Reached`]'s to state; a dependency tool whose
-//! image's scope is `global` has no `instance`. A compartment is on
+//! image's scope is `template` has no `instance`. A compartment is on
 //! record from the moment what it is of is made, by [`register`], and
 //! its role is made at the first connection that names it, in one
 //! transaction under an advisory lock, by statements every Postgres

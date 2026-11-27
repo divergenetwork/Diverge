@@ -29,7 +29,7 @@ use super::Owner;
 /// once and for all is its template's id and its [`Owner`]: the
 /// agent, itself once and for all, for a tool whose template's
 /// `scope` is `instance`; everyone for one whose `scope` is
-/// `global`.
+/// `template`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]

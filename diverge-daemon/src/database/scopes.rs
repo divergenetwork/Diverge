@@ -45,7 +45,7 @@ impl Scope {
 #[derive(Debug)]
 pub enum Refusal {
     /// The container has no such database: one whose image's scope is
-    /// `global` named `instance`. Told as Postgres tells a database
+    /// `template` named `instance`. Told as Postgres tells a database
     /// that does not exist.
     Absent(String),
     /// The compartment could not be made: a record gone, a role that
@@ -70,7 +70,7 @@ pub async fn scope(daemon: &Daemon, key: Key, database: Database) -> Result<(Arc
     };
     let Some(compartment) = reached.of(database).cloned() else {
         return Err(Refusal::Absent(format!(
-            "database \"{}\" does not exist: a dependency tool whose image's scope is `global` runs for no one agent, and has `template` and `image` alone",
+            "database \"{}\" does not exist: a dependency tool whose image's scope is `template` runs for no one agent, and has `template` and `image` alone",
             database.name()
         )));
     };

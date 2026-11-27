@@ -63,11 +63,11 @@ diverge run dependency-tools list '{"arguments":false,"owners":[{"agent":{"name"
 
 - Permissions: none. Pull only: nothing is sent to an agent when the board changes.
 - Callers are recorded as the daemon attests them. Only agents may use it.
-- Its document says `"mode":"eager","scope":"global"`: one container for every agent that declares it.
+- Its document says `"mode":"eager","scope":"template"`: one container for every agent that declares it.
   The board is in the tool's `template` database, so every agent that declares the byte-identical
   template works from one board, and a different declaration is a different board.
 
-## courier — an inbox between agents (dependency, eager, global)
+## courier — an inbox between agents (dependency, eager, template)
 
 | MCP tool | parameters | does |
 |---|---|---|
@@ -93,12 +93,12 @@ diverge run dependency-tools list '{"arguments":false,"owners":[{"agent":{"name"
   that has never run, so one can be written to before its first start. An agent that has run and does not
   declare the courier is unreachable, and an agent whose image never declares it can be written to but can
   never read its mail.
-- Its document says `"mode":"eager","scope":"global"`. Declare it in **every** participating agent's template, with the
+- Its document says `"mode":"eager","scope":"template"`. Declare it in **every** participating agent's template, with the
   byte-identical template: the dependency template's id is what the mail is kept under, so any difference
   (arguments, `extra_memory`, `extra_disk`, digest) is a separate mail system.
 - Only agents may use it.
 
-## alarm — wake me later (dependency, eager, global)
+## alarm — wake me later (dependency, eager, template)
 
 | MCP tool | parameters | does |
 |---|---|---|
@@ -110,7 +110,7 @@ diverge run dependency-tools list '{"arguments":false,"owners":[{"agent":{"name"
   the agent if it is idle.
 - Permissions it declares: `[{"agents":{"actions":["message"],"within":"attached"}}]`.
 - Its document says `"mode":"eager"` (a lazy tool stops when nothing uses it and would keep no time) and
-  `"scope":"global"`. Each alarm wakes only the agent that set it.
+  `"scope":"template"`. Each alarm wakes only the agent that set it.
 - An alarm that cannot be sent when due is dropped. Alarms that fell due while the tool was down fire once
   when it returns; missed repeats of a cron alarm are skipped.
 - Only agents may use it.
@@ -166,7 +166,7 @@ quickest way to exercise a tool exactly as an agent would without a model: so is
 | need | use |
 |---|---|
 | private state for one agent that survives its restarts | a dependency tool image that says `lazy`, `scope: "instance"`, keeping its state in its `instance` database (memory) |
-| state shared by every agent that declares the same dependency template | any dependency tool image keeping its state in its `template` database (taskboard, courier); `scope: "global"` if one container should serve them all |
+| state shared by every agent that declares the same dependency template | any dependency tool image keeping its state in its `template` database (taskboard, courier); `scope: "template"` if one container should serve them all |
 | state shared by every tool of an image, whatever its arguments | its `image` database |
 | something that must keep running between agent runs | an image that says `eager`, dependency or standalone (alarm, chat) |
 | a tool you pick per agent at runtime, or that has a page for people | a standalone tool, attached (chat) |

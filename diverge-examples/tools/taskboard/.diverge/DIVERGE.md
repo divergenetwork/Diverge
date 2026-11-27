@@ -13,7 +13,7 @@
   "memory": 268435456,
   "disk": 268435456,
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ---
 # Taskboard
@@ -63,14 +63,14 @@ containers in this repository that is an entry in the agent's
   "disk": 268435456,
   "arguments": {},
   "mode": "eager",
-  "scope": "global"
+  "scope": "template"
 }
 ```
 
 - **Arguments:** none; `{}`.
 - **Permissions:** none. The database is reached through the proxy,
   not through the daemon, so the tool asks the daemon for nothing.
-- **Mode and scope:** `eager`, `global`. One taskboard container for
+- **Mode and scope:** `eager`, `template`. One taskboard container for
   every agent that declares this taskboard, from any agent template.
   The board is kept in the tool's `template` database, which is the
   declaration's own: a different declaration is a different board.

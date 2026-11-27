@@ -40,7 +40,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | `standalone_tools` | `tools` | `{"template":"<tool template id>","index":<n>}` |
 | `standalone_tools_templates` | `ids` | the template's id |
 | `connected_standalone_tools` | `tools` | `{"daemon":"<daemon id>","tool":<the tool as that daemon names it>,"index":<n>}` |
-| `dependency_tools` | `tools` | `{"template":"<dependency template id>","owner":<owner>}`; owner is `{"agent":{"template":…,"index":…}}` or `"global"` |
+| `dependency_tools` | `tools` | `{"template":"<dependency template id>","owner":<owner>}`; owner is `{"agent":{"template":…,"index":…}}` or `"template"` |
 | `postgres_compartments` | `compartments` | a compartment as the daemon answers it: `{"instance":…}`, `{"template":{"kind":…,"template":…}}` or `{"image":{"digest":…}}`, an agent or a tool in it by template and index |
 | `daemons` | `ids` | the remote daemon's id |
 | `identities` | `identities` | `{"issuer":…,"subject":…}` |

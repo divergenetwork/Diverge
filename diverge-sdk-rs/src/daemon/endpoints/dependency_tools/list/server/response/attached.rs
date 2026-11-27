@@ -7,7 +7,7 @@ use crate::daemon::key;
 
 /// One agent whose last registration declared the tool's template,
 /// and when it last did. An instance tool has at most one, its owner;
-/// a global tool every agent that declares it.
+/// a template-scoped tool every agent that declares it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Attached {

@@ -6,11 +6,11 @@ leans on a different part of what a tool container can do:
 
 | example | what it shows | mode |
 |---|---|---|
-| `courier` | an inbox between agents: Postgres for the mail, the daemon to notify | service, global |
+| `courier` | an inbox between agents: Postgres for the mail, the daemon to notify | service, template |
 | `taskboard` | one shared board used by many agents at once, told apart by who calls | service, template |
 | `memory` | a notebook in the tool's Postgres database | transient |
 | `workspace` | a volume mounted into the container as files | transient |
-| `alarm` | wake-ups an agent sets for itself, fired on the tool's own clock | service, global |
+| `alarm` | wake-ups an agent sets for itself, fired on the tool's own clock | service, template |
 
 `courier`, `memory`, `taskboard` and `alarm` are built; `workspace` is not. The design rests on what the SDK states
 today, cited below, and on two facts worth repeating up front: no tool
@@ -57,7 +57,7 @@ daemon's `standalone_tools` family.
 
 ## `courier`: an inbox between agents
 
-**Built:** `diverge-examples/tools/courier/` (crate `diverge-example-courier`, binary `courier`), with its `Containerfile` and `DIVERGE.md`. It is a **dependency tool** declared by agents' images (a `service` with `scope: global`; at its own registration it declares `attached` and `never_active` over agents), keeps mail per template, has a fifth tool `list_agents` listing whom the caller can write to (attached, then never-run), and a send whose notification cannot be sent fails and keeps nothing.
+**Built:** `diverge-examples/tools/courier/` (crate `diverge-example-courier`, binary `courier`), with its `Containerfile` and `DIVERGE.md`. It is a **dependency tool** declared by agents' images (a `service` with `scope: template`; at its own registration it declares `attached` and `never_active` over agents), keeps mail per template, has a fifth tool `list_agents` listing whom the caller can write to (attached, then never-run), and a send whose notification cannot be sent fails and keeps nothing.
 
 Mail between agents. Every agent that uses the courier has an inbox
 of conversations; an agent opens a conversation with another agent on
@@ -137,7 +137,7 @@ agents apart.
 **Built:** `diverge-examples/tools/taskboard/` (crate `diverge-example-taskboard`,
 binary `taskboard`), with its `Containerfile` and `DIVERGE.md`. It is
 a **dependency tool** declared by agents' images, a `service` (shown
-with `scope: template`; `global` is legal), with no arguments
+with `scope: template`), with no arguments
 and no permissions. It is pull only: nothing is sent to an
 agent when the board changes.
 
@@ -228,7 +228,7 @@ daemon, which starts the agent if it is not running.
 **Built:** `diverge-examples/tools/alarm/` (crate `diverge-example-alarm`, binary
 `alarm`), with its `Containerfile` and `DIVERGE.md`. It is a
 **dependency tool** declared by agents' images, a `service` (shown
-with `scope: global`; any scope works, since every alarm names its
+with `scope: template`; any scope works, since every alarm names its
 agent), declaring `agents` `message` within `attached` at its registration. A service, because
 a service is kept running while agents are attached, and a transient
 tool would stop with the agent's run.

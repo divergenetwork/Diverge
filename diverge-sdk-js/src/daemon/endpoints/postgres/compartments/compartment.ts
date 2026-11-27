@@ -8,7 +8,7 @@ import { Container } from "../container.js";
  * driver names as the database. `instance` is the container's own;
  * `template` every container's made from the same template; `image`
  * every container's of the same image. A dependency tool whose
- * image's `scope` is `global` has no `instance`. Snake case on the
+ * image's `scope` is `template` has no `instance`. Snake case on the
  * wire.
  */
 export const Database = z.enum(["instance", "template", "image"]);
@@ -33,7 +33,7 @@ export type Kind = z.infer<typeof Kind>;
  * a grant match that form alone.
  */
 export const Compartment = z.union([
-  /** One container's own. A dependency tool's owner is an agent, never `"global"`. */
+  /** One container's own. A dependency tool's owner is an agent, never `"template"`. */
   z.strictObject({ instance: Container }),
   /** Every container's made from one template. */
   z.strictObject({

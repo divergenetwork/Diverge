@@ -14,10 +14,10 @@ dependency entry says another.
 
 | image | kind | mode / scope | permissions it declares at registration | database |
 |---|---|---|---|---|
-| `courier` | dependency tool | eager, `global` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
-| `taskboard` | dependency tool | eager, `global` | none | yes |
+| `courier` | dependency tool | eager, `template` | `get`, `list`, `message` over agents `attached` and over agents `never_active` | yes |
+| `taskboard` | dependency tool | eager, `template` | none | yes |
 | `memory` | dependency tool | lazy, `instance` | none | yes |
-| `alarm` | dependency tool | eager, `global` | `message` over agents `attached` | yes |
+| `alarm` | dependency tool | eager, `template` | `message` over agents `attached` | yes |
 | `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
 | `human` | agent, frontend | — | — (an agent asks the daemon nothing) | yes |
 
@@ -66,7 +66,7 @@ Dependency entry (put it in each participating agent's `arguments.dependencies`)
 }
 ```
 
-- The image's document says `"mode":"eager","scope":"global"`: one courier container and one database for every agent that declares this exact entry, from any
+- The image's document says `"mode":"eager","scope":"template"`: one courier container and one database for every agent that declares this exact entry, from any
   agent template. The entry's hash is what the mail is kept under, so a different entry (another
   digest, other extras) is a different mail system.
 - `attached` reaches agents whose last registration declared the courier; `never_active` reaches
@@ -101,7 +101,7 @@ Dependency entry:
 }
 ```
 
-- The image's document says `"mode":"eager","scope":"global"`: one container for every agent that
+- The image's document says `"mode":"eager","scope":"template"`: one container for every agent that
   declares this exact entry, from any agent template. The board is kept in the tool's `template`
   database, so a different entry is a different board. An entry cannot say another scope.
 - Only the holder completes or releases a task; only the poster deletes one. Only agents may use it.
@@ -160,7 +160,7 @@ Dependency entry:
 }
 ```
 
-- The image's document says `"mode":"eager","scope":"global"`. An eager tool, never lazy: it keeps time while no agent is using it. Every
+- The image's document says `"mode":"eager","scope":"template"`. An eager tool, never lazy: it keeps time while no agent is using it. Every
   alarm wakes only the agent that set it.
 - Cron is five fields in UTC; a seconds or year field is refused. An alarm that cannot be sent when
   due is dropped (a recurring one moves on). Alarms that fell due while the tool was down fire once

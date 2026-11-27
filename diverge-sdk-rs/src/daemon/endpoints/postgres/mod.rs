@@ -49,7 +49,7 @@
 //! and the daemon authenticates toward the database for it, from the
 //! run scope the connection arrived on. A name that is none of the
 //! three, and `instance` from a dependency tool whose image's `scope`
-//! is `global`, are refused in Postgres's own words for a database
+//! is `template`, are refused in Postgres's own words for a database
 //! that does not exist.
 //!
 //! # The URL is never answered whole

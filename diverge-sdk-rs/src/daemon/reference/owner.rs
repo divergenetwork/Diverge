@@ -10,7 +10,7 @@ use super::Agent;
 /// one. The agent is named either way, by name or once and for all:
 /// see [`Agent`]. Externally tagged on the wire, snake case:
 /// `{"agent":{"name":…}}` or `{"agent":{"template":…,"index":…}}`, or
-/// the string `"global"`. The daemon answers the once-and-for-all
+/// the string `"template"`. The daemon answers the once-and-for-all
 /// form, as [`key::Owner`](crate::daemon::key::Owner).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -20,6 +20,6 @@ pub enum Owner {
     /// `instance`.
     Agent(Agent),
     /// Every agent that declares the template: a tool's whose
-    /// template's `scope` is `global`.
-    Global,
+    /// template's `scope` is `template`.
+    Template,
 }
