@@ -4,27 +4,28 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// MiniMax over OAuth. Single-use rotating refresh tokens, so the
-/// credential is a ROTATING secret: the caller holds its current
-/// state, the run rotates it, and the rotated state is collected
-/// back instead of silently burning their login. (Keyed MiniMax is
+/// credential REFRESHES: the arguments give the login once, the run
+/// rotates it, and the program keeps the rotated state in its own
+/// database instead of silently burning the login. (Keyed MiniMax is
 /// [`minimax`](super::minimax::Provider) /
 /// [`minimax_cn`](super::minimax_cn::Provider).)
 ///
-/// APPLICATION: the harness writes the fed document as the
+/// APPLICATION: the harness writes the login as the
 /// `providers.minimax-oauth` entry of `$HERMES_HOME/auth.json`
 /// before Hermes starts — provider selection rides the config the
 /// harness already owns, never the file's `active_provider`. On
 /// token refresh Hermes rewrites the entry in place; after the
 /// gateway exits the entry is read back as the run left it and
-/// handed to the proxy's collect. Nothing about it is an argument:
-/// choosing this provider is the whole ask.
-///
-/// SECRET: `MINIMAX_OAUTH`, rotating — the OAuth state document, a
-/// JSON object, exactly as Hermes keeps the entry.
+/// kept for the next run.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     /// The discriminator. Always `minimax-oauth`.
     pub provider: MinimaxOauth,
+    /// The login, as the arguments give it: the OAuth state document,
+    /// a JSON object, exactly as Hermes keeps the entry. Used until the
+    /// program holds a refreshed one kept for this same value: see
+    /// [`credentials`](crate::credentials).
+    pub oauth: serde_json::Map<String, serde_json::Value>,
 }
 
 /// [`Provider`]'s discriminator.

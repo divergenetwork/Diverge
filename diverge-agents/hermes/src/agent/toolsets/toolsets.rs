@@ -13,9 +13,10 @@ use serde::{Deserialize, Serialize};
 /// omission and Hermes's own API-server defaults are never
 /// consulted. A toolset with arguments is an `Option` of its own
 /// structure — absent is off, present is the switch thrown on WITH
-/// that tool's endpoint facts, each documented in its own file with
-/// the mechanism the harness applies. A toolset whose only need is
-/// a credential is a plain switch too: `true` declares the secret.
+/// that tool's endpoint facts and its credential, each documented in
+/// its own file with the mechanism the harness applies. A toolset
+/// whose only need is a credential is a structure too: the
+/// credential is its one member.
 /// Enabling a tool without its prerequisites is not a protocol
 /// error — the tools simply fail as themselves when used.
 ///
@@ -30,15 +31,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// What is deliberately ABSENT, and why, is [the module](super)'s
 /// to say.
-///
-/// SECRET: `FAL_KEY`, fixed, when [`image_gen`](Self::image_gen) or
-/// [`video_gen`](Self::video_gen) is `true` (one secret for both);
-/// `XAI_API_KEY`, fixed, when [`x_search`](Self::x_search) is `true`
-/// (one secret with the xai provider's); and whatever the structured
-/// toolsets declare, each in its own file.
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema,
-)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Toolsets {
     /// Web search and page extraction. See [`web`](super::web).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -68,27 +61,16 @@ pub struct Toolsets {
     /// own inference provider, exactly as vision does.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video: Option<bool>,
-    /// Image generation over FAL, the built-in path (Hermes's other
-    /// image providers — openai, krea, deepinfra, xai — are
-    /// deliberately absent at this pin). `true` declares `FAL_KEY`,
-    /// applied in the gateway's process environment, and pins
-    /// `image_gen.provider: fal`; generation has no keyless path, so
-    /// the switch and the secret are one ask.
+    /// Image generation over FAL. See [`image_gen`](super::image_gen).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub image_gen: Option<bool>,
-    /// Video generation over FAL — the same deliberate one-provider
-    /// scope as image generation. `true` declares `FAL_KEY` (the same
-    /// secret) and pins `video_gen.provider: fal`.
+    pub image_gen: Option<super::image_gen::Toolset>,
+    /// Video generation over FAL. See [`video_gen`](super::video_gen).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub video_gen: Option<bool>,
-    /// X (Twitter) search over the xAI API. `true` declares
-    /// `XAI_API_KEY`, applied in the gateway's process environment.
-    /// The key path ONLY, deliberately: Hermes's own dispatch prefers
-    /// the key, and the xAI subscription OAuth bearer answers this
-    /// tool in a degraded no-citation mode — the rotating path is a
-    /// worse product here, not a missing feature.
+    pub video_gen: Option<super::video_gen::Toolset>,
+    /// X (Twitter) search over the xAI API. See
+    /// [`x_search`](super::x_search).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub x_search: Option<bool>,
+    pub x_search: Option<super::x_search::Toolset>,
     /// Text-to-speech. See [`tts`](super::tts).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tts: Option<super::tts::Toolset>,

@@ -4,7 +4,7 @@ use std::error;
 use std::fmt;
 use std::io;
 
-/// Why the rotating documents could not be read back after the
+/// Why the logins' documents could not be read back after the
 /// gateway exited. Nothing here carries a value: the file's own
 /// error, and only that.
 #[derive(Debug)]

@@ -9,7 +9,7 @@
 //! the system prompt as a frozen snapshot at session start. Those
 //! three files are the continuation. Nothing else under the Hermes
 //! home travels: configuration is rendered from the request each
-//! run, `auth.json` entries are resources, caches regenerate, skill
+//! run, `auth.json` entries are logins kept in rows of their own, caches regenerate, skill
 //! writing is unsupported, and the gateway-only machinery (cron,
 //! kanban, platform ledgers) never runs here.
 //!

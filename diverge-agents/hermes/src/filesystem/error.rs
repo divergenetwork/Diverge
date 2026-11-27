@@ -4,22 +4,16 @@ use std::error;
 use std::fmt;
 use std::io;
 
-use super::SecretsError;
-
 /// Why the filesystem could not be prepared. No variant carries a
-/// secret's value: a contradiction names the variable, a secrets
-/// failure names the secret.
+/// credential's value: a contradiction names the variable.
 #[derive(Debug)]
 pub enum PrepareError {
-    /// The request puts one name to two different uses — a plain
-    /// variable set to two values, or a secret declared for two
-    /// targets.
+    /// The request puts one variable to two different uses: it is
+    /// set, from two places, to two values.
     Contradiction {
         /// The name both wanted.
         variable: &'static str,
     },
-    /// A fed value is missing, or of the wrong shape for its target.
-    Secrets(SecretsError),
     /// A file or directory could not be written, or the skills
     /// directory could not be looked at.
     Io(io::Error),
@@ -35,7 +29,6 @@ impl fmt::Display for PrepareError {
                 f,
                 "the request puts {variable} to two different uses"
             ),
-            PrepareError::Secrets(error) => write!(f, "{error}"),
             PrepareError::Io(error) => {
                 write!(f, "the filesystem could not be prepared: {error}")
             }
@@ -49,17 +42,10 @@ impl fmt::Display for PrepareError {
 impl error::Error for PrepareError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            PrepareError::Secrets(error) => Some(error),
             PrepareError::Io(error) => Some(error),
             PrepareError::Json(error) => Some(error),
             PrepareError::Contradiction { .. } => None,
         }
-    }
-}
-
-impl From<SecretsError> for PrepareError {
-    fn from(error: SecretsError) -> Self {
-        PrepareError::Secrets(error)
     }
 }
 

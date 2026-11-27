@@ -5,17 +5,18 @@ use serde::{Deserialize, Serialize};
 
 /// xAI.
 ///
-/// APPLICATION: the harness sets `XAI_API_KEY` to the
-/// secret's value in the gateway's process environment before
-/// Hermes starts.
-///
-/// SECRET: `XAI_API_KEY`, fixed — the API key, under that name. The
-/// `x_search` toolset declares the same name; declared from both
-/// places it is one secret.
+/// APPLICATION: the harness sets `XAI_API_KEY` to
+/// [`api_key`](Self::api_key) in the gateway's process environment
+/// before Hermes starts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     /// The discriminator. Always `xai`.
     pub provider: Xai,
+    /// The API key, applied as `XAI_API_KEY`. The `x_search` toolset
+    /// is applied under the same variable: an agent that names both
+    /// names one key, and two different keys are the registration's
+    /// refusal.
+    pub api_key: String,
 }
 
 /// [`Provider`]'s discriminator.

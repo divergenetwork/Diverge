@@ -1,15 +1,15 @@
 //! Driving the run: the whole lifetime, as one stream of chunks.
 //!
 //! [`run`] owns everything between the request and the end: the
-//! agent planned and the fed secrets taken as a snapshot
-//! ([`secrets::values`]), the filesystem laid down with them
+//! agent planned, the document to use for each login chosen
+//! ([`credentials::resolve`]), the filesystem laid down with them
 //! ([`filesystem::prepare`]), the session restored or read
 //! ([`continuation::session`]), `hermes gateway` spawned and awaited
 //! ([`Gateway`]), the turns driven over `/v1/runs` ([`raw`]) and
 //! converted into chunks ([`Turn`]), the queue consulted at the
-//! turn's end ([`QUEUE`]), the gateway stopped, the rotating
-//! documents read back ([`filesystem::read_back`]) and left for the
-//! proxy's collect ([`secrets::leave`]), and the continuation
+//! turn's end ([`QUEUE`]), the gateway stopped, the logins'
+//! documents read back ([`filesystem::read_back`]) and kept
+//! ([`credentials::keep`]), and the continuation
 //! harvested into the rows ([`continuation::harvest`]).
 //!
 //! # The queue is consulted when a turn ends
@@ -32,12 +32,13 @@
 //! failure is the stream's one [`Err`] — the request's own failure,
 //! a status. From then on every failure — a turn that will not start,
 //! a stream that breaks, `run.failed`, a document that will not read
-//! back, a harvest that cannot happen — is a fatal `notification`
+//! back or be kept, a harvest that cannot happen — is a fatal
+//! `notification`
 //! chunk, and the run still stops the gateway and does what it can of
 //! the way back up: the session on disk is the truth of what
-//! happened, whatever the wire said. A read-back that failed leaves
-//! nothing for the collect, which then answers the values this
-//! activation was fed — the caller keeps what it had.
+//! happened, whatever the wire said. A read-back that failed keeps
+//! nothing: the rows stay as they were, and the next run starts from
+//! what was kept before.
 //!
 //! # One run at a time, and the settlement releases the lock
 //!
@@ -70,10 +71,10 @@ use sqlx::PgPool;
 use crate::agent::{Agent, Effort};
 use crate::claim::Claim;
 use crate::continuation;
+use crate::credentials;
 use crate::filesystem;
 use crate::queue::QUEUE;
 use crate::response::Event;
-use crate::secrets;
 
 /// The run, whole: one stream of chunks. `generation` is the queue's,
 /// from [`QUEUE.open`](crate::queue::Queue::open); `claim` is the run
@@ -103,10 +104,16 @@ pub fn run(
                 return;
             }
         };
-        // The snapshot: this loop's values, whatever is fed while it
-        // runs. A name the feed lacks is the preparation's refusal.
-        let values = secrets::values().await;
-        let prepared = match filesystem::prepare(&plan, &values).await {
+        // The document each login starts this run from: the one the
+        // program kept, or the one the arguments give.
+        let logins = match credentials::resolve(&pool, &plan.documents).await {
+            Ok(logins) => logins,
+            Err(error) => {
+                yield Err(Error::Credentials(error));
+                return;
+            }
+        };
+        let prepared = match filesystem::prepare(&plan, &logins).await {
             Ok(prepared) => prepared,
             Err(error) => {
                 yield Err(Error::Prepare(error));
@@ -224,17 +231,21 @@ pub fn run(
             ));
         }
 
-        // The way back up: the rotating documents as the run left
-        // them, left for the collect that follows; then the
-        // continuation into the rows. A read-back that fails leaves
-        // nothing, and the collect answers the fed values.
-        match filesystem::read_back(&plan, &values).await {
-            Ok(left) => secrets::leave(left).await,
+        // The way back up: the logins' documents as the run left
+        // them, kept for the next run; then the continuation into the
+        // rows. A read-back that fails keeps nothing, and the rows
+        // stay as they were.
+        match filesystem::read_back(&plan).await {
+            Ok(left) => {
+                if let Err(error) = credentials::keep(&pool, &plan.documents, left).await {
+                    yield Ok(notification(error.message(), true));
+                }
+            }
             Err(error) => {
                 yield Ok(notification(
                     serde_json::json!({
                         "kind": "read_back",
-                        "error": format!("{error}; the collect answers the values this run was fed"),
+                        "error": format!("{error}; the logins are kept as they were before this run"),
                     }),
                     true,
                 ));

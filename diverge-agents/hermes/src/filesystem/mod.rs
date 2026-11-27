@@ -2,7 +2,8 @@
 //! `hermes gateway` starts, and what is read back after it exits.
 //!
 //! Before the gateway starts, everything the request's agent says
-//! has to be where Hermes reads it: the secrets' values and the
+//! has to be where Hermes reads it: the credentials applied as
+//! variables and the
 //! plain switches in the gateway's PROCESS ENVIRONMENT, selection
 //! and membership in `config.yaml`, the OAuth state documents in
 //! the credential files — `auth.json` entries for the
@@ -11,16 +12,17 @@
 //! own state — `state.db` and the two memory files, the
 //! [`continuation`] — is the database's business
 //! ([`crate::continuation`]), restored once for the program's life.
-//! After the gateway exits, the rotating documents are read back as
-//! the run left them, for the proxy's collect.
+//! After the gateway exits, the logins' documents are read back as
+//! the run left them, for the program to keep
+//! ([`crate::credentials`]).
 //!
 //! Three entry points. [`plan()`] reads the agent into a [`Plan`]:
-//! the environment, the config's inputs, and which secrets the run
-//! takes — [`Plan::declaration`] is what the registration answers.
-//! [`prepare`] lays the plan down with the fed values in hand and
+//! the environment, the config's inputs, and the logins that
+//! refresh. [`prepare`] lays the plan down, with the document to use
+//! for each login in hand, and
 //! hands back [`Prepared`]: the environment the spawner sets on the
 //! gateway process and the API server key the run driver will
-//! present. [`read_back`] reads each rotating document off disk
+//! present. [`read_back`] reads each login's document off disk
 //! after the gateway has exited. Between them, [`history()`] reads
 //! a session's transcript out of the database for the run to resume
 //! from, and [`session()`] its tip.
@@ -28,7 +30,7 @@
 //! # What is and is not here
 //!
 //! What [`Prepared::env`] holds is the HARNESS'S variables only —
-//! the plan's switches and the secrets bound for the environment —
+//! the plan's switches and the credentials applied as variables —
 //! so on an overlap with the container's own environment the
 //! harness wins by construction. `system_prompt` and `effort` are
 //! per-request fields of the run the driver POSTs, not filesystem.
@@ -43,6 +45,7 @@
 //! wrong.
 
 mod config;
+mod document;
 mod error;
 mod history;
 mod history_error;
@@ -51,13 +54,12 @@ mod plan;
 mod prepared;
 mod provider;
 mod read_back_error;
-mod secret;
-mod secrets_error;
 mod session;
 mod toolsets;
 
 pub mod continuation;
 
+pub use document::*;
 pub use error::*;
 pub use history::*;
 pub use history_error::*;
@@ -65,13 +67,10 @@ pub use message::*;
 pub use plan::*;
 pub use prepared::*;
 pub use read_back_error::*;
-pub use secret::*;
-pub use secrets_error::*;
 pub use session::*;
 
 use std::path::Path;
 
-use diverge_sdk::shared::containers::secrets::Values;
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
@@ -127,8 +126,8 @@ const VERTEX_FILE: &str = "vertex-service-account.json";
 
 /// The agent, read into a [`Plan`]: what every entry point starts
 /// from. The provider's and the toolsets' contributions are
-/// gathered — the plain variables they set and the secrets they
-/// declare — and the harness's own variables join them
+/// gathered — the variables they set and the logins they
+/// name — and the harness's own variables join them
 /// (`HERMES_HOME`, `HERMES_YOLO_MODE`, the API server's
 /// key/host/port — the key freshly generated, 64 hex characters, for
 /// this run alone).
@@ -166,58 +165,37 @@ async fn skills_mounted() -> Result<bool, PrepareError> {
     }
 }
 
-/// Lay the plan down, with the fed values in hand, and answer with
-/// what the run still needs to carry.
+/// Lay the plan down, and answer with what the run still needs to
+/// carry.
 ///
-/// Every secret the plan declares is looked up in `values` by name
-/// and checked for its target's shape FIRST — a name the feed lacks,
-/// or a value of the wrong JSON type, refuses the whole preparation
-/// before a byte is written ([`PrepareError::Secrets`], naming the
-/// secret and never its value). Then the files are written, each
-/// once: `config.yaml`, `auth.json` when any entry needs it, the
-/// Qwen token file, the vertex file. The continuation's own files
-/// are the database's business and are not touched here.
+/// `logins` is the document to write for each of the plan's
+/// [`documents`](Plan::documents), in the same order: the one the
+/// arguments give, or the refreshed one the program kept, as
+/// [`credentials::resolve`](crate::credentials::resolve) chose. The
+/// files are written, each once: `config.yaml`, `auth.json` when any
+/// entry needs it, the Qwen token file, the vertex file. The
+/// continuation's own files are the database's business and are not
+/// touched here.
 pub async fn prepare(
     plan: &Plan,
-    values: &Values,
+    logins: &[Map<String, Value>],
 ) -> Result<Prepared, PrepareError> {
-    let mut env = plan.env.clone();
-    let mut api_key: Option<&str> = None;
-    let mut vertex: Option<&str> = None;
     let mut providers = Map::new();
     let mut qwen: Option<&Map<String, Value>> = None;
-    for secret in &plan.secrets {
-        let value = values
-            .get(secret.name)
-            .ok_or(SecretsError::Missing(secret.name))?;
-        match secret.target {
-            Target::Env => {
-                env.insert(
-                    secret.name.to_string(),
-                    string(secret.name, value)?.to_string(),
-                );
-            }
-            Target::ModelApiKey => {
-                api_key = Some(string(secret.name, value)?);
-            }
-            Target::VertexFile => {
-                vertex = Some(string(secret.name, value)?);
-            }
+    for (document, login) in plan.documents.iter().zip(logins) {
+        match document.target {
             Target::AuthEntry(entry) => {
-                providers.insert(
-                    entry.to_string(),
-                    Value::Object(object(secret.name, value)?.clone()),
-                );
+                providers.insert(entry.to_string(), Value::Object(login.clone()));
             }
             Target::QwenCreds => {
-                qwen = Some(object(secret.name, value)?);
+                qwen = Some(login);
             }
         }
     }
 
     let home = Path::new(HERMES_HOME);
     tokio::fs::create_dir_all(home).await?;
-    let config = serde_json::to_vec_pretty(&config::render(plan, api_key))?;
+    let config = serde_json::to_vec_pretty(&config::render(plan))?;
     tokio::fs::write(home.join(CONFIG_FILE), config).await?;
     if !providers.is_empty() {
         // Entries only: never `active_provider` (selection is
@@ -238,50 +216,32 @@ pub async fn prepare(
         }
         tokio::fs::write(path, serde_json::to_vec_pretty(document)?).await?;
     }
-    if let Some(document) = vertex {
+    if let Some(document) = &plan.vertex {
         tokio::fs::write(home.join(VERTEX_FILE), document).await?;
     }
 
     Ok(Prepared {
-        env,
+        env: plan.env.clone(),
         api_server_key: plan.env["API_SERVER_KEY"].clone(),
     })
 }
 
-/// The fed value as the string its target wants, or the refusal
-/// naming the secret.
-fn string<'a>(name: &'static str, value: &'a Value) -> Result<&'a str, SecretsError> {
-    value.as_str().ok_or(SecretsError::NotString(name))
-}
-
-/// The fed value as the object its target wants, or the refusal
-/// naming the secret.
-fn object<'a>(
-    name: &'static str,
-    value: &'a Value,
-) -> Result<&'a Map<String, Value>, SecretsError> {
-    value.as_object().ok_or(SecretsError::NotObject(name))
-}
-
-/// Read every rotating secret back, after the gateway has exited, as
-/// the run left it: `auth.json` once, its `providers.<entry>` object
-/// taken whole; the Qwen file parsed. The answer carries EVERY
-/// rotating name, because the collect that follows asks for every
-/// one: an entry no longer on disk — Hermes quarantines an entry
-/// whose refresh failed for good — is answered with the value it was
-/// `fed`, so the caller keeps what it had rather than losing a
-/// login. The fixed secrets are not read back; Hermes never changes
-/// them.
+/// Read every login's document back, after the gateway has exited,
+/// as the run left it: `auth.json` once, its `providers.<entry>`
+/// object taken whole; the Qwen file parsed. The answer has one
+/// place for each of the plan's [`documents`](Plan::documents), in
+/// the same order. A place is `None` where the document is no longer
+/// on disk as a JSON object — Hermes quarantines an entry whose
+/// refresh failed for good — and the program then keeps what it had
+/// rather than losing a login.
 pub async fn read_back(
     plan: &Plan,
-    fed: &Values,
-) -> Result<Values, ReadBackError> {
+) -> Result<Vec<Option<Map<String, Value>>>, ReadBackError> {
     let home = Path::new(HERMES_HOME);
     let mut store: Option<Value> = None;
-    let mut left = Values::new();
-    for secret in &plan.secrets {
-        let read = match secret.target {
-            Target::Env | Target::ModelApiKey | Target::VertexFile => continue,
+    let mut left = Vec::with_capacity(plan.documents.len());
+    for document in &plan.documents {
+        let read = match document.target {
             Target::AuthEntry(entry) => {
                 if store.is_none() {
                     let bytes = tokio::fs::read(home.join(AUTH_FILE)).await?;
@@ -299,17 +259,10 @@ pub async fn read_back(
                 Err(error) => return Err(ReadBackError::Io(error)),
             },
         };
-        // The fed value is what the preparation applied, so it is
-        // there for every declared name; a name it somehow lacks is
-        // left out, and the collect says so rather than this
-        // inventing a value.
-        let value = match read {
-            Some(value) => Some(value),
-            None => fed.get(secret.name).cloned(),
-        };
-        if let Some(value) = value {
-            left.insert(secret.name.to_string(), value);
-        }
+        left.push(match read {
+            Some(Value::Object(login)) => Some(login),
+            _ => None,
+        });
     }
     Ok(left)
 }

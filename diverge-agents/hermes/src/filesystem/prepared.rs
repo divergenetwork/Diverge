@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prepared {
     /// The environment to set on the `hermes gateway` process — the
-    /// harness's variables and the secrets bound for the environment,
+    /// harness's variables and the credentials applied as variables,
     /// and only those.
     pub env: BTreeMap<String, String>,
     /// The bearer the API server was given, for the run driver to

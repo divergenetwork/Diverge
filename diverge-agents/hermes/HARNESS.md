@@ -5,31 +5,30 @@ as they are settled. Each entry is a decision already made, with its
 evidence in `reports/` where one exists. Add to this file as more is
 figured out.
 
-## Auth is a secret, applied on the filesystem
+## Auth is an argument, applied on the filesystem
 
-Nothing about credentials arrives ambiently, and none is an
-argument: the request's agent SELECTS secrets by name — each
-provider and toolset structure's `SECRET:` paragraph says which, and
-in what mode — the agent's template declares those names, and the
-proxy FEEDS their values on `POST /secrets` before the first loop
-and at every activation after. The harness APPLIES every fed value
-before `hermes gateway` starts —
+Nothing about credentials arrives ambiently: every credential is a
+member of the provider or the toolset it authenticates, in the
+request's agent — `api_key` wherever one key is taken, and otherwise
+a member named for what it is (`github_token`, `service_account_json`,
+bedrock's `auth`, `oauth`, `token`, `fal_key`). The agent is told
+once, at `POST /register`, and held for the container's life. The
+harness APPLIES every credential before `hermes gateway` starts —
 
-- the `fixed` ones bound for the environment, as canonical env vars
-  in the gateway's PROCESS environment, each under the secret's own
-  name (the per-provider and per-toolset docs in the agent module
-  name each one);
+- the ones applied as variables, as canonical env vars in the
+  gateway's PROCESS environment (the per-provider and per-toolset
+  docs in the agent module name each one);
 - `$HERMES_HOME/auth.json` entries for the OAuth providers (nous,
-  openai-codex, minimax-oauth) and spotify — the fed document, a
+  openai-codex, minimax-oauth) and spotify — the login's document, a
   JSON object, written verbatim as `providers.<name>`;
 - qwen-oauth's document at the REAL `$HOME`
   (`~/.qwen/oauth_creds.json`) — and NO `providers.qwen-oauth`
   marker: that entry serves the setup wizard's credential check
   only; the gateway reads the CLI file directly;
-- vertex's service-account document (`VERTEX_SERVICE_ACCOUNT_JSON`, a JSON
+- vertex's service-account document (`service_account_json`, a JSON
   string holding it) to a file + `VERTEX_CREDENTIALS_PATH`;
 - `model.base_url` + `model.api_key` in config.yaml for `custom`
-  (`CUSTOM_API_KEY` is not a variable Hermes reads — the key is read
+  (Hermes reads a custom key from no variable — the key is read
   from the config only, and only beside a configured URL; the env
   var `CUSTOM_BASE_URL` is set too, and is what it resolves first).
 
@@ -41,51 +40,49 @@ Rules that make this work (`provider-auth.md`, `oauth-resources.md`):
   auth.json's `active_provider` (priority 6 of 8; a stray
   `OPENAI_API_KEY` would outrank it). Omit `suppressed_sources`
   when writing auth.json.
-- One name, one secret: where two places select the same name
-  (`FAL_KEY` from image_gen and video_gen, `XAI_API_KEY` from the xai
-  provider and x_search), the plan declares it once and one value is
-  fed. The contradiction rule survives for plain variables only
-  (`Plan::set`), and for a name declared for two different targets
-  (`Plan::declare`).
-- Rotating OAuth state is a ROTATING SECRET under a fixed name
-  (`NOUS_OAUTH`, `OPENAI_CODEX_OAUTH`, `MINIMAX_OAUTH`, `QWEN_OAUTH`,
-  `SPOTIFY_OAUTH`). The agent names no field for it: choosing the
-  provider or toolset is the whole ask. The rotating cycle is the
-  PROXY'S, not the harness's: the caller locks one value for the
-  container's active period and feeds it; the run writes it, runs,
-  reads it back as Hermes left it (`filesystem::read_back`) and
-  leaves it in `secrets.rs`; the proxy collects it on
-  `POST /secrets/collect` at the inactive, and the caller writes it
-  back and drops the lock. A name the feed lacks, or holds as
-  something other than a JSON object, refuses the run before the
-  gateway starts (`{"kind":"secrets"}`, naming the name and never a
-  value). A document no longer on disk at the end (Hermes
-  quarantined the entry) is answered with the value it was fed — the
-  caller keeping its copy beats a lost login — because the collect
-  must be answered for EVERY rotating name. A loop that fails before
-  its read-back leaves nothing, and the collect answers the values
-  fed for that activation: every feed clears what the previous loop
-  left.
+- One variable, one value: where two places are applied under the
+  same variable (`FAL_KEY` from image_gen and video_gen,
+  `XAI_API_KEY` from the xai provider and x_search), the same value
+  twice is applied once, and two different values are the request
+  contradicting itself (`Plan::set`): `400 plan` at the
+  registration, naming the variable and never a value.
+- An OAuth login REFRESHES, and the program keeps it
+  (`credentials.rs`). The arguments give the document once, as
+  `oauth`; the run writes a document, runs, reads it back as Hermes
+  left it (`filesystem::read_back`) and keeps it as one row of the
+  `credentials` table in the agent's `instance` database, beside the
+  continuation. The row is kept under the SHA-256 of the canonical
+  bytes of the document the arguments gave. The next run uses the
+  kept document when it was kept for the same argument value, and
+  otherwise the argument's own, which the next keep then replaces
+  the row with. A document no longer on disk at the end (Hermes
+  quarantined the entry) changes no row — keeping the copy beats a
+  lost login. A loop that fails before its read-back keeps nothing,
+  and the rows stay as they were.
+- No error carries a credential's value. A contradiction names the
+  variable; a credentials failure is the database's own words; the
+  registration's parse error has the value the parser quotes cut out
+  of it (`unquoted` in `main.rs`).
 
 ## The `filesystem` module lays it down, and reads the documents back
 
 Three entry points: `filesystem::plan` reads the agent into the
-`Plan` — the environment, the config's inputs, and the secrets the
-run takes, each by name with where its value goes (`Plan::declare`;
-`Plan::declaration` is what `/register` answers, and
-`Agent::declaration` is that, planned); `filesystem::prepare` writes
-the plan down with the fed values in hand — every name looked up and
-shape-checked BEFORE a byte is written; `filesystem::read_back`
-reads each rotating document off disk after the gateway has exited
+`Plan` — the environment, credentials among it, the config's inputs,
+and the logins that refresh, each with where its document goes
+(`Plan::documents`; `/register` plans the agent to refuse one that
+will not plan); `filesystem::prepare` writes
+the plan down with the document to use for each login in hand;
+`filesystem::read_back`
+reads each login's document off disk after the gateway has exited
 (the `auth.json` entry taken whole, the Qwen file parsed — a
-document no longer there is answered with the fed value), as the
-`Values` the collect answers. The continuation is not the
+document no longer there is `None`, and its row is left as it was).
+The continuation is not the
 filesystem module's to move any more: `continuation.rs` restores it
 from the database once and harvests it at every run's end.
 
 `filesystem::prepare` turns the plan into the gateway's process
 environment (returned to the spawner — the request carries no
-environment of its own; the agent's typed fields and the feed are
+environment of its own; the agent's typed fields are
 the whole source), `config.yaml`, and the credential files, in one
 pass:
 
@@ -108,7 +105,7 @@ pass:
   nothing is on by omission: Hermes's own API-server default — web,
   browser, terminal, file, code_execution, vision, todo, memory,
   session_search, and image_gen (hidden without a FAL key, which only
-  the switch's secret brings) — is never consulted.
+  the toolset's own `fal_key` brings) — is never consulted.
   `skills` in exactly when something is on disk under the external
   skills path, out otherwise — and skills come from MOUNTS at
   `/root/.hermes/external-skills/` (one directory per skill, its
@@ -129,9 +126,9 @@ pass:
   `{"version": 1, "providers": {...}}` with the documents verbatim,
   the Qwen file, the vertex file (`VERTEX_CREDENTIALS_PATH` names
   it).
-- One name, one secret: `FAL_KEY` (image_gen and video_gen) and
-  `XAI_API_KEY` (the xai provider and x_search) are declared once
-  however many places select them; a plain variable set twice to
+- One variable, one value: `FAL_KEY` (image_gen and video_gen) and
+  `XAI_API_KEY` (the xai provider and x_search) are set once
+  however many places name them; a variable set twice to
   different values is the request contradicting itself, and is
   refused.
 
@@ -223,7 +220,8 @@ override): `state.db` whole — the session store, schema v26 and
 moving, its gateway-only tables empty here — plus
 `memories/MEMORY.md` and `memories/USER.md`. Nothing else travels:
 configuration is rendered from the request, `auth.json` entries are
-fed secrets, caches regenerate, skill writing is unsupported. The
+the logins, kept in rows of their own, caches regenerate, skill
+writing is unsupported. The
 `filesystem::continuation` module is the shape; `continuation.rs` is
 where it lives; the rules:
 
@@ -277,20 +275,19 @@ where it lives; the rules:
 ## Nothing rides the container surface
 
 There are no resources. What used to be fetched by identity over
-the socket — rotating OAuth state — is fed by the proxy and
-collected back (above), and the continuation comes from the
-database. Nothing rides the container surface but the request, the
-secrets' two calls, and the chunks.
+the socket — rotating OAuth state — is an argument, kept as it
+refreshes in the database (above), and the continuation comes from
+the database too. Nothing rides the container surface but the
+registration, the request and the chunks.
 
 ## The runner (`run::run`)
 
-One stream for the whole run: plan → the secrets snapshot
-(`secrets::values`, taken once and kept for the loop, whatever is
-fed meanwhile) → prepare → the session (restored once, else the tip
+One stream for the whole run: plan → the document each login starts
+from (`credentials::resolve`) → prepare → the session (restored once, else the tip
 on disk) → spawn `hermes gateway` (env from `prepare`, SIGTERM to
 stop, `/health` polled every 250ms with no timeout) → turns over
-`/v1/runs` → stop → read back the rotating documents and leave them
-for the collect (`secrets::leave`) → harvest into the rows. The run
+`/v1/runs` → stop → read back the logins' documents and keep them
+(`credentials::keep`) → harvest into the rows. The run
 takes no proxy client: the only thing of the proxy's it touches is
 the database the server dialed for it. Rules settled with it:
 
@@ -311,11 +308,11 @@ the database the server dialed for it. Rules settled with it:
   (compaction may have rotated it) and the next turn records into
   it. Effort rides `model_options.reasoning`.
 - Before the gateway is up, a failure is the stream's one `Err` — the
-  server's status (a secret the feed lacks or fed in the wrong shape
-  is `{"kind":"secrets"}`); after, every failure is a fatal
+  server's status (kept logins that cannot be read are
+  `{"kind":"credentials"}`); after, every failure is a fatal
   notification and the run still stops the gateway, reads back what
   it can and harvests. A read-back that fails is a fatal notification
-  saying the collect will answer the fed values.
+  saying the logins are kept as they were before the run.
 - One run at a time: the run holds the `Claim` (cc's three-phase
   lock) inside a `Teardown` captured into the stream; when the stream
   drops the teardown marks it settling, closes the queue on a task,
@@ -333,15 +330,9 @@ unregistered`; the run's chunks out as server-sent events,
 the first item pulled before the status is chosen — the run's one
 `Err` is a `500` with its own words, a run with nothing to say is
 `empty_run`, a run beside one streaming is `409 busy`),
-`POST /enqueue` (held until the fate is known), `POST /dequeue`,
-`POST /secrets` (the
-values, held whole in place of the previous feed — `204`, always; a
-value that will not do is found out by the loop that applies it)
-and `POST /secrets/collect` (every rotating name asked for, each as
-the last loop left it or else as it was fed — `200`; a name held
-nowhere is `500 secrets`, naming the name and never a value).
-`/register` answers the agent's dependencies and its secrets'
-declaration, planned from the agent; an agent that will not plan is
+`POST /enqueue` (held until the fate is known), `POST /dequeue`.
+`/register` answers the agent's dependencies, and plans the agent
+first; an agent that will not plan is
 `400 plan`. Nothing of the proxy's is touched before a request; the
 database and the gateway are both `POST /run`'s.
 

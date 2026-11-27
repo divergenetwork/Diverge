@@ -1,11 +1,10 @@
 //! The toolsets' contribution: which are exposed, their credentials
-//! as the secrets the plan declares, their endpoints as environment,
-//! their backend pins.
+//! and their endpoints as environment, their backend pins.
 
-use super::{Plan, PrepareError, Secret, Target};
+use super::{Document, Plan, PrepareError, Target};
 use crate::agent::Toolsets;
 use crate::agent::toolsets::browser::Remote;
-use crate::agent::toolsets::web::{Extract, Keyed, Search};
+use crate::agent::toolsets::web::{ExtractBackend, Keyed, Search};
 
 /// Add the toolsets to the plan.
 ///
@@ -31,11 +30,11 @@ use crate::agent::toolsets::web::{Extract, Keyed, Search};
 ///
 /// # Arguments
 ///
-/// Each structure's credentials are the secrets the agent's toolset
-/// docs name, declared here bound for the environment; its endpoints
+/// Each structure's credential is set here as the variable the
+/// agent's toolset docs name; its endpoints
 /// are plain variables; a web slot also pins its backend; ElevenLabs
 /// pins `tts.provider`; the generation toolsets pin `fal`; spotify's
-/// login is a rotating secret bound for `auth.json`.
+/// login is a document bound for `auth.json`.
 pub fn apply(
     toolsets: &Toolsets,
     skills: bool,
@@ -46,15 +45,15 @@ pub fn apply(
     if let Some(web) = &toolsets.web {
         if let Some(search) = &web.search {
             let backend = match search {
-                Search::Keyed(keyed) => {
-                    let (name, backend) = match keyed {
+                Search::Keyed { backend, api_key } => {
+                    let (name, backend) = match backend {
                         Keyed::Tavily => ("TAVILY_API_KEY", "tavily"),
                         Keyed::Exa => ("EXA_API_KEY", "exa"),
                         Keyed::Parallel => ("PARALLEL_API_KEY", "parallel"),
                         Keyed::Keenable => ("KEENABLE_API_KEY", "keenable"),
                         Keyed::BraveFree => ("BRAVE_SEARCH_API_KEY", "brave-free"),
                     };
-                    env(plan, name)?;
+                    plan.set(name, api_key.clone())?;
                     backend
                 }
                 Search::Searxng { searxng_url } => {
@@ -64,9 +63,13 @@ pub fn apply(
             };
             plan.search_backend = Some(backend);
         }
-        if let Some(Extract::Firecrawl) = &web.extract {
-            env(plan, "FIRECRAWL_API_KEY")?;
-            plan.extract_backend = Some("firecrawl");
+        if let Some(extract) = &web.extract {
+            match extract.backend {
+                ExtractBackend::Firecrawl => {
+                    plan.set("FIRECRAWL_API_KEY", extract.api_key.clone())?;
+                    plan.extract_backend = Some("firecrawl");
+                }
+            }
         }
     }
     switch(&mut on, "web", toolsets.web.is_some());
@@ -76,9 +79,9 @@ pub fn apply(
             Some(Remote::Cdp { cdp_url }) => {
                 plan.set("BROWSER_CDP_URL", cdp_url.clone())?;
             }
-            Some(Remote::Browserbase(_)) => {
-                env(plan, "BROWSERBASE_API_KEY")?;
-                env(plan, "BROWSERBASE_PROJECT_ID")?;
+            Some(Remote::Browserbase { api_key, project_id }) => {
+                plan.set("BROWSERBASE_API_KEY", api_key.clone())?;
+                plan.set("BROWSERBASE_PROJECT_ID", project_id.clone())?;
                 plan.browserbase = true;
             }
             None => {}
@@ -92,26 +95,26 @@ pub fn apply(
     switch(&mut on, "vision", toolsets.vision.unwrap_or(false));
     switch(&mut on, "video", toolsets.video.unwrap_or(false));
 
-    if toolsets.image_gen.unwrap_or(false) {
-        env(plan, "FAL_KEY")?;
+    if let Some(image_gen) = &toolsets.image_gen {
+        plan.set("FAL_KEY", image_gen.fal_key.clone())?;
         plan.image_gen = true;
     }
-    switch(&mut on, "image_gen", toolsets.image_gen.unwrap_or(false));
+    switch(&mut on, "image_gen", toolsets.image_gen.is_some());
 
-    if toolsets.video_gen.unwrap_or(false) {
-        env(plan, "FAL_KEY")?;
+    if let Some(video_gen) = &toolsets.video_gen {
+        plan.set("FAL_KEY", video_gen.fal_key.clone())?;
         plan.video_gen = true;
     }
-    switch(&mut on, "video_gen", toolsets.video_gen.unwrap_or(false));
+    switch(&mut on, "video_gen", toolsets.video_gen.is_some());
 
-    if toolsets.x_search.unwrap_or(false) {
-        env(plan, "XAI_API_KEY")?;
+    if let Some(x_search) = &toolsets.x_search {
+        plan.set("XAI_API_KEY", x_search.api_key.clone())?;
     }
-    switch(&mut on, "x_search", toolsets.x_search.unwrap_or(false));
+    switch(&mut on, "x_search", toolsets.x_search.is_some());
 
     if let Some(tts) = &toolsets.tts {
-        if tts.elevenlabs {
-            env(plan, "ELEVENLABS_API_KEY")?;
+        if let Some(api_key) = &tts.elevenlabs_api_key {
+            plan.set("ELEVENLABS_API_KEY", api_key.clone())?;
             plan.tts_elevenlabs = true;
         }
     }
@@ -126,30 +129,22 @@ pub fn apply(
 
     if let Some(homeassistant) = &toolsets.homeassistant {
         plan.set("HASS_URL", homeassistant.url.clone())?;
-        env(plan, "HASS_TOKEN")?;
+        plan.set("HASS_TOKEN", homeassistant.token.clone())?;
     }
     switch(&mut on, "homeassistant", toolsets.homeassistant.is_some());
 
     if let Some(spotify) = &toolsets.spotify {
         plan.set("HERMES_SPOTIFY_CLIENT_ID", spotify.client_id.clone())?;
-        plan.declare(Secret {
-            name: "SPOTIFY_OAUTH",
+        plan.documents.push(Document {
+            argument: "toolsets.spotify.oauth",
             target: Target::AuthEntry("spotify"),
-        })?;
+            login: spotify.oauth.clone(),
+        });
     }
     switch(&mut on, "spotify", toolsets.spotify.is_some());
 
     plan.toolsets = on;
     Ok(())
-}
-
-/// Declare one secret bound for the gateway's environment, under
-/// its own name.
-fn env(plan: &mut Plan, name: &'static str) -> Result<(), PrepareError> {
-    plan.declare(Secret {
-        name,
-        target: Target::Env,
-    })
 }
 
 /// Decide one toolset's place in the list: in when its switch is

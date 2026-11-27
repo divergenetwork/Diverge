@@ -1,21 +1,22 @@
-//! Provider definitions — the inference source, and the secrets it
-//! takes.
+//! Provider definitions — the inference source, and the credential
+//! it takes.
 //!
-//! AUTH IS A SECRET. Each provider here is a structure carrying its
-//! discriminator and the endpoint facts that provider needs — never
-//! a credential. A credential is a SECRET: the agent's template
-//! declares it by NAME, the program answers its registration with
-//! the names its arguments select and the mode it takes each in
-//! (every structure's `SECRET:` paragraph says which), and the proxy
-//! feeds the values on `POST /secrets` before every loop. Nothing
-//! about a run's inference auth rides the arguments, the filesystem
-//! or a mount — tool credentials (`FAL_KEY`, `HASS_TOKEN`, and
-//! friends) are secrets on the toolset structures the same way.
+//! AUTH IS AN ARGUMENT. Each provider here is a structure carrying
+//! its discriminator, the endpoint facts that provider needs, and
+//! its credential, a member of its own: `api_key` wherever the
+//! provider takes one key, and otherwise a member named for what it
+//! is — [`copilot`]'s `github_token`, [`vertex`]'s
+//! `service_account_json`, [`bedrock`]'s `auth`, whose members follow
+//! from the shape it names, and `oauth` for the four logins that
+//! refresh. A credential is required exactly where its provider is
+//! chosen; [`custom`]'s key alone is optional, and
+//! [`opencode_free`] takes none. No error, anywhere, carries a
+//! credential's value: a failure names the member.
 //!
 //! HOW THE HARNESS APPLIES IT: each structure's doc names the
 //! mechanism, and all but two reduce to setting the provider's
-//! canonical env var(s) — the secret's own name — in the gateway's
-//! PROCESS environment before Hermes starts, to the fed value. The
+//! canonical env var(s) in the gateway's PROCESS environment before
+//! Hermes starts, to the member's value. The
 //! two: [`custom`]'s key goes into `model.api_key` of the config,
 //! the only place Hermes reads a custom key from; [`vertex`]'s
 //! document goes to the file `VERTEX_CREDENTIALS_PATH` names.
@@ -24,18 +25,18 @@
 //! image must guarantee it does not — and bedrock's botocore chain
 //! reads only real env, never Hermes's dotenv.
 //!
-//! ROTATING OAUTH IS A ROTATING SECRET. Four providers — [`nous`],
+//! AN OAUTH LOGIN REFRESHES. Four providers — [`nous`],
 //! [`openai_codex`], [`minimax_oauth`], [`qwen_oauth`] —
 //! authenticate with OAuth state whose refresh tokens are
 //! SINGLE-USE: every refresh rotates them, and whoever holds the
-//! old copy is logged out. A value read and forgotten cannot carry
-//! that, so these structures declare their state document as a
-//! `rotating` secret — a JSON object the harness writes where Hermes
-//! reads it before the gateway starts, reads back as the run left it
-//! after the gateway exits, and hands to the proxy's collect, which
-//! writes it back where it was locked from. The lock the caller
-//! holds on a rotating value for the container's active period is
-//! what keeps two runs from rotating one login past each other.
+//! old copy is logged out. The arguments never change, so the
+//! argument alone cannot carry that: these structures take their
+//! state document as `oauth`, a JSON object the harness writes where
+//! Hermes reads it before the gateway starts and reads back as the
+//! run left it after the gateway exits, and the program keeps what it
+//! read back in its own database, for the next run:
+//! [`credentials`](crate::credentials) states the rule by which the
+//! kept document or the argument is used.
 //! (These providers' advertised key env vars — `NOUS_API_KEY`,
 //! `QWEN_API_KEY` — are vestigial; no resolution path reads them, so
 //! the state document is the only credential there is.)

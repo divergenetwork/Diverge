@@ -7,9 +7,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// APPLICATION: nothing. Hermes short-circuits this provider to an
 /// anonymous placeholder before any credential check, so the marker
-/// is the whole argument.
-///
-/// SECRET: none.
+/// is the whole argument. It takes no credential.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     /// The discriminator. Always `opencode-free`.

@@ -8,24 +8,22 @@ use serde::{Deserialize, Serialize};
 /// Untagged, discriminated by each variant's own `provider` constant
 /// — the same discipline the [`Agent`](super::super::super::Agent)
 /// union uses for `upstream`. One variant per provider because the
-/// argument sets genuinely differ: most are the discriminator alone,
-/// their one key a secret the variant declares by name, but bedrock
-/// names its auth mode (which fixes its name set), vertex its
-/// project and region, azure-foundry and custom carry their
-/// endpoints — and each secret applies through a different mechanism
-/// the variant's own docs spell out.
+/// argument sets genuinely differ: most are the discriminator and
+/// one `api_key`, but bedrock names its auth shape (which fixes its
+/// members), vertex its document, project and region, azure-foundry
+/// and custom carry their endpoints — and each credential applies
+/// through a mechanism the variant's own docs spell out.
 ///
 /// CLOSED at the pin, deliberately: user plugins can extend Hermes's
 /// registry, but the container runs stock Hermes, so the bundled set
 /// is the whole vocabulary — minus `copilot-acp`, whose auth is not
-/// Hermes's to hold (see [the module](super)). Rotating-OAuth
-/// providers declare their state as `rotating` secrets rather than
-/// `fixed` ones; the module doc says what that means.
+/// Hermes's to hold (see [the module](super)). The OAuth providers
+/// take a login that refreshes; the module doc says what that means.
 ///
 /// Hermes's own `auto` — provider detection from whatever
 /// credentials happen to be present — is deliberately NOT here, and
-/// under auth-as-secrets it is not even coherent: the feed carries
-/// exactly one provider's secrets, so there is nothing to detect.
+/// it is not even coherent: the arguments carry exactly one
+/// provider's credential, so there is nothing to detect.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Provider {
