@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 use crate::shared::listing::Keyed;
 use crate::daemon::creator::Creator;
 use crate::daemon::key;
-use crate::shared::containers::dependencies::Template;
 use crate::shared::containers::info::{Mode, Scope};
 use crate::shared::permission::Grant;
-use super::{Attached, Run};
+use super::{Attached, Run, Shown};
 
 /// One dependency tool of the caller's: its template and its owner,
 /// which together name it, when it was made, who made it, its tags,
-/// the template whole, the agents that depend on it, and its run, if
+/// the template, with its arguments where the request asked for
+/// them, the agents that depend on it, and its run, if
 /// its container is up. The tags are the tool's and not the
 /// template's: not in it, and not in its hash.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -57,9 +57,11 @@ pub struct Listed {
     /// not taken off. Absent when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
-    /// The template, as the program declared it: the bytes the id is
-    /// the hash of. See [`Template`].
-    pub template: Template,
+    /// The template: every member of it, as the program declared it,
+    /// and its `arguments` only where the request said
+    /// `"arguments": true`. See [`Shown`]. With the arguments it is
+    /// the bytes the id is the hash of; without them it is not.
+    pub template: Shown,
     /// The agents that depend on it now — every agent whose LAST
     /// registration declared the template under this owner, in the
     /// order they first did, each with when it last did: see

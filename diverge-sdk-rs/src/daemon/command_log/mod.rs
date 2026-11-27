@@ -15,8 +15,9 @@
 //!    a cancel, a disconnect, a connect's MCP exchanges, which the tool
 //!    log keeps — are not commands.
 //! 2. `request` is the request's body as sent, `relay` and all, with
-//!    every value a secret could be in replaced: a vault insert's
-//!    `value`.
+//!    every value a credential could be in replaced: the `arguments`
+//!    of the template an `agents/templates/create` or a
+//!    `standalone_tools/templates/create` makes.
 //! 3. `allowed` is `false` exactly when the daemon answered the request
 //!    with its `Forbidden`; a request let through that then failed — not
 //!    found, an error — was allowed. What the request came to is not

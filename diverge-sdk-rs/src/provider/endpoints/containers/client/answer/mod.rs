@@ -52,8 +52,8 @@ pub(crate) async fn answer<O, T, P, D, M, F>(
         Ask::OciBlob(digest) => oci::blob(&handle, scope, channel, image, digest, answerers.oci).await,
         Ask::OciHas(image) => oci::has(&handle, scope, channel, image, answerers.oci).await,
         Ask::OciProve(request) => oci::prove(&handle, scope, channel, image, request, answerers.oci).await,
-        Ask::Registration { id, dependencies, secrets, permissions } => {
-            registration::registration(&handle, scope, channel, id, dependencies, secrets, permissions, answerers.registrar).await
+        Ask::Registration { id, dependencies, permissions } => {
+            registration::registration(&handle, scope, channel, id, dependencies, permissions, answerers.registrar).await
         }
         Ask::Write(write_id) => write::write(&handle, scope, channel, write_id, writes, encoders).await,
         Ask::Postgres(connection_id) => {

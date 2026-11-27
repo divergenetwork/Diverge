@@ -10,7 +10,7 @@
 ///
 /// - an account: its credential's identity, else its name — an
 ///   account has one or the other;
-/// - a role, a daemon record, a vault key, a provider's volume, an
+/// - a role, a daemon record, a provider's volume, an
 ///   image: its name;
 /// - an account, a provider: its identity;
 /// - an agent: its template and its index; an agent template or a

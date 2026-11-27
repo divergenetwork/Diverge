@@ -11,11 +11,7 @@ use super::{FuseMount, Image, VolumeMount};
 /// every kind of container — the arguments included, which either
 /// kind is handed once: what differs between an agent and a tool
 /// server is what a caller says into it once it runs, on a channel,
-/// not here. No secret is here either: which secrets a container
-/// takes is its program's answer at registration, and their values
-/// are fed on a channel at every activation — see
-/// [`secrets`](crate::shared::containers::secrets) — so a request
-/// carries none, and a provider never holds one.
+/// not here.
 /// What a caller may not choose is not here at all rather than here
 /// and ignored — the container's name, its published ports, its
 /// entrypoint and its environment are the provider's, because they

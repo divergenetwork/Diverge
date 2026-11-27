@@ -11,22 +11,21 @@ use super::super::channel_request;
 use super::{Exec, ExecStream, Filetree, FiletreeStream, Read, ReadStream, Transfer, WritePath};
 use crate::wire::encode::{Encode, Writer};
 use crate::provider::endpoints::containers::agents::run::server;
-use crate::provider::endpoints::containers::client::answered::{Enqueue, FuseMount, Secrets};
+use crate::provider::endpoints::containers::client::answered::{Enqueue, FuseMount};
 use crate::provider::endpoints::containers::client::{ChannelStream, OpenError, Scoped, UnaryError, WaitError};
 use crate::shared::containers::fuse::Kind;
 use crate::shared::containers::exec;
 use crate::shared::containers::terminal;
 use crate::provider::endpoints::containers::client::answered::{FrontendOutput, TerminalDone, TerminalOpened, TerminalOutput};
 use crate::shared::containers::frontend;
-use crate::shared::containers::secrets::Values;
 use crate::shared::containers::{enqueue, fuse_mount, read, transfer, write_path};
 
 /// The scope a run opened, held for the container's life.
 ///
 /// Every channel a caller may open into an agent container is a
 /// method here: the tree watched, a file read or written, one more
-/// mount made, the image's DIVERGE.md, the queue's one verb, the
-/// secrets' feed, and the cancel. What the agent says
+/// mount made, the image's DIVERGE.md, the queue's one verb,
+/// and the cancel. What the agent says
 /// is not: it is the [`ExecuteStream`](super::ExecuteStream) `execute` handed back
 /// beside this. Each opens its own channel, so several may be in flight
 /// at once. Clones share the scope, and [`wait`](Self::wait) on any
@@ -218,17 +217,5 @@ impl ExecuteHandle {
         let payload = payload(&channel_request::Frame::FuseMount(fuse_mount::request::Request { container_path, id, kind }))
             .map_err(UnaryError::Request)?;
         self.0.unary::<FuseMount>(&payload).await
-    }
-
-    /// Feed the program its secrets' `values`, every name it
-    /// declared, at an activation: resolves once the program holds
-    /// them, relayed through the provider to the proxy, which
-    /// delivers nothing to the program until it does. The first feed
-    /// is not this: it answers the registration, before the id. A
-    /// refusal is [`Refused`](UnaryError::Refused), the program's
-    /// own words through the proxy, and is the activation's error.
-    pub async fn secrets(&self, values: Values) -> Result<(), UnaryError<Secrets>> {
-        let payload = payload(&channel_request::Frame::Secrets(values)).map_err(UnaryError::Request)?;
-        self.0.unary::<Secrets>(&payload).await
     }
 }

@@ -16,3 +16,7 @@ pub struct AgentType {}
 /// [`Template`](crate::daemon::template::Template), typed
 /// [`AgentType`].
 pub type Template = crate::daemon::template::Template<AgentType>;
+
+/// An agent template as a get or a list answers it: the daemon's one
+/// [`Shown`](crate::daemon::template::Shown), typed [`AgentType`].
+pub type Shown = crate::daemon::template::Shown<AgentType>;

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The actions over agent templates that exist, which a grant reaches
 /// as far as its `within` says. Snake case on the wire: `"get"`,
-/// `"attach"`, `"delete"`, `"list"`.
+/// `"arguments"`, `"attach"`, `"delete"`, `"list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -13,6 +13,13 @@ pub enum Over {
     /// [`agents::templates::get`](crate::daemon::endpoints::agents::templates::get)
     /// does.
     Get,
+    /// See one's arguments: have a
+    /// [`get`](crate::daemon::endpoints::agents::templates::get) or a
+    /// [`list`](crate::daemon::endpoints::agents::templates::list)
+    /// whose request says `"arguments": true` answered with them. It
+    /// is held beside `get` or `list` and never in place of either:
+    /// alone it answers nothing.
+    Arguments,
     /// Attach a tool to every agent of one, or detach one, as
     /// [`attach_agent_template`](crate::daemon::endpoints::standalone_tools::attach_agent_template)
     /// and

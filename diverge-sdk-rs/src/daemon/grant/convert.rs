@@ -1,6 +1,6 @@
 //! A tool's declared grants, as grants of the daemon's.
 
-use super::{Grant, accounts, agents, agents_templates, connected_standalone_tools, daemons, dependency_tools, identities, images, postgres_compartments, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, vault, volumes};
+use super::{Grant, accounts, agents, agents_templates, connected_standalone_tools, daemons, dependency_tools, identities, images, postgres_compartments, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, volumes};
 use crate::shared::permission::{self, Tags, Within};
 
 /// A tool's grants, as its container declared them at registration and
@@ -194,18 +194,6 @@ fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
             permission::volumes::Permission::Tags { actions, within, tags } => volumes::Permission::Tags {
                 actions,
                 within: volumes_within(within),
-                tags,
-            },
-        }),
-        permission::Grant::Vault(permission) => Grant::Vault(match permission {
-            permission::vault::Permission::Make(makes) => vault::Permission::Make(makes),
-            permission::vault::Permission::Over { actions, within } => vault::Permission::Over {
-                actions,
-                within: vault_within(within),
-            },
-            permission::vault::Permission::Tags { actions, within, tags } => vault::Permission::Tags {
-                actions,
-                within: vault_within(within),
                 tags,
             },
         }),
@@ -438,21 +426,6 @@ fn postgres_compartments_within(within: permission::Reach<permission::postgres_c
             ..Default::default()
         },
         |tags| crate::daemon::endpoints::postgres::compartments::list::client::request::Filter {
-            all_tags: tags.all_tags,
-            any_tags: tags.any_tags,
-            ..Default::default()
-        },
-    )
-}
-
-fn vault_within(within: permission::Reach<permission::vault::Listed>) -> Within<crate::daemon::endpoints::vault::list::client::request::Filter> {
-    reach(
-        within,
-        |listed| crate::daemon::endpoints::vault::list::client::request::Filter {
-            keys: listed.keys,
-            ..Default::default()
-        },
-        |tags| crate::daemon::endpoints::vault::list::client::request::Filter {
             all_tags: tags.all_tags,
             any_tags: tags.any_tags,
             ..Default::default()

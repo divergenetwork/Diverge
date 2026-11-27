@@ -40,6 +40,12 @@ use crate::daemon::endpoints::dependency_tools::list::server::response::Listed;
 /// nothing before it, then the finish. Nothing is retried. See
 /// [`grant`](crate::daemon::grant).
 ///
+/// A request that says `"arguments": true` asks one thing more: the
+/// `arguments` action over the tool, beside the `get`. A caller
+/// without it is answered `Forbidden`, and no part of the tool
+/// is sent; the same request saying `false` is judged by the `get`
+/// alone.
+///
 /// # As JSON
 ///
 /// For a client that prints what the daemon answered: the variant,

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Chat, FalseOr, Secret, StructuredDecisions};
+use super::{Chat, FalseOr, StructuredDecisions};
 use crate::shared::description::Description;
 
 /// The document of an image whose program is an agent: its `type` is
@@ -67,22 +67,6 @@ pub struct Agent {
     /// of the run request. The image's layers are read-only and are
     /// not counted, and no mount is.
     pub disk: u64,
-    /// Every secret the image's program could take, each by its name
-    /// and what it is, in the order its author states them: see
-    /// [`Secret`]. All of them, whatever the arguments: which of them
-    /// a container needs is its template's to say, by name, since
-    /// which a program takes follows from the arguments it is given,
-    /// and a template names none the image does not state. Which the
-    /// program then takes, and in what mode — read once per
-    /// activation, or held and written back — is its own answer at its
-    /// registration, see
-    /// [`secrets`](crate::shared::containers::secrets). A name is a
-    /// secret's name, and no two are alike:
-    /// [`Document::parse`](super::Document::parse) refuses a
-    /// frontmatter that says otherwise. Absent, the program takes
-    /// none.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub secrets: Vec<Secret>,
     /// Whether the program serves a frontend beneath `/frontend` (see
     /// [`frontend`](crate::shared::containers::frontend)): `true` only
     /// where the frontmatter says so. Absent, `false`.

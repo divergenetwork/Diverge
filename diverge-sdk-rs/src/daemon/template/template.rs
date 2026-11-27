@@ -9,15 +9,15 @@ use crate::daemon::endpoints::agents::create::client::request::Image;
 /// Everything an agent or a tool is made from that is the same for
 /// every one made from it, and that the image does not say for itself:
 /// what it is for, the image, what it is given beyond what the image
-/// needs, the arguments, and which of the image's secrets it needs.
+/// needs, and the arguments.
 /// What is not here is what differs one to
 /// the next — the name, the provider it runs on, every mount of
-/// providers' volumes, and which vault key each secret is — which the
+/// providers' volumes — which the
 /// [agent's](crate::daemon::endpoints::agents::create) or the
 /// [tool's](crate::daemon::endpoints::standalone_tools::create) create
 /// states; and what the image says of itself, in its
 /// [document](crate::shared::containers::info::Document): the memory
-/// and the disk it needs, every secret its program could take, and, of
+/// and the disk it needs, and, of
 /// a tool, how it is kept running. No template says any of those
 /// again, so no two templates of one image disagree about the image.
 ///
@@ -108,37 +108,15 @@ pub struct Template<Type> {
     /// that typed it would have to be revised for every image that ever
     /// ran. It is handed to the container and not read here.
     pub arguments: Value,
-    /// The secrets a container made from the template needs, by name:
-    /// all of those its image's document states, or some of them, and
-    /// none it does not state. Required, and empty for a template that
-    /// needs none.
-    ///
-    /// An image states every secret its program could take; which it
-    /// takes follows from its arguments, so the template that gives
-    /// the arguments says which. The record made from the template
-    /// binds each of these names, and no other, to a vault key. Which
-    /// of them the program then takes, and in what mode — read once
-    /// per activation, or held and written back — is its own answer at
-    /// its registration, see
-    /// [`secrets`](crate::shared::containers::secrets). Inside the
-    /// hash, sorted bytewise there. A name is not empty, and no two
-    /// are alike; a template that says otherwise is its own create's
-    /// error, and one that names a secret its image does not state is
-    /// the error of the create of an agent or a tool from it.
-    pub secrets: Vec<String>,
 }
 
 impl<Type: Clone> Template<Type> {
     /// The template as its id hashes it: the same, with the image's
     /// references absent, since where the bytes may be fetched is not
-    /// what the template is, and the secrets' names sorted bytewise,
-    /// since the order they are named in is not what is needed.
+    /// what the template is.
     pub fn hashed(&self) -> Template<Type> {
-        let mut secrets = self.secrets.clone();
-        secrets.sort_unstable();
         Template {
             image: self.image.hashed(),
-            secrets,
             ..self.clone()
         }
     }

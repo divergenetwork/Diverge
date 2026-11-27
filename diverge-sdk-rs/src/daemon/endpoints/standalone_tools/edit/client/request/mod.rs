@@ -2,7 +2,7 @@
 //!
 //! What a caller hands the daemon to change a tool: which tool, and
 //! the [`Patch`](crate::daemon::patch::Patch) to its [`Editable`]
-//! members — its name, its mounts, its secrets.
+//! members — its name and its mounts.
 
 mod editable;
 mod frame;

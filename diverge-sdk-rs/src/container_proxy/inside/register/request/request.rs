@@ -17,9 +17,7 @@ use crate::shared::containers::request::Image;
 /// The image is the provider's to supply: it is the `image` of the
 /// request that made the container, which the provider deployed the
 /// container from and carries to the proxy on its begin, and the
-/// proxy hands it on here. No secret rides here:
-/// the program declares which it takes in its answer, and their
-/// values arrive on `POST /secrets` once the caller has them.
+/// proxy hands it on here.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Request {
     /// The arguments, as the image defines them.

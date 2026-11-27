@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::shared::listing::Keyed;
 use crate::daemon::creator::Creator;
-use crate::daemon::endpoints::standalone_tools::templates::Template;
+use crate::daemon::endpoints::standalone_tools::templates::Shown;
 
 /// One template of the caller's: its id, when it was made, who made it,
-/// its tags, and the template whole. The tags are the caller's and not
+/// its tags, and the template, with its arguments where the request
+/// asked for them. The tags are the caller's and not
 /// the template's: not in it, and not in its hash.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -35,9 +36,12 @@ pub struct Listed {
     /// not taken off. Absent when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
-    /// The template, as it was handed in: the bytes the id is the
-    /// hash of.
-    pub template: Template,
+    /// The template: every member of it, as it was handed in, and
+    /// its `arguments` only where the request said
+    /// `"arguments": true`. See
+    /// [`Shown`](crate::daemon::template::Shown). With the arguments
+    /// it is the bytes the id is the hash of; without them it is not.
+    pub template: Shown,
 }
 
 /// Keyed by the id.

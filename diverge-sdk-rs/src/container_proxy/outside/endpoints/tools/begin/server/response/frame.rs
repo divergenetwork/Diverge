@@ -5,7 +5,6 @@ use std::fmt;
 use super::Registered;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
-use crate::shared::containers::secrets::Values;
 use crate::shared::error::Error;
 
 /// A begin's answer: that the connection has begun, then the proxy's
@@ -15,8 +14,8 @@ use crate::shared::error::Error;
 /// A payload leads with one byte saying which — `0` for
 /// [`Begun`](Self::Begun), `1` for [`Error`](Self::Error), `2` for
 /// [`Active`](Self::Active), `3` for [`Inactive`](Self::Inactive) —
-/// and the rest is that variant's own JSON, or nothing: the one bare
-/// word carries nothing after the byte.
+/// and the rest is that variant's own JSON, or nothing: the two bare
+/// words carry nothing after the byte.
 ///
 /// # Begun, then the activity
 ///
@@ -24,8 +23,8 @@ use crate::shared::error::Error;
 /// |-----------|-------|
 /// | a begun, then quiet, and stays open | the connection has begun, what its program declared is known, and no exchange has been in flight |
 /// | a begun, an active, and stays open | one or more MCP exchanges are in flight: the container is serving |
-/// | …an active, an inactive, and stays open | the last in flight has been answered, its rotating secrets collected; the container is idle until the next |
-/// | an error, then a finish | it has not begun — this connection had already begun, or the arguments were refused; or, after `Begun`, the secrets could not be collected |
+/// | …an active, an inactive, and stays open | the last in flight has been answered; the container is idle until the next |
+/// | an error, then a finish | it has not begun — this connection had already begun, or the arguments were refused |
 /// | a finish, with no error | the proxy is ending |
 ///
 /// # The proxy marks the activity, and only the proxy can
@@ -36,19 +35,8 @@ use crate::shared::error::Error;
 /// them in flight: the count going from none to one is
 /// [`Active`](Self::Active), sent before that exchange is delivered,
 /// and the count going from one to none is
-/// [`Inactive`](Self::Inactive), sent after the last is answered and
-/// the program has handed back its rotating secrets, which ride it.
+/// [`Inactive`](Self::Inactive), sent after the last is answered.
 /// Nothing the program says is read as either word.
-///
-/// # Nothing is delivered before a feed
-///
-/// After `Begun`, and after every `Inactive`, the proxy delivers
-/// nothing to a program that declared a secret until the server has
-/// fed the values on a
-/// [`Secrets`](super::super::super::client::channel_request::Frame::Secrets)
-/// channel and the proxy has answered it `Fed`: an exchange opened
-/// meanwhile is held, its `Active` already sent. A program that
-/// declared none is never gated.
 ///
 /// Everything else the server reads from the container — the
 /// family's own exchange, the asks the container makes — is a
@@ -62,9 +50,9 @@ pub enum Frame {
     ///
     /// Arrives once, when the container's server has taken the
     /// arguments and answered its registration — as JSON, a
-    /// [`Registered`]: the secrets it takes, a map, empty for a
-    /// program that takes none; a tool container declares no
-    /// dependencies, and a list its program answers with is ignored.
+    /// [`Registered`]: the permissions it holds, a list, empty for a
+    /// program that asks the daemon nothing; a tool container declares
+    /// no dependencies, and a list its program answers with is ignored.
     /// See [`registration`](crate::shared::containers::registration)
     /// for what the provider does with it. A channel on this scope is
     /// opened only after it.
@@ -73,10 +61,8 @@ pub enum Frame {
     ///
     /// A second begin on a connection that had one, or arguments the
     /// container refused — the container's server's own words: a
-    /// value the image will not take — or, after `Begun`, rotating
-    /// secrets the program would not hand back, named and never
-    /// valued. It is the one variant that ends the scope rather than
-    /// adding to it. See
+    /// value the image will not take. It is the one variant that ends
+    /// the scope rather than adding to it. See
     /// [`shared::error::Error`](crate::shared::error::Error) for why
     /// it says so little.
     Error(Error),
@@ -87,16 +73,12 @@ pub enum Frame {
     /// relayed from the program; never twice without an
     /// [`Inactive`](Self::Inactive) between.
     Active,
-    /// The last exchange in flight has been answered, and these are
-    /// the rotating secrets. Tag `3`.
+    /// The last exchange in flight has been answered. Tag `3`, and
+    /// nothing after it.
     ///
-    /// The program handed back every `rotating` secret it declared,
-    /// each by name to the value it leaves in it, as JSON after the
-    /// byte: the [`Values`] the caller writes back. Empty for a
-    /// program that declared none rotating. Sent by the proxy, never
-    /// relayed from the program; never without an
-    /// [`Active`](Self::Active) before it.
-    Inactive(Values),
+    /// Sent by the proxy, never relayed from the program; never
+    /// without an [`Active`](Self::Active) before it.
+    Inactive,
 }
 
 /// Tag for [`Frame::Begun`].
@@ -109,8 +91,8 @@ const ERROR: u8 = 1;
 /// byte that is the whole frame.
 pub const ACTIVE: u8 = 2;
 
-/// Tag for [`Frame::Inactive`]. Public, so a relay that carries the
-/// values' JSON without reading it can frame it.
+/// Tag for [`Frame::Inactive`]. Public, so the proxy writes the one
+/// byte that is the whole frame.
 pub const INACTIVE: u8 = 3;
 
 /// A tag, and that variant's own JSON — or the tag alone.
@@ -137,16 +119,16 @@ impl Encode for Frame {
                 out.extend_from_slice(&[ACTIVE]);
                 Ok(())
             }
-            Frame::Inactive(values) => {
+            Frame::Inactive => {
                 out.extend_from_slice(&[INACTIVE]);
-                serde_json::to_writer(out, values)
+                Ok(())
             }
         }
     }
 }
 
 impl Decode<'_> for Frame {
-    /// Five ways to fail, and three of them are JSON.
+    /// Four ways to fail, and two of them are JSON.
     type Error = FrameError;
 
     // Spelled out for the same reason as `encode` above.
@@ -158,9 +140,7 @@ impl Decode<'_> for Frame {
                 Error::decode(rest).map(Frame::Error).map_err(FrameError::Error)
             }
             ACTIVE => Ok(Frame::Active),
-            INACTIVE => serde_json::from_slice(rest)
-                .map(Frame::Inactive)
-                .map_err(FrameError::Inactive),
+            INACTIVE => Ok(Frame::Inactive),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -177,9 +157,6 @@ pub enum FrameError {
     Begun(serde_json::Error),
     /// The error did not parse.
     Error(serde_json::Error),
-    /// The rotating secrets did not parse. The message is the
-    /// parser's, which quotes no value.
-    Inactive(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -195,9 +172,6 @@ impl fmt::Display for FrameError {
             FrameError::Error(error) => {
                 write!(f, "tools begin error did not parse: {error}")
             }
-            FrameError::Inactive(error) => {
-                write!(f, "tools begin inactive secrets did not parse: {error}")
-            }
         }
     }
 }
@@ -205,7 +179,7 @@ impl fmt::Display for FrameError {
 impl std::error::Error for FrameError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            FrameError::Begun(error) | FrameError::Error(error) | FrameError::Inactive(error) => Some(error),
+            FrameError::Begun(error) | FrameError::Error(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }
     }

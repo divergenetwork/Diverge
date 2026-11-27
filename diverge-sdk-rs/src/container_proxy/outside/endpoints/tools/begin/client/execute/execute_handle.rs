@@ -3,10 +3,9 @@
 use super::super::channel_request;
 use crate::wire::client::handle::{Handle, SendError};
 use crate::wire::encode::{Encode, Writer};
-use crate::provider::endpoints::containers::client::answered::{Daemon,     McpCallTool, McpCloseSession, McpListResources, McpListTools, McpNotifications, McpReadResource, Postgres, Secrets,
+use crate::provider::endpoints::containers::client::answered::{Daemon,     McpCallTool, McpCloseSession, McpListResources, McpListTools, McpNotifications, McpReadResource, Postgres,
 };
 use crate::provider::endpoints::containers::client::{Answered, ChannelStream, OpenError, UnaryError, unary};
-use crate::shared::containers::secrets::Values;
 use crate::shared::containers::{daemon, postgres};
 use crate::shared::mcp;
 use crate::shared::mcp::attestation::Caller;
@@ -16,7 +15,7 @@ use crate::shared::mcp::session::Sessioned;
 ///
 /// Every channel the server may open on it is a method here — the
 /// image's DIVERGE.md, the five MCP exchanges into the container's
-/// server, the close of a caller's MCP session, the secrets' feed, the server's half of a database
+/// server, the close of a caller's MCP session, the server's half of a database
 /// connection — and so is answering a channel the proxy opened, by
 /// the proxy's own channel number. Clones share the scope, which is
 /// how a connector's exchanges ride the runner's begin.
@@ -106,17 +105,6 @@ impl ExecuteHandle {
         let request = Sessioned { session: session.clone(), request: mcp::close_session::request::Request };
         let payload = payload(&channel_request::Frame::McpCloseSession(request)).map_err(UnaryError::Request)?;
         unary::<McpCloseSession>(&self.handle, self.scope, &payload).await
-    }
-
-    /// Feed the program its secrets' `values`, every name it
-    /// declared: resolves once the program holds them, which opens
-    /// the gate the proxy holds every exchange behind. Once before
-    /// the run's id goes out, and at every activation after, relaying
-    /// the caller's own feed; the proxy's refusal is
-    /// [`Refused`](UnaryError::Refused), the program's own words.
-    pub async fn secrets(&self, values: Values) -> Result<(), UnaryError<Secrets>> {
-        let payload = payload(&channel_request::Frame::Secrets(values)).map_err(UnaryError::Request)?;
-        unary::<Secrets>(&self.handle, self.scope, &payload).await
     }
 
     /// The server's half of a daemon connection the proxy announced,

@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::shared;
 
-/// An error of the daemon's own — what a tool's program made of its
-/// rotating secrets that could not be kept, naming secrets and never a
-/// value — kept under its own member so nothing in it is mistaken for
+/// An error of the daemon's own, met keeping the tool — kept under its own member so nothing in it is mistaken for
 /// the item's `type`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]

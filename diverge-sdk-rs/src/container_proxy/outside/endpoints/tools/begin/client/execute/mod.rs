@@ -3,7 +3,7 @@
 //! [`execute`] opens the scope, waits for
 //! [`Begun`](super::super::server::response::Frame::Begun), and hands
 //! back four things: an [`ExecuteHandle`], through which the server
-//! opens the five MCP exchanges, feeds the secrets and answers the
+//! opens the five MCP exchanges and answers the
 //! proxy's channels; the
 //! [`Asks`](crate::container_proxy::outside::client::Asks) the proxy
 //! opens on the scope, to relay; the [`Events`], which are the main

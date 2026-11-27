@@ -6,7 +6,7 @@
 //! all, and the end of the run — and the [`ExecuteStream`], the
 //! container's activity off the scope's main stream, one [`Event`] at
 //! a time — the proxy's word that the container went active, or
-//! inactive with its rotating secrets. The channels the provider
+//! inactive. The channels the provider
 //! opens back are answered as they come, through the caller's
 //! [`Answerers`](crate::provider::client::Answerers).
 //!

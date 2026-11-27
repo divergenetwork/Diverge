@@ -1,6 +1,6 @@
 //! A request refused in its own words, whichever request it is.
 
-use super::{ClientRequest, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, vault, volumes};
+use super::{ClientRequest, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, volumes};
 use crate::shared::error::Error;
 use crate::wire::encode::{Encode, Writer};
 
@@ -93,12 +93,6 @@ impl ClientRequest<'_> {
             ClientRequest::DependencyToolsTransfer(_) => bytes(&dependency_tools::transfer::server::response::Frame::Forbidden),
             ClientRequest::StandaloneToolsAttachAgentTemplate(_) => bytes(&standalone_tools::attach_agent_template::server::response::Frame::Forbidden),
             ClientRequest::StandaloneToolsDetachAgentTemplate(_) => bytes(&standalone_tools::detach_agent_template::server::response::Frame::Forbidden),
-            ClientRequest::VaultGet(_) => bytes(&vault::get::server::response::Frame::Forbidden),
-            ClientRequest::VaultInsert(_) => bytes(&vault::insert::server::response::Frame::Forbidden),
-            ClientRequest::VaultDelete(_) => bytes(&vault::delete::server::response::Frame::Forbidden),
-            ClientRequest::VaultList(_) => bytes(&vault::list::server::response::Frame::Forbidden),
-            ClientRequest::VaultTag(_) => bytes(&vault::tag::server::response::Frame::Forbidden),
-            ClientRequest::VaultUntag(_) => bytes(&vault::untag::server::response::Frame::Forbidden),
             ClientRequest::EventsList(_) => bytes(&events::list::server::response::Frame::Forbidden),
             ClientRequest::Info(_) => bytes(&info::server::response::Frame::Forbidden),
             ClientRequest::Logs(_) => bytes(&logs::server::response::Frame::Forbidden),
@@ -249,12 +243,6 @@ impl ClientRequest<'_> {
             ClientRequest::DependencyToolsTransfer(_) => bytes(&dependency_tools::transfer::server::response::Frame::Error(error)),
             ClientRequest::StandaloneToolsAttachAgentTemplate(_) => bytes(&standalone_tools::attach_agent_template::server::response::Frame::Error(error)),
             ClientRequest::StandaloneToolsDetachAgentTemplate(_) => bytes(&standalone_tools::detach_agent_template::server::response::Frame::Error(error)),
-            ClientRequest::VaultGet(_) => bytes(&vault::get::server::response::Frame::Error(error)),
-            ClientRequest::VaultInsert(_) => bytes(&vault::insert::server::response::Frame::Error(error)),
-            ClientRequest::VaultDelete(_) => bytes(&vault::delete::server::response::Frame::Error(error)),
-            ClientRequest::VaultList(_) => bytes(&vault::list::server::response::Frame::Error(error)),
-            ClientRequest::VaultTag(_) => bytes(&vault::tag::server::response::Frame::Error(error)),
-            ClientRequest::VaultUntag(_) => bytes(&vault::untag::server::response::Frame::Error(error)),
             ClientRequest::EventsList(_) => bytes(&events::list::server::response::Frame::Error(error)),
             ClientRequest::Info(_) => bytes(&info::server::response::Frame::Error(error)),
             ClientRequest::Logs(_) => bytes(&logs::server::response::Frame::Error(error)),

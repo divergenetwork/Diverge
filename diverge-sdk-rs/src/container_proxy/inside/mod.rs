@@ -27,12 +27,10 @@
 //! The program's own server is not here. Every container's program
 //! is its own HTTP server, on the loopback at the port [`port()`]
 //! names, and the proxy dials it, forwarding what the provider's
-//! server asks: `/register`, `/secrets` and
-//! `/secrets/collect` on either kind of container — [`register`] is
-//! the first's body, the arguments, the template id and the image, and its
-//! answer, the dependencies the program declares and the secrets it
-//! takes; [`secrets`] the two over the secrets' values, fed down at
-//! every activation and collected back at every inactive — and, for
+//! server asks: `/register` on either kind of container —
+//! [`register`] is its body, the arguments, the template id and the
+//! image, and its answer, the dependencies the program declares and
+//! the permissions it holds — and, for
 //! an agent container, the loop's `/run` and `/enqueue` that
 //! [`agent`] states; for a tool container, the MCP server at
 //! `/mcp` that [`tool`] states. Each surface is stated there, once,
@@ -48,7 +46,6 @@ mod mcp;
 mod port;
 mod postgres;
 pub mod register;
-pub mod secrets;
 pub mod tool;
 
 pub use client::*;

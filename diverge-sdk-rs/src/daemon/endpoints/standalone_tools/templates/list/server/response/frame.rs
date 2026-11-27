@@ -50,6 +50,13 @@ use super::Listed;
 /// nothing before it, then the finish. Nothing is retried. See
 /// [`grant`](crate::daemon::grant).
 ///
+/// A request that says `"arguments": true` asks one thing more: the
+/// `arguments` action over every template the list shows, beside the
+/// `list`. Where the caller's `arguments` grants do not reach one of
+/// them the whole list is answered `Forbidden`, and it is not
+/// narrowed to those they reach; the same request saying `false` is
+/// judged by the `list` alone.
+///
 /// # As JSON
 ///
 /// For a client that prints what the daemon answered: the variant,

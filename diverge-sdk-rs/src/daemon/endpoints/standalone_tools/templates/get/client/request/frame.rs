@@ -7,12 +7,20 @@ use serde::{Deserialize, Serialize};
 use crate::shared::relay::Relay;
 
 /// Ask the daemon for one template. The template is named by its id,
-/// its hash.
+/// its hash, and the request states whether its arguments are to be
+/// shown.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Frame {
     /// The template's id: its hash, as its create answered it.
     pub id: String,
+    /// Whether the answer carries the template's arguments. Required,
+    /// `true` or `false`, and never supposed. `true`, the template in
+    /// the answer has its `arguments`, and the caller holds the
+    /// `arguments` action over the template beside the `get`: one who
+    /// does not is answered `Forbidden`. `false`, the template in the
+    /// answer has none, and nothing beyond the `get` is asked.
+    pub arguments: bool,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,

@@ -9,7 +9,7 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
 /// Ask the daemon to change a tool: a patch to its editable members —
-/// its name, its mounts, its secrets.
+/// its name and its mounts.
 ///
 /// The tool is named by its name, or by its template and its index,
 /// as [`reference`](crate::daemon::reference) states. The patch is

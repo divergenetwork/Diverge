@@ -15,8 +15,7 @@ use crate::shared::error::Error;
 /// Everything the begin scope's main stream says after `Begun`, for
 /// as long as the connection lives: the proxy's word whenever an
 /// exchange is in flight where none was, and whenever the last in
-/// flight has been answered — the latter with the rotating secrets
-/// the program handed back — each one [`Event`].
+/// flight has been answered, each one [`Event`].
 ///
 /// Zero or more [`Ok`], then either the end — the proxy finished the
 /// scope, which is the proxy ending — or exactly one [`Err`] and the
@@ -66,7 +65,7 @@ impl Stream for Events {
         };
         match response::Frame::decode(payload) {
             Ok(response::Frame::Active) => Poll::Ready(Some(Ok(Event::Active))),
-            Ok(response::Frame::Inactive(values)) => Poll::Ready(Some(Ok(Event::Inactive(values)))),
+            Ok(response::Frame::Inactive) => Poll::Ready(Some(Ok(Event::Inactive))),
             Ok(response::Frame::Error(error)) => self.end(EventsError::Refused(error)),
             // `Begun` comes once, and it came before this stream
             // existed.

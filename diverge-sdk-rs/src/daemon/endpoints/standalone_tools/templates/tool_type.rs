@@ -19,3 +19,7 @@ pub struct ToolType {}
 /// [`Template`](crate::daemon::template::Template), typed
 /// [`ToolType`].
 pub type Template = crate::daemon::template::Template<ToolType>;
+
+/// A tool template as a get or a list answers it: the daemon's one
+/// [`Shown`](crate::daemon::template::Shown), typed [`ToolType`].
+pub type Shown = crate::daemon::template::Shown<ToolType>;

@@ -8,7 +8,6 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::containers::postgres;
 use crate::shared::containers::daemon;
-use crate::shared::containers::secrets::Values;
 use crate::shared::mcp;
 use crate::shared::mcp::session::Sessioned;
 
@@ -28,16 +27,15 @@ use crate::shared::mcp::session::Sessioned;
 /// | `5` | [`McpCallTool`](Self::McpCallTool) |
 /// | `6` | [`McpReadResource`](Self::McpReadResource) |
 /// | `7` | [`McpNotifications`](Self::McpNotifications) |
-/// | `8` | [`Secrets`](Self::Secrets) |
+/// | `8` | unused |
 /// | `9` | [`McpCloseSession`](Self::McpCloseSession) |
 ///
 /// The first two tags are the same in both begin scopes — the second
 /// unused in each — so a reader of
 /// one is a reader of both; what follows is this family's own
-/// exchange, and then the feed, which both scopes have again under a
-/// tag of their own, and then the close of a caller's MCP session. All
+/// exchange, and then the close of a caller's MCP session. All
 /// of them reach INTO the container: the last hop of what a caller
-/// opened on the provider, or of what the caller fed.
+/// opened on the provider.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
     /// The server's half of a database connection. Tag `0`.
@@ -77,19 +75,6 @@ pub enum Frame {
     /// Carries the session alone, and answers for as long as the
     /// channel lives with what the server sends on that session.
     McpNotifications(Sessioned<mcp::notifications::request::Request>),
-    /// The secrets' values, fed to the program. Tag `8`.
-    ///
-    /// Carries the [`Values`] as JSON — every name the program
-    /// declared, each to its value — which the proxy hands the
-    /// program on `POST /secrets` and holds until that call answers.
-    /// Opened by the server once before it sends the run's id and
-    /// again at every activation, relaying the caller's own feed.
-    /// Answered once — by a
-    /// [`feed::response::Frame`](crate::shared::containers::secrets::feed::response::Frame),
-    /// `Fed` or the program's refusal — and then the finish; a `Fed`
-    /// opens the gate the proxy holds every exchange behind. See
-    /// [`secrets`](crate::shared::containers::secrets).
-    Secrets(Values),
     /// The session named, closed. Tag `9`.
     ///
     /// The last hop of the caller's close. The rules:
@@ -103,8 +88,8 @@ pub enum Frame {
     ///    [`close_session::response::Frame`](crate::shared::mcp::close_session::response::Frame)
     ///    — and then the finish: `Closed` once the session is removed,
     ///    and `Closed` for a key with no session open.
-    /// 3. It is not the container's activity: it waits behind no gate
-    ///    and marks the container neither active nor inactive.
+    /// 3. It is not the container's activity: it marks the container
+    ///    neither active nor inactive.
     /// 4. The caller's next exchange on the same key, if one comes,
     ///    makes a new session, as a first exchange does.
     McpCloseSession(Sessioned<mcp::close_session::request::Request>),
@@ -130,9 +115,6 @@ const MCP_READ_RESOURCE: u8 = 6;
 
 /// Tag for [`Frame::McpNotifications`].
 const MCP_NOTIFICATIONS: u8 = 7;
-
-/// Tag for [`Frame::Secrets`].
-const SECRETS: u8 = 8;
 
 /// Tag for [`Frame::McpCloseSession`].
 const MCP_CLOSE_SESSION: u8 = 9;
@@ -172,10 +154,6 @@ impl Encode for Frame {
             Frame::McpNotifications(request) => {
                 out.extend_from_slice(&[MCP_NOTIFICATIONS]);
                 request.encode(out)
-            }
-            Frame::Secrets(values) => {
-                out.extend_from_slice(&[SECRETS]);
-                serde_json::to_writer(out, values)
             }
             Frame::McpCloseSession(request) => {
                 out.extend_from_slice(&[MCP_CLOSE_SESSION]);
@@ -217,9 +195,6 @@ impl Decode<'_> for Frame {
             MCP_NOTIFICATIONS => Sessioned::<mcp::notifications::request::Request>::decode(rest)
                 .map(Frame::McpNotifications)
                 .map_err(FrameError::McpParams),
-            SECRETS => serde_json::from_slice(rest)
-                .map(Frame::Secrets)
-                .map_err(FrameError::Secrets),
             MCP_CLOSE_SESSION => Sessioned::<mcp::close_session::request::Request>::decode(rest)
                 .map(Frame::McpCloseSession)
                 .map_err(FrameError::McpParams),
@@ -245,9 +220,6 @@ pub enum FrameError {
     /// One variant for six tags, because they fail the same way and
     /// the tag already said which was meant.
     McpParams(serde_json::Error),
-    /// The secrets' values did not parse as JSON. The message is the
-    /// parser's, which quotes no value.
-    Secrets(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -264,9 +236,6 @@ impl fmt::Display for FrameError {
             FrameError::McpParams(error) => {
                 write!(f, "mcp request params did not parse: {error}")
             }
-            FrameError::Secrets(error) => {
-                write!(f, "secrets feed did not parse: {error}")
-            }
         }
     }
 }
@@ -274,7 +243,7 @@ impl fmt::Display for FrameError {
 impl Error for FrameError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            FrameError::McpParams(error) | FrameError::Secrets(error) => Some(error),
+            FrameError::McpParams(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
             FrameError::Daemon(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,

@@ -8,7 +8,6 @@ use crate::shared::containers::fuse::Attrs;
 use crate::shared::containers::oci;
 use crate::shared::containers::request::Image;
 use crate::shared::containers::dependencies::Template;
-use crate::shared::containers::secrets::Declaration;
 use crate::shared::permission::Grant;
 
 /// A server-opened channel request on a run scope, with nothing
@@ -37,17 +36,13 @@ pub enum Ask {
     /// nonce.
     OciProve(oci::prove::request::Request),
     /// The container's registration: the dependencies it declared, to
-    /// deploy, the secrets it takes, to resolve, and the permissions it
-    /// holds, with the run's id.
+    /// deploy, and the permissions it holds, with the run's id.
     Registration {
         /// The run's id, told before the id response.
         id: String,
         /// The dependency tool templates, in the order declared;
         /// empty for a tool container.
         dependencies: Vec<Template>,
-        /// The secrets the program takes, each by name to its mode,
-        /// in the order declared.
-        secrets: Declaration,
         /// The grants the program holds over the caller, in the order
         /// declared; empty for an agent container.
         permissions: Vec<Grant>,
@@ -103,7 +98,6 @@ impl From<agents::run::server::channel_request::Frame<'_>> for Ask {
             Frame::Registration(request) => Ask::Registration {
                 id: request.id.into_owned(),
                 dependencies: request.dependencies.into_owned(),
-                secrets: request.secrets.into_owned(),
                 permissions: request.permissions.into_owned(),
             },
             Frame::Write(request) => Ask::Write(request.write_id),
@@ -157,7 +151,6 @@ impl From<tools::run::server::channel_request::Frame<'_>> for Ask {
             Frame::Registration(request) => Ask::Registration {
                 id: request.id.into_owned(),
                 dependencies: request.dependencies.into_owned(),
-                secrets: request.secrets.into_owned(),
                 permissions: request.permissions.into_owned(),
             },
             Frame::Write(request) => Ask::Write(request.write_id),

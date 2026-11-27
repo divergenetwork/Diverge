@@ -1,4 +1,4 @@
-//! Editing a tool: a patch to its name, its mounts, its secrets.
+//! Editing a tool: a patch to its name and its mounts.
 //!
 //! One request, one answer. A client names a tool of its own and a
 //! patch — see [`patch`](crate::daemon::patch) — to the tool's

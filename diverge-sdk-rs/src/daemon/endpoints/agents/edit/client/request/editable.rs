@@ -1,6 +1,5 @@
 //! The agent as a patch sees it.
 
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::daemon::endpoints::agents::create::client::request::{FuseMount, VolumeMount};
@@ -39,13 +38,4 @@ pub struct Editable {
     /// daemon, mounted one each over FUSE: see [`FuseMount`].
     #[serde(default)]
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret the template declares is, as the
-    /// create's [`secrets`](crate::daemon::create::Inner::secrets)
-    /// gave them: every name the template declares and no other, else
-    /// the edit's `secrets` error; a key named anew takes the `use`
-    /// grant over it, and must be one the vault holds with at least
-    /// one value, else the same error. Resolved at the container's
-    /// next activation.
-    #[serde(default)]
-    pub secrets: IndexMap<String, String>,
 }

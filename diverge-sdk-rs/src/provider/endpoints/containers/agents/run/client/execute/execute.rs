@@ -36,8 +36,8 @@ use crate::shared::error::Error;
 /// # The serving task starts before the first frame is read
 ///
 /// The provider asks before it answers: the image's manifest and
-/// blobs, the container's registration — its dependencies deployed,
-/// its secrets resolved and fed — and the FUSE mounts' first reads
+/// blobs, the container's registration — its dependencies
+/// deployed — and the FUSE mounts' first reads
 /// are all channels it opens on the scope before it sends the id. A
 /// run that read the id first and served the channels after would
 /// wait for an id the provider is waiting on it to earn, and neither
@@ -143,7 +143,7 @@ where
         // The agent speaks only after the id, and no loop runs before
         // it; any of the three first is a provider out of order,
         // which is a frame this end cannot place.
-        server::response::Frame::Chunk(_) | server::response::Frame::Active | server::response::Frame::Inactive(_) => {
+        server::response::Frame::Chunk(_) | server::response::Frame::Active | server::response::Frame::Inactive => {
             return Err(ExecuteError::Misrouted);
         }
     };

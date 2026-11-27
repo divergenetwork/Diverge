@@ -37,8 +37,8 @@ use crate::shared::error::Error;
 /// # The serving task starts before the first frame is read
 ///
 /// The provider asks before it answers: the image's manifest and
-/// blobs, the container's registration — its secrets resolved and
-/// fed — and the FUSE mounts' first reads are all channels it opens
+/// blobs, the container's registration — its permissions
+/// held — and the FUSE mounts' first reads are all channels it opens
 /// on the scope before it sends the id. A run that read the id first
 /// and served the channels after would wait for an id the provider
 /// is waiting on it to earn, and neither would move. So the serving
@@ -144,7 +144,7 @@ where
         // No exchange is in flight before the id; either word first
         // is a provider out of order, which is a frame this end
         // cannot place.
-        server::response::Frame::Active | server::response::Frame::Inactive(_) => {
+        server::response::Frame::Active | server::response::Frame::Inactive => {
             return Err(ExecuteError::Misrouted);
         }
     };

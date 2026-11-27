@@ -12,14 +12,9 @@
 //! [`Begun`](server::response::Frame::Begun) on channel `0` once the
 //! container's server has taken them — carrying what the server
 //! declared in return, the dependencies for the provider to have
-//! deployed and the secrets it takes for the provider to have
-//! resolved, see [`Registered`](server::response::Registered) — and
+//! deployed, see [`Registered`](server::response::Registered) — and
 //! then the agent's conversation there — every chunk, for as long as
-//! the connection lives, each loop's end carrying the rotating
-//! secrets back; the finish is the proxy ending. The secrets' values
-//! come down a channel of the server's,
-//! [`Secrets`](client::channel_request::Frame::Secrets), before
-//! anything is delivered to the program.
+//! the connection lives; the finish is the proxy ending.
 //!
 //! # Channels go both ways here
 //!

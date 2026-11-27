@@ -27,10 +27,9 @@ use crate::wire::frame;
 /// proxy's two words about the container's activity, which the
 /// [`Events`] hand out, and its end is how theirs is heard. What
 /// comes back is the handle, the asks the proxy will open, the
-/// events, and what the container's program declared — the secrets
-/// it takes, which the server has the caller register before it
-/// feeds the first values on the handle's
-/// [`secrets`](ExecuteHandle::secrets).
+/// events, and what the container's program declared — the
+/// permissions it holds, which the server has the caller register
+/// before it sends the run's id.
 pub async fn execute(
     handle: &Handle,
     arguments: Value,
@@ -56,7 +55,7 @@ pub async fn execute(
         // No exchange is in flight before `Begun`; either word first
         // is a proxy out of order, which is a frame this end cannot
         // place.
-        response::Frame::Active | response::Frame::Inactive(_) => return Err(ExecuteError::Misrouted),
+        response::Frame::Active | response::Frame::Inactive => return Err(ExecuteError::Misrouted),
     };
 
     Ok((

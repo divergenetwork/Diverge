@@ -6,7 +6,7 @@ use std::fmt;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
-use super::{accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, vault, volumes};
+use super::{accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, requests, roles, standalone_tools, volumes};
 
 /// The payload of a
 /// [`Request`](crate::wire::frame::client::ClientFrame::Request).
@@ -192,19 +192,6 @@ pub enum ClientRequest<'a> {
     StandaloneToolsDetachAgentTemplate(standalone_tools::detach_agent_template::client::request::Frame),
     /// Something this version cannot read, kept as it arrived.
     ///
-    /// Tag `103`. Get one vault key, with its value.
-    VaultGet(vault::get::client::request::Frame),
-    /// Tag `104`. Insert a value into a vault key: the key made,
-    /// the value appended, or a slot's value replaced.
-    VaultInsert(vault::insert::client::request::Frame),
-    /// Tag `105`. Delete a vault key nothing binds.
-    VaultDelete(vault::delete::client::request::Frame),
-    /// Tag `106`. List the vault's keys, narrowed, and keep the list.
-    VaultList(vault::list::client::request::Frame),
-    /// Tag `107`. Put tags on a vault key.
-    VaultTag(vault::tag::client::request::Frame),
-    /// Tag `108`. Take tags off a vault key.
-    VaultUntag(vault::untag::client::request::Frame),
     /// Tag `109`. List the events, narrowed, and keep the list.
     EventsList(events::list::client::request::Frame),
     /// Tag `111`. Say what the daemon is: its version.
@@ -430,12 +417,6 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::DependencyToolsDownload(frame) => frame.encode(out),
             ClientRequest::DependencyToolsUpload(frame) => frame.encode(out),
             ClientRequest::DependencyToolsTransfer(frame) => frame.encode(out),
-            ClientRequest::VaultGet(frame) => frame.encode(out),
-            ClientRequest::VaultInsert(frame) => frame.encode(out),
-            ClientRequest::VaultDelete(frame) => frame.encode(out),
-            ClientRequest::VaultList(frame) => frame.encode(out),
-            ClientRequest::VaultTag(frame) => frame.encode(out),
-            ClientRequest::VaultUntag(frame) => frame.encode(out),
             ClientRequest::EventsList(frame) => frame.encode(out),
             ClientRequest::Info(frame) => frame.encode(out),
             ClientRequest::Logs(frame) => frame.encode(out),
@@ -761,24 +742,6 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             102 => standalone_tools::detach_agent_template::client::request::Frame::decode(bytes)
                 .map(ClientRequest::StandaloneToolsDetachAgentTemplate)
                 .ok(),
-            103 => vault::get::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultGet)
-                .ok(),
-            104 => vault::insert::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultInsert)
-                .ok(),
-            105 => vault::delete::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultDelete)
-                .ok(),
-            106 => vault::list::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultList)
-                .ok(),
-            107 => vault::tag::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultTag)
-                .ok(),
-            108 => vault::untag::client::request::Frame::decode(bytes)
-                .map(ClientRequest::VaultUntag)
-                .ok(),
             109 => events::list::client::request::Frame::decode(bytes)
                 .map(ClientRequest::EventsList)
                 .ok(),
@@ -1051,12 +1014,6 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::DependencyToolsDownload(_) => f.write_str("dependency tools download"),
             ClientRequest::DependencyToolsUpload(_) => f.write_str("dependency tools upload"),
             ClientRequest::DependencyToolsTransfer(_) => f.write_str("dependency tools transfer"),
-            ClientRequest::VaultGet(_) => f.write_str("vault get"),
-            ClientRequest::VaultInsert(_) => f.write_str("vault insert"),
-            ClientRequest::VaultDelete(_) => f.write_str("vault delete"),
-            ClientRequest::VaultList(_) => f.write_str("vault list"),
-            ClientRequest::VaultTag(_) => f.write_str("vault tag"),
-            ClientRequest::VaultUntag(_) => f.write_str("vault untag"),
             ClientRequest::EventsList(_) => f.write_str("events list"),
             ClientRequest::Info(_) => f.write_str("info"),
             ClientRequest::Logs(_) => f.write_str("logs"),
@@ -1210,12 +1167,6 @@ pub fn tag(path: &str) -> Option<u8> {
         "dependency_tools/transfer" => Some(97),
         "standalone_tools/attach_agent_template" => Some(101),
         "standalone_tools/detach_agent_template" => Some(102),
-        "vault/get" => Some(103),
-        "vault/insert" => Some(104),
-        "vault/delete" => Some(105),
-        "vault/list" => Some(106),
-        "vault/tag" => Some(107),
-        "vault/untag" => Some(108),
         "events/list" => Some(109),
         "info" => Some(111),
         "logs" => Some(114),
@@ -1366,12 +1317,6 @@ impl ClientRequest<'_> {
             ClientRequest::DependencyToolsDownload(_) => "dependency_tools/download",
             ClientRequest::DependencyToolsUpload(_) => "dependency_tools/upload",
             ClientRequest::DependencyToolsTransfer(_) => "dependency_tools/transfer",
-            ClientRequest::VaultGet(_) => "vault/get",
-            ClientRequest::VaultInsert(_) => "vault/insert",
-            ClientRequest::VaultDelete(_) => "vault/delete",
-            ClientRequest::VaultList(_) => "vault/list",
-            ClientRequest::VaultTag(_) => "vault/tag",
-            ClientRequest::VaultUntag(_) => "vault/untag",
             ClientRequest::EventsList(_) => "events/list",
             ClientRequest::Info(_) => "info",
             ClientRequest::Logs(_) => "logs",

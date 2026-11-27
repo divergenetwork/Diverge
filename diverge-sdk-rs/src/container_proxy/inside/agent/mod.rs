@@ -5,35 +5,26 @@
 //! its only caller. This module is that server's contract — the
 //! loop's two calls, their bodies, their answers — stated once,
 //! for the program that answers them and the proxy that makes them,
-//! beside the calls every container answers:
-//! [`register`](crate::container_proxy::inside::register) and the
-//! two over its [`secrets`](crate::container_proxy::inside::secrets).
+//! beside the call every container answers:
+//! [`register`](crate::container_proxy::inside::register).
 //! What the arguments may be is not among them: that is the image's
 //! `/.diverge/DIVERGE.md`, which the proxy reads from the container and the program
 //! is never asked for.
 //!
 //! | the proxy calls | with | the program answers |
 //! |-----------------|------|---------------------|
-//! | `POST /register` | the [`register::request::Request`](crate::container_proxy::inside::register::request::Request) JSON | `2xx` with the [`register::response::Response`](crate::container_proxy::inside::register::response::Response) JSON, the dependencies the program declares and the secrets it takes, the arguments, the template id and the image held for the container's life; or a non-`2xx` |
-//! | `POST /secrets` | the [`secrets::feed::request::Request`](crate::container_proxy::inside::secrets::feed::request::Request) JSON | `2xx` once the values are held, its body unread; or a non-`2xx` |
-//! | `POST /secrets/collect` | the [`secrets::collect::request::Request`](crate::container_proxy::inside::secrets::collect::request::Request) JSON | `2xx` with the [`secrets::collect::response::Response`](crate::container_proxy::inside::secrets::collect::response::Response) JSON, every name asked for with its value; or a non-`2xx` |
+//! | `POST /register` | the [`register::request::Request`](crate::container_proxy::inside::register::request::Request) JSON | `2xx` with the [`register::response::Response`](crate::container_proxy::inside::register::response::Response) JSON, the dependencies the program declares, the arguments, the template id and the image held for the container's life; or a non-`2xx` |
 //! | `POST /run` | the [`run::request::Request`] JSON: chat messages, or one structured decision, by its `type` | `2xx` as `text/event-stream`, every `data:` one `AgenticLoopChunk` JSON — the messages' user parts first, or the decision as one chunk — the stream's end the run ended; or a non-`2xx` |
 //! | `POST /enqueue` | the [`enqueue::request::Request`] JSON, the proxy's queue joined | `204` at once, the messages accepted; `409` `{"kind":"closed"}` once the loop's last look has closed the run; or another `4xx`, content the program will not take, checked before accepting |
 //!
 //! # Registration comes first, and once
 //!
 //! The arguments are fixed for the container's life, and so are the
-//! dependencies the program answers with and the modes it declares
-//! its secrets in. The proxy registers them exactly once, before the
+//! dependencies the program answers with. The proxy registers them
+//! exactly once, before the
 //! first loop; the program refuses a `/run` before that
 //! (`{"kind":"unregistered"}`) and refuses any second `/register`,
-//! whatever it carries (`{"kind":"registered"}`, `409`). The secrets'
-//! values are not fixed: they are fed on `POST /secrets` once the
-//! registration is answered and again at every activation — a loop
-//! about to start — and the `rotating` ones are collected on
-//! `POST /secrets/collect` at every inactive — a loop ended — so a
-//! value the program changed in a loop is the value the next loop is
-//! fed. Every loop runs as the agent the program made of the
+//! whatever it carries (`{"kind":"registered"}`, `409`). Every loop runs as the agent the program made of the
 //! arguments, on its own prompt, each resuming the conversation the
 //! last one left.
 //!

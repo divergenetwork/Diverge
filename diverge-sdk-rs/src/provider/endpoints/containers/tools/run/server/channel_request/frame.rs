@@ -128,14 +128,13 @@ pub enum Frame<'a> {
     ///
     /// Every `chmod(2)`, `chown(2)` and `utimensat(2)`.
     FuseSetattr(fuse::setattr::request::Request<'a>),
-    /// Register the container: resolve the secrets it takes. Tag
-    /// `15`.
+    /// Register the container: hold it to the permissions it
+    /// declared. Tag `15`.
     ///
     /// Opened once, after the proxy's `Begun` carried a non-empty
-    /// declaration, and before the id; its dependencies are empty,
-    /// since a tool container declares none. Answered with the
-    /// secrets' first values, which the provider feeds to the
-    /// container before it sends the id. See
+    /// list of permissions, and before the id; its dependencies are
+    /// empty, since a tool container declares none. Answered once,
+    /// deployed or why not, and the id follows a deploy. See
     /// [`registration`](crate::shared::containers::registration).
     Registration(registration::request::Request<'a>),
     /// The proof that the caller holds the image it supplied: the

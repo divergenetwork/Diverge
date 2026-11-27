@@ -6,15 +6,17 @@
 //! failure. [`Listed`] is what one tool is: one dependency tool as the
 //! daemon holds it — its template and its owner, when it was made, who
 //! made it — its [`creator`](crate::daemon::creator) — its tags, the
-//! template itself, the agents that depend on it, each an
+//! template itself, a [`Shown`], the agents that depend on it, each an
 //! [`Attached`], and its [`Run`], if any.
 
 mod attached;
 mod frame;
 mod listed;
 mod run;
+mod shown;
 
 pub use attached::*;
 pub use frame::*;
 pub use listed::*;
 pub use run::*;
+pub use shown::*;

@@ -70,13 +70,12 @@ pub enum Frame<'a> {
     /// the image from the caller, before it asks for anything of it;
     /// see [`oci::has`](crate::shared::containers::oci::has).
     OciHas(oci::has::request::Request),
-    /// Register the container: deploy the dependencies it declared,
-    /// and resolve the secrets it takes. Tag `3`.
+    /// Register the container: deploy the dependencies it declared.
+    /// Tag `3`.
     ///
     /// Opened once, after the proxy's `Begun` carried a non-empty
-    /// list or a non-empty declaration, and before the id; answered
-    /// with the secrets' first values, which the provider feeds to
-    /// the container before it sends the id. See
+    /// list of dependencies, and before the id; answered once,
+    /// deployed or why not, and the id follows a deploy. See
     /// [`registration`](crate::shared::containers::registration).
     Registration(registration::request::Request<'a>),
     /// Send the content for a write. Tag `4`.

@@ -39,6 +39,12 @@ use crate::daemon::endpoints::agents::templates::list::server::response::Listed;
 /// nothing before it, then the finish. Nothing is retried. See
 /// [`grant`](crate::daemon::grant).
 ///
+/// A request that says `"arguments": true` asks one thing more: the
+/// `arguments` action over the template, beside the `get`. A caller
+/// without it is answered `Forbidden`, and no part of the template
+/// is sent; the same request saying `false` is judged by the `get`
+/// alone.
+///
 /// # As JSON
 ///
 /// For a client that prints what the daemon answered: the variant,

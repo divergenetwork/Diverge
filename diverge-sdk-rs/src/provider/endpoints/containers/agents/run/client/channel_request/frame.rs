@@ -9,7 +9,6 @@ use crate::wire::encode::{Encode, Writer};
 use crate::shared::containers::exec;
 use crate::shared::containers::frontend;
 use crate::shared::containers::terminal;
-use crate::shared::containers::secrets::Values;
 use crate::shared::containers::enqueue;
 use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path};
 
@@ -30,7 +29,7 @@ use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path
 /// | `7` | [`Enqueue`](Self::Enqueue) |
 /// | `8` | unused |
 /// | `9` | [`FuseMount`](Self::FuseMount) |
-/// | `10` | [`Secrets`](Self::Secrets) |
+/// | `10` | unused |
 /// | `11` | [`Exec`](Self::Exec) |
 /// | `12` | [`TerminalOpen`](Self::TerminalOpen) |
 /// | `13` | [`TerminalAttach`](Self::TerminalAttach) |
@@ -45,8 +44,10 @@ use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path
 /// order, so a reader of one is a reader of all; what follows is this
 /// family's own exchange — no daemon connection among them, since an
 /// agent container holds no account and asks the daemon nothing —
-/// and then the mount and the feed, which every scope has again, each
-/// under a tag of its own. All of them but the first reach INTO the
+/// and then the mount, which every scope has again, under a tag of
+/// its own. Tag `10` is unused: it once carried a feed of values to
+/// the program, and it is never given to another request. All of
+/// them but the first reach INTO the
 /// container, which is the thing a caller cannot dial: it runs on the
 /// provider. That is the whole reason these channels open outward
 /// from the client rather than the other way. What comes OUT of the
@@ -131,20 +132,6 @@ pub enum Frame {
     /// the answer precedes every ask of the id. See
     /// [`fuse_mount`](crate::shared::containers::fuse_mount).
     FuseMount(fuse_mount::request::Request),
-    /// The secrets' values, fed to the program at an activation. Tag
-    /// `10`.
-    ///
-    /// Carries the [`Values`] as JSON — every name the program
-    /// declared, each to its value, a `fixed` one read and a
-    /// `rotating` one locked — which the provider relays to the proxy,
-    /// and the proxy hands the program before it delivers anything.
-    /// Opened by the caller when an idle container is about to
-    /// receive work and holds no values: after the registration's
-    /// own feed, that is after every `Inactive`. Answered once — by a
-    /// [`feed::response::Frame`](crate::shared::containers::secrets::feed::response::Frame),
-    /// `Fed` or the program's refusal — and then the finish. See
-    /// [`secrets`](crate::shared::containers::secrets).
-    Secrets(Values),
     /// Run one command in the container, its output streamed: the
     /// provider opens an exec scope on the proxy and relays the stream,
     /// as [`exec`](crate::shared::containers::exec) states it. The
@@ -195,9 +182,6 @@ const ENQUEUE: u8 = 7;
 
 /// Tag for [`Frame::FuseMount`].
 const FUSE_MOUNT: u8 = 9;
-
-/// Tag for [`Frame::Secrets`].
-const SECRETS: u8 = 10;
 
 /// Tag for [`Frame::Exec`].
 const EXEC: u8 = 11;
@@ -257,10 +241,6 @@ impl Encode for Frame {
             Frame::FuseMount(request) => {
                 out.extend_from_slice(&[FUSE_MOUNT]);
                 request.encode(out)
-            }
-            Frame::Secrets(values) => {
-                out.extend_from_slice(&[SECRETS]);
-                serde_json::to_writer(out, values)
             }
             Frame::Exec(request) => {
                 out.extend_from_slice(&[EXEC]);
@@ -322,9 +302,6 @@ impl Decode<'_> for Frame {
             FUSE_MOUNT => fuse_mount::request::Request::decode(rest)
                 .map(Frame::FuseMount)
                 .map_err(FrameError::FuseMount),
-            SECRETS => serde_json::from_slice(rest)
-                .map(Frame::Secrets)
-                .map_err(FrameError::Secrets),
             EXEC => exec::request::Request::decode(rest)
                 .map(Frame::Exec)
                 .map_err(FrameError::Exec),
@@ -370,9 +347,6 @@ pub enum FrameError {
     Enqueue(serde_json::Error),
     /// The mount request did not parse.
     FuseMount(serde_json::Error),
-    /// The secrets' values did not parse as JSON. The message is the
-    /// parser's, which quotes no value.
-    Secrets(serde_json::Error),
     /// The exec request did not parse.
     Exec(serde_json::Error),
     /// A terminal request did not parse.
@@ -408,9 +382,6 @@ impl fmt::Display for FrameError {
             FrameError::FuseMount(error) => {
                 write!(f, "fuse mount request did not parse: {error}")
             }
-            FrameError::Secrets(error) => {
-                write!(f, "secrets feed did not parse: {error}")
-            }
             FrameError::Exec(error) => {
                 write!(f, "exec request did not parse: {error}")
             }
@@ -433,7 +404,6 @@ impl Error for FrameError {
             | FrameError::Transfer(error)
             | FrameError::Enqueue(error)
             | FrameError::FuseMount(error)
-            | FrameError::Secrets(error)
             | FrameError::Exec(error)
             | FrameError::Terminal(error)
             | FrameError::Frontend(error) => Some(error),

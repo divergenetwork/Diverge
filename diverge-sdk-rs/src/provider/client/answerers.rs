@@ -8,8 +8,8 @@ use std::sync::Arc;
 ///
 /// A run executor takes one of these and answers every server-opened
 /// channel through it: the image's pieces from [`oci`](Self::oci), the
-/// container's registration — its dependencies deployed, its secrets
-/// resolved — from [`registrar`](Self::registrar), the container's
+/// container's registration — its dependencies deployed, its
+/// permissions held — from [`registrar`](Self::registrar), the container's
 /// database connections through [`postgres`](Self::postgres), its
 /// daemon connection through [`daemon`](Self::daemon), its tool calls
 /// through [`mcp`](Self::mcp), and the files it mounted live through
@@ -30,7 +30,7 @@ pub struct Answerers<O, T, P, D, M, F> {
     /// ([`OciStore`](super::OciStore)).
     pub oci: Arc<O>,
     /// The container's registration: its dependencies run, its
-    /// secrets resolved ([`Registrar`](super::Registrar)).
+    /// permissions held ([`Registrar`](super::Registrar)).
     pub registrar: Arc<T>,
     /// The database the container dials
     /// ([`PostgresDialer`](super::PostgresDialer)).

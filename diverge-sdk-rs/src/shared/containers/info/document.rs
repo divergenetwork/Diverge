@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, Secret, StandaloneTool, StructuredDecisions, named};
+use super::{Agent, Chat, DependencyTool, FalseOr, Mode, ParseError, Scope, StandaloneTool, StructuredDecisions, named};
 use crate::shared::description::Description;
 
 /// `/.diverge/DIVERGE.md`, parsed: an agent's image's document, a
@@ -14,8 +14,7 @@ use crate::shared::description::Description;
 /// style and so reads as a frontmatter anywhere one is expected. Its
 /// member `type` says which of the three it is, and what else it may
 /// hold follows from that. All three have `name`, `description`,
-/// `schema`, `memory` and `disk`; `secrets` where the program needs
-/// any; and `frontend` where the program serves one. An agent's has
+/// `schema`, `memory` and `disk`; and `frontend` where the program serves one. An agent's has
 /// `chat` and `structured_decisions` besides, at least one of them an
 /// object. A standalone tool's has `mode` besides. A dependency tool's
 /// has `mode` and `scope` besides. No frontmatter has a member that is
@@ -64,8 +63,6 @@ struct AgentFrontmatter {
     schema: Value,
     memory: u64,
     disk: u64,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<Secret>,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -84,8 +81,6 @@ struct StandaloneToolFrontmatter {
     schema: Value,
     memory: u64,
     disk: u64,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<Secret>,
     mode: Mode,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
@@ -101,8 +96,6 @@ struct DependencyToolFrontmatter {
     schema: Value,
     memory: u64,
     disk: u64,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    secrets: Vec<Secret>,
     mode: Mode,
     scope: Scope,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -130,19 +123,14 @@ fn is_fence(line: &str) -> bool {
     line.strip_suffix('\n').unwrap_or(line) == "---"
 }
 
-/// Rules 6 to 8 of [`Document::parse`]: `name` is an image's name,
-/// `schema` is an object, and every secret's name is a secret's name,
-/// and its own.
-fn held(name: &str, schema: &Value, secrets: &[Secret]) -> Result<(), ParseError> {
+/// Rules 6 and 7 of [`Document::parse`]: `name` is an image's name,
+/// and `schema` is an object.
+fn held(name: &str, schema: &Value) -> Result<(), ParseError> {
     if !named(name) {
         return Err(ParseError::Name);
     }
     if !schema.is_object() {
         return Err(ParseError::NotObject);
-    }
-    let alike = |index: usize, secret: &Secret| secrets[..index].iter().any(|before| before.name == secret.name);
-    if secrets.iter().enumerate().any(|(index, secret)| !Secret::named(&secret.name) || alike(index, secret)) {
-        return Err(ParseError::Secrets);
     }
     Ok(())
 }
@@ -173,10 +161,7 @@ impl Document {
     ///      [`DESCRIPTION_CHARACTERS`](crate::shared::description::DESCRIPTION_CHARACTERS)
     ///      characters; `schema`; `memory` and `disk`, each a whole
     ///      number of bytes from 0 to 2 to the power 64 less 1; all
-    ///      five required. And perhaps `secrets`, an array of objects,
-    ///      each of exactly `name`, a string, and `description`, a
-    ///      string that is a [`Description`], both required: see
-    ///      [`Secret`]. Empty when absent. And perhaps `frontend`, a
+    ///      five required. And perhaps `frontend`, a
     ///      boolean, `false` when absent.
     ///    - An agent's has, besides, perhaps `chat` and perhaps
     ///      `structured_decisions`, each `false` or an object as
@@ -184,7 +169,7 @@ impl Document {
     ///    - A standalone tool's has, besides, `mode`, the string `lazy`
     ///      or the string `eager`, required.
     ///    - A dependency tool's has, besides, `mode`, the same, and
-    ///      `scope`, the string `instance`, `template` or `global`,
+    ///      `scope`, the string `instance` or `global`,
     ///      both required.
     ///
     ///    A member of another type's is a member that is none of this
@@ -204,19 +189,13 @@ impl Document {
     ///    [`ParseError::Name`].
     /// 7. `schema` is an object, since a JSON Schema is one; any other
     ///    value is [`ParseError::NotObject`].
-    /// 8. Every name in `secrets` is a secret's name — one line of
-    ///    plain text, trimmed, of one to
-    ///    [`SECRET_NAME_CHARACTERS`](super::SECRET_NAME_CHARACTERS)
-    ///    characters — and no two are alike. Otherwise
-    ///    [`ParseError::Secrets`]. A secret's `description` that is no
-    ///    [`Description`] is rule 5's, [`ParseError::Json`].
-    /// 9. In an agent's, at least one of `chat` and
+    /// 8. In an agent's, at least one of `chat` and
     ///    `structured_decisions` is an object. Both `false`, both
     ///    absent, or one `false` and the other absent, is
     ///    [`ParseError::Neither`].
-    /// 10. The body is everything after the closing line, as the
-    ///     author left it: nothing is trimmed, and a document whose
-    ///     closing line is its last has an empty body.
+    /// 9. The body is everything after the closing line, as the
+    ///    author left it: nothing is trimmed, and a document whose
+    ///    closing line is its last has an empty body.
     ///
     /// The text's size is not among them: whoever reads the file out
     /// of an image holds it to [`MAX_BYTES`](super::MAX_BYTES) before
@@ -239,7 +218,7 @@ impl Document {
         }
     }
 
-    /// Rules 3 to 9 of [`parse`](Self::parse), over the frontmatter's
+    /// Rules 3 to 8 of [`parse`](Self::parse), over the frontmatter's
     /// text, with the body it closes over.
     fn of(frontmatter: &str, body: String) -> Result<Document, ParseError> {
         // Rule 3.
@@ -250,28 +229,28 @@ impl Document {
             _ => return Err(ParseError::Type),
         };
         let members = Value::Object(members);
-        // Rules 5 to 9.
+        // Rules 5 to 8.
         Ok(match kind.as_str() {
             "agent" => {
-                let AgentFrontmatter { name, description, schema, memory, disk, secrets, frontend, chat, structured_decisions } =
+                let AgentFrontmatter { name, description, schema, memory, disk, frontend, chat, structured_decisions } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&name, &schema, &secrets)?;
+                held(&name, &schema)?;
                 if chat.is_false() && structured_decisions.is_false() {
                     return Err(ParseError::Neither);
                 }
-                Document::Agent(Agent { name, description, schema, memory, disk, secrets, frontend, chat, structured_decisions, body })
+                Document::Agent(Agent { name, description, schema, memory, disk, frontend, chat, structured_decisions, body })
             }
             "standalone_tool" => {
-                let StandaloneToolFrontmatter { name, description, schema, memory, disk, secrets, mode, frontend } =
+                let StandaloneToolFrontmatter { name, description, schema, memory, disk, mode, frontend } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&name, &schema, &secrets)?;
-                Document::StandaloneTool(StandaloneTool { name, description, schema, memory, disk, secrets, mode, frontend, body })
+                held(&name, &schema)?;
+                Document::StandaloneTool(StandaloneTool { name, description, schema, memory, disk, mode, frontend, body })
             }
             "dependency_tool" => {
-                let DependencyToolFrontmatter { name, description, schema, memory, disk, secrets, mode, scope, frontend } =
+                let DependencyToolFrontmatter { name, description, schema, memory, disk, mode, scope, frontend } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
-                held(&name, &schema, &secrets)?;
-                Document::DependencyTool(DependencyTool { name, description, schema, memory, disk, secrets, mode, scope, frontend, body })
+                held(&name, &schema)?;
+                Document::DependencyTool(DependencyTool { name, description, schema, memory, disk, mode, scope, frontend, body })
             }
             _ => return Err(ParseError::Type),
         })
@@ -279,7 +258,7 @@ impl Document {
 
     /// Write the document back as its text: `---`, the frontmatter —
     /// `type` first, then the name, the description, the schema, the
-    /// memory, the disk, `secrets` when there are any, in a tool's
+    /// memory, the disk, in a tool's
     /// `mode`, in a dependency tool's `scope`, `frontend` when it is
     /// `true`, and, in an agent's, `chat` and `structured_decisions`
     /// when they are not `false` — pretty-printed, `---`, and the
@@ -301,7 +280,6 @@ impl Document {
                 schema: agent.schema.clone(),
                 memory: agent.memory,
                 disk: agent.disk,
-                secrets: agent.secrets.clone(),
                 frontend: agent.frontend,
                 chat: agent.chat,
                 structured_decisions: agent.structured_decisions,
@@ -312,7 +290,6 @@ impl Document {
                 schema: tool.schema.clone(),
                 memory: tool.memory,
                 disk: tool.disk,
-                secrets: tool.secrets.clone(),
                 mode: tool.mode,
                 frontend: tool.frontend,
             }),
@@ -322,7 +299,6 @@ impl Document {
                 schema: tool.schema.clone(),
                 memory: tool.memory,
                 disk: tool.disk,
-                secrets: tool.secrets.clone(),
                 mode: tool.mode,
                 scope: tool.scope,
                 frontend: tool.frontend,
@@ -376,22 +352,6 @@ impl Document {
             Document::Agent(agent) => agent.disk,
             Document::StandaloneTool(tool) => tool.disk,
             Document::DependencyTool(tool) => tool.disk,
-        }
-    }
-
-    /// Whether the image states a secret of the name `name`: one a
-    /// template of the image may name.
-    pub fn states(&self, name: &str) -> bool {
-        self.secrets().iter().any(|secret| secret.name == name)
-    }
-
-    /// Every secret the image's program could take, in the order it
-    /// states them, whichever type it is. Empty where it takes none.
-    pub fn secrets(&self) -> &[Secret] {
-        match self {
-            Document::Agent(agent) => &agent.secrets,
-            Document::StandaloneTool(tool) => &tool.secrets,
-            Document::DependencyTool(tool) => &tool.secrets,
         }
     }
 

@@ -10,9 +10,10 @@ use super::Filter;
 
 /// Ask the daemon for the caller's templates, narrowed.
 ///
-/// Everything is optional, and a request with none of it — `{}` on the
-/// wire — is every template of the caller's. The members but `count`
-/// together are the filter. The daemon applies the filter, oldest
+/// Everything but `arguments` is optional, and a request with nothing
+/// else — `{"arguments":false}` on the wire — is every template of
+/// the caller's, each without its arguments. The members but
+/// `arguments` and `count` together are the filter. The daemon applies the filter, oldest
 /// created first, and sends each tool template it lets through as a
 /// [`Listed`](crate::daemon::endpoints::standalone_tools::templates::list::server::response::Listed),
 /// and keeps sending as the templates change. The count keeps the
@@ -32,6 +33,15 @@ pub struct Frame {
     /// object's own.
     #[serde(flatten)]
     pub filter: Filter,
+    /// Whether the list carries each template's arguments. Required,
+    /// `true` or `false`, and never supposed, so `{}` is no request.
+    /// `true`, every template the list sends has its `arguments`, and
+    /// the caller's `arguments` grants reach every template the list
+    /// shows: where they do not reach one of them the list is
+    /// answered `Forbidden`, and nothing is sent. `false`, no
+    /// template the list sends has them, and nothing beyond the
+    /// `list` is asked.
+    pub arguments: bool,
     /// How many templates the list is kept to, counting what matches
     /// and not what the filter reads: the first that many that match
     /// are the list, and one leaving that window is removed as one

@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 #[derive(schemars::JsonSchema)]
 pub struct Command {
     /// The request's path, as the daemon names it: `agents/message`,
-    /// `vault/insert`, `logs`.
+    /// `agents/templates/create`, `logs`.
     pub path: String,
-    /// The request's body, its secrets replaced (rule 2).
+    /// The request's body, a template's arguments replaced (rule 2).
     pub request: serde_json::Value,
     /// Whether the daemon let it through (rule 3).
     pub allowed: bool,

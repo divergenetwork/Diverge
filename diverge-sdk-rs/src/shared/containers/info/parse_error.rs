@@ -27,10 +27,6 @@ pub enum ParseError {
     Name,
     /// The frontmatter's `schema` is not an object, which a schema is.
     NotObject,
-    /// The frontmatter's `secrets` names a secret by what is no
-    /// secret's name — empty, too long, of more than one line, or not
-    /// trimmed — or names one twice.
-    Secrets,
     /// An agent's frontmatter in which neither `chat` nor
     /// `structured_decisions` is an object.
     Neither,
@@ -45,7 +41,6 @@ impl fmt::Display for ParseError {
             ParseError::Type => f.write_str("document frontmatter does not say its type, `agent`, `standalone_tool` or `dependency_tool`"),
             ParseError::Name => f.write_str("document name is no image's name: 1 to 128 bytes, of letters and digits joined by `.`, `_`, `__` or hyphens"),
             ParseError::NotObject => f.write_str("document schema is not a JSON object"),
-            ParseError::Secrets => f.write_str("document secrets name one by what is no secret's name, or one twice"),
             ParseError::Neither => f.write_str("an agent's document says neither how it chats nor how it makes structured decisions"),
         }
     }
@@ -55,7 +50,7 @@ impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ParseError::Json(error) => Some(error),
-            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Name | ParseError::NotObject | ParseError::Secrets | ParseError::Neither => None,
+            ParseError::NoFrontmatter | ParseError::Unterminated | ParseError::Type | ParseError::Name | ParseError::NotObject | ParseError::Neither => None,
         }
     }
 }

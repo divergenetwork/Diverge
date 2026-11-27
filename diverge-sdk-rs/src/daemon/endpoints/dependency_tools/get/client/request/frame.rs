@@ -8,12 +8,20 @@ use crate::shared::relay::Relay;
 use crate::daemon::reference;
 
 /// Ask the daemon for one dependency tool: see
-/// [`reference::Dependency`], the template by id and whose it is.
+/// [`reference::Dependency`], the template by id and whose it is. The
+/// request states whether the template's arguments are to be shown.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Frame {
     /// The tool: its template and its owner.
     pub dependency: reference::Dependency,
+    /// Whether the answer carries the template's arguments. Required,
+    /// `true` or `false`, and never supposed. `true`, the template in
+    /// the answer has its `arguments`, and the caller holds the
+    /// `arguments` action over the tool beside the `get`: one who
+    /// does not is answered `Forbidden`. `false`, the template in the
+    /// answer has none, and nothing beyond the `get` is asked.
+    pub arguments: bool,
     /// Served by another daemon: see [`Relay`]. Absent, served here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relay: Option<Relay>,

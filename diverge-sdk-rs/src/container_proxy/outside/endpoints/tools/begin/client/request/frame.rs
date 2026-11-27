@@ -23,11 +23,7 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// The template rides beside them: the id of the template the
 /// container is made from, as the run request named it, handed to
-/// the program with them and read by nothing else. No secret does:
-/// which secrets the program takes is its own answer, carried back on
-/// `Begun`, and their values follow on a
-/// [`Secrets`](super::super::channel_request::Frame::Secrets) channel
-/// once the caller has them.
+/// the program with them and read by nothing else.
 ///
 /// The image rides beside them too: the
 /// [`image`](crate::shared::containers::request::Container::image) of

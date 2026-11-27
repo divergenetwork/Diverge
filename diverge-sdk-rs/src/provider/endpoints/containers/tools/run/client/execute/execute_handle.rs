@@ -14,7 +14,7 @@ use super::super::channel_request;
 use super::{Exec, ExecStream, Filetree, FiletreeStream, Read, ReadStream, Transfer, WritePath};
 use crate::wire::encode::{Encode, Writer};
 use crate::provider::endpoints::containers::client::answered::{
-    FuseMount, McpCallTool, McpCloseSession, McpListResources, McpListTools, McpNotifications, McpReadResource, Secrets,
+    FuseMount, McpCallTool, McpCloseSession, McpListResources, McpListTools, McpNotifications, McpReadResource,
 };
 use crate::provider::endpoints::containers::client::{ChannelStream, OpenError, Scoped, UnaryError, WaitError};
 use crate::provider::endpoints::containers::tools::run::server;
@@ -23,7 +23,6 @@ use crate::shared::containers::exec;
 use crate::shared::containers::terminal;
 use crate::provider::endpoints::containers::client::answered::{FrontendOutput, TerminalDone, TerminalOpened, TerminalOutput};
 use crate::shared::containers::frontend;
-use crate::shared::containers::secrets::Values;
 use crate::shared::containers::{fuse_mount, read, transfer, write_path};
 use crate::shared::mcp;
 use crate::shared::mcp::attestation::Caller;
@@ -37,7 +36,7 @@ pub type McpNotificationsStream = ChannelStream<McpNotifications>;
 /// Every channel a caller may open into a tool container is a method
 /// here: the tree watched, a file read or written, the image's
 /// DIVERGE.md, the five MCP exchanges into the server the container
-/// runs, the secrets' feed, and the cancel. What the proxy says of the
+/// runs, and the cancel. What the proxy says of the
 /// container's activity is not: it is the
 /// [`ExecuteStream`](super::ExecuteStream) `execute` handed back
 /// beside this. Each opens its own channel, so several may be in
@@ -281,17 +280,5 @@ impl ExecuteHandle {
         let payload = payload(&channel_request::Frame::McpCloseSession(request))
             .map_err(UnaryError::Request)?;
         self.0.unary::<McpCloseSession>(&payload).await
-    }
-
-    /// Feed the program its secrets' `values`, every name it
-    /// declared, at an activation: resolves once the program holds
-    /// them, relayed through the provider to the proxy, which
-    /// delivers no exchange to the program until it does. The first
-    /// feed is not this: it answers the registration, before the id.
-    /// A refusal is [`Refused`](UnaryError::Refused), the program's
-    /// own words through the proxy, and is the activation's error.
-    pub async fn secrets(&self, values: Values) -> Result<(), UnaryError<Secrets>> {
-        let payload = payload(&channel_request::Frame::Secrets(values)).map_err(UnaryError::Request)?;
-        self.0.unary::<Secrets>(&payload).await
     }
 }

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{Mode, Secret};
+use super::Mode;
 use crate::shared::description::Description;
 
 /// The document of an image whose program is a standalone tool: its
@@ -48,11 +48,6 @@ pub struct StandaloneTool {
     /// [`Agent::disk`](super::Agent::disk), which this is, member for
     /// member.
     pub disk: u64,
-    /// Every secret the image's program could take, each by its name
-    /// and what it is: see [`Agent::secrets`](super::Agent::secrets),
-    /// which this is, member for member.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub secrets: Vec<Secret>,
     /// How every tool made from the image is kept running: lazy or
     /// eager. See [`Mode`]. Required.
     pub mode: Mode,

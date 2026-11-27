@@ -14,8 +14,7 @@ use crate::provider::endpoints::containers::client::{Decoded, Scoped, WaitError}
 
 /// Everything the run's main stream says after the id, for as long as
 /// the run lives: the proxy's word whenever an exchange is in flight
-/// where none was, and whenever the last in flight has been answered
-/// — the latter with the rotating secrets the program handed back —
+/// where none was, and whenever the last in flight has been answered,
 /// each one [`Event`], as [`response::Frame`] carries them.
 ///
 /// Zero or more [`Ok`], in the order the provider relayed them; then
@@ -62,7 +61,7 @@ impl ExecuteStream {
 fn decode(payload: &[u8]) -> Result<Decoded<Event>, response::FrameError> {
     Ok(match response::Frame::decode(payload)? {
         response::Frame::Active => Decoded::Item(Event::Active),
-        response::Frame::Inactive(values) => Decoded::Item(Event::Inactive(values)),
+        response::Frame::Inactive => Decoded::Item(Event::Inactive),
         response::Frame::Error(error) => Decoded::Error(error),
         response::Frame::Id(_)
         | response::Frame::VolumeHeld(_)

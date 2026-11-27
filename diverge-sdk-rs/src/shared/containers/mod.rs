@@ -17,15 +17,14 @@
 //! [`write_path`] one file in — its content on a channel the provider
 //! opens, [`write_bytes`] — [`transfer`] one file into another
 //! container it is running, [`fuse_mount`] one more file or directory
-//! served into it while it runs, [`filetree`] for its filesystem, and
-//! a feed of its [`secrets`] at every activation; [`exec`] one command run in it, its output
+//! served into it while it runs, and [`filetree`] for its filesystem; [`exec`] one command run in it, its output
 //! streamed; and a [`terminal`], an interactive shell on a pseudo-terminal.
 //!
 //! The CONTAINER asks the caller, through the provider: [`postgres`]
 //! carries each database connection it opens, [`daemon`] a frame of the program's daemon connection — the two verbs against its queue —
 //! here beside the rest of the wire they ride; and once, before the
 //! id, its [`registration`] — the [`dependencies`] it declared and the
-//! secrets it takes — answered with the first values. What the agent says is
+//! permissions it holds. What the agent says is
 //! no exchange: it rides the run scope's own main stream, and its
 //! chunks are defined beside that stream, in
 //! [`agents::run::server::response`](crate::provider::endpoints::containers::agents::run::server::response).
@@ -50,7 +49,6 @@ pub mod read;
 pub mod registration;
 pub mod request;
 pub mod response;
-pub mod secrets;
 pub mod structured_decisions;
 pub mod terminal;
 pub mod dependencies;

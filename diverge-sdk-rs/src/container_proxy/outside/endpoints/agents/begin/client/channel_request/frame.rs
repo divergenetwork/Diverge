@@ -6,7 +6,6 @@ use std::fmt;
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
-use crate::shared::containers::secrets::Values;
 use crate::shared::containers::{enqueue, postgres};
 
 /// What the server asks the proxy for once an agent container has
@@ -21,16 +20,15 @@ use crate::shared::containers::{enqueue, postgres};
 /// | `1` | unused |
 /// | `2` | [`Enqueue`](Self::Enqueue) |
 /// | `3` | unused |
-/// | `4` | [`Secrets`](Self::Secrets) |
+/// | `4` | unused |
 ///
 /// The first two tags are the same in both begin scopes — the second
 /// unused in each — so a reader of
 /// one is a reader of both; what follows is this family's own
 /// exchange — no daemon connection among them, since an agent
-/// container holds no account and asks the daemon nothing — and
-/// then the feed, which both scopes have again under a tag of their
-/// own. All of them reach INTO the container: the last hop of what a
-/// caller opened on the provider, or of what the caller fed. What
+/// container holds no account and asks the daemon nothing. All of
+/// them reach INTO the container: the last hop of what a
+/// caller opened on the provider. What
 /// comes OUT of the agent — its conversation — is no channel: it
 /// rides the begin's own main stream.
 #[derive(Debug, Clone, PartialEq)]
@@ -52,19 +50,6 @@ pub enum Frame {
     /// finish. What the agent says in reply is the begin's main stream.
     /// See [`enqueue`](crate::shared::containers::enqueue).
     Enqueue(enqueue::request::Request),
-    /// The secrets' values, fed to the program. Tag `4`.
-    ///
-    /// Carries the [`Values`] as JSON — every name the program
-    /// declared, each to its value — which the proxy hands the
-    /// program on `POST /secrets` and holds until that call answers.
-    /// Opened by the server once before it sends the run's id and
-    /// again at every activation, relaying the caller's own feed.
-    /// Answered once — by a
-    /// [`feed::response::Frame`](crate::shared::containers::secrets::feed::response::Frame),
-    /// `Fed` or the program's refusal — and then the finish; a `Fed`
-    /// opens the gate the proxy holds every delivery behind. See
-    /// [`secrets`](crate::shared::containers::secrets).
-    Secrets(Values),
 }
 
 /// Tag for [`Frame::Postgres`].
@@ -72,9 +57,6 @@ const POSTGRES: u8 = 0;
 
 /// Tag for [`Frame::Enqueue`].
 const ENQUEUE: u8 = 2;
-
-/// Tag for [`Frame::Secrets`].
-const SECRETS: u8 = 4;
 
 impl Encode for Frame {
     /// The ordinary JSON failure, from whichever ask has one.
@@ -91,10 +73,6 @@ impl Encode for Frame {
             Frame::Enqueue(request) => {
                 out.extend_from_slice(&[ENQUEUE]);
                 request.encode(out)
-            }
-            Frame::Secrets(values) => {
-                out.extend_from_slice(&[SECRETS]);
-                serde_json::to_writer(out, values)
             }
         }
     }
@@ -113,9 +91,6 @@ impl Decode<'_> for Frame {
             ENQUEUE => enqueue::request::Request::decode(rest)
                 .map(Frame::Enqueue)
                 .map_err(FrameError::Enqueue),
-            SECRETS => serde_json::from_slice(rest)
-                .map(Frame::Secrets)
-                .map_err(FrameError::Secrets),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -132,9 +107,6 @@ pub enum FrameError {
     Postgres(postgres::request::PostgresError),
     /// The enqueued message did not parse as JSON.
     Enqueue(serde_json::Error),
-    /// The secrets' values did not parse as JSON. The message is the
-    /// parser's, which quotes no value.
-    Secrets(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -150,9 +122,6 @@ impl fmt::Display for FrameError {
             FrameError::Enqueue(error) => {
                 write!(f, "enqueue request did not parse: {error}")
             }
-            FrameError::Secrets(error) => {
-                write!(f, "secrets feed did not parse: {error}")
-            }
         }
     }
 }
@@ -160,7 +129,7 @@ impl fmt::Display for FrameError {
 impl Error for FrameError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            FrameError::Enqueue(error) | FrameError::Secrets(error) => Some(error),
+            FrameError::Enqueue(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }

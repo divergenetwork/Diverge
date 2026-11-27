@@ -43,8 +43,8 @@ chrono = { version = "0.4.45", default-features = false, features = ["std", "ser
 ipnet = { version = "2.12.2", features = ["serde"] }
 # `Stream`, and the sinks and streams a split socket is.
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
-# Keyed maps that keep their order on the wire: a record's secrets,
-# name by name as the template declared them.
+# Keyed maps that keep their order on the wire: an exec's
+# environment, a structured decision's answers.
 indexmap = { version = "2.14.2", features = ["serde"] }
 # The binary encoding of every frame that is not JSON.
 postcard = { version = "1.1.3", features = ["use-std"], default-features = false }
@@ -64,7 +64,7 @@ rust_decimal = { version = "1.43.0", features = ["serde-float", "macros"] }
 # state them; and on every request frame of the daemon's wire, and
 # what those carry, so a client can state what a request takes.
 # `chrono04`: the list filters' times; `rust_decimal1`: a chunk's
-# logprobs; `indexmap2`: the secrets maps.
+# logprobs; `indexmap2`: the ordered maps.
 schemars = { version = "1.2.3", features = ["chrono04", "rust_decimal1", "indexmap2"] }
 serde = { version = "1.0.229", features = ["derive"] }
 # `preserve_order`: what is relayed keeps the order it arrived in.

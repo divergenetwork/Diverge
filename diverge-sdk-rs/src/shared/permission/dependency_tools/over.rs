@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// The actions over dependency tools that exist, which a grant
 /// reaches as far as its `within` says: each tool is judged on its
 /// own, by the tools list filter.
-/// Snake case on the wire: `"get"`, `"list"`,
+/// Snake case on the wire: `"get"`, `"list"`, `"arguments"`,
 /// `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"logs"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
@@ -20,6 +20,13 @@ pub enum Over {
     /// [`dependencies::list`](crate::daemon::endpoints::dependency_tools::list)
     /// does; the list sends what the grant reaches.
     List,
+    /// See the arguments of one's template: have a
+    /// [`get`](crate::daemon::endpoints::dependency_tools::get) or a
+    /// [`list`](crate::daemon::endpoints::dependency_tools::list)
+    /// whose request says `"arguments": true` answered with them. It
+    /// is held beside `get` or `list` and never in place of either:
+    /// alone it answers nothing.
+    Arguments,
     /// Send the client files out of one, running, as
     /// [`dependencies::download`](crate::daemon::endpoints::dependency_tools::download)
     /// does.
