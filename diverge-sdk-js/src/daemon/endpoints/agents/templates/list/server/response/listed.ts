@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Creator } from "../../../../../../../daemon/creator/creator.js";
 import { Tool } from "../../../../../../../daemon/key/tool.js";
 import type { Keyed } from "../../../../../../../shared/listing/keyed.js";
-import { Template } from "../../../template.js";
+import { Shown } from "../../../shown.js";
 
 /**
  * One template of the caller's: its id, when it was made, who made it,
@@ -23,8 +23,8 @@ export const Listed = z.object({
   tags: z.array(z.string()).optional(),
   /** The `standalone_tools` attached to it by `attach_agent_template`, which every agent made from it has, each by its `key`, in the order they were attached; empty for none. */
   tools: z.array(Tool).optional(),
-  /** The template, as it was handed in: the bytes the id is the hash of. */
-  template: Template,
+  /** The template, as it was handed in, its `arguments` only where the request asked for them: see `Shown`. */
+  template: Shown,
 });
 export type Listed = z.infer<typeof Listed>;
 

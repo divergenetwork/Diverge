@@ -17,7 +17,6 @@ import * as dependency_tools from "./dependency_tools/index.js";
 import * as roles from "./roles/index.js";
 import * as standalone_tools from "./standalone_tools/index.js";
 import * as standalone_tools_templates from "./standalone_tools_templates/index.js";
-import * as vault from "./vault/index.js";
 import * as volumes from "./volumes/index.js";
 
 /**
@@ -39,7 +38,6 @@ export const Grant = z.union([
   z.strictObject({ accounts: accounts.Permission }),
   z.strictObject({ roles: roles.Permission }),
   z.strictObject({ volumes: volumes.Permission }),
-  z.strictObject({ vault: vault.Permission }),
   z.strictObject({ postgres: postgres.Permission }),
   z.strictObject({ postgres_compartments: postgres_compartments.Permission }),
   z.strictObject({ events: events.Permission }),

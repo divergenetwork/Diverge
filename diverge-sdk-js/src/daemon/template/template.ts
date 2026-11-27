@@ -2,7 +2,7 @@
 // and its mounts.
 
 import { z } from "zod";
-import { bytewise, sha256 } from "../../shared/canonical/index.js";
+import { sha256 } from "../../shared/canonical/index.js";
 import { Image, hashed as hashedImage } from "../endpoints/agents/create/client/request/image.js";
 
 /** The members every template has, beside its `type`. */
@@ -15,9 +15,25 @@ export const members = {
   extra_disk: z.number().int().nonnegative(),
   /** What the image is told once, as the image defines it: any JSON, handed to the container and not read here. */
   arguments: z.json(),
-  /** The secrets a container made from the template needs, by name: all of those its image's document states, or some, and none it does not. Required; empty for none. */
-  secrets: z.array(z.string()),
 };
+
+/** The members every template has, as a get or a list answers it: the same, the `arguments` optional. */
+export const shownMembers = {
+  ...members,
+  /** The template's arguments, where the request said `"arguments": true`. Absent where it said `false`: absent is not shown, and never a template without arguments, which has none. */
+  arguments: z.json().optional(),
+};
+
+/**
+ * A template as an answer carries it: every member of it, the
+ * `arguments` only where the request asked for them, which takes the
+ * `arguments` action over the template. Without them it is not the
+ * bytes the id is the hash of. An answer's shape alone: a template
+ * handed to a create is `template`, whose arguments are required.
+ */
+export function shown<T extends z.ZodRawShape>(type: z.ZodObject<T>) {
+  return z.object({ ...type.shape, ...shownMembers });
+}
 
 /**
  * Everything an agent or a tool is made from that is the same for
@@ -34,16 +50,15 @@ export function template<T extends z.ZodRawShape>(type: z.ZodObject<T>) {
 /** A template of any type, as `hashed` and `id` take one: what every template has, whatever its `type`. */
 export interface Template {
   readonly image: Image;
-  readonly secrets: string[];
   readonly [member: string]: unknown;
 }
 
 /**
  * The template as its id hashes it: the same, with the image's
- * references absent and the secrets' names sorted bytewise.
+ * references absent.
  */
 export function hashed<T extends Template>(template: T): T {
-  return { ...template, image: hashedImage(template.image), secrets: [...template.secrets].sort(bytewise) };
+  return { ...template, image: hashedImage(template.image) };
 }
 
 /** The template's id: sixty-four lowercase hexadecimal characters. */

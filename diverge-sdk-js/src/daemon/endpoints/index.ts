@@ -22,5 +22,4 @@ export * as providers from "./providers/index.js";
 export * as requests from "./requests/index.js";
 export * as roles from "./roles/index.js";
 export * as standalone_tools from "./standalone_tools/index.js";
-export * as vault from "./vault/index.js";
 export * as volumes from "./volumes/index.js";

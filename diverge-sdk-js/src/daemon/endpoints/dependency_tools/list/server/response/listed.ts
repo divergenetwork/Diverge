@@ -3,13 +3,13 @@
 import { z } from "zod";
 import { Creator } from "../../../../../../daemon/creator/creator.js";
 import { Owner } from "../../../../../../daemon/key/owner.js";
-import { Template } from "../../../../../../shared/containers/dependencies/template.js";
 import { Mode } from "../../../../../../shared/containers/info/mode.js";
 import { Scope } from "../../../../../../shared/containers/info/scope.js";
 import type { Key, Keyed } from "../../../../../../shared/listing/keyed.js";
 import { Grant } from "../../../../../../shared/permission/grant.js";
 import { Attached } from "./attached.js";
 import { Run } from "./run.js";
+import { Shown } from "./shown.js";
 
 /**
  * One dependency tool of the caller's: its template and its owner,
@@ -35,8 +35,8 @@ export const Listed = z.object({
   creator: Creator,
   /** Its tags, sorted bytewise: what `tag` put on it and `untag` has not taken off. Absent when empty. */
   tags: z.array(z.string()).optional(),
-  /** The template, as the program declared it: the bytes the id is the hash of. See `Template`. */
-  template: Template,
+  /** The template, as the program declared it, its `arguments` only where the request asked for them: see `Shown`. */
+  template: Shown,
   /** The agents that depend on it now — every agent whose LAST registration declared the template under this owner, in the order they first did, each with when it last did: see `Attached`. At most one for an instance tool. Absent when empty. */
   agents: z.array(Attached).optional(),
   /** Whether active now: a call or a read in flight. */

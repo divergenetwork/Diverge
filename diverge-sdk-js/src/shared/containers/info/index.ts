@@ -9,6 +9,5 @@ export * from "./modality.js";
 export * from "./mode.js";
 export * from "./name.js";
 export * from "./scope.js";
-export * from "./secret.js";
 export * from "./structured_decisions.js";
 export * as response from "./response/index.js";

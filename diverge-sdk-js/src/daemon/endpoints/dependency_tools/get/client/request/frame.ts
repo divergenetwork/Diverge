@@ -13,6 +13,8 @@ import { Dependency } from "../../../../../../daemon/reference/dependency.js";
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */
   dependency: Dependency,
+  /** Whether the answer carries the template's arguments. Required, `true` or `false`, and never supposed. `true`, the template in the answer has its `arguments`, and the caller holds the `arguments` action over it beside the `get`: one who does not is answered `forbidden`. `false`, the template in the answer has none, and nothing beyond the `get` is asked. */
+  arguments: z.boolean(),
   /** Served by another daemon: see `Relay`. Absent, served here. */
   relay: Relay.optional(),
 });

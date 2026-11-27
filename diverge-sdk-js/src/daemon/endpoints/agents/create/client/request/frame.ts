@@ -7,7 +7,7 @@ import { Inner } from "../../../../../../daemon/create/inner.js";
 
 /**
  * Ask the daemon to make an agent: from a template by its id, under
- * a name if one is given, with the vault keys its secrets come from,
+ * a name if one is given,
  * pinned to a provider with that provider's volumes mounted, and
  * with providers' volumes served live over FUSE — `create.Inner`,
  * flattened, and the name. Nothing runs: the container is work made

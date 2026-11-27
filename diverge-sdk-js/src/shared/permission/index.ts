@@ -36,5 +36,4 @@ export * as providers_daemons from "./providers_daemons/index.js";
 export * as roles from "./roles/index.js";
 export * as standalone_tools from "./standalone_tools/index.js";
 export * as standalone_tools_templates from "./standalone_tools_templates/index.js";
-export * as vault from "./vault/index.js";
 export * as volumes from "./volumes/index.js";

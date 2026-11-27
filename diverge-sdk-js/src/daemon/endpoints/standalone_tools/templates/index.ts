@@ -3,6 +3,7 @@
 
 export * from "./tool_type.js";
 export * from "./template.js";
+export * from "./shown.js";
 export * as create from "./create/index.js";
 export * as get from "./get/index.js";
 export * as list from "./list/index.js";

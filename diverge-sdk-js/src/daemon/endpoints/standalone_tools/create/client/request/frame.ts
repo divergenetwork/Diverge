@@ -7,7 +7,7 @@ import { Inner } from "../../../../../../daemon/create/inner.js";
 
 /**
  * Ask the daemon to make a tool: from a template by its id, under a
- * name if one is given, with the vault keys its secrets come from,
+ * name if one is given,
  * pinned to a provider with that provider's volumes mounted, and
  * with providers' volumes served live over FUSE — `create.Inner`,
  * flattened, and the name. Nothing runs at a create. A name is unique

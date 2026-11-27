@@ -188,7 +188,7 @@ used where the Rust uses rmcp and never renamed.
 
 Every endpoint of the daemon's table has its folder, and every
 schema is checked against the JSON Schema the daemon's own CLI
-prints. Accounts, roles, providers, volumes, the vault, the
+prints. Accounts, roles, providers, volumes, the
 database, the events and the file exchanges over a volume have run
 live against a daemon from this package. Agents, standalone tools,
 dependency tools and the connect have not yet: they are mirrored and

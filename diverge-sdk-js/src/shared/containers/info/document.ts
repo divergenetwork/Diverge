@@ -8,14 +8,13 @@ import { falseOr } from "./false_or.js";
 import { Mode } from "./mode.js";
 import { Name } from "./name.js";
 import { Scope } from "./scope.js";
-import { Secret } from "./secret.js";
 import { StructuredDecisions } from "./structured_decisions.js";
 
 /**
  * What every document has, whichever of the three it is: the image's
  * own name, what it is in one line, the JSON Schema of its arguments,
- * the memory and the disk a container of it needs, in bytes, every
- * secret its program could take, whether it serves a frontend, and
+ * the memory and the disk a container of it needs, in bytes,
+ * whether it serves a frontend, and
  * the prose beneath the frontmatter.
  */
 const common = {
@@ -24,7 +23,6 @@ const common = {
   schema: z.json(),
   memory: z.number().int().nonnegative(),
   disk: z.number().int().nonnegative(),
-  secrets: z.array(Secret).optional(),
   frontend: z.boolean().optional(),
   body: z.string(),
 };

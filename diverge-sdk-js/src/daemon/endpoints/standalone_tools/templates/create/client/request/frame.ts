@@ -8,7 +8,7 @@ import { Template } from "../../../../../../../daemon/endpoints/standalone_tools
 /**
  * Ask the daemon to keep a tool template: the template itself,
  * flattened — `{"type":"tool"}` and its `mode` among its members,
- * the image, the limits, the arguments, the secrets it declares —
+ * the image, the limits, the arguments —
  * whose id is its hash, so a template made twice is the one
  * template, answered `exists` with the id the caller already has.
  */

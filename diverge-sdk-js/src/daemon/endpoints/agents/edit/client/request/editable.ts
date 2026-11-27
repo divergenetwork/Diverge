@@ -11,9 +11,7 @@ import { VolumeMount } from "../../../create/client/request/volume_mount.js";
  * member this type does not have. Not here: the template, the
  * index, the provider, the creator, the created time. On an agent
  * pinned to no provider `volume_mounts` stays empty, and giving it
- * one is the edit's error. `secrets` names every secret the
- * template declares and no other; a key named anew takes the `use`
- * grant and holds at least one value.
+ * one is the edit's error.
  */
 export const Editable = z.strictObject({
   /** The name, or `null` for none. */
@@ -24,7 +22,5 @@ export const Editable = z.strictObject({
   fuse_file_mounts: z.array(FuseMount),
   /** Directories of providers' volumes served live over FUSE. */
   fuse_directory_mounts: z.array(FuseMount),
-  /** Which vault key each secret the template declares is: the secret's name to the key. */
-  secrets: z.record(z.string(), z.string()),
 });
 export type Editable = z.infer<typeof Editable>;

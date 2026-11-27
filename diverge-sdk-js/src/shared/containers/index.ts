@@ -4,8 +4,8 @@
 // in, the OCI asks over one image — a manifest, a blob, the
 // proof — that the daemon's read scope carries, and the FUSE
 // vocabulary the daemon's serve of a volume carries. The rest of the
-// container vocabulary — what a program asks its proxy, the secrets
-// contract — rides the provider and proxy wires and is not here yet.
+// container vocabulary — what a program asks its proxy — rides the
+// provider and proxy wires and is not here yet.
 
 export * as request from "./request/index.js";
 export * as response from "./response/index.js";

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { Creator } from "../../../../../../../daemon/creator/creator.js";
 import type { Keyed } from "../../../../../../../shared/listing/keyed.js";
-import { Template } from "../../../template.js";
+import { Shown } from "../../../shown.js";
 
 /**
  * One template of the caller's: its id, when it was made, who made it,
@@ -19,8 +19,8 @@ export const Listed = z.object({
   creator: Creator,
   /** Its tags, sorted bytewise: what `tag` put on it and `untag` has not taken off. Absent when empty. */
   tags: z.array(z.string()).optional(),
-  /** The template, as it was handed in: the bytes the id is the hash of. */
-  template: Template,
+  /** The template, as it was handed in, its `arguments` only where the request asked for them: see `Shown`. */
+  template: Shown,
 });
 export type Listed = z.infer<typeof Listed>;
 

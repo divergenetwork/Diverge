@@ -10,8 +10,7 @@ import { VolumeMount } from "../../../../../../daemon/endpoints/agents/create/cl
  * member the patch takes away read as absent or empty, and no
  * member this type does not have. Not here: the template, the
  * index, the creator, the created time. On a tool
- * pinned to no provider `volume_mounts` stays empty; `secrets`
- * names every secret the template declares and no other.
+ * pinned to no provider `volume_mounts` stays empty.
  */
 export const Editable = z.strictObject({
   /** The name, or `null` for none. */
@@ -22,7 +21,5 @@ export const Editable = z.strictObject({
   fuse_file_mounts: z.array(FuseMount),
   /** Directories of providers' volumes served live over FUSE. */
   fuse_directory_mounts: z.array(FuseMount),
-  /** Which vault key each secret the template declares is: the secret's name to the key. */
-  secrets: z.record(z.string(), z.string()),
 });
 export type Editable = z.infer<typeof Editable>;

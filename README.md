@@ -55,7 +55,7 @@ After installation, the command `diverge update <skills directory>` replaces the
 
 **Logs and audit.** The daemon retains, for every agent, the entirety of its conversation. It retains, for every tool, every call made to that tool, the identity of the caller, and the answer returned. It retains, for every account, every request that the account made of the daemon, together with whether the request was permitted or refused. It retains a graph of which party sent what to which party. From these records it is possible to establish what occurred, which party requested it, and whether that party was permitted to request it.
 
-**Secrets.** Secret values are stored in the daemon's vault. A template states the names of the secrets that its image requires. Each name is bound to a value in the vault when an agent or a tool is created from the template. A secret value is never passed as an argument, and the daemon's record of each request has every secret value removed from it.
+**Credentials.** A credential that the program of an image requires is a member of the arguments of that image, and is stated in a template. The arguments of a template are returned only when the request states that they are to be returned, and only to a party that holds the grant to see them. The daemon's record of each request has the arguments of every template removed from it.
 
 **Requests.** An agent, a tool or a person is able to address a question to specified accounts and tools and to wait for exactly one answer. A request is the means by which an agent obtains a decision from a person.
 
@@ -64,10 +64,10 @@ After installation, the command `diverge update <skills directory>` replaces the
 | Program | Function |
 |---|---|
 | `diverge` | The command-line program. Each setting and each request is one command, which accepts and returns JSON. |
-| `diverge-daemon` | The daemon. It holds accounts, roles, agents, tools, templates, the vault, events and logs in a Postgres database of its own, and it starts and stops containers on providers. |
+| `diverge-daemon` | The daemon. It holds accounts, roles, agents, tools, templates, events and logs in a Postgres database of its own, and it starts and stops containers on providers. |
 | `diverge-provider` | The provider. It runs containers by means of podman, serves volumes and maintains an image store. |
 | `diverge-viewer` | A desktop application. It displays the current state of one daemon: every agent, tool, account, volume and provider, the relations between them, and their logs, files and consoles. |
-| `diverge-container-proxy` | The program that the provider places in every container. It carries messages, tool calls, database connections and secrets between the provider and the program inside the container. |
+| `diverge-container-proxy` | The program that the provider places in every container. It carries messages, tool calls and database connections between the provider and the program inside the container. |
 | `diverge-postgres` | The supervisor of the daemon's Postgres database. |
 
 ## Documentation

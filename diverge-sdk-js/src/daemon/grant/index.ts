@@ -27,7 +27,6 @@ export * as dependency_tools from "./dependency_tools/index.js";
 export * as roles from "./roles/index.js";
 export * as standalone_tools from "./standalone_tools/index.js";
 export * as standalone_tools_templates from "./standalone_tools_templates/index.js";
-export * as vault from "./vault/index.js";
 export * as volumes from "./volumes/index.js";
 export * as postgres from "../../shared/permission/postgres/index.js";
 export * as postgres_compartments from "./postgres_compartments/index.js";

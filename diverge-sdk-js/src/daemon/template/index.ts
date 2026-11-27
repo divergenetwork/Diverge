@@ -3,7 +3,7 @@
 //
 // A template is everything about an agent or a tool that is not its
 // name, not the provider it runs on and not its mounts: the image,
-// the limits, the arguments, the secrets it needs by name, and what
+// the limits, the arguments, and what
 // the create has to bring that the template cannot name, in words.
 // The shape is one, `template`, written once here; which of the two
 // it is for is its `type`, `"agent"` or `"tool"`, flat among the

@@ -8,7 +8,7 @@ import { Template } from "../../../../../../../daemon/endpoints/agents/templates
 /**
  * Ask the daemon to keep an agent template: the template itself,
  * flattened — `{"type":"agent"}` among its members, the image, the
- * limits, the arguments, the secrets it declares — whose id is its
+ * limits, the arguments — whose id is its
  * hash, so a template made twice is the one template, answered
  * `exists` with the id the caller already has. No name: the id is
  * the name. No mounts: those are an agent's.

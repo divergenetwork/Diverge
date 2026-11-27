@@ -12,7 +12,7 @@ import { Patch } from "../../../../../../daemon/patch/operation.js";
  * only FUSE mounts appended to either list, mounted into the running
  * container before the edit persists; any other difference is
  * `active`. The image, the limits, the provider and the arguments
- * are never editable; which vault key each secret is, is.
+ * are never editable.
  */
 export const Frame = z.object({
   /** The agent: by name, or by template and index. */
