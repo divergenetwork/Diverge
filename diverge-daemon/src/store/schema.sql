@@ -93,29 +93,6 @@ CREATE TABLE IF NOT EXISTS diverge.postgres_compartments (
     created     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- The vault: keys, each holding one or more JSON values, handed to
--- the containers whose records bind the key to a secret. A key some
--- record binds is not deleted, which the records say, not a
--- constraint: the binding is inside a record's `secrets`.
-CREATE TABLE IF NOT EXISTS diverge.vault (
-    key     TEXT PRIMARY KEY,
-    tags    TEXT[] NOT NULL DEFAULT '{}',
-    created TIMESTAMPTZ NOT NULL DEFAULT now(),
-    creator JSONB NOT NULL
-);
-
--- A key's values: its slots, numbered from 0 in the order appended,
--- gone with the key. A slot a running container holds names the
--- holder — the record's Creator, as JSON — and is NULL while free; a
--- lock is on a value, never on a key.
-CREATE TABLE IF NOT EXISTS diverge.vault_slots (
-    key    TEXT NOT NULL REFERENCES diverge.vault (key) ON DELETE CASCADE,
-    slot   INT NOT NULL,
-    value  JSONB NOT NULL,
-    holder JSONB,
-    PRIMARY KEY (key, slot)
-);
-
 -- An agent: a template plus what its create added. The container is
 -- work made from the row, never the row.
 CREATE TABLE IF NOT EXISTS diverge.agents (
@@ -129,10 +106,6 @@ CREATE TABLE IF NOT EXISTS diverge.agents (
     provider              JSONB,
     fuse_file_mounts      JSONB NOT NULL DEFAULT '[]',
     fuse_directory_mounts JSONB NOT NULL DEFAULT '[]',
-    -- Which vault key each secret the template declares is: the
-    -- secret's name to the key, as the create or the last edit gave
-    -- them, in that order.
-    secrets               JSONB NOT NULL DEFAULT '{}',
     -- The provider it was last deployed on.
     last_provider         JSONB,
     -- When its container last came up or went down.
@@ -160,9 +133,6 @@ CREATE TABLE IF NOT EXISTS diverge.tools (
     name                  TEXT UNIQUE,
     fuse_file_mounts      JSONB NOT NULL DEFAULT '[]',
     fuse_directory_mounts JSONB NOT NULL DEFAULT '[]',
-    -- Which vault key each secret the template declares is, as for
-    -- an agent.
-    secrets               JSONB NOT NULL DEFAULT '{}',
     -- What its container declared it may ask of the daemon at its
     -- registration when it last started; empty for none.
     permissions           JSONB NOT NULL DEFAULT '[]',

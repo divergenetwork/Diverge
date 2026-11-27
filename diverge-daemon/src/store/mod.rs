@@ -14,15 +14,14 @@
 //! [`tools`] and [`connected_standalone_tools`] — other daemons'
 //! standalone tools, held here — are the records of each kind, whose
 //! two tool families share one namespace of names, [`tool_names`];
-//! [`vault`] the keys
-//! their secrets bind, [`events`] the graph of who sent what to
+//! [`events`] the graph of who sent what to
 //! whom through the daemon, and [`volumes`] what
 //! the daemon keeps of a volume, which is its tags alone;
 //! loaded whole and written whole; [`image_info`] what the daemon
 //! has learnt of each image's `/.diverge/DIVERGE.md`, by digest; [`hash`] is the one id that is a
 //! hash; [`counters`] is the once-and-for-all
 //! index of a container; [`in_use`] is what containers hold —
-//! templates, accounts, remote daemons, vault keys — as the records
+//! templates, accounts, remote daemons — as the records
 //! say; [`of_account`]
 //! is what an account may do, read fresh for every request; [`tags`]
 //! is the one way a set of tags is kept; the ids are [`AccountId`],
@@ -80,5 +79,4 @@ pub mod tags;
 pub mod tool_names;
 pub mod tools;
 pub mod tools_templates;
-pub mod vault;
 pub mod volumes;

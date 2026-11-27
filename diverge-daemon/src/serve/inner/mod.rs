@@ -8,9 +8,7 @@
 //! answer to its frame and nothing else. For an edit of a record
 //! whose container runs, [`additions`] is what the patch may do to
 //! its mounts — add — and [`runtime_mount`] makes one such addition
-//! into the running container, the provider waited for. [`secrets`]
-//! checks a record's secrets against its template and the grants,
-//! and [`declared`] a template's declaration of them.
+//! into the running container, the provider waited for.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
@@ -22,7 +20,6 @@ mod mounts;
 mod patched;
 mod provider;
 mod runtime_mount;
-mod secrets;
 
 pub use additions::*;
 pub use checked::*;
@@ -31,4 +28,3 @@ pub use mounts::*;
 pub use patched::*;
 pub use provider::*;
 pub use runtime_mount::*;
-pub use secrets::*;

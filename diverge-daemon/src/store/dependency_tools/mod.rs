@@ -7,9 +7,7 @@
 //! first made it and when. Beside the row are its [`attachments`] to
 //! agents, in attach order, each noting when the agent's registration
 //! last declared the template: every agent whose last registration did,
-//! which is what holds an eager tool's container up, and the one that
-//! declared it last, which is the agent that spawns the eager tool's next
-//! run. The container is work made from the row and is nowhere in it;
+//! which is what holds an eager tool's container up. The container is work made from the row and is nowhere in it;
 //! what runs is the live state's. [`all`], [`by_id`], [`by_scope`],
 //! [`by_reference`], [`of_template`], [`of_owner_agent`] and
 //! [`of_agent`] load; [`find_or_create`] makes one under its scope key,

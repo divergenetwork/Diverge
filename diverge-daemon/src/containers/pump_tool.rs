@@ -2,44 +2,30 @@
 
 use std::sync::Arc;
 
-use diverge_sdk::daemon::agent_log::{self as log, Item};
 use diverge_sdk::daemon::tool_log as tool_log_item;
 use diverge_sdk::provider::endpoints::containers::client::WaitError;
 use diverge_sdk::provider::endpoints::containers::tools::run::client::execute::{Event, ExecuteStream};
-use diverge_sdk::shared::error::Error;
 use futures_util::StreamExt as _;
 
 use super::lifecycle::End;
-use super::{Ended, ToolRun, activate, pump, stop, tool_log};
+use super::{Ended, ToolRun, stop, tool_log};
 use crate::daemon::Daemon;
 
 /// Read the run's stream to its end: the proxy's `Active`, which
 /// brackets the exchanges in flight there, is a use of the tool — the
 /// daemon's own count of what is in flight is what holds the run up;
-/// its `Inactive`, with what the program made of its rotating
-/// secrets, written back and the run activated again while anything
-/// is in flight into it, as [`inactive_tool`](super::inactive_tool)
-/// states; and the stream's end or error the run over —
+/// its `Inactive` is a use as well; and the stream's end or error the run over —
 /// [`ended_tool`](stop::ended_tool), in a task of its own, which
 /// releases what it holds — told as the end it was unless whoever
 /// ended the run said first, as an agent's pump tells it: the
 /// connection gone the provider lost, kept as no error; a finish the
 /// run exited; any other failure kept as an `Error` item and the run
 /// failed.
-/// An inactive that failed is kept on the tool's own log, and on the
-/// log of the agent a dependency tool is deployed for as well, naming
-/// the tool's template — each naming secrets and never a value.
 pub async fn pump_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>, mut stream: ExecuteStream) {
     let mut ended = Ended::Finished;
     while let Some(event) = stream.next().await {
         match event {
-            Ok(Event::Active) => run.touch(),
-            Ok(Event::Inactive(values)) => {
-                run.touch();
-                if let Err(error) = activate::inactive_tool(&daemon, &run, values).await {
-                    noted(&daemon, &run, error).await;
-                }
-            }
+            Ok(Event::Active | Event::Inactive) => run.touch(),
             Err(WaitError::Closed) => {
                 ended = Ended::Closed;
                 break;
@@ -54,29 +40,4 @@ pub async fn pump_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>, mut stream: Execu
     }
     run.end_as(End::Unexpected(ended.reason())).await;
     stop::end_tool(daemon, run);
-}
-
-/// The error kept on the tool's log, and on the owner agent's log,
-/// for a dependency tool with one.
-async fn noted(daemon: &Daemon, run: &ToolRun, error: Error) {
-    tool_log::note(daemon, run.id, tool_log_item::Item::Error(tool_log_item::Error { error: error.clone() })).await;
-    let Some(tool) = &run.dependency else {
-        return;
-    };
-    let Some(agent) = tool.owner_agent else {
-        return;
-    };
-    let _ = pump::append_for(
-        daemon,
-        agent,
-        Item::Error(log::Error {
-            r#type: Default::default(),
-            error: Error(serde_json::json!({
-                "kind": "dependency",
-                "dependency": tool.template,
-                "error": error.0,
-            })),
-        }),
-    )
-    .await;
 }

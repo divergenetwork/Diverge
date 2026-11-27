@@ -2,7 +2,6 @@
 
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::agents::create::client::request::{FuseMount, Provider};
-use indexmap::IndexMap;
 use sqlx::types::Json;
 use sqlx::{PgConnection, Row as _};
 
@@ -22,8 +21,6 @@ pub struct New {
     pub fuse_file_mounts: Vec<FuseMount>,
     /// Directories of other providers' volumes.
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret the template declares is.
-    pub secrets: IndexMap<String, String>,
     /// Who makes it.
     pub creator: Creator,
 }
@@ -50,7 +47,7 @@ pub async fn create(conn: &mut PgConnection, new: &New) -> Result<Created, Error
     let index = counters::next(conn, &format!("tools:{}", new.template)).await?;
     let inserted = sqlx::query(
         "INSERT INTO diverge.tools (template, provider, index, name, \
-         fuse_file_mounts, fuse_directory_mounts, secrets, creator) \
+         fuse_file_mounts, fuse_directory_mounts, creator) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
     )
     .bind(&new.template)
@@ -59,7 +56,6 @@ pub async fn create(conn: &mut PgConnection, new: &New) -> Result<Created, Error
     .bind(&new.name)
     .bind(Json(&new.fuse_file_mounts))
     .bind(Json(&new.fuse_directory_mounts))
-    .bind(Json(&new.secrets))
     .bind(Json(&new.creator))
     .fetch_one(&mut *conn)
     .await;

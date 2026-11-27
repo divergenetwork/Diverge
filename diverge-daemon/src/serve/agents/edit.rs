@@ -11,9 +11,9 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use super::state;
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
-use crate::serve::inner::{self, Checked, Mounted, Outcome, Secrets, Which};
+use crate::serve::inner::{self, Checked, Mounted, Outcome, Which};
 use crate::serve::reply;
-use crate::store::{self, agents, agents_templates};
+use crate::store::{self, agents};
 
 /// Answer the edit and finish the scope.
 pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) {
@@ -30,11 +30,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// patch that could not be applied or a result that is not an agent's
 /// editable members; `Active` for a result that, while the agent's
 /// container runs, differs in anything but FUSE mounts added — the
-/// name, the volume mounts, the secrets, a FUSE mount removed,
+/// name, the volume mounts, a FUSE mount removed,
 /// replaced or reordered; the error for a provider that is not
-/// there, or volumes named on an agent pinned to no provider; the
-/// `secrets` error for secrets that are not the template's, and
-/// `Forbidden` for a vault key the grants do not reach; `InUse` for a
+/// there, or volumes named on an agent pinned to no provider; `InUse` for a
 /// name another agent has; else the agent as the result states,
 /// whole or not at all.
 ///
@@ -95,7 +93,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         volume_mounts: agent.provider.as_ref().map(|provider| provider.volume_mounts.clone()).unwrap_or_default(),
         fuse_file_mounts: agent.fuse_file_mounts.clone(),
         fuse_directory_mounts: agent.fuse_directory_mounts.clone(),
-        secrets: agent.secrets.clone(),
     };
     let result = match inner::patched(&current, &frame.patch) {
         Ok(result) => result,
@@ -107,7 +104,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     let added = match &run {
         None => None,
         Some(_) => {
-            if result.name != current.name || result.volume_mounts != current.volume_mounts || result.secrets != current.secrets {
+            if result.name != current.name || result.volume_mounts != current.volume_mounts {
                 return Ok(Frame::Active);
             }
             match inner::additions(&current.fuse_file_mounts, &result.fuse_file_mounts, &current.fuse_directory_mounts, &result.fuse_directory_mounts) {
@@ -128,17 +125,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             None
         }
     };
-    if result.secrets != current.secrets {
-        let Some(template) = agents_templates::by_id(&mut tx, &agent.template, false).await? else {
-            return Ok(Frame::Error(reply::failure(&"the agent's template is not on record")));
-        };
-        match inner::secrets(&mut tx, &standing, &template.template.secrets, &result.secrets).await? {
-            Secrets::Ok => {}
-            Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
-            Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),
-            Secrets::Forbidden => return Ok(Frame::Forbidden),
-        }
-    }
     if mounts_changed {
         match inner::providers(&mut tx, provider.as_ref(), &result.fuse_file_mounts, &result.fuse_directory_mounts).await? {
             Checked::Ok(()) => {}
@@ -158,7 +144,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             provider,
             fuse_file_mounts: result.fuse_file_mounts,
             fuse_directory_mounts: result.fuse_directory_mounts,
-            secrets: result.secrets,
         };
         if let agents::Updated::InUse = agents::update(&mut tx, agent.id, &columns).await? {
             return Ok(Frame::InUse);
@@ -167,7 +152,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         daemon.live.changed(Kind::Agents);
         daemon.live.changed(Kind::StandaloneTools);
         daemon.live.changed(Kind::Volumes);
-        daemon.live.changed(Kind::Vault);
         return Ok(Frame::Edited);
     };
     if files.is_empty() && directories.is_empty() {
@@ -207,7 +191,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             provider,
             fuse_file_mounts: made_files,
             fuse_directory_mounts: made_directories,
-            secrets: current.secrets,
         };
         if let agents::Updated::InUse = agents::update(&mut tx, agent.id, &columns).await? {
             return Ok(Frame::InUse);

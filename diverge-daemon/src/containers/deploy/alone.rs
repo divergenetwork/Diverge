@@ -7,8 +7,6 @@ use std::time::Instant;
 use diverge_sdk::shared::mcp::attestation;
 use diverge_sdk::daemon::creator::{self, Creator};
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
-use diverge_sdk::shared::containers::info::Scope;
-use indexmap::IndexMap;
 use tokio::sync::{Mutex, watch};
 
 use crate::containers::answerers::Answerer;
@@ -17,11 +15,11 @@ use crate::containers::fuse::Mounts;
 use crate::containers::capable::Needs;
 use crate::containers::mcp::Served;
 use crate::containers::start::Starting;
-use crate::containers::{Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, secrets, undo_tool};
+use crate::containers::{Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, undo_tool};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::ToolRef;
 use crate::store::agents;
-use crate::store::dependency_tools::{DependencyTool, attachments};
+use crate::store::dependency_tools::DependencyTool;
 
 /// The run of a dependency tool that is no one agent's run's — an
 /// eager tool, of any scope, or a lazy tool whose scope is `template`
@@ -34,24 +32,15 @@ use crate::store::dependency_tools::{DependencyTool, attachments};
 /// 2. The container is the template's image, limits and arguments,
 ///    with no mount: the tool is not one agent's, and mounts nothing
 ///    of any one's.
-/// 3. Its secrets are bound by name through the agent that spawns the
-///    run, taken at the tool's own registration and held under the
-///    dependency tool as holder. That agent is the tool's owner, for
-///    an `instance` scope, and otherwise the attached agent whose
-///    registration declared the template last — so the binding may
-///    differ from run to run, and a vault key bound anew is taken at
-///    the next.
-/// 4. It runs on the first candidate provider that will, under the
+/// 3. It runs on the first candidate provider that will, under the
 ///    grants its program declared at its registration, kept on its
 ///    row, its run entered as live under its row with its pump.
-/// 5. A lazy tool's run has the idle clock a lazy standalone tool's
+/// 4. A lazy tool's run has the idle clock a lazy standalone tool's
 ///    has — [`idle_tool`](crate::containers::idle::idle_tool) — and
 ///    ends `idle_seconds` after its last use with nothing in flight.
 ///    An eager tool's has none: its keeping is its supervisor's.
-/// 6. A per-agent tool whose agent is gone cannot be named and is not
-///    started; one that declares secrets with no agent attached is
-///    not started either. A provider that refuses after the
-///    registration gives back what it took, and a failure once the
+/// 5. A per-agent tool whose agent is gone cannot be named and is not
+///    started. A failure once the
 ///    run is made undoes it as
 ///    [`undo_tool`](crate::containers::undo_tool) states.
 ///
@@ -72,32 +61,15 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
     if let Some(run) = daemon.live.tool_run(key).await {
         return Ok(run);
     }
-    let (owner_agent, source) = {
+    let owner_agent = {
         let mut conn = daemon.store.acquire().await?;
-        let owner_agent = match tool.owner_agent {
+        match tool.owner_agent {
             Some(id) => agents::by_id(&mut conn, id, false).await?,
             None => None,
-        };
-        let source = if tool.declared.secrets.is_empty() {
-            None
-        } else {
-            match tool.scope {
-                Scope::Instance => owner_agent.clone(),
-                Scope::Global => match attachments::latest(&mut conn, tool.id).await? {
-                    Some(attachment) => agents::by_id(&mut conn, attachment.agent, false).await?,
-                    None => None,
-                },
-            }
-        };
-        (owner_agent, source)
+        }
     };
     let Some(owner) = tool.owner(owner_agent.as_ref()) else {
         return Err(StartError::Run("the tool's agent is gone".to_string()));
-    };
-    let binding = match source {
-        Some(source) => secrets::bind(&tool.declared.secrets, &source.secrets).map_err(StartError::Unbound)?,
-        None if tool.declared.secrets.is_empty() => IndexMap::new(),
-        None => return Err(StartError::Run("no agent attached to the tool spawns it".to_string())),
     };
     let sender = Creator::Tool(creator::Tool::Dependency {
         template: tool.template.clone(),
@@ -136,9 +108,6 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             inflight: Arc::new(Inflight::new()),
             files: Arc::new(Inflight::new()),
             kept: Mutex::new(None),
-            declared: tool.declared.secrets.clone(),
-            binding: binding.clone(),
-            secrets: Mutex::new(None),
         });
         let started = tools_run::execute(&handle, &tools_request::Frame(container.clone()), answerer.set()).await;
         // The run is answered: its pull is over either way.
@@ -146,7 +115,6 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
         let (id, handle, stream) = match started {
             Ok(opened) => opened,
             Err(error) => {
-                secrets::abandon(daemon, &answerer).await;
                 last = format!("{error:?}");
                 continue;
             }
@@ -172,7 +140,6 @@ async fn start_alone(daemon: &Arc<Daemon>, tool: &DependencyTool) -> Result<Arc<
             edits: Mutex::new(()),
             dependency: Some(tool.clone()),
             sessions: Mutex::new(HashMap::new()),
-            secrets: Mutex::new(answerer.secrets.lock().await.take()),
             epoch: daemon.live.epoch().await,
             log: daemon.live.tool_log(&daemon.store, key).await,
             ending: Mutex::new(None),

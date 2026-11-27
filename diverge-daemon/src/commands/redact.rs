@@ -1,4 +1,5 @@
-//! A request's body as its command log keeps it: secrets replaced.
+//! A request's body as its command log keeps it: what may be a secret
+//! replaced.
 
 /// What a secret's value is replaced with.
 pub const REDACTED: &str = "[redacted]";
@@ -8,7 +9,9 @@ pub const REDACTED: &str = "[redacted]";
 ///
 /// The rules:
 ///
-/// 1. `vault/insert`: `value` is the secret itself.
+/// 1. `agents/templates/create`, `standalone_tools/templates/create`:
+///    `arguments`, which may hold a credential, whole; that it was
+///    there stays.
 /// 2. `agents/exec`, `standalone_tools/exec`, `dependency_tools/exec`:
 ///    every value of `env`, which may be a secret; the names stay.
 /// 3. `agents/frontend`, `standalone_tools/frontend`,
@@ -27,11 +30,11 @@ pub fn body(path: &str, payload: &[u8]) -> serde_json::Value {
     let mut body: serde_json::Value = serde_json::from_slice(json).unwrap_or(serde_json::Value::Null);
     match path {
         // Rule 1.
-        "vault/insert" => {
+        "agents/templates/create" | "standalone_tools/templates/create" => {
             if let Some(object) = body.as_object_mut()
-                && object.contains_key("value")
+                && object.contains_key("arguments")
             {
-                object.insert("value".to_string(), serde_json::Value::String(REDACTED.to_string()));
+                object.insert("arguments".to_string(), serde_json::Value::String(REDACTED.to_string()));
             }
         }
         // Rule 2.

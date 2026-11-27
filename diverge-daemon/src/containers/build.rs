@@ -1,8 +1,7 @@
 //! The request a run is: the template and the record's mounts, a
 //! lazy dependency's template and the agent's paths, or a
 //! eager tool's template alone, as the provider protocol states a
-//! container. No secret rides it: a container's values are fed at its
-//! registration's answer and at every activation after.
+//! container.
 
 use diverge_sdk::daemon::endpoints::agents::create::client::request::VolumeMount;
 use diverge_sdk::daemon::endpoints::agents::create::client::request::Image as TemplateImage;

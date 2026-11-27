@@ -28,12 +28,10 @@
 //! 4. **The record of a run so closed is told it went down**: its
 //!    `last_deployed`, and its `last_active` where it was working,
 //!    are now.
-//! 5. **Every vault slot is freed of its holder.** No run survives a
-//!    restart, so no hold does.
 //!
 //! Rule 1 is done before the folders are walked; rules 2, 3 and 4 are
 //! done folder by folder, in that order within one folder, many
-//! folders at once; rule 5 beside them.
+//! folders at once.
 //!
 //! # What it does not mend
 //!

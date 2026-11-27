@@ -40,8 +40,6 @@ pub enum Kind {
     Volumes,
     /// Images: a provider's listing of the daemon's Store on it.
     Images,
-    /// The vault: the keys, and the records that bind one.
-    Vault,
     /// The container connections open through the database.
     Postgres,
     /// The database's compartments: the records, and their tags.

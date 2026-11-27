@@ -1,6 +1,6 @@
 //! Judging requests over the database's compartments.
 //!
-//! The shape of [`vault`](super::vault), with no making action: an
+//! The shape of [`accounts`](super::accounts), with no making action: an
 //! action over a compartment is allowed by a grant that holds it and
 //! whose `within` reaches the compartment — `any`, or the compartments
 //! list filter as [`filter::postgres_compartments::test`] reads it; a

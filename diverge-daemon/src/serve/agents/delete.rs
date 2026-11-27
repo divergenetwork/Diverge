@@ -85,7 +85,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     daemon.live.changed(Kind::ConnectedStandaloneTools);
     daemon.live.changed(Kind::DependencyTools);
     daemon.live.changed(Kind::Volumes);
-    daemon.live.changed(Kind::Vault);
     daemon.live.changed(Kind::PostgresCompartments);
     Ok(Frame::Deleted)
 }

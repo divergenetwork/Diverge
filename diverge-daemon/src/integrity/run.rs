@@ -4,13 +4,12 @@ use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 use futures_util::StreamExt as _;
-use futures_util::future;
 use futures_util::stream;
 
 use super::{BOOKS, Closed, Error, admins, close, owned};
 use crate::containers::ToolKey;
 use crate::logs;
-use crate::store::{self, AgentId, ConnectedToolId, DependencyToolId, Store, ToolId, agents, connected_standalone_tools, dependency_tools, tools, vault};
+use crate::store::{self, AgentId, ConnectedToolId, DependencyToolId, Store, ToolId, agents, connected_standalone_tools, dependency_tools, tools};
 
 /// How many log folders are mended at once: each holds two files
 /// open, and a daemon may keep many thousands of logs.
@@ -58,12 +57,7 @@ pub async fn run(store: &Store, logs: &Path) -> Result<(), Error> {
         }
         Ok::<(), Error>(())
     };
-    let freed = async {
-        let mut conn = store.acquire().await?;
-        vault::clear_holders(&mut conn).await?;
-        Ok::<(), Error>(())
-    };
-    future::try_join(mended, freed).await?;
+    mended.await?;
     Ok(())
 }
 

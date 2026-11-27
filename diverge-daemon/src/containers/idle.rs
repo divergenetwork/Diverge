@@ -22,9 +22,9 @@ use crate::daemon::Daemon;
 /// The clock never stops a run a batch is going to. Its last look is
 /// made under the run's gate lock, and the same step marks the gate
 /// `ending`: the outbox pump holds `pending` before it asks for that
-/// lock — see [`activate_agent`](super::activate_agent) — so either
-/// the look sees the hold and the run goes on, or the pump's
-/// activation finds the gate ending, sends the run nothing, and takes
+/// lock — see [`message`](super::message) — so either
+/// the look sees the hold and the run goes on, or the pump
+/// finds the gate ending, sends the run nothing, and takes
 /// its messages to the next run.
 pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
     let mut active = run.loop_active.subscribe();

@@ -6,7 +6,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use std::sync::Arc;
 
-use super::{Turn, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, relay, requests, roles, standalone_tools, vault, volumes};
+use super::{Turn, accounts, agents, connected_standalone_tools, daemons, dependency_tools, events, identities, images, info, logs, postgres, providers, relay, requests, roles, standalone_tools, volumes};
 use crate::daemon::Daemon;
 use crate::judge::Who;
 
@@ -170,12 +170,6 @@ pub async fn dispatch(scope: ScopeHandle, payload: &[u8], mut turn: Turn, who: W
         ClientRequest::DependencyToolsDownload(frame) => dependency_tools::download::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsUpload(frame) => dependency_tools::upload::handle(scope, frame, who, daemon).await,
         ClientRequest::DependencyToolsTransfer(frame) => dependency_tools::transfer::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultGet(frame) => vault::get::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultInsert(frame) => vault::insert::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultDelete(frame) => vault::delete::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultList(frame) => vault::list::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultTag(frame) => vault::tag::handle(scope, frame, who, daemon).await,
-        ClientRequest::VaultUntag(frame) => vault::untag::handle(scope, frame, who, daemon).await,
         ClientRequest::EventsList(frame) => events::list::handle(scope, frame, who, daemon).await,
         ClientRequest::ImagesRead(frame) => images::read::handle(scope, frame, who, daemon).await,
         ClientRequest::ImagesBuild(frame) => images::build::handle(scope, frame, who, daemon).await,

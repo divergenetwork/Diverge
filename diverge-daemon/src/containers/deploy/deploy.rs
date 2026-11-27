@@ -24,11 +24,10 @@ use crate::containers::lifecycle::End;
 use crate::containers::capable::Needs;
 use crate::containers::mcp::Served;
 use crate::containers::eager;
-use crate::containers::{Inflight, Key, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, secrets, stop};
+use crate::containers::{Inflight, Key, ToolHandle, ToolKey, ToolRun, build, permissions, provider, pump_tool, stop};
 use crate::daemon::{Daemon, Kind};
-use crate::serve::inner;
 use crate::judge::ToolRef;
-use crate::store::agents::{self, Agent};
+use crate::store::agents;
 use crate::store::dependency_tools::{self, DependencyTool};
 use crate::store::{self, AgentId, DependencyToolId, hash};
 
@@ -39,8 +38,7 @@ use crate::store::{self, AgentId, DependencyToolId, hash};
 ///
 /// 1. Every template is checked before anything is recorded or
 ///    started: one declared twice — one id twice — one that names a
-///    mount under a scope that is not `instance`, one whose secrets
-///    are not names, or not names the agent binds, and one whose
+///    mount under a scope that is not `instance`, and one whose
 ///    image has no document the daemon can read, or an agent's, is
 ///    refused.
 /// 2. In one transaction: every template's body on record, every
@@ -83,9 +81,9 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         let mut conn = daemon.store.acquire().await.map_err(|failure| error("", &failure.to_string()))?;
         agents::by_id(&mut conn, agent, false).await.map_err(|failure| error("", &failure.to_string()))?
     };
-    let Some(row) = row else {
+    if row.is_none() {
         return Err(error("", "the agent is gone"));
-    };
+    }
     let mut declared = Vec::with_capacity(templates.len());
     let mut ids = HashSet::new();
     for template in templates {
@@ -109,7 +107,7 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
             Ok(Err(reason)) => return Err(error(&template_id, &reason)),
             Err(failure) => return Err(error(&template_id, &failure.to_string())),
         };
-        let document = match holds(&template, document, &row) {
+        let document = match holds(&template, document) {
             Ok(document) => document,
             Err(reason) => return Err(error(&template_id, &reason)),
         };
@@ -125,7 +123,6 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         inflight: Arc::clone(&answerer.inflight),
         files: Arc::clone(&answerer.files),
         served: Arc::clone(&answerer.served),
-        agent: row.clone(),
         key: agent_key.clone(),
         container: id,
     };
@@ -186,16 +183,11 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
 ///    whose `mode` is `lazy` and whose `scope` is `instance`: of any
 ///    other there is no one agent whose files they are, or no run of
 ///    its that the tool's run is.
-/// 3. **Every secret the declaration names is one the image states,
-///    named once, and one the agent binds**: an image states every
-///    secret its program could take, a declaration names those this
-///    tool needs, and the value of each is taken through the agent's
-///    own binding of the name.
-/// 4. **What the image needs and what the declaration adds is a
+/// 3. **What the image needs and what the declaration adds is a
 ///    limit**: neither sum is past what one can say.
 ///
 /// The reason it is not, in a sentence.
-fn holds(template: &Template, document: info::Document, agent: &Agent) -> Result<info::DependencyTool, String> {
+fn holds(template: &Template, document: info::Document) -> Result<info::DependencyTool, String> {
     // Rule 1.
     let document = match document {
         info::Document::DependencyTool(document) => document,
@@ -209,19 +201,13 @@ fn holds(template: &Template, document: info::Document, agent: &Agent) -> Result
         return Err("a tool mounts the agent's files only where its image's mode is `lazy` and its scope is `instance`".to_string());
     }
     // Rule 3.
-    inner::declared(&template.secrets)?;
-    if let Some(name) = template.secrets.iter().find(|name| !document.secrets.iter().any(|secret| &secret.name == *name)) {
-        return Err(format!("the secret {name} is none the tool's image states"));
-    }
-    secrets::bind(&template.secrets, &agent.secrets)?;
-    // Rule 4.
     document.memory.checked_add(template.extra_memory).ok_or("the image's memory and the template's extra_memory are together more than a limit can be")?;
     document.disk.checked_add(template.extra_disk).ok_or("the image's disk and the template's extra_disk are together more than a limit can be")?;
     Ok(document)
 }
 
-/// What a dependency's start takes of the agent — its answerer's and
-/// its record's — owned, so the starts run in a task of their own.
+/// What a dependency's start takes of the agent — its answerer's —
+/// owned, so the starts run in a task of their own.
 struct Owner {
     /// The daemon.
     daemon: Arc<Daemon>,
@@ -234,8 +220,6 @@ struct Owner {
     files: Arc<Inflight>,
     /// The agent's served set, the lazy tools served into it.
     served: Arc<Mutex<Served>>,
-    /// The agent's record: its secrets' binding.
-    agent: Agent,
     /// The agent's key.
     key: key::Agent,
     /// The agent's container's id.
@@ -322,16 +306,13 @@ async fn record(
     Ok((tools, left))
 }
 
-/// One lazy tool started: its secrets bound through the agent's
-/// binding, to be taken at its own registration and held under the
-/// dependency tool as holder, its mounts served from the agent, its
+/// One lazy tool started: its mounts served from the agent, its
 /// container run on the first candidate provider that will, what its
 /// program declared it may ask of the daemon kept on its row, its run
 /// entered as live under its row with its pump — a run still live
 /// under the row, from an agent run that ended without it, stopped
 /// first, since a row has one run. The reason it could not be, in a
-/// sentence; a provider that refuses after the registration gives
-/// back what it took, and a failure once the run is made undoes it as
+/// sentence; a failure once the run is made undoes it as
 /// [`undo_tool`](stop::undo_tool) states.
 async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, String> {
     let daemon = &owner.daemon;
@@ -352,7 +333,6 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
         disk: limits.1,
     };
     let candidates = provider::candidates(daemon, None, &needs).await.map_err(|error| error.to_string())?;
-    let binding = secrets::bind(&tool.declared.secrets, &owner.agent.secrets)?;
     let mounts = Arc::new(
         Mounts::build_dependency(daemon, &owner.provider, &owner.container, fuse_file_mounts, fuse_directory_mounts)
             .await
@@ -387,9 +367,6 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             inflight: Arc::clone(&owner.inflight),
             files: Arc::clone(&owner.files),
             kept: Mutex::new(None),
-            declared: tool.declared.secrets.clone(),
-            binding: binding.clone(),
-            secrets: Mutex::new(None),
         });
         let opened = tools_run::execute(&handle, &tools_request::Frame(container.clone()), run_answerer.set()).await;
         // The run is answered: its pull is over either way.
@@ -397,7 +374,6 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
         let (container_id, handle, stream) = match opened {
             Ok(opened) => opened,
             Err(error) => {
-                secrets::abandon(daemon, &run_answerer).await;
                 last = format!("{error:?}");
                 continue;
             }
@@ -424,7 +400,6 @@ async fn start(owner: &Owner, tool: &DependencyTool) -> Result<Arc<ToolRun>, Str
             edits: Mutex::new(()),
             dependency: Some(tool.clone()),
             sessions: Mutex::new(HashMap::new()),
-            secrets: Mutex::new(run_answerer.secrets.lock().await.take()),
             epoch: daemon.live.epoch().await,
             log: daemon.live.tool_log(&daemon.store, key).await,
             ending: Mutex::new(None),

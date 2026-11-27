@@ -7,7 +7,7 @@ use diverge_sdk::daemon::lifecycle::Reason;
 use futures_util::future;
 
 use super::lifecycle::{self, End};
-use super::{AgentRun, ToolHandle, ToolKey, ToolRun, secrets, eager, tool_log};
+use super::{AgentRun, ToolHandle, ToolKey, ToolRun, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::store::{AgentId, agents, connected_standalone_tools as connected_records, tools as tool_records};
 
@@ -18,18 +18,6 @@ pub async fn stop_agent(daemon: &Daemon, id: AgentId) {
         run.end_as(End::Expected).await;
         let _ = run.handle.cancel().await;
     }
-}
-
-/// End the agent's run as failed, for a batch at its proxy that could
-/// not be fed: the gate marked `ending` under its lock, so nothing
-/// more is activated on the run or sent to it and the messages after
-/// wait for the next — see [`activate_agent`](super::activate_agent)
-/// — and the container told to stop, which takes the batch with it.
-/// The pump hears the end.
-pub async fn fail_agent(run: &AgentRun) {
-    run.gate.lock().await.ending = true;
-    run.end_as(End::Unexpected(Reason::Failed)).await;
-    let _ = run.handle.cancel().await;
 }
 
 /// [`ended_agent`] in a task of its own. The end of a run is never
@@ -48,8 +36,7 @@ pub fn end_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>) {
 /// The agent's run has ended, however it did: forgotten as live, its
 /// tasks ended — never the task this runs in: see [`end_agent`] — the
 /// log told it went down, with the reason the run's [`End`] gives and
-/// whether it was working, before anything else; the vault slots it
-/// held released with their values unchanged, its lazy
+/// whether it was working, before anything else; its lazy
 /// dependencies stopped as the agent ended — all at once, every
 /// container told at the same time; its attached tools left to their
 /// own use and their idle clocks, its eager tools to their attachments
@@ -65,7 +52,7 @@ pub async fn ended_agent(daemon: &Daemon, run: Arc<AgentRun>) {
 }
 
 /// A start that failed once its agent's run was made — its container
-/// open, its secrets moved in, perhaps its `deployed` kept — undone as
+/// open, perhaps its `deployed` kept — undone as
 /// any run's end takes it down: the container told to stop, and the
 /// run taken down as [`ended_agent`] takes one, `live` saying whether
 /// it was entered as live yet. The one undo every such failure goes
@@ -95,9 +82,6 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     let end = run.end().await;
     lifecycle::undeployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, end.reason()).await;
     run.loop_active.send_replace(false);
-    if let Some(mut held) = run.gate.lock().await.secrets.take() {
-        let _ = secrets::release(daemon, &mut held, &run.sender).await;
-    }
     let dependencies = run.served.lock().await.lazy();
     stop_dependencies(daemon, dependencies, end).await;
     run.mounts.stop().await;
@@ -128,7 +112,7 @@ pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>,
 /// never the task this runs in: see [`end_tool`] — the log told it
 /// went down, with the reason the run's [`End`] gives, the open asks
 /// answered interrupted first, and the tool marked not working when it
-/// was; the vault slots it held released with their values unchanged, the
+/// was; the
 /// word that it ended said — which finishes every connect scope on it
 /// — its mounts let go; a record's told where and when it last ran; a
 /// lazy dependency tool's taken out of its agent's served set,
@@ -169,9 +153,6 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
     let end = run.end().await;
     if lifecycle::undeployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, end.reason()).await {
         tool_log::working(daemon, run.id, false).await;
-    }
-    if let Some(mut held) = run.secrets.lock().await.take() {
-        let _ = secrets::release(daemon, &mut held, &run.sender).await;
     }
     run.ended.send_replace(true);
     run.mounts.stop().await;

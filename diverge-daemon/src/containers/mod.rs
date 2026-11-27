@@ -40,11 +40,7 @@
 //! tool's run — a standalone tool's, a connected tool's or a
 //! dependency tool's; [`AgentRun`] and [`ToolRun`] are what is
 //! live for one; [`container`] and [`dependency`] are the request a
-//! run is, and [`secrets`] what a run's secrets come to — the names
-//! its program takes bound to vault keys, and the slots held while
-//! it is active; [`activate_agent`] and [`activate_tool`] ready a
-//! run for work, its values taken and fed, [`inactive_agent`] and
-//! [`inactive_tool`] write back what it made of them, and
+//! run is, and
 //! [`pump_tool`] reads a tool container's activity to its end;
 //! [`events`] writes the graph of who sent what to whom, at the
 //! seams the exchanges pass through;
@@ -55,7 +51,6 @@
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
-mod activate;
 mod activity;
 mod attached;
 mod build;
@@ -76,7 +71,6 @@ mod stop;
 mod tools;
 
 pub mod files;
-pub mod secrets;
 
 pub mod answerers;
 pub mod deploy;
@@ -90,7 +84,6 @@ pub mod permissions;
 pub mod eager;
 pub mod tool_log;
 
-pub use activate::*;
 pub use activity::*;
 pub use attached::*;
 pub use build::*;

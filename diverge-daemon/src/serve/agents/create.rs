@@ -9,7 +9,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use crate::containers::{self, images};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
-use crate::serve::inner::{self, Checked, Mounted, Secrets};
+use crate::serve::inner::{self, Checked, Mounted};
 use crate::serve::reply;
 use crate::store::{self, agents, agents_templates};
 
@@ -23,10 +23,8 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
     scope.send_response_finish().await;
 }
 
-/// `Forbidden` without the `create` grant, or for a vault key the
-/// grants do not reach; the error for a template or a provider that
-/// is not there; the `secrets` error for secrets that are not the
-/// template's; `InUse` for a name another agent has; else the agent
+/// `Forbidden` without the `create` grant; the error for a template or a provider that
+/// is not there; `InUse` for a name another agent has; else the agent
 /// made, its index the next for its template,
 /// nothing running: the container is work made from the record on
 /// its first use. No account: an agent holds none.
@@ -86,16 +84,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     if let Err(why) = images::limits(&document, template.template.extra_memory, template.template.extra_disk) {
         return Ok(Frame::Error(reply::image(&why)));
     }
-    // Every secret the template declares is one its image states.
-    if let Err(what) = inner::stated(&document, &template.template.secrets) {
-        return Ok(Frame::Error(reply::secrets(&what)));
-    }
-    match inner::secrets(&mut tx, &standing, &template.template.secrets, &inner.secrets).await? {
-        Secrets::Ok => {}
-        Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
-        Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),
-        Secrets::Forbidden => return Ok(Frame::Forbidden),
-    }
     match inner::providers(&mut tx, inner.provider.as_ref(), &inner.fuse_file_mounts, &inner.fuse_directory_mounts).await? {
         Checked::Ok(()) => {}
         Checked::Error(error) => return Ok(Frame::Error(reply::failure(&error))),
@@ -112,7 +100,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         provider: inner.provider,
         fuse_file_mounts: inner.fuse_file_mounts,
         fuse_directory_mounts: inner.fuse_directory_mounts,
-        secrets: inner.secrets,
         creator: standing.creator.clone(),
     };
     match agents::create(&mut tx, &new).await? {
@@ -123,6 +110,5 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     daemon.live.changed(Kind::PostgresCompartments);
     daemon.live.changed(Kind::Agents);
     daemon.live.changed(Kind::Volumes);
-    daemon.live.changed(Kind::Vault);
     Ok(Frame::Created)
 }

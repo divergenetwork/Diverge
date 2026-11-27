@@ -3,7 +3,7 @@
 //! [`record`] is called once per scope request, at the one place every
 //! request passes, and keeps the request as
 //! [`command_log`](diverge_sdk::daemon::command_log) states: its path,
-//! its body with secrets replaced ([`body`]), and whether the daemon
+//! its body with what may be a secret replaced ([`body`]), and whether the daemon
 //! let it through — told by the scope's
 //! [`Verdict`](diverge_sdk::wire::server::verdict::Verdict), the first
 //! answer compared with the request's own `Forbidden`, or the handler's

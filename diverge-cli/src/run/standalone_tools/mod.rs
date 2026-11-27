@@ -53,7 +53,7 @@ pub enum StandaloneTools {
     DetachAgentTemplate(detach_agent_template::Arguments),
     /// Downloading a file or a directory out of a tool.
     Download(download::Arguments),
-    /// Editing a tool: its name, its mounts, its secrets.
+    /// Editing a tool: its name, its mounts.
     Edit(edit::Arguments),
     /// Watching a tool's container's filesystem, whole.
     Filetree(filetree::Arguments),

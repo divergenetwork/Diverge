@@ -7,7 +7,6 @@ use diverge_sdk::daemon::agent_log::{self as logs, Identity};
 use diverge_sdk::daemon::endpoints::standalone_tools::list::server::response;
 use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::daemon::key;
-use indexmap::IndexMap;
 
 use crate::store::ToolId;
 use diverge_sdk::shared::permission::Grant;
@@ -31,8 +30,6 @@ pub struct Tool {
     pub fuse_file_mounts: Vec<FuseMount>,
     /// Directories of other providers' volumes, likewise.
     pub fuse_directory_mounts: Vec<FuseMount>,
-    /// Which vault key each secret its template declares is.
-    pub secrets: IndexMap<String, String>,
     /// What its container declared it may ask of the daemon when it
     /// last started; empty for one that declared none or has never
     /// started.

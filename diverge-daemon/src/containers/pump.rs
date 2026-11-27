@@ -12,7 +12,7 @@ use tokio::sync::oneshot;
 
 use super::lifecycle::{self, End};
 use super::mcp;
-use super::{AgentRun, Decisions, Ended, activate, stop};
+use super::{AgentRun, Decisions, Ended, stop};
 use crate::daemon::Daemon;
 use crate::logs;
 use crate::store::AgentId;
@@ -25,12 +25,7 @@ use crate::store::AgentId;
 /// its calls find them up — each held up by its own use from then on,
 /// and the dependencies run on for the agent's life — the container's
 /// inactive, the delivered messages swept as rule 3 of
-/// [`Message`](super::Message) states, and what its program made of its rotating secrets
-/// written back and the run activated again while a message is
-/// pending, as [`inactive_agent`](super::inactive_agent) states, a
-/// failure kept as an `Error` item naming secrets and never a value,
-/// and told to the agent's outbox pump, which feeds again for a batch
-/// behind the gate —
+/// [`Message`](super::Message) states —
 /// and the stream's end or error the run over, told as the end it was
 /// unless whoever ended the run said first: the connection gone the
 /// provider lost, kept as no error; a finish the run exited; any other
@@ -81,24 +76,10 @@ pub async fn pump(daemon: Arc<Daemon>, run: Arc<AgentRun>, mut stream: ExecuteSt
                 run.touch();
                 mcp::start_all(&context).await;
             }
-            Ok(Event::Inactive(values)) => {
+            Ok(Event::Inactive) => {
                 run.loop_active.send_replace(false);
                 run.touch();
                 run.sweep_messages().await;
-                if let Err(error) = activate::inactive_agent(&daemon, &run, values).await {
-                    // The gate is left shut: a batch that crossed this
-                    // inactive is behind it, and its sender feeds again.
-                    run.unfed.notify_one();
-                    let _ = append(
-                        &daemon,
-                        &run,
-                        Item::Error(log::Error {
-                            r#type: Default::default(),
-                            error,
-                        }),
-                    )
-                    .await;
-                }
             }
             Err(WaitError::Closed) => {
                 ended = Ended::Closed;

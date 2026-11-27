@@ -22,14 +22,16 @@ pub struct Record {
 }
 
 impl Record {
-    /// The template as a list reports it.
-    pub fn report(&self) -> Listed {
+    /// The template as a list reports it, with its arguments only
+    /// where `arguments` says the caller asked for them and may see
+    /// them.
+    pub fn report(&self, arguments: bool) -> Listed {
         Listed {
             id: self.id.clone(),
             created: self.created,
             creator: self.creator.clone(),
             tags: self.tags.clone(),
-            template: self.template.clone(),
+            template: self.template.shown(arguments),
         }
     }
 }

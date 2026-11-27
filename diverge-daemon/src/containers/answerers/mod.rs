@@ -5,7 +5,7 @@
 //! daemon, which container, which tool and what it declared, the mounts,
 //! the served tools, what is in flight — and each trait's impl is
 //! one file. Real: the registration — the dependencies deployed then
-//! and there, the secrets declared, taken and answered; the `/daemon` pair,
+//! and there, the permissions held; the `/daemon` pair,
 //! served by the same session a socket gets; MCP, the served tools
 //! merged; FUSE, the mounts; OCI, answered from the other providers
 //! connected — the daemon holds no image itself, and finds a provider

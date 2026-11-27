@@ -20,7 +20,7 @@
 //! and handed by [`dispatch`] to its handler — [`accounts`],
 //! [`roles`], [`providers`], [`agents`], [`standalone_tools`],
 //! [`connected_standalone_tools`], [`dependency_tools`],
-//! [`volumes`], [`vault`], [`postgres`] and [`events`] have one per request, every request
+//! [`volumes`], [`postgres`] and [`events`] have one per request, every request
 //! of the wire served — or, when the request carries `relay`, by
 //! [`relay`], this daemon as a conduit to another; what the file
 //! operations of every family share is [`files`]. An identity admitted
@@ -88,5 +88,4 @@ pub mod requests;
 pub mod roles;
 pub mod stream;
 pub mod standalone_tools;
-pub mod vault;
 pub mod volumes;

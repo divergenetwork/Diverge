@@ -10,7 +10,7 @@
 //! [`accounts`], [`roles`], [`providers`],
 //! [`daemons`], [`agents_templates`],
 //! [`standalone_tools_templates`], [`dependency_tools`], [`agents`],
-//! [`standalone_tools`], [`connected_standalone_tools`], [`vault`],
+//! [`standalone_tools`], [`connected_standalone_tools`],
 //! [`events`], [`images`] and
 //! [`volumes`] are the tests. The images filter is its list's alone:
 //! a grant over images reaches providers, not images.
@@ -35,5 +35,4 @@ pub mod postgres_compartments;
 pub mod roles;
 pub mod standalone_tools;
 pub mod standalone_tools_templates;
-pub mod vault;
 pub mod volumes;

@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::creator::Creator;
-use diverge_sdk::daemon::endpoints::dependency_tools::list::server::response::{Attached, Listed, Run};
+use diverge_sdk::daemon::endpoints::dependency_tools::list::server::response::{Attached, Listed, Run, Shown};
 use diverge_sdk::daemon::key;
 use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::containers::info::{self, Mode, Scope};
@@ -95,8 +95,9 @@ impl DependencyTool {
 
     /// The tool as a list reports it, with its owner, the agents
     /// attached to it, whether it is working now and its run, loaded by
-    /// the caller.
-    pub fn report(&self, owner: key::Owner, agents: Vec<Attached>, active: bool, run: Option<Run>) -> Listed {
+    /// the caller, and its template's arguments only where `arguments`
+    /// says the caller asked for them and may see them.
+    pub fn report(&self, owner: key::Owner, agents: Vec<Attached>, active: bool, run: Option<Run>, arguments: bool) -> Listed {
         Listed {
             id: self.template.clone(),
             owner,
@@ -106,7 +107,7 @@ impl DependencyTool {
             created: self.created,
             creator: self.creator.clone(),
             tags: self.tags.clone(),
-            template: self.declared.clone(),
+            template: Shown::of(&self.declared, arguments),
             agents,
             active,
             last_active: self.last_active,

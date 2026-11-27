@@ -58,7 +58,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     tool_log::forget(daemon, ToolKey::Record(tool.id)).await;
     daemon.live.changed(Kind::StandaloneTools);
     daemon.live.changed(Kind::Volumes);
-    daemon.live.changed(Kind::Vault);
     daemon.live.changed(Kind::PostgresCompartments);
     Ok(Frame::Deleted)
 }

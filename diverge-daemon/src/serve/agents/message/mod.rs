@@ -44,7 +44,7 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, turn: Turn, who: 
 /// kind — [`chat::held`], [`structured_decisions::held`]; else the
 /// request admitted to the agent's outbox, and answered: unwatched,
 /// with its fate — `Delivered` once the agent's program has it, or
-/// the error: a container that could not be started or fed, or the
+/// the error: a container that could not be started, or the
 /// container's own — and watched, as [`watch::watch`] states. Nothing
 /// takes a message back. The rules of the admission, which make the
 /// messages one connection sends reach the agent in the order it sent

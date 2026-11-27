@@ -1,12 +1,8 @@
 //! The five MCP exchanges over a run's served tools.
 //!
-//! Every exchange put to a served tool activates the tool's run first
-//! — its secrets taken and fed, the proxy's gate opened, see
-//! [`activate_tool`](crate::containers::activate_tool) — and is in
-//! flight into it from before that activation to its answer, so an
-//! inactive that crosses it finds the run busy and activates it
-//! again. An activation that fails is the exchange's error — a list
-//! that lists nothing from that tool, a call or a read refused.
+//! Every exchange put to a served tool is in flight into the tool's
+//! run from before it is sent to its answer, which is what holds the
+//! run up.
 
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -26,7 +22,7 @@ use tokio::task::AbortHandle;
 
 use super::{Entry, Outbox, Push, Served, exposed, split};
 use crate::containers::lifecycle::{Answer, Ask, End};
-use crate::containers::{AskError, Key, ToolKey, ToolRun, activate_tool, events, tool_log, tools};
+use crate::containers::{AskError, Key, ToolKey, ToolRun, events, tool_log, tools};
 use crate::daemon::Daemon;
 use crate::store::DependencyToolId;
 use crate::store::connected_standalone_tools::ConnectedTool;
@@ -169,9 +165,6 @@ pub async fn list_tools(context: &Context, _: Option<PaginatedRequestParams>) ->
         attest_request(&mut params, caller);
         tool_log::session(&context.daemon, &run, caller).await;
         let _flying = run.inflight.enter();
-        if activate_tool(&context.daemon, &run).await.is_err() {
-            continue;
-        }
         match run.handle.list_tools(caller, Some(params)).await {
             Ok(result) => {
                 run.touch();
@@ -202,9 +195,6 @@ pub async fn list_resources(context: &Context, _: Option<PaginatedRequestParams>
         attest_request(&mut params, caller);
         tool_log::session(&context.daemon, &run, caller).await;
         let _flying = run.inflight.enter();
-        if activate_tool(&context.daemon, &run).await.is_err() {
-            continue;
-        }
         match run.handle.list_resources(caller, Some(params)).await {
             Ok(result) => {
                 run.touch();
@@ -276,14 +266,13 @@ async fn asked_call(
     }
 }
 
-/// The call, routed: the call attested, the run activated, the event
+/// The call, routed: the call attested, the event
 /// recorded, and the tool asked on the caller's session.
 async fn routed_call(daemon: &Arc<Daemon>, sender: &Creator, caller: &attestation::Caller, run: &Arc<ToolRun>, mut params: CallToolRequestParams) -> Result<CallToolResult, AskError> {
     attest_request(&mut params, caller);
     tool_log::session(daemon, run, caller).await;
     run.touch();
     let _flying = run.inflight.enter();
-    activate_tool(daemon, run).await.map_err(|error| AskError::Other(error.0.to_string()))?;
     events::record(daemon, sender, &run.sender).await;
     let mut result = run.handle.call_tool(caller, params).await?;
     run.attest(result.meta.get_or_insert_default());
@@ -333,11 +322,6 @@ async fn asked_read(daemon: Arc<Daemon>, sender: Creator, caller: attestation::C
     let read = log::Read { caller: caller.clone(), uri: params.uri.clone() };
     let ask = tool_log::begin(&daemon, &run, Item::Read(read), Ask::Read).await;
     let _flying = run.inflight.enter();
-    if let Err(error) = activate_tool(&daemon, &run).await {
-        let error = error.0.to_string();
-        tool_log::end(&daemon, &run, ask, |read| Answer::Kept(Item::ReadError(log::ReadError { read, error: tool_log::words(&error) }))).await;
-        return Err(AskError::Other(error));
-    }
     match run.handle.read_resource(&caller, params).await {
         Ok(mut result) => {
             run.touch();

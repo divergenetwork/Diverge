@@ -19,8 +19,8 @@ use super::{AgentRun, ToolRun};
 ///    serve under a running container, so the run is over.
 /// 2. **As failed, with its reason.** The run is said to be ending as
 ///    unexpected, `mount_lost`, unless someone said how first; the gate
-///    is marked `ending`, so nothing more is activated on the run or
-///    sent to it, as for a batch that could not be fed; and the
+///    is marked `ending`, so nothing more is
+///    sent to it; and the
 ///    container is told to stop. The pump hears the end and takes the
 ///    run down, its `undeployed` carrying the reason.
 /// 3. **Nothing lost, nothing done.** A run that ends otherwise ends

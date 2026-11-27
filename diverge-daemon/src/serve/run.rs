@@ -37,7 +37,7 @@ const KEY_SETS: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 /// started, or named; the daemon's identities are opened; the store
 /// is opened on it, its schema applied; what a daemon that ended
 /// without stopping left is made whole — its logs' files, the runs
-/// they still hold deployed, the vault slots those runs held: see
+/// they still hold deployed: see
 /// [`integrity`](crate::integrity) — before anything is live; the
 /// daemon is built, its stop made here so the signal and the route
 /// send on the one sender; the port is listened on until the

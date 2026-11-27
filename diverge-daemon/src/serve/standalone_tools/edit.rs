@@ -1,4 +1,4 @@
-//! Editing a tool: a patch to its name, its mounts, its secrets —
+//! Editing a tool: a patch to its name and its mounts —
 //! while its container runs, to its FUSE mounts alone, and only by
 //! addition.
 
@@ -13,9 +13,9 @@ use super::{reaches, resolve};
 use crate::containers::ToolKey;
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{self, Standing, Who};
-use crate::serve::inner::{self, Checked, Mounted, Outcome, Secrets, Which};
+use crate::serve::inner::{self, Checked, Mounted, Outcome, Which};
 use crate::serve::reply;
-use crate::store::{self, tools, tools_templates};
+use crate::store::{self, tools};
 
 /// Answer the edit and finish the scope.
 pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) {
@@ -32,11 +32,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// not be applied or a result that is not a tool's editable members;
 /// `Active` for a result that, while the tool's container runs,
 /// differs in anything but FUSE mounts added — the name, the volume
-/// mounts, the secrets, a FUSE mount removed, replaced or reordered;
+/// mounts, a FUSE mount removed, replaced or reordered;
 /// the error for a provider that is not
-/// there, or volumes named on a tool pinned to no provider; the
-/// `secrets` error for secrets that are not the template's, and
-/// `Forbidden` for a vault key the grants do not reach; `InUse` for a
+/// there, or volumes named on a tool pinned to no provider; `InUse` for a
 /// name a standalone or a connected tool has, as
 /// [`tool_names`](crate::store::tool_names) states; else the tool as
 /// the result states, whole or not at all.
@@ -85,7 +83,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         volume_mounts: pinned.as_ref().map(|provider| provider.volume_mounts.clone()).unwrap_or_default(),
         fuse_file_mounts: tool.fuse_file_mounts.clone(),
         fuse_directory_mounts: tool.fuse_directory_mounts.clone(),
-        secrets: tool.secrets.clone(),
     };
     let result = match inner::patched(&current, &frame.patch) {
         Ok(result) => result,
@@ -94,11 +91,10 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     let mounts_changed = result.volume_mounts != current.volume_mounts
         || result.fuse_file_mounts != current.fuse_file_mounts
         || result.fuse_directory_mounts != current.fuse_directory_mounts;
-    let secrets_changed = result.secrets != current.secrets;
     let added = match &run {
         None => None,
         Some(_) => {
-            if result.name != current.name || result.volume_mounts != current.volume_mounts || secrets_changed {
+            if result.name != current.name || result.volume_mounts != current.volume_mounts {
                 return Ok(Frame::Active);
             }
             match inner::additions(&current.fuse_file_mounts, &result.fuse_file_mounts, &current.fuse_directory_mounts, &result.fuse_directory_mounts) {
@@ -107,17 +103,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             }
         }
     };
-    if secrets_changed {
-        let Some(template) = tools_templates::by_id(&mut tx, &tool.template, false).await? else {
-            return Ok(Frame::Error(reply::failure(&"the tool's template is not on record")));
-        };
-        match inner::secrets(&mut tx, &standing, &template.template.secrets, &result.secrets).await? {
-            Secrets::Ok => {}
-            Secrets::Mismatch(what) => return Ok(Frame::Error(reply::secrets(&what))),
-            Secrets::Missing(what) => return Ok(Frame::Error(reply::secrets(&what))),
-            Secrets::Forbidden => return Ok(Frame::Forbidden),
-        }
-    }
     let provider = match pinned {
         Some(mut provider) => {
             provider.volume_mounts = result.volume_mounts;
@@ -149,7 +134,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             provider,
             fuse_file_mounts: result.fuse_file_mounts,
             fuse_directory_mounts: result.fuse_directory_mounts,
-            secrets: result.secrets,
         };
         if let tools::Updated::InUse = tools::update(&mut tx, tool.id, tool.name.as_deref(), &columns).await? {
             return Ok(Frame::InUse);
@@ -158,7 +142,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
         daemon.live.changed(Kind::StandaloneTools);
         daemon.live.changed(Kind::Agents);
         daemon.live.changed(Kind::Volumes);
-        daemon.live.changed(Kind::Vault);
         return Ok(Frame::Edited);
     };
     if files.is_empty() && directories.is_empty() {
@@ -198,7 +181,6 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
             provider,
             fuse_file_mounts: made_files,
             fuse_directory_mounts: made_directories,
-            secrets: current.secrets,
         };
         if let tools::Updated::InUse = tools::update(&mut tx, tool.id, current.name.as_deref(), &columns).await? {
             return Ok(Frame::InUse);

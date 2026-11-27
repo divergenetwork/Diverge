@@ -97,13 +97,3 @@ pub fn questions(invalid: &diverge_sdk::shared::containers::structured_decisions
     }))
 }
 
-/// The wire's error for a record's secrets that are not its
-/// template's: one shape, `{"kind":"secrets","error":…}`, naming the
-/// secret missing or not declared — or, at a template's create, the
-/// name that is empty or declared twice. Nothing changed.
-pub fn secrets(what: &str) -> Error {
-    Error(serde_json::json!({
-        "kind": "secrets",
-        "error": what,
-    }))
-}

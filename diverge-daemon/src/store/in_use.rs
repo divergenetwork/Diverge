@@ -3,8 +3,7 @@
 //!
 //! A template is in use while a container made from it exists; a
 //! remote daemon while a connected
-//! tool names it, or a mount of a volume on it; a vault key while an agent or a tool binds it in its
-//! `secrets`. All are facts of the records, not of
+//! tool names it, or a mount of a volume on it. Both are facts of the records, not of
 //! what runs, so they survive a restart as the records do.
 
 use std::collections::HashSet;
@@ -53,17 +52,4 @@ async fn ids(conn: &mut PgConnection, query: &'static str) -> Result<HashSet<Str
         ids.insert(id.unwrap_or_default());
     }
     Ok(ids)
-}
-
-/// Whether some agent or tool binds the vault key: a value of its
-/// `secrets` is the key.
-pub async fn vault_key(conn: &mut PgConnection, key: &str) -> Result<bool, Error> {
-    let row = sqlx::query(
-        "SELECT EXISTS (SELECT 1 FROM diverge.agents a, jsonb_each_text(a.secrets) s WHERE s.value = $1) \
-         OR EXISTS (SELECT 1 FROM diverge.tools t, jsonb_each_text(t.secrets) s WHERE s.value = $1) AS held",
-    )
-    .bind(key)
-    .fetch_one(&mut *conn)
-    .await?;
-    Ok(row.try_get("held")?)
 }

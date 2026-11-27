@@ -12,7 +12,7 @@ use diverge_sdk::daemon::endpoints::standalone_tools::connect::client::{execute 
 use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::provider::endpoints::containers::agents::run::client::{execute as agents_run, request as agents_request};
 use diverge_sdk::provider::endpoints::containers::tools::run::client::{execute as tools_run, request as tools_request};
-use tokio::sync::{Mutex, Notify, watch};
+use tokio::sync::{Mutex, watch};
 
 use super::answerers::Answerer;
 use super::images::{self, Pulls};
@@ -20,7 +20,7 @@ use super::capable::Needs;
 use super::fuse::Mounts;
 use super::lifecycle::{self, End};
 use super::mcp::Served;
-use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, secrets, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, eager, stop};
+use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, eager, stop};
 use crate::daemon::{Daemon, Kind};
 use crate::daemons;
 use crate::containers::permissions;
@@ -35,13 +35,11 @@ use crate::store::{agents, agents_templates, connected_standalone_tools as conne
 /// idle, the run opened on the first provider that runs it — its
 /// dependencies deployed meanwhile, the lazy ones stopped again
 /// when that provider does not — its dependencies settled to none
-/// when its program declared none, its secrets taken at its
-/// registration as [`Registrar`](diverge_sdk::provider::client::Registrar)
-/// states and moved into the run, the slots given back at once, and
+/// when its program declared none, and
 /// its id taken, the log told
 /// it began, the pump and the idle clock running. A start that fails
-/// keeps an `Error` item in the log, the mounts opened are let go,
-/// and what a registration took is given back; one that fails after
+/// keeps an `Error` item in the log, and the mounts opened are let go;
+/// one that fails after
 /// its run was made is undone as [`undo_agent`](stop::undo_agent)
 /// states. The start runs in a task of its own, waited for: a caller
 /// cancelled midway — an exchange aborted with its scope — neither
@@ -199,9 +197,6 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
             kept: Mutex::new(None),
-            declared: template.template.secrets.clone(),
-            binding: agent.secrets.clone(),
-            secrets: Mutex::new(None),
         });
         let opened = agents_run::execute(&handle, &agents_request::Frame(container.clone()), answerer.set()).await;
         // The run is answered: its pull is over either way.
@@ -219,21 +214,12 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
                     deployed
                 };
                 stop::stop_dependencies(daemon, deployed, End::Expected).await;
-                secrets::abandon(daemon, &answerer).await;
                 last = format!("{error:?}");
                 continue;
             }
         };
         if answerer.kept.lock().await.is_none() {
             eager::settle(daemon, agent.id).await;
-        }
-        // The slots the registration took, given back: the provider fed
-        // their values, but the proxy's gate stays shut until the first
-        // message's feed, which takes afresh. No loop has run, so they
-        // go back as they were taken.
-        let mut registered = answerer.secrets.lock().await.take();
-        if let Some(state) = registered.as_mut() {
-            let _ = secrets::release(daemon, state, &answerer.sender).await;
         }
         let run = Arc::new(AgentRun {
             id: agent.id,
@@ -254,8 +240,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             served,
             messages: Arc::new(Mutex::new(HashMap::new())),
             pending: Arc::new(Inflight::new()),
-            gate: Mutex::new(Gate { secrets: registered, open: false, ending: false }),
-            unfed: Notify::new(),
+            gate: Mutex::new(Gate { ending: false }),
             tasks: Mutex::new(Vec::new()),
             edits: Mutex::new(()),
             epoch: daemon.live.epoch().await,
@@ -267,7 +252,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
         });
         lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone()).await;
         // From here a failure is the run's undoing: its container, its
-        // secrets, its dependencies, its mounts and its `deployed`.
+        // dependencies, its mounts and its `deployed`.
         let recorded: Result<(), crate::store::Error> = async {
             let mut conn = daemon.store.acquire().await?;
             agents::set_deployed(&mut conn, agent.id, &identity, Utc::now()).await?;
@@ -303,10 +288,8 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
 }
 
 /// The tool's run, started now: its container run on the first of its
-/// providers that runs it, with its mounts served. Its secrets are
-/// taken at its registration, as
-/// [`Registrar`](diverge_sdk::provider::client::Registrar) states, and
-/// moved into the run; [`pump_tool`](super::pump_tool) reads the
+/// providers that runs it, with its mounts served.
+/// [`pump_tool`](super::pump_tool) reads the
 /// container's activity to its end and takes the run down; a
 /// lazy tool's idle clock ends it `idle_seconds` after the last
 /// use, nothing in flight and no connect open. A tool declares no
@@ -331,7 +314,7 @@ pub async fn tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, Sta
 async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, StartError> {
     let touched = watch::channel(Instant::now()).0;
     let (template, pinned) = (&tool.template, &tool.provider);
-    let (identity, container, handle, mounts, attestation, eager, stream, secrets, permissions) = {
+    let (identity, container, handle, mounts, attestation, eager, stream, permissions) = {
         let record = {
             let mut conn = daemon.store.acquire().await?;
             tools_templates::by_id(&mut conn, template, false)
@@ -378,27 +361,22 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
                 kept: Mutex::new(None),
-                declared: record.template.secrets.clone(),
-                binding: tool.secrets.clone(),
-                secrets: Mutex::new(None),
             });
             let started = tools_run::execute(&handle, &tools_request::Frame(container.clone()), answerer.set()).await;
             // The run is answered: its pull is over either way.
             answerer.pulls.release().await;
             match started {
                 Ok((id, handle, stream)) => {
-                    let secrets = answerer.secrets.lock().await.take();
                     let permissions = answerer.permissions.lock().await.clone();
-                    opened = Some((identity, id.id, handle, stream, secrets, permissions));
+                    opened = Some((identity, id.id, handle, stream, permissions));
                     break;
                 }
                 Err(error) => {
-                    secrets::abandon(daemon, &answerer).await;
                     last = format!("{error:?}");
                 }
             }
         }
-        let Some((identity, id, handle, stream, secrets, permissions)) = opened else {
+        let Some((identity, id, handle, stream, permissions)) = opened else {
             mounts.stop().await;
             return Err(StartError::Run(last));
         };
@@ -409,7 +387,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             name: tool.name.clone(),
         };
         let eager = document.mode() == Some(Mode::Eager);
-        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, secrets, permissions)
+        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, permissions)
     };
     let run = Arc::new(ToolRun {
         id: ToolKey::Record(tool.id),
@@ -431,13 +409,12 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
         edits: Mutex::new(()),
         dependency: None,
         sessions: Mutex::new(HashMap::new()),
-        secrets: Mutex::new(secrets),
         epoch: daemon.live.epoch().await,
         log: daemon.live.tool_log(&daemon.store, ToolKey::Record(tool.id)).await,
         ending: Mutex::new(None),
     });
     // From here a failure is the run's undoing: its container, its
-    // secrets, its mounts and its `deployed`. What its program
+    // mounts and its `deployed`. What its program
     // declared it may ask of the daemon is kept on its row.
     let recorded = permissions::record(daemon, ToolRef::Standalone(tool.id), &permissions).await;
     if let Err(error) = recorded {
@@ -479,7 +456,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
 /// daemon's connect opened naming the tool, relayed along the record's
 /// route when it has one, which starts the container on the daemon
 /// that runs it and carries the tool's MCP exchanges from then on.
-/// Nothing of the container is this daemon's: no mount, no secret, no
+/// Nothing of the container is this daemon's: no mount, no
 /// provider reserved, no permission kept. The waiter takes the run down
 /// when the connect scope ends, which the other daemon finishes when
 /// the tool's run ends there; the idle clock ends it `idle_seconds`
@@ -543,7 +520,6 @@ async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<A
         edits: Mutex::new(()),
         dependency: None,
         sessions: Mutex::new(HashMap::new()),
-        secrets: Mutex::new(None),
         epoch: daemon.live.epoch().await,
         log: daemon.live.tool_log(&daemon.store, key).await,
         ending: Mutex::new(None),

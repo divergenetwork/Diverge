@@ -4,7 +4,6 @@ use chrono::{DateTime, Utc};
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::endpoints::agents::create::client::request::{FuseMount, Provider};
 use diverge_sdk::daemon::agent_log::Identity;
-use indexmap::IndexMap;
 use sqlx::Row as _;
 use sqlx::postgres::PgRow;
 use sqlx::types::Json;
@@ -17,7 +16,7 @@ use crate::store::{AgentId, Error};
 /// the order of its first attachment, read off the attachments and the
 /// tools that exist rather than kept twice.
 pub(super) const SELECT: &str = "SELECT id, template, index, name, provider, fuse_file_mounts, fuse_directory_mounts, \
-     secrets, last_provider, last_deployed, last_active, tags, created, creator, \
+     last_provider, last_deployed, last_active, tags, created, creator, \
      ARRAY(SELECT t.template FROM diverge.dependency_attachments a JOIN diverge.dependency_tools t ON t.id = a.tool \
            WHERE a.agent = diverge.agents.id GROUP BY t.template ORDER BY min(a.seq)) AS dependencies \
      FROM diverge.agents";
@@ -31,7 +30,6 @@ pub(super) fn agent(row: &PgRow) -> Result<Agent, Error> {
     let provider: Option<Json<Provider>> = row.try_get("provider")?;
     let Json(fuse_file_mounts): Json<Vec<FuseMount>> = row.try_get("fuse_file_mounts")?;
     let Json(fuse_directory_mounts): Json<Vec<FuseMount>> = row.try_get("fuse_directory_mounts")?;
-    let Json(secrets): Json<IndexMap<String, String>> = row.try_get("secrets")?;
     let last_provider: Option<Json<Identity>> = row.try_get("last_provider")?;
     let Json(creator): Json<Creator> = row.try_get("creator")?;
     let created: DateTime<Utc> = row.try_get("created")?;
@@ -43,7 +41,6 @@ pub(super) fn agent(row: &PgRow) -> Result<Agent, Error> {
         provider: provider.map(|Json(provider)| provider),
         fuse_file_mounts,
         fuse_directory_mounts,
-        secrets,
         last_provider: last_provider.map(|Json(identity)| identity),
         last_deployed: row.try_get("last_deployed")?,
         last_active: row.try_get("last_active")?,

@@ -33,7 +33,6 @@ use diverge_sdk::daemon::key;
 use diverge_sdk::shared::containers::request::Image;
 use diverge_sdk::shared::mcp::attestation::{self, Caller};
 use diverge_sdk::shared::mcp::session;
-use rmcp::model::ErrorData;
 
 use super::lifecycle::{self, Answer, Ask};
 use super::{ToolHandle, ToolKey, ToolRun};
@@ -94,11 +93,6 @@ pub async fn note(daemon: &Daemon, key: ToolKey, item: tool_log::Item) {
 pub async fn forget(daemon: &Daemon, key: ToolKey) {
     daemon.live.end_tool_log(key).await;
     let _ = logs::remove(&daemon.logs, key).await;
-}
-
-/// An MCP error, as the log keeps it: its own JSON.
-pub fn error_data(error: &ErrorData) -> diverge_sdk::shared::error::Error {
-    diverge_sdk::shared::error::Error(serde_json::to_value(error).unwrap_or(serde_json::Value::Null))
 }
 
 /// An error in the daemon's words, as the log keeps it.

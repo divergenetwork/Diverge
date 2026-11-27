@@ -40,9 +40,10 @@ impl Loaded {
         }
     }
 
-    /// The tool as a list reports it.
-    pub fn report(self, tool: &DependencyTool) -> Listed {
-        tool.report(self.owner, self.attached, self.active, self.run)
+    /// The tool as a list reports it, its template's arguments with it
+    /// where `arguments` says so.
+    pub fn report(self, tool: &DependencyTool, arguments: bool) -> Listed {
+        tool.report(self.owner, self.attached, self.active, self.run, arguments)
     }
 }
 

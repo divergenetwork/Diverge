@@ -22,7 +22,10 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 }
 
 /// `Forbidden` with no `get` grant at all; `NotFound`; `Forbidden` for
-/// a tool the grants do not reach; else the tool as a list reports it.
+/// a tool the grants do not reach; `Forbidden` for a request whose
+/// `arguments` is `true` and a tool no `arguments` grant reaches; else
+/// the tool as a list reports it, its template's arguments with it
+/// exactly when the request's `arguments` is `true`.
 async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame, store::Error> {
     let mut conn = daemon.store.acquire().await?;
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -40,5 +43,8 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Daemon) -> Result<Frame
     if !judge::dependency_tools::over(&standing, Over::Get, &loaded.facts(&tool)) {
         return Ok(Frame::Forbidden);
     }
-    Ok(Frame::Found(loaded.report(&tool)))
+    if frame.arguments && !judge::dependency_tools::over(&standing, Over::Arguments, &loaded.facts(&tool)) {
+        return Ok(Frame::Forbidden);
+    }
+    Ok(Frame::Found(loaded.report(&tool, frame.arguments)))
 }

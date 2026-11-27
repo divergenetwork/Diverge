@@ -21,13 +21,12 @@ use rmcp::model::{
     CallToolRequestParams, CallToolResult, ListResourcesResult, ListToolsResult, MetaObject, PaginatedRequestParams,
     ReadResourceRequestParams, ReadResourceResult,
 };
-use tokio::sync::{Mutex, Notify, oneshot, watch};
+use tokio::sync::{Mutex, oneshot, watch};
 use tokio::task::AbortHandle;
 
 use super::fuse::Mounts;
 use super::lifecycle::{End, RunLog};
 use super::mcp::{Context, Served};
-use super::secrets::Secrets;
 use super::{ConnectionId, Frames, Inflight, Key, ToolKey, Use};
 use crate::content::Pieces;
 use crate::daemon::Daemon;
@@ -78,18 +77,13 @@ pub struct AgentRun {
     pub messages: Arc<Mutex<HashMap<String, Message>>>,
     /// The requests on their way to the run: entered by the agent's
     /// outbox pump each turn, once it has the run and before it
-    /// activates it, and left when every request of that turn is
+    /// sends to it, and left when every request of that turn is
     /// answered; several turns may hold it at once — see
-    /// [`message`](super::message). What the idle clock waits on, and
-    /// what an inactive asks before it activates the run again.
+    /// [`message`](super::message). What the idle clock waits on.
     pub pending: Arc<Inflight>,
-    /// Its secrets and its proxy's gate, under one lock for every
-    /// activation and inactive: see [`Gate`].
+    /// Whether the daemon is ending the run, under one lock for the
+    /// idle clock's last look and the outbox pump's: see [`Gate`].
     pub gate: Mutex<Gate>,
-    /// Told each time an inactive failed, and so left the gate shut:
-    /// what the agent's outbox pump, waiting on a batch's answer,
-    /// activates the run again on — see [`message`](super::message).
-    pub unfed: Notify,
     /// The index the next enqueue on the run's scope takes: `0` at the
     /// start, one more for each, chat batches and structured decisions
     /// alike. See [`next_index`](Self::next_index).
@@ -121,27 +115,17 @@ pub struct AgentRun {
     pub ended: watch::Sender<bool>,
 }
 
-/// An agent's secrets, and whether its proxy's gate is open: the
-/// proxy launches the loop on the first batch behind an open gate, so
-/// the daemon feeds before the batch it sends, and again only after
-/// the gate shuts.
+/// Whether an agent's run takes messages still: what the idle
+/// clock's last look and the outbox pump's look at the run are served
+/// one after the other under.
 #[derive(Debug)]
 pub struct Gate {
-    /// Its secrets, as its registration took them: the names its
-    /// program takes, the keys they are bound to, and the slots held
-    /// while it is active; `None` for a program that registered
-    /// nothing, which is fed nothing but the go.
-    pub secrets: Option<Secrets>,
-    /// Whether the gate is open: shut at the start, opened by a feed,
-    /// shut again at every inactive.
-    pub open: bool,
     /// Whether the daemon is ending the run with messages to keep
     /// from it: set once, under the gate's lock, and never unset — by
-    /// the idle clock in its last look ([`idle`](super::idle)), and by
-    /// the outbox pump for a run it could not feed again
-    /// ([`fail_agent`](super::fail_agent)). A run so marked is
-    /// activated no more and sent nothing: its messages wait for the
-    /// next run.
+    /// the idle clock in its last look ([`idle`](super::idle)), and
+    /// for a run whose mount was lost
+    /// ([`lost_agent`](super::lost_agent)). A run so marked is
+    /// sent nothing: its messages wait for the next run.
     pub ending: bool,
 }
 
@@ -703,9 +687,6 @@ pub struct ToolRun {
     /// states; a session leaves with its connect scope, its agent, or
     /// the run.
     pub sessions: Mutex<HashMap<String, AbortHandle>>,
-    /// Its secrets, as for an agent's run; a connected tool's `None`,
-    /// since the daemon that runs it feeds its container.
-    pub secrets: Mutex<Option<Secrets>>,
     /// The run's number, fresh from the daemon: what its log's
     /// lifecycle is kept under — see [`lifecycle`](super::lifecycle).
     pub epoch: u64,
