@@ -22,5 +22,5 @@ pub async fn read_resource(proxy: &Proxy, scope: &ScopeHandle, channel: u32, req
         },
     };
     reply(scope, channel, encoded(&frame)).await;
-    proxy.activity.leave(proxy, scope).await;
+    proxy.activity.leave(scope).await;
 }

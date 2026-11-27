@@ -25,7 +25,7 @@ const FILES: usize = 8;
 ///    not taken, with why; a peer the provider dialled, likewise;
 ///    every request a connection opens, by its tag — the byte the
 ///    protocol names its endpoints by — and never its body, so no
-///    secret and no file's bytes are written, but for a `capacity`,
+///    argument and no file's bytes are written, but for a `capacity`,
 ///    which every daemon asks every ten seconds and is left out;
 ///    and a connection's end, with how long it lasted. No channel
 ///    request, no response and no payload is written.

@@ -23,25 +23,17 @@ use crate::{agent, inside, program};
 /// image are registered with the program's server — its refusal is the `Error`,
 /// in its own words, and the connection has not begun — and then
 /// `Begun` goes out carrying the dependencies the program answered
-/// with and the secrets it takes, by name and mode, the permissions
-/// it answered with dropped, since an agent asks the daemon nothing;
-/// the declaration
-/// is kept first, since the loop's end reads it, and the
-/// driver's gate is shut from here until the server's first feed —
-/// its second when the program registered anything, since the first
-/// is then the provider's at the deploy. The scope is published to
+/// with, the permissions
+/// it answered with dropped, since an agent asks the daemon nothing.
+/// The scope is published to
 /// every surface inside the container, the queue's driver and the
 /// resident notifications ask are started, and every channel the
 /// server opens on the scope is served on a task of its own; a
 /// channel this end cannot read is finished with nothing. No daemon
 /// connection is among them: an agent container holds no account and
 /// asks the daemon nothing, so the server never opens one, and
-/// `/daemon` closes on an agent container at once. The loop is raced
-/// against the proxy ending the run — a collect that failed, its
-/// `Error` on the main stream already — and finishes the scope then;
-/// this loop alone may, since reading the inbox holds its lock, and
-/// a finish from any other task would wait on it forever. Otherwise
-/// the scope is the connection's life.
+/// `/daemon` closes on an agent container at once. The
+/// scope is the connection's life.
 ///
 /// Every task it starts is its own — the channels', and for an agent
 /// the resident notifications ask — held in one set: those that ended
@@ -63,12 +55,9 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
         }
     };
     let scope = Arc::new(scope);
-    proxy.set_declaration(registered.secrets.clone());
     let begun = response::Registered {
         dependencies: registered.dependencies,
-        secrets: registered.secrets,
     };
-    let registering = !begun.dependencies.is_empty() || !begun.secrets.is_empty();
     if let Some(payload) = encoded(&response::Frame::Begun(begun)) {
         scope.send_response(&payload).await;
     }
@@ -76,7 +65,7 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
         scope: Arc::clone(&scope),
         family: Family::Agents,
     });
-    proxy.set_commands(agent::driver(Arc::clone(&proxy), Arc::clone(&scope), registering));
+    proxy.set_commands(agent::driver(Arc::clone(&proxy), Arc::clone(&scope)));
     let mut tasks = JoinSet::new();
     tasks.spawn(inside::mcp::notifications(Arc::clone(&proxy)));
 
@@ -84,12 +73,8 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
         // Finished ones, so the set does not grow for the life of the
         // connection.
         while tasks.try_join_next().is_some() {}
-        let bytes = tokio::select! {
-            bytes = scope.recv_channel_request() => match bytes {
-                Some(bytes) => bytes,
-                None => break,
-            },
-            _ = proxy.ended() => break,
+        let Some(bytes) = scope.recv_channel_request().await else {
+            break;
         };
         let Ok(ClientFrame::ChannelRequest { channel, payload, .. }) = ClientFrame::decode(&bytes) else {
             continue;
@@ -102,9 +87,6 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
             }
             Ok(channel_request::Frame::Enqueue(request)) => {
                 tasks.spawn(agent::enqueue(proxy, scope, channel, request));
-            }
-            Ok(channel_request::Frame::Secrets(values)) => {
-                tasks.spawn(agent::feed(proxy, scope, channel, values));
             }
             Err(_) => {
                 tasks.spawn(async move { scope.send_channel_response_finish(channel).await });

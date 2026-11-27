@@ -4,10 +4,9 @@ use diverge_sdk::wire::client::handle::SendError;
 use diverge_sdk::container_proxy::outside::endpoints::agents::begin::client::execute::{Chunks, ExecuteHandle as AgentsBegin};
 use diverge_sdk::container_proxy::outside::client::{Ask, Asks};
 use diverge_sdk::container_proxy::outside::endpoints::tools::begin::client::execute::{Events, ExecuteHandle as ToolsBegin};
-use diverge_sdk::provider::endpoints::containers::client::answered::{Daemon, Postgres, Secrets};
-use diverge_sdk::provider::endpoints::containers::client::{ChannelStream, OpenError, UnaryError};
+use diverge_sdk::provider::endpoints::containers::client::answered::{Daemon, Postgres};
+use diverge_sdk::provider::endpoints::containers::client::{ChannelStream, OpenError};
 use diverge_sdk::shared::containers::dependencies::Template;
-use diverge_sdk::shared::containers::secrets::{Declaration, Values};
 use diverge_sdk::shared::permission::Grant;
 
 /// The begin scope on a container's proxy connection: the place the
@@ -16,8 +15,8 @@ use diverge_sdk::shared::permission::Grant;
 /// One per run, made by [`Runs::begin`](super::family::Runs::begin),
 /// held by the [`Run`](super::run::Run) for the container's life. The
 /// two families' handles answer the proxy the same way, and ask it
-/// the same three things — a database half, the image's `/.diverge/DIVERGE.md`,
-/// a feed of the secrets — which is what the methods here are for;
+/// the same two things — a database half and the image's
+/// `/.diverge/DIVERGE.md` — which is what the methods here are for;
 /// what differs — the queue's exchanges, or the MCP five — the
 /// family's own `serve` reaches through the variant.
 #[derive(Debug)]
@@ -68,17 +67,6 @@ impl Begin {
     }
 
 
-    /// The secrets' values, fed to the container: the secrets channel
-    /// on either family's begin, answered once the program has
-    /// applied them and the proxy's gate is open — or with the
-    /// program's refusal, in its own words.
-    pub(crate) async fn secrets(&self, values: Values) -> Result<(), UnaryError<Secrets>> {
-        match self {
-            Begin::Agents(begin) => begin.secrets(values).await,
-            Begin::Tools(begin) => begin.secrets(values).await,
-        }
-    }
-
     /// The tools family's handle; [`None`] for an agent container.
     pub(crate) fn tools(&self) -> Option<ToolsBegin> {
         match self {
@@ -110,10 +98,6 @@ pub(crate) struct Begun {
     /// off its `Begun`: what the caller is asked to deploy, when any.
     /// A tool container's is empty: it declares nothing.
     pub dependencies: Vec<Template>,
-    /// The secrets the container takes, by name and mode, off its
-    /// `Begun`: what the caller is asked the values of, when any, and
-    /// what is fed back before the id goes out.
-    pub secrets: Declaration,
     /// The grants a tool container declared at registration, off its
     /// `Begun`: what the caller holds it to. An agent container's is
     /// empty: it asks the caller nothing.

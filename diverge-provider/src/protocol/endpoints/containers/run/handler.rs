@@ -46,8 +46,7 @@ use diverge_sdk::shared::error::Error;
 ///    deploy, the proxy dialled, the family's begin, the id minted
 ///    and the container entered in the directory — with its proxy
 ///    connection, for serves and transfers — then the container
-///    registered with the caller, the id told, its first secrets fed
-///    back to it, beside every mount. A failed nonce check is the
+///    registered with the caller, the id told, beside every mount. A failed nonce check is the
 ///    family's `ProofFailed`, any other failure the run's error, and
 ///    the scope finishes on it.
 /// 3. The id is sent, with the source the image was taken from. From here the container is running for the
@@ -161,7 +160,6 @@ pub(crate) async fn run<R, D, V>(
         chunks,
         activity,
         dependencies: _,
-        secrets: _,
         permissions: _,
     } = prepared.begun;
     let run = Arc::new(Run::new(

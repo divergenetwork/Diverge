@@ -1,12 +1,11 @@
 //! The arguments, the template and the image, told to the program's
 //! server once: `POST /register`, answered with the dependencies the program
-//! declares, the secrets it takes and the permissions it holds.
+//! declares and the permissions it holds.
 
 use diverge_sdk::container_proxy::inside::register::request::Request;
 use diverge_sdk::container_proxy::inside::register::response::Response;
 use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::containers::request::Image;
-use diverge_sdk::shared::containers::secrets::Declaration;
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::shared::permission::Grant;
 use reqwest::header::CONTENT_TYPE;
@@ -20,12 +19,6 @@ pub struct Registered {
     /// container's `Begun` carries and a tool container's begin
     /// drops.
     pub dependencies: Vec<Template>,
-    /// The secrets the program takes, by name, each `fixed` or
-    /// `rotating`: what the proxy feeds the program at every
-    /// activation, and — the rotating ones — collects from it at
-    /// every inactive. Empty is a program that takes none, whose
-    /// gate is never closed.
-    pub secrets: Declaration,
     /// The grants the program holds over the daemon, which a tool
     /// container's `Begun` carries and an agent container's begin
     /// drops.
@@ -36,15 +29,14 @@ pub struct Registered {
 /// container is made from, and `image`, the image it runs as the
 /// server's begin carried it, with the program's server. A `2xx` is
 /// the three held for the container's life, and its body the dependencies
-/// the program declares, the secrets it takes and the permissions it
+/// the program declares and the permissions it
 /// holds; a non-`2xx` is the
 /// image refusing them, in its own words, and a server that cannot be
 /// reached is the refusal too. So is a `2xx` whose body is not the
-/// response: the dependencies, the declaration and the permissions are
+/// response: the dependencies and the permissions are
 /// part of
 /// registration, and a registration the proxy cannot read has not
-/// happened. No value of any secret is here: values arrive on the
-/// begin scope's secrets channel, after `Begun`.
+/// happened.
 pub async fn register(upstream: &Upstream, arguments: Value, template: String, image: Image) -> Result<Registered, Error> {
     let body = serde_json::to_vec(&Request { arguments, template, image }).map_err(|error| {
         Error(serde_json::json!({
@@ -68,7 +60,6 @@ pub async fn register(upstream: &Upstream, arguments: Value, template: String, i
     serde_json::from_slice::<Response>(&body)
         .map(|response| Registered {
             dependencies: response.dependencies,
-            secrets: response.secrets,
             permissions: response.permissions,
         })
         .map_err(|error| {

@@ -15,7 +15,7 @@ use crate::reply::reply;
 ///
 /// 1. A key with no session open is `Closed` all the same: the caller
 ///    asked for a state that already holds.
-/// 2. It is not the container's activity: it enters no gate and moves
+/// 2. It is not the container's activity: it moves
 ///    the container neither active nor inactive, since it reaches no
 ///    server.
 pub async fn close_session(proxy: &Proxy, scope: &ScopeHandle, channel: u32, request: Sessioned<request::Request>) {

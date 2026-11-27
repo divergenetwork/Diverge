@@ -2,7 +2,6 @@
 
 use diverge_sdk::shared::containers::enqueue;
 use diverge_sdk::shared::containers::enqueue::request::Item;
-use diverge_sdk::shared::containers::secrets::Values;
 use diverge_sdk::shared::error::Error;
 use tokio::sync::oneshot;
 
@@ -54,13 +53,4 @@ pub enum Cmd {
     /// enqueues: the order the driver queues the batches in, whatever
     /// order they reach it in.
     Enqueue(u64, Batch),
-    /// The secrets, fed: the server's values for the program, which
-    /// open the gate once the program has applied them.
-    Feed {
-        /// The values, by name.
-        values: Values,
-        /// Where the word that they were applied — or the program's
-        /// refusal, in its own words — goes.
-        reply: oneshot::Sender<Result<(), Error>>,
-    },
 }

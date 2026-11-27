@@ -2,9 +2,8 @@
 
 use std::sync::Arc;
 
-use diverge_sdk::shared::containers::secrets::{Declaration, Mode};
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
-use tokio::sync::{Mutex, Notify, OnceCell, mpsc, watch};
+use tokio::sync::{Mutex, OnceCell, mpsc, watch};
 
 use crate::agent::Cmd;
 use crate::begin::Family;
@@ -42,21 +41,13 @@ pub struct Proxy {
     /// The agent's driver, set when an agent container begins. A tool
     /// container never sets it.
     commands: OnceCell<mpsc::UnboundedSender<Cmd>>,
-    /// The secrets the program declared at registration, by name and
-    /// mode: set once, before `Begun` goes out, and read by whichever
-    /// gate the container has.
-    declaration: OnceCell<Declaration>,
-    /// The run ending by the proxy's own hand — a collect that failed
-    /// — which the begin loop hears and finishes the scope on.
-    ending: Notify,
     /// The client the program's server is dialled with.
     pub upstream: Upstream,
     /// The MCP sessions a tool container's server is called
     /// through, one per caller.
     pub sessions: Sessions,
-    /// A tool container's MCP exchanges in flight, and the gate they
-    /// wait behind. An agent container never touches it: its gate is
-    /// the driver's.
+    /// A tool container's MCP exchanges in flight. An agent container
+    /// never touches it.
     pub activity: Activity,
     /// The FUSE mounts made so far.
     pub mounts: Mounts,
@@ -78,8 +69,6 @@ impl Proxy {
             begun: Mutex::new(false),
             begin,
             commands: OnceCell::new(),
-            declaration: OnceCell::new(),
-            ending: Notify::new(),
             upstream: Upstream::new(),
             sessions: Sessions::default(),
             activity: Activity::new(),
@@ -143,47 +132,5 @@ impl Proxy {
     /// begin, so there is one driver.
     pub fn set_commands(&self, commands: mpsc::UnboundedSender<Cmd>) {
         let _ = self.commands.set(commands);
-    }
-
-    /// Keep the program's declaration. A second is dropped: there is
-    /// one registration, so there is one declaration.
-    pub fn set_declaration(&self, declaration: Declaration) {
-        let _ = self.declaration.set(declaration);
-    }
-
-    /// Whether the program takes any secret at all: a tool's gate is
-    /// closed at the begin, and closed again by every inactive, only
-    /// then. A tool that takes none has nothing to wait for, and a
-    /// program that has not registered takes nothing yet. An agent's
-    /// gate is shut either way: it is the go, see [`agent`](crate::agent).
-    pub fn gated(&self) -> bool {
-        self.declaration.get().is_some_and(|declaration| !declaration.is_empty())
-    }
-
-    /// The names the program declared `rotating`, in the declaration's
-    /// order: what every inactive collects.
-    pub fn rotating(&self) -> Vec<String> {
-        self.declaration
-            .get()
-            .map(|declaration| {
-                declaration
-                    .iter()
-                    .filter(|(_, mode)| **mode == Mode::Rotating)
-                    .map(|(name, _)| name.clone())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    /// End the run: the `Error` is on the main stream already, and
-    /// the begin loop finishes the scope behind it.
-    pub fn end(&self) {
-        self.ending.notify_one();
-    }
-
-    /// The run ended by this end: resolves once [`end`](Self::end)
-    /// has been called, before or after.
-    pub async fn ended(&self) {
-        self.ending.notified().await;
     }
 }

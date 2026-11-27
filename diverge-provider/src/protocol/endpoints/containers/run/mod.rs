@@ -23,10 +23,9 @@
 //!   caller's help at hand and the source the deployer's; the one
 //!   connection to the proxy, and on it the family's `begin` —
 //!   carrying the arguments, the template and the image, answered with what the container
-//!   declared: its dependencies and the secrets it takes — and then,
+//!   declared: its dependencies and its permissions — and then,
 //!   beside each other, the container registered with the caller —
-//!   those dependencies deployed, those secrets' first values
-//!   answered and fed to the container — and one `fuse::mount` scope
+//!   those dependencies deployed, those permissions held — and one `fuse::mount` scope
 //!   per mount, each complete before the next. Nothing the caller
 //!   opens is read until all of it is done and the id is out.
 //! - `relay`, the proxy's asks — the channels it opens on `begin`,
@@ -39,7 +38,7 @@
 //!   under an id already held, before the proxy is asked.
 //! - `serve`, the channels the caller opens — a tree, a read, a
 //!   write, a transfer into another container, its half of a
-//!   database connection, a feed of the secrets, one more FUSE mount,
+//!   database connection, one more FUSE mount,
 //!   and the family's own
 //!   exchange — each served against the proxy on a task of its own,
 //!   read off the scope by one loop that also hears the cancel, the

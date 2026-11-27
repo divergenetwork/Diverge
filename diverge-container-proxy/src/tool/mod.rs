@@ -3,7 +3,7 @@
 //! A tool container's entrypoint is an MCP server on the loopback —
 //! Streamable HTTP at `/mcp`, on the port
 //! [`port()`](diverge_sdk::container_proxy::inside::port) reads, beside the
-//! `/register`, `/secrets` and `/secrets/collect` that
+//! `/register` that
 //! [`program`](crate::program) makes, what the arguments may be being
 //! the image's `/.diverge/DIVERGE.md`, which [`info`](crate::info) reads from
 //! the container and asks of no program —
@@ -33,10 +33,7 @@
 //! The four exchanges that reach the server — list-tools,
 //! list-resources, call-tool, read-resource — are the container's
 //! activity: the first in flight is `Active` on the begin scope's
-//! main stream, the last out is `Inactive` with the rotating secrets
-//! collected from the program, and between an `Inactive` and the
-//! next feed on the server's secrets channel an exchange waits
-//! behind [`Activity`]'s gate — when the program takes any secret.
+//! main stream, the last out is `Inactive`: see [`Activity`].
 //! Notifications are not activity: a nudge, not an exchange; nor is a
 //! close, which reaches no server.
 
@@ -44,7 +41,6 @@ mod activity;
 mod call_tool;
 mod client;
 mod close_session;
-mod feed;
 mod list_resources;
 mod list_tools;
 mod notifications;
@@ -56,7 +52,6 @@ pub use activity::*;
 pub use call_tool::*;
 pub use client::*;
 pub use close_session::*;
-pub use feed::*;
 pub use list_resources::*;
 pub use list_tools::*;
 pub use notifications::*;

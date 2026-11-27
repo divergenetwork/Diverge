@@ -29,7 +29,6 @@ use diverge_sdk::shared;
 use diverge_sdk::shared::containers::response::{
     Id, VolumeFuseServed, VolumeHeld, VolumeMode, VolumeMountUnsupported, VolumeMounted,
 };
-use diverge_sdk::shared::containers::secrets::{Declaration, Values};
 use diverge_sdk::shared::permission::Grant;
 use diverge_sdk::shared::containers::{dependencies, fuse, oci, postgres, registration};
 use diverge_sdk::shared::mcp;
@@ -58,7 +57,6 @@ impl Family for Agents {
                 destination: request.destination,
             },
             channel_request::Frame::Postgres(request) => Opened::Postgres(request.connection_id),
-            channel_request::Frame::Secrets(values) => Opened::Secrets(values),
             channel_request::Frame::FuseMount(request) => Opened::FuseMount(request),
             channel_request::Frame::Exec(request) => Opened::Exec(request),
             channel_request::Frame::TerminalOpen(size) => Opened::TerminalOpen(size),
@@ -141,7 +139,6 @@ impl Runs for Agents {
                     chunks: Some(chunks),
                     activity: None,
                     dependencies: registered.dependencies,
-                    secrets: registered.secrets,
                     permissions: Vec::new(),
                 }),
                 Err(begin::ExecuteError::Refused(error)) => Err(error),
@@ -154,23 +151,21 @@ impl Runs for Agents {
         Some(relayed(ask)?)
     }
 
-    /// What the agent declared — the dependencies to deploy, the
-    /// secrets to answer, never any permission — registered with the
-    /// caller on this family's `registration` channel: nothing when it
-    /// declared neither.
-    fn register(scope: &ScopeHandle, id: &str, dependencies: &[dependencies::Template], secrets: &Declaration, permissions: &[Grant]) -> impl Future<Output = Result<Option<Values>, Error>> + Send {
-        let payload = (!dependencies.is_empty() || !secrets.is_empty() || !permissions.is_empty()).then(|| {
+    /// What the agent declared — the dependencies to deploy, never
+    /// any permission — registered with the caller on this family's
+    /// `registration` channel: nothing asked when it declared none.
+    fn register(scope: &ScopeHandle, id: &str, dependencies: &[dependencies::Template], permissions: &[Grant]) -> impl Future<Output = Result<(), Error>> + Send {
+        let payload = (!dependencies.is_empty() || !permissions.is_empty()).then(|| {
             encoded(&ask::Frame::Registration(registration::request::Request {
                 id: Cow::Borrowed(id),
                 dependencies: Cow::Borrowed(dependencies),
-                secrets: Cow::Borrowed(secrets),
                 permissions: Cow::Borrowed(permissions),
             }))
         });
         async move {
             match payload {
-                None => Ok(None),
-                Some(Some(payload)) => registered(scope, &payload).await.map(Some),
+                None => Ok(()),
+                Some(Some(payload)) => registered(scope, &payload).await,
                 Some(None) => Err(render::registration_failed("the registration ask did not encode")),
             }
         }

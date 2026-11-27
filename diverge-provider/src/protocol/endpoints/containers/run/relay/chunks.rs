@@ -15,11 +15,10 @@ use diverge_sdk::provider::endpoints::containers::agents::run::server::response;
 /// own frame of the same meaning — a chunk as
 /// [`Chunk`](response::Frame::Chunk), the loop's begin as
 /// [`Active`](response::Frame::Active), its end as
-/// [`Inactive`](response::Frame::Inactive) with the rotating secrets
-/// the proxy collected, the values passed on unread — in order, until
+/// [`Inactive`](response::Frame::Inactive) — in order, until
 /// the begin's stream ends — which is the proxy gone, not a loop
-/// ended. A proxy that ends its stream with an error — a collect that
-/// failed — is relayed as the run's [`Error`](response::Frame::Error),
+/// ended. A proxy that ends its stream with an error is relayed as
+/// the run's [`Error`](response::Frame::Error),
 /// in the proxy's words. The agents family's frame, named outright:
 /// only an agent container has a conversation.
 pub(crate) async fn chunks(run: Arc<Run>, mut chunks: Chunks) {
@@ -27,7 +26,7 @@ pub(crate) async fn chunks(run: Arc<Run>, mut chunks: Chunks) {
         let frame = match event {
             Ok(Event::Chunk(chunk)) => response::Frame::Chunk(chunk),
             Ok(Event::Active) => response::Frame::Active,
-            Ok(Event::Inactive(values)) => response::Frame::Inactive(values),
+            Ok(Event::Inactive) => response::Frame::Inactive,
             Err(ChunksError::Refused(error)) => response::Frame::Error(error),
             Err(_) => break,
         };

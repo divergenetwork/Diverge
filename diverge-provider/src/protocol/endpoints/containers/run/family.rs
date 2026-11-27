@@ -25,7 +25,6 @@ use diverge_sdk::shared::containers::response::{
 use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::containers::fuse_mount;
 use diverge_sdk::shared::containers::request::Image;
-use diverge_sdk::shared::containers::secrets::{Declaration, Values};
 use diverge_sdk::shared::permission::Grant;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use diverge_sdk::shared::error::Error;
@@ -95,17 +94,15 @@ pub(crate) trait Runs: Family {
 
     /// What the container declared, registered with the caller before
     /// the id goes out but with the id minted and told: the
-    /// `dependencies` it declared, for the caller to deploy, the
-    /// `secrets` it takes, by name and mode, for the caller to answer
-    /// the values of, and the `permissions` it holds, for the caller to
+    /// `dependencies` it declared, for the caller to deploy, and the
+    /// `permissions` it holds, for the caller to
     /// hold it to — on the family's `registration` channel, one ask
-    /// carrying all three. `Ok(Some(values))` is the registration
-    /// accepted and the first values, to feed the container before
-    /// the id goes out; `Ok(None)` is a container that declared
-    /// none of them, for which nothing is asked and nothing fed; anything
+    /// carrying both. `Ok(())` is the registration accepted, or a
+    /// container that declared neither, for which nothing is asked;
+    /// anything
     /// else is the run's error, in the caller's words where it
     /// refused.
-    fn register(scope: &ScopeHandle, id: &str, dependencies: &[Template], secrets: &Declaration, permissions: &[Grant]) -> impl Future<Output = Result<Option<Values>, Error>> + Send;
+    fn register(scope: &ScopeHandle, id: &str, dependencies: &[Template], permissions: &[Grant]) -> impl Future<Output = Result<(), Error>> + Send;
 
     /// The proxy's ask on the begin scope, as this family's frame to
     /// the caller — or [`None`] for one that is not carried as it
@@ -172,9 +169,6 @@ pub(crate) enum Opened<E> {
     /// The caller's half of a database connection, by the id this end
     /// minted.
     Postgres(u32),
-    /// The secrets' values, to feed the container: an activation's,
-    /// after the registration's.
-    Secrets(Values),
     /// One more FUSE mount, made while the container runs.
     FuseMount(fuse_mount::request::Request),
     /// One command, run in the container, its output streamed.

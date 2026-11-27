@@ -29,18 +29,13 @@
 //! it runs, as the server's begin carried them,
 //! with the program's own server on the loopback when the server
 //! begins, and hands the server the dependencies the program answered
-//! with and the secrets it takes — by name and mode, never a value.
+//! with and the permissions it holds.
 //! What the arguments may be is the image's `/.diverge/DIVERGE.md`, which is
 //! read of the image and not of the container: the proxy answers it
 //! to nobody, and reads it only to learn whether the image serves a
-//! frontend. The
-//! values of those secrets the server feeds on a channel of the begin
-//! scope, before the container's first work and again at every
-//! activation; the proxy hands each feed to the program and delivers
-//! nothing to it until the program has applied the values, and when
-//! the container goes inactive — an agent's loop ended, a tool's last
-//! exchange out — collects the rotating ones back from the program
-//! and sends them with the word. It sets
+//! frontend. It says on the begin's main stream when the container
+//! goes active and inactive — an agent's loop begun and ended, a
+//! tool's first exchange in and last out. It sets
 //! nothing under `_meta` on any MCP exchange it relays, in either
 //! direction, and nothing on any chunk the agent says: who is on
 //! either end is the daemon's to attest, not the proxy's — but for

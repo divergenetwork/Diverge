@@ -22,24 +22,17 @@ use crate::{inside, program, tool};
 /// the first goes on. Otherwise the arguments, the template and the
 /// image are registered with the program's server — its refusal is the `Error`,
 /// in its own words, and the connection has not begun — and then
-/// `Begun` goes out carrying the secrets the program takes, by name
-/// and mode, and the permissions it holds, the dependencies it
-/// answered with dropped, since a tool container declares none; the declaration is kept first, and the
-/// activity's gate set from it — open for a program that takes no
-/// secret, closed until the server's first feed for one that does.
+/// `Begun` goes out carrying the permissions it holds, the dependencies it
+/// answered with dropped, since a tool container declares none.
 /// The scope is published to every surface inside the container, and
 /// every channel the server opens on the scope is served on a task
 /// of its own: one exchange with the tool's
 /// server each — its answer as the tool's server gave it, the exchange
 /// entered and left as the container's activity — the notifications
 /// for as long as the channel lives, a session's close answered once
-/// the session is removed, a feed of the secrets answered
-/// once the program has applied them, the server's half of a
+/// the session is removed, the server's half of a
 /// database connection until the driver hangs up. A channel this end
-/// cannot read is finished with nothing. The loop is raced against
-/// the proxy ending the run — a collect that failed, its `Error` on
-/// the main stream already — and finishes the scope then; this loop
-/// alone may, since reading the inbox holds its lock. Otherwise the
+/// cannot read is finished with nothing. The
 /// scope is the connection's life.
 ///
 /// Every task it starts is its own — the channels', and for an agent
@@ -62,10 +55,7 @@ pub async fn tools(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame)
         }
     };
     let scope = Arc::new(scope);
-    proxy.set_declaration(registered.secrets.clone());
-    proxy.activity.set_open(registered.secrets.is_empty());
     let begun = response::Registered {
-        secrets: registered.secrets,
         permissions: registered.permissions,
     };
     if let Some(payload) = encoded(&response::Frame::Begun(begun)) {
@@ -81,12 +71,8 @@ pub async fn tools(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame)
         // Finished ones, so the set does not grow for the life of the
         // connection.
         while tasks.try_join_next().is_some() {}
-        let bytes = tokio::select! {
-            bytes = scope.recv_channel_request() => match bytes {
-                Some(bytes) => bytes,
-                None => break,
-            },
-            _ = proxy.ended() => break,
+        let Some(bytes) = scope.recv_channel_request().await else {
+            break;
         };
         let Ok(ClientFrame::ChannelRequest { channel, payload, .. }) = ClientFrame::decode(&bytes) else {
             continue;
@@ -117,9 +103,6 @@ pub async fn tools(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame)
             }
             Ok(channel_request::Frame::McpCloseSession(request)) => {
                 tasks.spawn(async move { tool::close_session(&proxy, &scope, channel, request).await });
-            }
-            Ok(channel_request::Frame::Secrets(values)) => {
-                tasks.spawn(tool::feed(proxy, scope, channel, values));
             }
             Err(_) => {
                 tasks.spawn(async move { scope.send_channel_response_finish(channel).await });
