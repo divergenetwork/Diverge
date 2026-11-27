@@ -55,7 +55,6 @@ containers in this repository that is an entry in the agent's
 ```
 
 - **Arguments:** none; `{}`.
-- **Secrets:** none.
 - **Permissions:** none. The database is reached through the proxy,
   not through the daemon, so the tool asks the daemon for nothing.
 - **Mode and scope:** `lazy`, `instance`. The tool is deployed with

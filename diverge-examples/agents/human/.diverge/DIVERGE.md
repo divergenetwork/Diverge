@@ -41,7 +41,7 @@ everything you did back as the agent's turn.
 - **The transcript** is kept in the agent's database, so it survives the
   container starting again.
 
-Secrets: none. Arguments: `{}`.
+Arguments: `{}`.
 
 ## Running it
 

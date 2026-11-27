@@ -104,9 +104,11 @@ impl Daemon {
         Ok(shown)
     }
 
-    /// The image an agent template names.
+    /// The image an agent template names. The template is asked for
+    /// without its arguments, which the chat has no use for and holds
+    /// no grant to see.
     async fn image(&self, handle: &Handle, template: &str) -> Result<Image, Failure> {
-        let request = template_get::client::request::Frame { id: template.to_string(), relay: None };
+        let request = template_get::client::request::Frame { id: template.to_string(), arguments: false, relay: None };
         let answer = template_get::client::execute::execute(handle, &request).await.map_err(|error| Failure::Daemon(error.to_string()))?;
         match answer {
             template_get::server::response::Frame::Found(listed) => {

@@ -1,35 +1,30 @@
 //! The OpenRouter agent.
 
 use diverge_sdk::shared::containers::dependencies::Template;
-use diverge_sdk::shared::containers::secrets::{Declaration, Mode};
 use indexmap::IndexMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{ContextCompression, Provider, Reasoning, Stop, Verbosity};
 
-/// The one secret this image takes: the name the agent's template
-/// must declare, bound to the vault key holding the OpenRouter API
-/// key. Its value is a JSON string, fed whole, and goes out as the
-/// bearer token of every fetch.
-pub const API_KEY: &str = "OPENROUTER_API_KEY";
-
 /// An agent running against OpenRouter.
 ///
 /// The widest parameter set of any upstream, because OpenRouter fronts
 /// many providers and exposes what each of them accepts.
 ///
-/// # Secrets
+/// # Credentials
 ///
-/// One, whatever the arguments: [`API_KEY`], `fixed` — read at every
-/// activation and never changed by the loop. The template this
-/// agent is made from must declare that name, or the registration
-/// is refused by the provider; the value reaches the loop through
-/// the proxy's feed, never through the arguments.
+/// One: [`api_key`](Self::api_key), the OpenRouter API key, an
+/// argument like any other. It is held from registration for the
+/// container's life and goes out as the bearer token of every fetch.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
 pub struct Agent {
     /// The model to route to, in OpenRouter's `vendor/name` form.
     pub model: String,
+    /// The OpenRouter API key: the bearer token of every completion
+    /// this agent asks for. Held from registration for the container's
+    /// life, and sent to OpenRouter and to nothing else. Not empty.
+    pub api_key: String,
     /// The system prompt's text, sent as the conversation's leading
     /// message.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -101,13 +96,4 @@ pub struct Agent {
     /// Absent is none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<Template>,
-}
-
-impl Agent {
-    /// The secrets this agent takes, as the registration answers
-    /// them: [`API_KEY`], `fixed`, and nothing else — no argument
-    /// selects another.
-    pub fn declaration(&self) -> Declaration {
-        Declaration::from([(API_KEY.to_string(), Mode::Fixed)])
-    }
 }

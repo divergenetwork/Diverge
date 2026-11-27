@@ -18,8 +18,7 @@
 //! The program is an HTTP server on the container's loopback, at the
 //! port [`diverge_sdk::container_proxy::inside::port()`] names, and
 //! the proxy beside it is its only caller: `POST /register` once,
-//! `POST /secrets` and `POST /secrets/collect` around every activation
-//! (the tool takes no secret), the MCP server at `/mcp`, whose two
+//! the MCP server at `/mcp`, whose two
 //! tools are in [`tools`], and the page beneath `/frontend`, in
 //! [`frontend`], where a person signs an account in. `--schema`, the program's one argument,
 //! prints the JSON Schema of the arguments it takes, which is the
@@ -46,7 +45,6 @@ mod logins;
 mod permissions;
 mod person;
 mod register;
-mod secrets;
 mod server;
 mod store;
 mod tools;
@@ -109,8 +107,6 @@ async fn serve() {
     let mcp = StreamableHttpService::new(move || Ok(sessions.clone()), Arc::new(LocalSessionManager::default()), StreamableHttpServerConfig::default());
     let app = axum::Router::new()
         .route("/register", axum::routing::post(register::register))
-        .route("/secrets", axum::routing::post(secrets::feed))
-        .route("/secrets/collect", axum::routing::post(secrets::collect))
         .nest_service("/mcp", mcp)
         .merge(frontend::routes(server));
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", diverge_sdk::container_proxy::inside::port())).await.expect("the port could not be bound");

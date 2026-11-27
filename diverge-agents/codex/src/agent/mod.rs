@@ -19,14 +19,12 @@
 //! `model_reasoning_effort`, `model_reasoning_summary`,
 //! `model_verbosity`, `web_search`, and a `model_providers` entry —
 //! or, for [`auth`](Agent::auth), one of Codex's own login methods;
-//! nothing else made the cut. Nothing here is a secret: the agent
-//! names HOW Codex logs in and never with what. Each method declares
-//! one secret by a fixed name — `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`,
-//! `CODEX_AUTH` or `OPENAI_IDENTITY_TOKEN` — the template must
-//! declare, the registration answers it with its mode, the proxy
-//! feeds its value before every loop, and the run puts the value
+//! nothing else made the cut. The agent names HOW Codex logs in and
+//! with what: each method carries its one credential as a member of
+//! its own — `api_key`, `access_token`, `auth` or `identity_token` —
+//! and the run puts it
 //! where Codex reads it: a variable, or a file under `CODEX_HOME`.
-//! A name the feed lacks refuses the run.
+//! A credential that is empty refuses the registration.
 //!
 //! What is deliberately ABSENT, and why, so nobody re-opens it
 //! without a new fact:
@@ -51,9 +49,7 @@
 //! - PROFILES, `notify` hooks, execpolicy rules and
 //!   `shell_environment_policy`: the harness's rendering of the
 //!   process, not the caller's vocabulary.
-//! - A CREDENTIAL (a key, a token, an `auth.json`): the method is
-//!   the agent's and the value is a secret the proxy feeds, above;
-//!   `forced_login_method` is unneeded, because the method already
+//! - `forced_login_method`: unneeded, because the method already
 //!   fixes which login the run writes.
 //! - SKILLS: mounts, exactly as for Claude Code; a directory under
 //!   Codex's skills path is a skill, and no switch decides it.

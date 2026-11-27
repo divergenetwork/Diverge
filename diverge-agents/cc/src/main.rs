@@ -13,12 +13,7 @@
 //! argument, prints the JSON Schema of the agent value this image
 //! accepts (see [`main`]); `POST /register` is that value, told once
 //! for the container's life before any run — a run before it is
-//! refused — answered with the secrets this image takes, which are
-//! none; `POST /secrets` is their values, fed by the proxy once the
-//! registration is answered and again at every activation, held and
-//! read by nothing; `POST /secrets/collect` is the rotating secrets
-//! asked back at every inactive, which this image, declaring none, is
-//! never asked. Claude Code's tool calls go through the proxy's MCP
+//! refused. Claude Code's tool calls go through the proxy's MCP
 //! server, whose URL it is handed on its argv; the session it resumes
 //! from, and leaves behind, is one row in the caller's database,
 //! reached through the proxy's loopback pgwire — read once, the first
@@ -57,7 +52,6 @@ mod agent;
 mod claim;
 mod continuation;
 mod registration;
-mod secrets;
 // The wire module carries Claude Code's COMPLETE stdout vocabulary,
 // which is more than the conversion consumes — a field parsed and
 // never read is the completeness, not dead code.
@@ -78,7 +72,6 @@ use diverge_sdk::container_proxy::inside::agent::enqueue;
 use diverge_sdk::container_proxy::inside::register;
 use diverge_sdk::container_proxy::inside::register::response::Response;
 use diverge_sdk::container_proxy::inside::agent::run;
-use diverge_sdk::container_proxy::inside::secrets::{collect, feed};
 use diverge_sdk::provider::endpoints::containers::agents::run::server::response::{
     AgenticLoopChunk, NotificationChunk,
 };
@@ -166,8 +159,6 @@ async fn serve() {
         .route("/register", axum::routing::post(register))
         .route("/run", axum::routing::post(run))
         .route("/enqueue", axum::routing::post(enqueue))
-        .route("/secrets", axum::routing::post(feed))
-        .route("/secrets/collect", axum::routing::post(collect))
         .with_state(Arc::new(Client::new()));
 
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", diverge_sdk::container_proxy::inside::port()))
@@ -396,8 +387,8 @@ async fn run(
 ///
 /// A value this image will not take is `400`; an agent already
 /// registered is `409`, whatever the second carries — the agent
-/// never changes. `200`, with the tools the agent depends on and the
-/// secrets it takes — none — passed back, is the agent held.
+/// never changes. `200`, with the tools the agent depends on passed
+/// back, is the agent held.
 async fn register(Json(request): Json<register::request::Request>) -> Result<(StatusCode, Json<Response>), Refusal> {
     let agent: Agent = match serde_json::from_value(request.arguments) {
         Ok(agent) => agent,
@@ -412,45 +403,13 @@ async fn register(Json(request): Json<register::request::Request>) -> Result<(St
         }
     };
     let dependencies = agent.dependencies.clone();
-    let secrets = agent.declaration();
     match registration::register(agent) {
-        Ok(()) => Ok((StatusCode::OK, Json(Response { dependencies, secrets, permissions: Vec::new() }))),
+        Ok(()) => Ok((StatusCode::OK, Json(Response { dependencies, permissions: Vec::new() }))),
         Err(_) => Err((
             StatusCode::CONFLICT,
             Json(serde_json::json!({
                 "kind": "registered",
                 "error": "the agent is registered, and it never changes",
-            })),
-        )),
-    }
-}
-
-/// `POST /secrets`: the secrets' values, fed.
-///
-/// Held whole, replacing whatever the last feed left, and read by no
-/// run — this image declares no secret, so a feed carries nothing it
-/// wants. `204`, since the proxy reads no body: the answer is the
-/// values held, and nothing is delivered to this program until it is
-/// given.
-async fn feed(Json(request): Json<feed::request::Request>) -> StatusCode {
-    secrets::feed(request.0).await;
-    StatusCode::NO_CONTENT
-}
-
-/// `POST /secrets/collect`: the rotating secrets, handed back.
-///
-/// This image declares none, so the proxy never asks; served as the
-/// contract all the same: every name asked, with the value it was
-/// fed, and a name the program holds no value for `500`, naming the
-/// name and never a value.
-async fn collect(Json(request): Json<collect::request::Request>) -> Result<Json<collect::response::Response>, Refusal> {
-    match secrets::collect(&request.names).await {
-        Ok(values) => Ok(Json(collect::response::Response(values))),
-        Err(error) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "kind": "secrets",
-                "error": error,
             })),
         )),
     }

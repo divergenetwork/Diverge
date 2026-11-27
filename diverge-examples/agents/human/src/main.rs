@@ -11,8 +11,7 @@
 //! The program is an HTTP server on the container's loopback, at the
 //! port [`diverge_sdk::container_proxy::inside::port()`] names, and the
 //! proxy beside it is its only caller: `POST /register` once,
-//! `POST /secrets` and `POST /secrets/collect` around every activation
-//! (the agent takes no secret), `POST /run` and `POST /enqueue`, which
+//! `POST /run` and `POST /enqueue`, which
 //! are in [`run`], and the frontend beneath
 //! `/frontend`, in [`frontend`]. `--schema`, the program's one
 //! argument, prints the JSON Schema of the arguments it takes, which is
@@ -30,7 +29,6 @@ mod desk;
 mod frontend;
 mod register;
 mod run;
-mod secrets;
 mod store;
 
 use std::io::Write as _;
@@ -79,8 +77,6 @@ async fn serve() {
     let desk = Desk::new();
     let app = axum::Router::new()
         .route("/register", axum::routing::post(register::register))
-        .route("/secrets", axum::routing::post(secrets::feed))
-        .route("/secrets/collect", axum::routing::post(secrets::collect))
         .route("/run", axum::routing::post(run::run))
         .route("/enqueue", axum::routing::post(run::enqueue))
         .with_state(desk.clone())

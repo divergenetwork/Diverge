@@ -68,7 +68,6 @@ agent containers in this repository that is an entry in the agent's
 ```
 
 - **Arguments:** none; `{}`.
-- **Secrets:** none.
 - **Mode:** `eager`. The tool keeps time between the agent's runs,
   so it is never `lazy`, which stops when nothing uses it. An eager tool is
   kept running while any agent that declares it is attached.

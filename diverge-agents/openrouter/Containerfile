@@ -3,7 +3,7 @@
 # The container proxy is NOT in this image. The host injects it at
 # runtime, and it may not be up at all until a request comes — which
 # is why the loop touches nothing of the proxy's until `POST /run`
-# arrives: no vault, no database, no MCP session before then.
+# arrives: no database, no MCP session before then.
 #
 # Build from the WORKSPACE ROOT — the crates ride path dependencies:
 #

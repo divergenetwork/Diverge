@@ -1,7 +1,6 @@
 //! The LoNE agent.
 
 use diverge_sdk::shared::containers::dependencies::Template;
-use diverge_sdk::shared::containers::secrets::Declaration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -15,11 +14,9 @@ use serde::{Deserialize, Serialize};
 /// template, so the system prompt, the sampling fields and whether
 /// the model thinks are the whole of what this agent can be told.
 ///
-/// # Secrets
+/// # Credentials
 ///
-/// None: the model is on disk, so there is no credential. The
-/// template this agent is made from need declare no name, and a name
-/// it does declare is one the program never asks for.
+/// None: the model is on disk, so there is no credential.
 ///
 /// # The host
 ///
@@ -73,12 +70,6 @@ pub struct Agent {
 }
 
 impl Agent {
-    /// The secrets this agent takes, as the registration answers
-    /// them: none, whatever the arguments.
-    pub fn declaration(&self) -> Declaration {
-        Declaration::new()
-    }
-
     /// The `lone harness` invocation this agent's turns run: the
     /// subcommand, the bundle, and only the flags the caller set.
     pub fn arguments(&self) -> Vec<String> {

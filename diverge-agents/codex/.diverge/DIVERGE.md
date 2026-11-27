@@ -6,7 +6,7 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Agent",
-    "description": "An agent running against Codex.\n\nFew knobs, and not because anything is missing: Codex decides its\nown sampling, its own tools and its own loop, and what it exposes\nto a caller is the model, how hard it reasons and how it speaks,\nwhether it may search the web, where it sends its requests, and\nhow it logs in — the method only, never the credential, which is\nthe one secret the method declares (see [`Auth`]). Each field is\none config key or flag, named in its doc; every `Option` absent\nleaves that key unset, so Codex applies its own default for the\nmodel — except [`web_search`](Self::web_search), where absent is\noff, because nothing is on by omission.",
+    "description": "An agent running against Codex.\n\nFew knobs, and not because anything is missing: Codex decides its\nown sampling, its own tools and its own loop, and what it exposes\nto a caller is the model, how hard it reasons and how it speaks,\nwhether it may search the web, where it sends its requests, and\nhow it logs in — the method and, with it, its credential, an\nargument like any other (see [`Auth`]). Each field is\none config key or flag, named in its doc; every `Option` absent\nleaves that key unset, so Codex applies its own default for the\nmodel — except [`web_search`](Self::web_search), where absent is\noff, because nothing is on by omission.",
     "type": "object",
     "properties": {
       "model": {
@@ -69,7 +69,7 @@
         ]
       },
       "auth": {
-        "description": "How Codex logs in: one of its own methods, tagged `method`,\neach declaring the one secret the proxy feeds. REQUIRED — no\nmethod is the default, because every one bills someone. See\n[`Auth`].",
+        "description": "How Codex logs in: one of its own methods, tagged `method`,\neach carrying its credential. REQUIRED — no\nmethod is the default, because every one bills someone. See\n[`Auth`].",
         "$ref": "#/$defs/Auth"
       },
       "dependencies": {
@@ -186,7 +186,7 @@
         ]
       },
       "Provider": {
-        "description": "An endpoint other than OpenAI's: one `model_providers` entry the\nharness writes as `model_providers.diverge` and selects with\n`model_provider = \"diverge\"`. The entry's `env_key` is\n`CODEX_API_KEY` — the variable the `api_key` login method hands\nthe fed `OPENAI_API_KEY` to Codex under — and its `wire_api` is\n`responses`, the one value the configuration reference names, so\nthe endpoint must speak the Responses API, which the Diverge relay\nand every upstream this protocol routes do.\n\nAbsent, Codex's own `openai` provider is used, with whatever\nlogin the agent's [`auth`](super::Agent::auth) names. Present, the\nentry REQUIRES the `api_key` method: a ChatGPT login speaks only\nto OpenAI's own backend, and no other method fills an `env_key`,\nso the registration refuses a provider beside any other method\n(`400`, `{\"kind\":\"auth\"}`).",
+        "description": "An endpoint other than OpenAI's: one `model_providers` entry the\nharness writes as `model_providers.diverge` and selects with\n`model_provider = \"diverge\"`. The entry's `env_key` is\n`CODEX_API_KEY` — the variable the `api_key` login method hands\nits key to Codex under — and its `wire_api` is\n`responses`, the one value the configuration reference names, so\nthe endpoint must speak the Responses API, which the Diverge relay\nand every upstream this protocol routes do.\n\nAbsent, Codex's own `openai` provider is used, with whatever\nlogin the agent's [`auth`](super::Agent::auth) names. Present, the\nentry REQUIRES the `api_key` method: a ChatGPT login speaks only\nto OpenAI's own backend, and no other method fills an `env_key`,\nso the registration refuses a provider beside any other method\n(`400`, `{\"kind\":\"auth\"}`).",
         "type": "object",
         "properties": {
           "base_url": {
@@ -199,54 +199,74 @@
         ]
       },
       "Auth": {
-        "description": "The login method, and through it the ONE secret the agent takes.\n\nThe agent names the method and never a credential: each method\ndeclares one secret, by a fixed name the template must declare,\nand the value the caller binds to that name is what Codex logs in\nwith. The four are Codex's own ways in, as its source has them\n(`rust-v0.163.0`, against the pinned `0.153.4`), and nothing the\nrun does with them is invented: a variable Codex reads, or a file\nat the path Codex reads.\n\n`OPENAI_API_KEY` in the environment is NOT one of them. Codex's\nbuilt-in `openai` provider has no `env_key` — the variable only\nprefills the interactive login — so a key in the environment under\nthat name logs nothing in. `CODEX_API_KEY` is the variable the\ncredential store reads first, and `codex exec` honours it; the\n`api_key` method is the fed `OPENAI_API_KEY` handed to Codex under\nthat name.\n\nA ChatGPT login — the `auth_file` method with ChatGPT tokens in\nit — speaks only to OpenAI's own backend, and a\n[`provider`](super::Agent::provider) beside one fails as itself,\nin Codex's words; a provider's entry is keyed by `CODEX_API_KEY`,\nso a provider REQUIRES `api_key`, and the registration refuses\nthe pair otherwise. Tagged `method`, snake case on the wire.",
+        "description": "The login method, and with it the ONE credential the agent logs in\nwith.\n\nEach method carries its credential as a member of its own: an\nargument like any other, held from registration for the\ncontainer's life. The four are Codex's own ways in, as its source\nhas them (`rust-v0.163.0`, against the pinned `0.153.4`), and\nnothing the run does with them is invented: a variable Codex\nreads, or a file at the path Codex reads. No credential is empty:\nthe registration refuses one that is, naming the member and never\nits value. [`fmt::Debug`] names the method and nothing else, so no\ncredential is ever formatted.\n\n`OPENAI_API_KEY` in the environment is NOT one of them. Codex's\nbuilt-in `openai` provider has no `env_key` — the variable only\nprefills the interactive login — so a key in the environment under\nthat name logs nothing in. `CODEX_API_KEY` is the variable the\ncredential store reads first, and `codex exec` honours it; the\n`api_key` method is its key handed to Codex under that name.\n\nA ChatGPT login — the `auth_file` method with ChatGPT tokens in\nit — speaks only to OpenAI's own backend, and a\n[`provider`](super::Agent::provider) beside one fails as itself,\nin Codex's words; a provider's entry is keyed by `CODEX_API_KEY`,\nso a provider REQUIRES `api_key`, and the registration refuses\nthe pair otherwise. Tagged `method`, snake case on the wire.",
         "oneOf": [
           {
-            "description": "An OpenAI API key. Declares `OPENAI_API_KEY`, `fixed`: a JSON\nstring, put in the process environment as `CODEX_API_KEY`,\nthe top-precedence credential — above `auth.json`, which is\nnever written under this method. Bills the platform at API\nrates. The one method a [`provider`](super::Agent::provider)\ncomposes with.",
+            "description": "An OpenAI API key, put in the process environment as\n`CODEX_API_KEY`, the top-precedence credential — above\n`auth.json`, which is never written under this method. Bills\nthe platform at API rates. The one method a\n[`provider`](super::Agent::provider) composes with.",
             "type": "object",
             "properties": {
+              "api_key": {
+                "description": "The key. Not empty.",
+                "type": "string"
+              },
               "method": {
                 "type": "string",
                 "const": "api_key"
               }
             },
             "required": [
-              "method"
+              "method",
+              "api_key"
             ]
           },
           {
-            "description": "A personal access token (`at-…`) or an Agent Identity JWT.\nDeclares `CODEX_ACCESS_TOKEN`, `fixed`: a JSON string, put in\nthe process environment under the same name, where Codex's\ncredential store reads it after `CODEX_API_KEY`.",
+            "description": "A personal access token (`at-…`) or an Agent Identity JWT, put\nin the process environment as `CODEX_ACCESS_TOKEN`, where\nCodex's credential store reads it after `CODEX_API_KEY`.",
             "type": "object",
             "properties": {
+              "access_token": {
+                "description": "The token. Not empty.",
+                "type": "string"
+              },
               "method": {
                 "type": "string",
                 "const": "access_token"
               }
             },
             "required": [
-              "method"
+              "method",
+              "access_token"
             ]
           },
           {
-            "description": "Codex's own `auth.json`, whole. Declares `CODEX_AUTH`,\n`rotating`: a JSON object of any kind the file takes — ChatGPT\ntokens (`auth_mode`, `tokens {id_token, access_token,\nrefresh_token, account_id}`, `last_refresh`), an `OPENAI_API_KEY`\nmember, a `personal_access_token`, an `agent_identity`, Bedrock\ncredentials — written to `$CODEX_HOME/auth.json` before every\nloop and read back after the loop's last turn. Codex rewrites\nthe file in place when a ChatGPT login refreshes — the three\ntokens and `last_refresh` rotate, five minutes before the\naccess token's expiry, eight days after `last_refresh`, or on a\n`401` — and what it leaves is what the collect answers, so the\nnext activation finds the refreshed login. Bills whatever the\nlogin is.",
+            "description": "Codex's own `auth.json`, whole, written to\n`$CODEX_HOME/auth.json` before every loop and read back after\nthe loop's last turn. Codex rewrites the file in place when a\nChatGPT login refreshes — the three tokens and `last_refresh`\nrotate, five minutes before the access token's expiry, eight\ndays after `last_refresh`, or on a `401` — and what it leaves\nis kept in the agent's own `instance` database, so the next\nloop, and the next start of the container, finds the refreshed\nlogin: see [`login`](crate::login) for the rule. Bills\nwhatever the login is.",
             "type": "object",
             "properties": {
+              "auth": {
+                "description": "The file's content, a JSON object of any kind the file\ntakes — ChatGPT tokens (`auth_mode`, `tokens {id_token,\naccess_token, refresh_token, account_id}`, `last_refresh`),\nan `OPENAI_API_KEY` member, a `personal_access_token`, an\n`agent_identity`, Bedrock credentials. Not empty.",
+                "type": "object",
+                "additionalProperties": true
+              },
               "method": {
                 "type": "string",
                 "const": "auth_file"
               }
             },
             "required": [
-              "method"
+              "method",
+              "auth"
             ]
           },
           {
-            "description": "Workload identity federation: an identity token exchanged\nagainst a federation rule. Declares `OPENAI_IDENTITY_TOKEN`,\n`fixed`: a JSON string, written to `$CODEX_HOME/identity-token`\nand named to Codex by `OPENAI_IDENTITY_TOKEN_FILE`, with\n`OPENAI_FEDERATION_RULE_ID` and, when given,\n`OPENAI_WORKLOAD_IDENTITY_CONTEXT` from the two members here.",
+            "description": "Workload identity federation: an identity token exchanged\nagainst a federation rule. The token is written to\n`$CODEX_HOME/identity-token` and named to Codex by\n`OPENAI_IDENTITY_TOKEN_FILE`, with `OPENAI_FEDERATION_RULE_ID`\nand, when given, `OPENAI_WORKLOAD_IDENTITY_CONTEXT` from the\ntwo members beside it.",
             "type": "object",
             "properties": {
               "method": {
                 "type": "string",
                 "const": "workload_identity"
+              },
+              "identity_token": {
+                "description": "The identity token. Not empty.",
+                "type": "string"
               },
               "federation_rule_id": {
                 "description": "The federation rule the token is exchanged against:\n`OPENAI_FEDERATION_RULE_ID`.",
@@ -262,13 +282,14 @@
             },
             "required": [
               "method",
+              "identity_token",
               "federation_rule_id"
             ]
           }
         ]
       },
       "Template": {
-        "description": "One tool container an agent's program depends on: everything the\ncaller needs to deploy it that the tool's image does not say for\nitself, as fields and not as words. A tool container depends on\nnothing.\n\nA [`Container`](crate::shared::containers::request::Container) is an\nimage, two limits, mounts and arguments. The image and the\narguments are here, member for member. The limits are the image's\nown — the `memory` and the `disk` of its\n[document](crate::shared::containers::info::Document) — and what\nthis adds to each. The mounts are not the caller's volumes — a\nvolume is named in the caller's own listing, and a tool that named\none would be dictating the caller's storage — but the AGENT's own\nfiles and directories, each a path in the agent container served\nlive at a path in the tool container: the caller serves the agent\ncontainer, a `containers::fuse_serve` of the path, and mounts the\ntool, a `fuse::mount` answered from it.\n\n# What the image says, and this does not\n\nThe image is a dependency tool's: its document's `type` is\n`dependency_tool`, and a declaration of an image of another kind —\nan agent's, or a standalone tool's — is the registration's error.\nThat document, and not this, says:\n\n1. How the tool is kept running, its\n   [`mode`](crate::shared::containers::info::Mode): lazy or eager.\n2. How far it is shared, its\n   [`scope`](crate::shared::containers::info::Scope): one per\n   agent, one per agent template, or one for all.\n3. Every secret its program could take, each by its name and what\n   it is. Which of them this tool needs is here, by name: see\n   [`secrets`](Self::secrets).\n4. The memory and the disk it needs.\n\nSo two agents that declare one image declare one kind of tool, and\nno declaration says of an image what the image does not.\n\n# The mounts are a lazy tool's of one agent\n\nA mount is the declaring agent's own path, so there must be one\nagent whose path it is, and that agent's run must be the tool's:\nonly an image whose `mode` is `lazy` and whose `scope` is\n`instance` is declared with any. A declaration that names a mount\nof an image of any other mode or scope is the registration's\nerror.\n\nWhat the tool may ask of the caller is not here: the tool's own\nprogram declares it at its registration, every time it starts, as a\nstandalone tool's does — see the `permissions` of the\n[`register`](crate::container_proxy::inside::register) answer.\n\nThere are no instructions. What a declaration cannot say — the\nprovider the tool runs on, the volumes it is given — is the\ncaller's, and the caller needs no prose to choose it. The daemon's\nown tool templates are another thing: a record the daemon keeps,\nnamed by a hash, made by a request, of a standalone tool's image;\nthis is what an agent's program declares and a caller deploys.\n\nThere is no name. A dependency is named by its ID: the lowercase\nhexadecimal SHA-256 of its [`canonical`](crate::shared::canonical)\nbytes — this template as compact JSON, absent members omitted, the\nimage's `references` absent too, every object key sorted at every\ndepth, the `arguments`, the mounts and the `secrets` included, the\nnames sorted bytewise — sixty-four characters, which the caller computes over\n[`hashed`](Self::hashed). Two declarations with one id are one\ndependency, and a list that declares one twice is refused; the same\ntemplate deployed for the same agent, on whatever provider, is the\nsame dependency, and the same template declared under the same\nscope key, by whatever agent, is the same tool. The caller labels\nthe tool's MCP tools by the id when it merges lists, and the\nprogram knows which tool serves each by the keys under `_meta`, see\n[`shared::mcp`](crate::shared::mcp).",
+        "description": "One tool container an agent's program depends on: everything the\ncaller needs to deploy it that the tool's image does not say for\nitself, as fields and not as words. A tool container depends on\nnothing.\n\nA [`Container`](crate::shared::containers::request::Container) is an\nimage, two limits, mounts and arguments. The image and the\narguments are here, member for member. The limits are the image's\nown — the `memory` and the `disk` of its\n[document](crate::shared::containers::info::Document) — and what\nthis adds to each. The mounts are not the caller's volumes — a\nvolume is named in the caller's own listing, and a tool that named\none would be dictating the caller's storage — but the AGENT's own\nfiles and directories, each a path in the agent container served\nlive at a path in the tool container: the caller serves the agent\ncontainer, a `containers::fuse_serve` of the path, and mounts the\ntool, a `fuse::mount` answered from it.\n\n# What the image says, and this does not\n\nThe image is a dependency tool's: its document's `type` is\n`dependency_tool`, and a declaration of an image of another kind —\nan agent's, or a standalone tool's — is the registration's error.\nThat document, and not this, says:\n\n1. How the tool is kept running, its\n   [`mode`](crate::shared::containers::info::Mode): lazy or eager.\n2. How far it is shared, its\n   [`scope`](crate::shared::containers::info::Scope): one per\n   agent, one per agent template, or one for all.\n3. The memory and the disk it needs.\n\nSo two agents that declare one image declare one kind of tool, and\nno declaration says of an image what the image does not.\n\n# The mounts are a lazy tool's of one agent\n\nA mount is the declaring agent's own path, so there must be one\nagent whose path it is, and that agent's run must be the tool's:\nonly an image whose `mode` is `lazy` and whose `scope` is\n`instance` is declared with any. A declaration that names a mount\nof an image of any other mode or scope is the registration's\nerror.\n\nWhat the tool may ask of the caller is not here: the tool's own\nprogram declares it at its registration, every time it starts, as a\nstandalone tool's does — see the `permissions` of the\n[`register`](crate::container_proxy::inside::register) answer.\n\nThere are no instructions. What a declaration cannot say — the\nprovider the tool runs on, the volumes it is given — is the\ncaller's, and the caller needs no prose to choose it. The daemon's\nown tool templates are another thing: a record the daemon keeps,\nnamed by a hash, made by a request, of a standalone tool's image;\nthis is what an agent's program declares and a caller deploys.\n\nThere is no name. A dependency is named by its ID: the lowercase\nhexadecimal SHA-256 of its [`canonical`](crate::shared::canonical)\nbytes — this template as compact JSON, absent members omitted, the\nimage's `references` absent too, every object key sorted at every\ndepth, the `arguments` and the mounts included — sixty-four characters, which the caller computes over\n[`hashed`](Self::hashed). Two declarations with one id are one\ndependency, and a list that declares one twice is refused; the same\ntemplate deployed for the same agent, on whatever provider, is the\nsame dependency, and the same template declared under the same\nscope key, by whatever agent, is the same tool. The caller labels\nthe tool's MCP tools by the id when it merges lists, and the\nprogram knows which tool serves each by the keys under `_meta`, see\n[`shared::mcp`](crate::shared::mcp).",
         "type": "object",
         "properties": {
           "image": {
@@ -290,13 +311,6 @@
           "arguments": {
             "description": "The arguments the tool container is registered with — the\n`arguments` of the run request that makes it, verbatim."
           },
-          "secrets": {
-            "description": "The secrets the tool container needs, by name: all of those its\nimage's document states, or some of them, and none it does not\nstate. Required, and empty for a tool that needs none. Which of\nthem the tool's program takes, and in what mode, is its own\nanswer at its registration — see\n[`secrets`](crate::shared::containers::secrets) — and the value\nof each is resolved through the vault key the agent the tool is\nspawned for binds the same name to, fed at every activation.\nInside the hash, sorted bytewise there. A name is not empty, no\ntwo are alike, every one is a name the tool's image states, and\nevery one is a name the registering agent binds; a declaration\nthat says otherwise is the registration's error.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "fuse_file_mounts": {
             "description": "Files of the agent container served live into the tool\ncontainer, one each over FUSE: see [`Mount`]. The agent's path\nnames a file; the tool's path is where it appears. Only of an\nimage whose `mode` is `lazy` and whose `scope` is `instance`.\nAbsent when empty.",
             "type": "array",
@@ -316,8 +330,7 @@
           "image",
           "extra_memory",
           "extra_disk",
-          "arguments",
-          "secrets"
+          "arguments"
         ]
       },
       "Image": {
@@ -386,24 +399,6 @@
   },
   "memory": 536870912,
   "disk": 1073741824,
-  "secrets": [
-    {
-      "name": "OPENAI_API_KEY",
-      "description": "An OpenAI API key, taken where the arguments choose the `api_key` auth method."
-    },
-    {
-      "name": "CODEX_ACCESS_TOKEN",
-      "description": "A Codex access token, taken where the arguments choose the `access_token` auth method."
-    },
-    {
-      "name": "CODEX_AUTH",
-      "description": "Codex's own auth file, held and written back, taken where the arguments choose the `auth_file` auth method."
-    },
-    {
-      "name": "OPENAI_IDENTITY_TOKEN",
-      "description": "An identity token, taken where the arguments choose the `workload_identity` auth method."
-    }
-  ],
   "chat": {
     "prompt_modalities": {
       "image": true,
@@ -419,8 +414,7 @@
 An agent container running an OpenAI Codex CLI agent, pre-installed
 in the image, one `codex exec` per turn on a resumed thread.
 
-Secrets: one, chosen by `auth.method` — `api_key` declares
-`OPENAI_API_KEY` (fixed); `access_token` declares `CODEX_ACCESS_TOKEN`
-(fixed); `auth_file` declares `CODEX_AUTH` (rotating, the whole
-`auth.json`); `workload_identity` declares `OPENAI_IDENTITY_TOKEN`
-(fixed).
+Credentials: one, an argument beside `auth.method` — `api_key` takes
+`api_key`; `access_token` takes `access_token`; `auth_file` takes
+`auth`, the whole `auth.json`, and keeps what Codex refreshes it to in
+the agent's own database; `workload_identity` takes `identity_token`.

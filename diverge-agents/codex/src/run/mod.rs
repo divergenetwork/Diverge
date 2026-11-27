@@ -1,15 +1,15 @@
 //! Driving the run: the whole lifetime, as one stream of chunks.
 //!
 //! [`run`] owns everything between the request and the end: the
-//! login made from the agent's method and the secret the proxy fed
-//! ([`Auth::resolve`](crate::agent::Auth::resolve), over a snapshot
-//! of [`secrets::values`] taken once here), its file written under
+//! login made from the agent's method and its credential
+//! ([`Auth::resolve`](crate::agent::Auth::resolve), over what
+//! [`login::current`] answers under the `auth_file` method), its file written under
 //! the home, `config.toml` written ([`config`]), the continuation
 //! loaded and restored once ([`continuation`]), `codex exec --json`
 //! spawned per turn ([`Process`]) and its events converted into
 //! chunks ([`Turn`]), the queue consulted at each turn's end
-//! ([`QUEUE`]), the rotating secret read back after the last turn
-//! into what the collect answers ([`secrets::leave`]), the rollouts
+//! ([`QUEUE`]), the `auth_file` login read back after the last turn
+//! and kept ([`login::keep`]), the rollouts
 //! harvested into the rows.
 //!
 //! # The queue is consulted when a turn ends
@@ -62,13 +62,13 @@ use futures_util::Stream;
 use rmcp::model::ContentBlock;
 use sqlx::PgPool;
 
-use crate::agent::Agent;
+use crate::agent::{Agent, Auth};
 use crate::auth;
 use crate::claim::Claim;
 use crate::config;
 use crate::continuation;
+use crate::login;
 use crate::queue::QUEUE;
-use crate::secrets;
 
 /// The run, whole: one stream of chunks. `generation` is the queue's,
 /// from [`QUEUE.open`](crate::queue::Queue::open); `claim` is the run
@@ -91,13 +91,23 @@ pub fn run(
     async_stream::stream! {
         let _teardown = teardown;
 
-        // The secrets as fed, once: a feed that lands from here on is
-        // the next loop's.
-        let values = secrets::values().await;
-        let login = match agent.auth.resolve(&values) {
+        // The `auth_file` login this loop is handed: what the last
+        // loop left of it, where it was kept for this agent's
+        // argument, else the argument. The other methods keep none.
+        let kept = match &agent.auth {
+            Auth::AuthFile { auth } => match login::current(&pool, auth).await {
+                Ok(kept) => Some(kept),
+                Err(error) => {
+                    yield Err(Error::Kept(error));
+                    return;
+                }
+            },
+            Auth::ApiKey { .. } | Auth::AccessToken { .. } | Auth::WorkloadIdentity { .. } => None,
+        };
+        let login = match agent.auth.resolve(kept.as_ref()) {
             Ok(login) => login,
             Err(error) => {
-                yield Err(Error::Auth(error));
+                yield Err(Error::Login(std::io::Error::other(error)));
                 return;
             }
         };
@@ -288,13 +298,16 @@ pub fn run(
             input = blocks;
         }
 
-        // The rotating secret as the loop leaves it, for the collect
-        // that follows the loop's end: `auth.json` as Codex rewrote
-        // it, under the `auth_file` method, and nothing under the
-        // others. Unreadable, or not JSON, leaves the fed value to
-        // answer — the collect still carries the name.
-        if let Some((name, value)) = agent.auth.read_back().await {
-            secrets::leave(name, value).await;
+        // The login as the loop leaves it, kept for the next:
+        // `auth.json` as Codex rewrote it, under the `auth_file`
+        // method, and nothing under the others. Unreadable, or not a
+        // JSON object, leaves what is kept standing.
+        if let Auth::AuthFile { auth } = &agent.auth {
+            if let Some(left) = agent.auth.read_back().await {
+                if let Err(error) = login::keep(&pool, auth, &left).await {
+                    yield Ok(notification(error.message(), true));
+                }
+            }
         }
 
         // The way back up: the rollouts into the rows, whenever a

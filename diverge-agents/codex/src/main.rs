@@ -12,12 +12,9 @@
 //! argument, prints the JSON Schema of the agent value this image
 //! accepts (see [`main`]); `POST /register` is that value, told once
 //! for the container's life before any run — a run before it is
-//! refused — answered with the agent's dependencies and the one
-//! secret its login method declares; `POST /secrets` is that secret's
-//! value, fed before every loop and held here; and `POST
-//! /secrets/collect` hands the rotating one back after the loop, as
-//! Codex left it. The run itself is [`run::run`]: the login made from
-//! the method and the fed secret, `config.toml` rendered from the
+//! refused — answered with the agent's dependencies. The run itself
+//! is [`run::run`]: the login made from the agent's method and its
+//! credential, `config.toml` rendered from the
 //! agent, `codex exec --json` spawned per turn and its events
 //! converted into chunks, the thread resumed across turns and runs,
 //! its rollouts the continuation in the caller's database, reached
@@ -30,16 +27,15 @@
 //! runtime, and it may not be up at all until a request comes. So
 //! the server binds and waits, and the first thing to touch the
 //! proxy is `POST /run` itself: the database, then Codex's own MCP
-//! client. The secrets come the other way, the proxy's own call on
-//! this server. Making the [`Client`] is no I/O.
+//! client. Making the [`Client`] is no I/O.
 //!
 //! # What is an error, and what is not
 //!
 //! Anything that fails before the run has said a single thing is a
 //! real error — a non-`2xx`, with a JSON reason, and no stream: a
 //! run beside one streaming, an agent value that is not a Codex
-//! agent, an empty prompt, a database that will not answer, a secret
-//! the feed lacks, a config that will not write, a continuation
+//! agent, an empty prompt, a database that will not answer, a kept
+//! login that will not read, a config that will not write, a continuation
 //! that will not restore, a process that will not start or dies
 //! before its first event, and the first item of the stream itself,
 //! which is pulled before the response is decided. A failure AFTER
@@ -53,6 +49,7 @@ mod claim;
 mod config;
 mod content;
 mod continuation;
+mod login;
 mod queue;
 mod registration;
 // The response module carries `codex exec --json`'s COMPLETE event
@@ -61,7 +58,6 @@ mod registration;
 #[allow(dead_code)]
 mod response;
 mod run;
-mod secrets;
 
 use std::convert::Infallible;
 use std::io::Write as _;
@@ -74,7 +70,6 @@ use axum::response::sse::{Event, Sse};
 use diverge_sdk::container_proxy::inside::Client;
 use diverge_sdk::container_proxy::inside::agent::enqueue;
 use diverge_sdk::container_proxy::inside::register::response::Response;
-use diverge_sdk::container_proxy::inside::secrets::{collect, feed};
 use diverge_sdk::provider::endpoints::containers::agents::run::server::response::AgenticLoopChunk;
 use futures_util::{Stream, StreamExt as _};
 use serde_json::Value;
@@ -154,8 +149,6 @@ async fn serve() {
         .route("/register", axum::routing::post(register))
         .route("/run", axum::routing::post(run))
         .route("/enqueue", axum::routing::post(enqueue))
-        .route("/secrets", axum::routing::post(secrets_feed))
-        .route("/secrets/collect", axum::routing::post(secrets_collect))
         .with_state(Arc::new(Client::new()));
 
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", diverge_sdk::container_proxy::inside::port()))
@@ -306,12 +299,12 @@ async fn run(
 /// `POST /register`: the `arguments`, the agent, once, for the container's life.
 ///
 /// A value this image will not take is `400` (`{"kind":"agent"}`),
-/// and so is a provider beside a login method other than `api_key`
-/// (`{"kind":"auth"}`, the one rule across fields); an agent already
+/// and so are a provider beside a login method other than `api_key`
+/// and a login method whose credential is empty
+/// (`{"kind":"auth"}`, the two rules across fields); an agent already
 /// registered is `409`, whatever the second carries — the agent
-/// never changes. `200`, with the tools the agent depends on and the
-/// one secret its method declares passed back, is the agent held;
-/// the secret's value follows on `POST /secrets`.
+/// never changes. `200`, with the tools the agent depends on passed
+/// back, is the agent held.
 async fn register(
     Json(request): Json<diverge_sdk::container_proxy::inside::register::request::Request>,
 ) -> Result<(StatusCode, Json<Response>), Refusal> {
@@ -331,9 +324,8 @@ async fn register(
         return Err((StatusCode::BAD_REQUEST, Json(mismatch.message())));
     }
     let dependencies = agent.dependencies.clone();
-    let secrets = agent.declaration();
     match registration::register(agent) {
-        Ok(()) => Ok((StatusCode::OK, Json(Response { dependencies, secrets, permissions: Vec::new() }))),
+        Ok(()) => Ok((StatusCode::OK, Json(Response { dependencies, permissions: Vec::new() }))),
         Err(_) => Err((
             StatusCode::CONFLICT,
             Json(serde_json::json!({
@@ -379,34 +371,6 @@ async fn enqueue(Json(request): Json<enqueue::request::Request>) -> Result<Statu
                 "error": "the run has closed",
             })),
         )),
-    }
-}
-
-/// `POST /secrets`: the declared secret's value, fed.
-///
-/// Held whole for the next loop — a loop in flight keeps the
-/// snapshot it took — and what the previous loop left in the
-/// rotating secret is forgotten with it. Never refused: a name the
-/// feed lacks is the run's refusal, when a run asks for it. `204`.
-async fn secrets_feed(Json(request): Json<feed::request::Request>) -> StatusCode {
-    secrets::feed(request.0).await;
-    StatusCode::NO_CONTENT
-}
-
-/// `POST /secrets/collect`: the rotating secret, handed back.
-///
-/// Every name asked, each with what the last loop left in it — for
-/// `auth_file`, `auth.json` as Codex rewrote it — else the value it
-/// was fed. A name neither fed nor left is `500`
-/// (`{"kind":"secrets"}`), naming the secret and never a value: the
-/// proxy needs every name it asked, and a short answer would be the
-/// same error in its hands.
-async fn secrets_collect(
-    Json(request): Json<collect::request::Request>,
-) -> Result<Json<collect::response::Response>, Refusal> {
-    match secrets::collect(&request.names).await {
-        Ok(values) => Ok(Json(collect::response::Response(values))),
-        Err(error) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(error.message()))),
     }
 }
 

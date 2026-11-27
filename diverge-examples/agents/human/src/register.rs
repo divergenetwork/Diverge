@@ -19,7 +19,7 @@ pub fn registered() -> bool {
 
 /// `POST /register`: arguments that are not [`Arguments`] are `400`;
 /// a second registration, whatever it carries, is `409`; otherwise
-/// `200`, declaring no dependency, no secret and no permission.
+/// `200`, declaring no dependency and no permission.
 pub async fn register(Json(request): Json<register::request::Request>) -> Result<(StatusCode, Json<Response>), (StatusCode, Json<Value>)> {
     if let Err(error) = serde_json::from_value::<Arguments>(request.arguments) {
         return Err((StatusCode::BAD_REQUEST, Json(json!({ "kind": "arguments", "error": error.to_string() }))));

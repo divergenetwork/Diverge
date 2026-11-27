@@ -6,8 +6,8 @@ use std::io;
 use std::process::ExitStatus;
 
 use super::LineError;
-use crate::auth;
 use crate::continuation;
+use crate::login;
 
 /// Why the run never got going.
 ///
@@ -19,11 +19,11 @@ use crate::continuation;
 /// said in the stream itself, as a fatal `notification`.
 #[derive(Debug)]
 pub enum Error {
-    /// The login could not be made from the fed secrets: the declared
-    /// name absent, or of the wrong JSON type.
-    Auth(auth::Error),
+    /// The `auth_file` login the last loop left could not be read
+    /// from the agent's database, or the argument kept in its place.
+    Kept(login::Error),
     /// The login's file — `auth.json`, or the identity token — could
-    /// not be written under the home.
+    /// not be made or written under the home.
     Login(io::Error),
     /// `config.toml` could not be rendered or written.
     Config(io::Error),
@@ -41,7 +41,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Auth(error) => write!(f, "{error}"),
+            Error::Kept(error) => write!(f, "{error}"),
             Error::Login(error) => write!(f, "the login could not be written: {error}"),
             Error::Config(error) => write!(f, "config.toml could not be written: {error}"),
             Error::Continuation(error) => write!(f, "{error}"),
@@ -57,7 +57,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            Error::Auth(error) => Some(error),
+            Error::Kept(error) => Some(error),
             Error::Login(error) | Error::Config(error) | Error::Spawn(error) => Some(error),
             Error::Continuation(error) => Some(error),
             Error::Line(error) => Some(error),
@@ -70,7 +70,7 @@ impl Error {
     /// The failure as JSON, the shape every failure on the stream has.
     pub fn message(&self) -> serde_json::Value {
         match self {
-            Error::Auth(error) => error.message(),
+            Error::Kept(error) => error.message(),
             Error::Continuation(error) => error.message(),
             Error::Login(_) => serde_json::json!({
                 "kind": "auth",

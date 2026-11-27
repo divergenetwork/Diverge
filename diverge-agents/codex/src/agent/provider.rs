@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// harness writes as `model_providers.diverge` and selects with
 /// `model_provider = "diverge"`. The entry's `env_key` is
 /// `CODEX_API_KEY` — the variable the `api_key` login method hands
-/// the fed `OPENAI_API_KEY` to Codex under — and its `wire_api` is
+/// its key to Codex under — and its `wire_api` is
 /// `responses`, the one value the configuration reference names, so
 /// the endpoint must speak the Responses API, which the Diverge relay
 /// and every upstream this protocol routes do.

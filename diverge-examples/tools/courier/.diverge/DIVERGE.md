@@ -64,7 +64,6 @@ an entry in the agent's `dependencies` argument:
 ```
 
 - **Arguments:** none; `{}`.
-- **Secrets:** none.
 - **Mode and scope:** `eager`, `global`. One courier container and
   one database for every agent that declares this template, from any
   agent template. The template's id is what the courier keeps its mail

@@ -128,8 +128,6 @@ them. The page answers no token.
 A tool container, standalone or a dependency.
 
 - **Arguments:** none; `{}`.
-- **Secrets:** none. The accounts are kept in the tool's database, not
-  in the vault.
 - **Database:** the tool's own, through the proxy. One table,
   `identity_accounts`, each row an account, its issuer's tokens and
   its username once known, under the template the tool was made from.

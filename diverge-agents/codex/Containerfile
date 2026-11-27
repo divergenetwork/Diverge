@@ -4,7 +4,7 @@
 # The container proxy is NOT in this image. The host injects it at
 # runtime, and it may not be up at all until a request comes — which
 # is why the harness touches nothing of the proxy's until `POST /run`
-# arrives: no database, no vault, no MCP, before then.
+# arrives: no database, no MCP, before then.
 #
 # Codex IS in the image, unlike Claude Code: `@openai/codex` is
 # Apache-2.0, so nothing forbids shipping it, and a starting container

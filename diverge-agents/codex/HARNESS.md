@@ -15,15 +15,15 @@ against the pinned `0.153.4`; nothing here has been run.
 
 The whole container, never run: the agent vocabulary with its schema,
 the login method among it (`agent/auth.rs`); the server (`main.rs`,
-hermes's); cc's three-phase claim and hermes's queue; the secrets as
-the proxy feeds and collects them (`secrets.rs`) and the login made
-from the method and the fed value (`auth.rs`); `config.toml` rendered
+hermes's); cc's three-phase claim and hermes's queue; the login made
+from the method and its credential (`auth.rs`) and the `auth_file`
+login kept between loops (`login.rs`); `config.toml` rendered
 from the agent (`config.rs`); the thread's rollouts as the
 continuation in the caller's database (`continuation.rs`); and
 the run (`run/`): `codex exec --json` spawned per turn
 (`process.rs`), its events converted into chunks (`convert.rs`), the
-queue taken at the turn's end, the rotating secret read back, the
-rollouts harvested.
+queue taken at the turn's end, the `auth_file` login read back and
+kept, the rollouts harvested.
 
 ## The run: one `codex exec` per turn
 
@@ -116,8 +116,8 @@ CREATE TABLE IF NOT EXISTS codex_files (
   thread row.
 - Nothing else travels: not the state database (an index), not
   `history.jsonl` (display history), not `config.toml` (the
-  harness's), not `auth.json` (the fed secret's — written before the
-  loop and handed back through the collect, never a row).
+  harness's), not `auth.json` (the login's — written before the
+  loop and kept after it in `codex_login`, a row of its own).
 
 ## The stream is `codex exec --json`, and `response/` is its vocabulary
 
@@ -219,34 +219,30 @@ execpolicy rules, `shell_environment_policy` (the harness renders the
 process environment itself), `--image` and `--output-schema` (the
 wire is text and chunks).
 
-## Auth: the agent names the method, the proxy feeds the one secret
+## Auth: the agent names the method and carries its credential
 
-The agent names HOW Codex logs in and never with what (user ruling
-2026-10-18: every container but cc takes its auth as a secret, and
-codex supports every Codex auth mode). `auth` is REQUIRED, tagged
-`method`, and each method declares ONE secret by a fixed name the
-template must declare; the registration answers that name with its
-mode, the proxy feeds its value on `POST /secrets` before every
-loop, and the run puts the value where Codex reads it. The four,
+There are no secrets (user ruling 2026-11-26: credentials are
+arguments). `auth` is REQUIRED, tagged `method`, and each method
+carries its ONE credential as a member of its own; the run puts it
+where Codex reads it. An empty credential refuses the registration
+(`{kind: "auth"}`), naming the member and never a value. The four,
 from Codex's own credential store (`rust-v0.163.0`, checked against
 the pinned `0.153.4`):
 
-| `method` | declares | mode | where it goes |
-| --- | --- | --- | --- |
-| `api_key` | `OPENAI_API_KEY` | fixed | the variable `CODEX_API_KEY` |
-| `access_token` | `CODEX_ACCESS_TOKEN` | fixed | the variable `CODEX_ACCESS_TOKEN` |
-| `auth_file` | `CODEX_AUTH` | rotating | `$CODEX_HOME/auth.json`, whole |
-| `workload_identity { federation_rule_id, context? }` | `OPENAI_IDENTITY_TOKEN` | fixed | `$CODEX_HOME/identity-token`, named by `OPENAI_IDENTITY_TOKEN_FILE`, with `OPENAI_FEDERATION_RULE_ID` and, when given, `OPENAI_WORKLOAD_IDENTITY_CONTEXT` from the arguments |
+| `method` | credential member | where it goes |
+| --- | --- | --- |
+| `api_key` | `api_key`, a string | the variable `CODEX_API_KEY` |
+| `access_token` | `access_token`, a string | the variable `CODEX_ACCESS_TOKEN` |
+| `auth_file` | `auth`, an object | `$CODEX_HOME/auth.json`, whole |
+| `workload_identity { federation_rule_id, context? }` | `identity_token`, a string | `$CODEX_HOME/identity-token`, named by `OPENAI_IDENTITY_TOKEN_FILE`, with `OPENAI_FEDERATION_RULE_ID` and, when given, `OPENAI_WORKLOAD_IDENTITY_CONTEXT` from the arguments |
 
 The facts the table rests on:
 
 - `OPENAI_API_KEY` in the ENVIRONMENT is not a credential source for
   the built-in `openai` provider: its `env_key` is `None`, and the
-  variable only prefills the interactive login. The earlier design,
-  which put the key in the environment under that name, logged
-  nothing in unless a custom `provider` named it as `env_key`. `CODEX_API_KEY`
+  variable only prefills the interactive login. `CODEX_API_KEY`
   is the credential store's TOP precedence — above `auth.json` — and
-  `codex exec` honours it. So the fed `OPENAI_API_KEY` is handed to
+  `codex exec` honours it. So the `api_key` method's key is handed to
   Codex as `CODEX_API_KEY`, and the provider entry's `env_key` is
   `CODEX_API_KEY` too, which is why a provider requires `api_key`.
 - `CODEX_ACCESS_TOKEN` carries a personal access token (`at-…`) or
@@ -255,46 +251,50 @@ The facts the table rests on:
   `tokens {id_token, access_token, refresh_token, account_id}`,
   `last_refresh`, `agent_identity?`, `personal_access_token?`,
   `bedrock_api_key?`, `bedrock_access_keys?`; `auth_mode` is
-  inferred when absent. Any of its kinds is a valid `CODEX_AUTH`,
+  inferred when absent. Any of its kinds is a valid `auth`,
   and the harness never reads what kind it is. When a ChatGPT login
   refreshes, Codex rewrites the file IN PLACE (open, truncate, write,
   `0600`): `tokens.{id,access,refresh}_token` and `last_refresh`
   rotate — proactively five minutes before the access token's expiry
-  or eight days after `last_refresh`, reactively on a `401`. That is
-  why `CODEX_AUTH` is `rotating`: the file is written from the fed
-  object before every loop and read back after the loop's last turn
-  (`tokio::fs::read` → JSON) into what the collect answers, so the
-  next activation finds the refreshed login. The harness's own write
-  is a plain write under root's umask; the `0600` is Codex's, on its
-  rewrite. A file that cannot be read back, or is not JSON, leaves
-  the fed value to answer the collect — the collect must carry every
-  name asked. The other three methods hand nothing back.
+  or eight days after `last_refresh`, reactively on a `401`. The
+  argument's tokens are spent by the first refresh, so what a loop
+  leaves of the file is KEPT (`login.rs`): one row, `codex_login`, in
+  the agent's `instance` database, beside the continuation and
+  through the same pool, holding the login and the SHA-256 of the
+  canonical bytes of the `auth` argument it was kept for. At a loop's
+  start a row kept for this agent's argument is what is written to
+  `auth.json`; no row, or a row kept for another argument, writes the
+  argument and replaces the row. After the loop's last turn the file
+  is read back (`tokio::fs::read` → a JSON object) and replaces the
+  row's login. The argument itself is never stored. The harness's own
+  write is a plain write under root's umask; the `0600` is Codex's, on
+  its rewrite. A file that cannot be read back, or is not a JSON
+  object, leaves the row as it was. The other three methods keep
+  nothing.
 - Workload identity is selected by `OPENAI_IDENTITY_TOKEN_FILE` +
   `OPENAI_FEDERATION_RULE_ID` (+ optional
-  `OPENAI_WORKLOAD_IDENTITY_CONTEXT`); the token is a `fixed` secret
+  `OPENAI_WORKLOAD_IDENTITY_CONTEXT`); the token is
   written to a file under the home because that is how Codex takes
   it.
 - `preferred_auth_method` no longer exists, `forced_login_method` is
   unneeded (the method already fixes which login is written), and
   `wire_api` must be `responses`.
 
-The run (`run/mod.rs`) takes a snapshot of the fed values once at
-its start — a feed that lands mid-loop is the next loop's — resolves
-the method over it (`auth.rs`: the declared name absent, or of the
-wrong JSON type, is the run's refusal `{kind: "secrets"}`, naming the
-name and never a value), writes the method's file under the home
+The run (`run/mod.rs`) asks `login::current` for the `auth_file`
+login at its start, resolves the method (`auth.rs`), writes the
+method's file under the home
 before `config.toml` and the first turn, and spawns every turn with
-`CODEX_HOME` plus the method's variables. The FUSE-mounted
-`auth.json` of the earlier design was the workaround for rotation,
-and is gone: the rotating secret is the protocol's own cycle. A
+`CODEX_HOME` plus the method's variables. A kept login that cannot
+be read is the run's refusal `{kind: "login"}`; one that cannot be
+kept after the loop is a fatal `notification`. A
 ChatGPT login bills the caller's subscription; an API key bills the
 platform at API rates — Codex's docs keep the two apart, and so does
 the method. The proxy is touched only at the run, never at startup.
 
-Nothing about credentials rides the agent value, the schema or a row:
-the method does, the value is the secret's, and `auth.json` goes
-back through the collect. No value of a secret is ever formatted
-into an error or a log — names only.
+The credential rides the agent value, and so the template: whoever
+may see a template's arguments sees it. No credential is ever
+formatted into an error or a log — `Auth`'s `Debug` names the method
+alone, and a refusal names a member.
 
 ## What a live run has to prove
 
@@ -307,9 +307,9 @@ into an error or a log — names only.
 3. `mcp_servers.diverge` with a bare `url` (Streamable HTTP, no
    bearer) connecting to the proxy's inside port, listing the
    caller's tools, and reading resources.
-4. A `CODEX_AUTH` written to `$CODEX_HOME/auth.json` before the
+4. An `auth` written to `$CODEX_HOME/auth.json` before the
    loop, accepted headless, rewritten in place by Codex on a ChatGPT
-   refresh, and collected after the loop with the rotated tokens in
+   refresh, and kept after the loop with the rotated tokens in
    it; and `CODEX_API_KEY` alone logging `codex exec` in with no
    `auth.json` at all.
 5. `wire_api = "responses"` against the Diverge relay.

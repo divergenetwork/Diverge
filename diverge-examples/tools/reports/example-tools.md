@@ -26,8 +26,7 @@ daemon's `standalone_tools` family.
 - **An MCP server.** The program is an HTTP server on the container's
   loopback at the port `inside::port()` names. The proxy beside it is
   its only caller: `POST /register` once (the arguments, the
-  template id and the image, fixed for the container's life), `POST /secrets` and
-  `POST /secrets/collect` around every activation, and MCP over
+  template id and the image, fixed for the container's life), and MCP over
   Streamable HTTP at `/mcp` (`inside::tool`).
 - **The caller, attested.** Every `list_tools`, `list_resources`,
   `call_tool` and `read_resource` the tool receives carries, under
@@ -47,10 +46,9 @@ daemon's `standalone_tools` family.
   carries every connection to the caller's own database
   (`inside::postgres`); the program's driver dials it like any
   Postgres.
-- **Volumes and secrets.** A tool is made of what an agent is made
-  of: a provider with volume mounts, FUSE mounts of other providers'
-  volumes, and the secrets its template names, fed in at activation
-  and never shown to the agents that call it.
+- **Volumes.** A tool is made of what an agent is made
+  of: a provider with volume mounts, and FUSE mounts of other providers'
+  volumes.
 - **Two ways to run.** A tool template says `transient` (the
   container runs while something uses it) or `service` (kept running
   while any agent is attached or any connect is open, retired after
@@ -139,8 +137,8 @@ agents apart.
 **Built:** `diverge-examples/tools/taskboard/` (crate `diverge-example-taskboard`,
 binary `taskboard`), with its `Containerfile` and `DIVERGE.md`. It is
 a **dependency tool** declared by agents' images, a `service` (shown
-with `scope: template`; `global` is legal), with no arguments, no
-secrets and no permissions. It is pull only: nothing is sent to an
+with `scope: template`; `global` is legal), with no arguments
+and no permissions. It is pull only: nothing is sent to an
 agent when the board changes.
 
 **How it works.** Two Postgres tables, tasks and comments. Every
@@ -176,7 +174,7 @@ same database shares the same notes.
 **Built:** `diverge-examples/tools/memory/` (crate `diverge-example-memory`, binary
 `memory`), with its `Containerfile` and `DIVERGE.md`. It is a
 **dependency tool** declared by agents' images, `transient`, with no
-arguments, no secrets and no permissions. Intended per agent;
+arguments and no permissions. Intended per agent;
 whose notebook it is follows from how it is declared, never from the
 tool.
 

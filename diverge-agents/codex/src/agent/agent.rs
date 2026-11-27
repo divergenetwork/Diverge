@@ -1,7 +1,6 @@
 //! The Codex agent.
 
 use diverge_sdk::shared::containers::dependencies::Template;
-use diverge_sdk::shared::containers::secrets::Declaration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,8 +12,8 @@ use super::{Auth, Effort, Provider, Summary, Verbosity, WebSearch};
 /// own sampling, its own tools and its own loop, and what it exposes
 /// to a caller is the model, how hard it reasons and how it speaks,
 /// whether it may search the web, where it sends its requests, and
-/// how it logs in — the method only, never the credential, which is
-/// the one secret the method declares (see [`Auth`]). Each field is
+/// how it logs in — the method and, with it, its credential, an
+/// argument like any other (see [`Auth`]). Each field is
 /// one config key or flag, named in its doc; every `Option` absent
 /// leaves that key unset, so Codex applies its own default for the
 /// model — except [`web_search`](Self::web_search), where absent is
@@ -51,7 +50,7 @@ pub struct Agent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<Provider>,
     /// How Codex logs in: one of its own methods, tagged `method`,
-    /// each declaring the one secret the proxy feeds. REQUIRED — no
+    /// each carrying its credential. REQUIRED — no
     /// method is the default, because every one bills someone. See
     /// [`Auth`].
     pub auth: Auth,
@@ -67,31 +66,32 @@ pub struct Agent {
 }
 
 impl Agent {
-    /// The secrets this agent takes, as the registration answers
-    /// them: the one name its login method declares, in the mode the
-    /// method takes it.
-    pub fn declaration(&self) -> Declaration {
-        let mut declaration = Declaration::new();
-        declaration.insert(self.auth.name().to_string(), self.auth.mode());
-        declaration
-    }
-
-    /// The one rule the registration enforces across fields: a
-    /// [`provider`](Self::provider) is keyed by `CODEX_API_KEY`, so
-    /// it composes with the `api_key` method and no other — a ChatGPT
-    /// login speaks only to OpenAI's backend, and a token or an
-    /// identity exchange never reaches a custom endpoint's `env_key`.
+    /// The two rules the registration enforces across fields.
+    ///
+    /// 1. A login method's credential is not empty: an empty one is
+    ///    refused, naming the member and never a value.
+    /// 2. A [`provider`](Self::provider) is keyed by `CODEX_API_KEY`,
+    ///    so it composes with the `api_key` method and no other — a
+    ///    ChatGPT login speaks only to OpenAI's backend, and a token
+    ///    or an identity exchange never reaches a custom endpoint's
+    ///    `env_key`.
     pub fn check(&self) -> Result<(), Mismatch> {
+        if self.auth.is_empty() {
+            return Err(Mismatch::Empty(self.auth.member()));
+        }
         match (&self.provider, &self.auth) {
-            (Some(_), Auth::ApiKey) | (None, _) => Ok(()),
+            (Some(_), Auth::ApiKey { .. }) | (None, _) => Ok(()),
             (Some(_), auth) => Err(Mismatch::Provider(auth.method())),
         }
     }
 }
 
-/// Two fields that do not compose.
+/// An agent the registration refuses.
 #[derive(Debug)]
 pub enum Mismatch {
+    /// A login method whose credential is empty; the member's name is
+    /// carried.
+    Empty(&'static str),
     /// A provider beside a login method other than `api_key`; the
     /// method's tag is carried.
     Provider(&'static str),
@@ -100,6 +100,7 @@ pub enum Mismatch {
 impl std::fmt::Display for Mismatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Mismatch::Empty(member) => write!(f, "the login's `{member}` is empty"),
             Mismatch::Provider(method) => write!(
                 f,
                 "a provider is keyed by CODEX_API_KEY and requires the api_key method, not {method}"

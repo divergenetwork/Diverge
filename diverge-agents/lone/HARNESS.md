@@ -39,18 +39,6 @@ this image will not take, or a path with no manifest, is `400` with
 `409`. The whole handler runs under one lock, so two registrations
 cannot interleave. Nothing of the proxy's is touched.
 
-## Secrets: none declared, both calls served
-
-The registration's answer carries `secrets: {}`: the model is on
-disk, so no credential, and the harness is handed nothing but the
-conversation and the caller's lists. The two calls of the inside
-contract are served anyway (`secrets.rs`, the common port): `POST
-/secrets` holds the fed values whole, replacing the last feed, and
-answers `204`; `POST /secrets/collect` answers every name asked with
-the value it was fed, a name never fed `500 {kind: "secrets"}` naming
-the name and never a value. Declaring none, the proxy feeds nothing
-and collects nothing; the handlers are the contract, not a path.
-
 ## The run: `lone harness …`, once per turn
 
 cwd `/root`, the image's environment, stdin one JSON object

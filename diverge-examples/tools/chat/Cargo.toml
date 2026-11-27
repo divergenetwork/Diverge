@@ -15,12 +15,12 @@ path = "src/main.rs"
 
 [dependencies]
 # The SDK, by path: the container's contract with the proxy beside it
-# (registration, secrets, the daemon, Postgres), the caller the daemon
+# (registration, the daemon, Postgres), the caller the daemon
 # attests on every MCP request and every frontend request, and the
 # daemon's endpoints the chat reads agents and images through.
 diverge-sdk = { path = "../../../diverge-sdk-rs" }
 # The program's door: an HTTP server on the loopback the proxy dials,
-# `/register`, the secrets' two paths, the MCP server at `/mcp`, and
+# `/register`, the MCP server at `/mcp`, and
 # the frontend beneath `/frontend`, its live sockets included.
 axum = { version = "0.8.9", features = ["ws"] }
 # The MCP server, over Streamable HTTP; the same version the SDK's

@@ -9,7 +9,7 @@
 //! approval are not here: they ride the argv as
 //! `--dangerously-bypass-approvals-and-sandbox`, so there is one
 //! spelling of that decision. Nothing of the login is here either:
-//! the method puts its secret in a variable or a file, and the one
+//! the method puts its credential in a variable or a file, and the one
 //! key that names a variable, the provider's `env_key`, names the
 //! one the `api_key` method sets.
 //!

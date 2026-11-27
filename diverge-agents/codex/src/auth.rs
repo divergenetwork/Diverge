@@ -1,12 +1,12 @@
-//! The login: the agent's method, applied with the secret it was fed.
+//! The login: the agent's method, applied with its credential.
 //!
-//! The agent names the method ([`Auth`]) and the proxy feeds the one
-//! secret the method declares; at each loop's start
-//! [`Auth::resolve`] turns the two into what the run needs — the
-//! variables the process gets, and a file to write under the home
-//! when the method wants one — without dialing anything. A declared
-//! name the feed lacks, or carries in the wrong JSON type, is the
-//! run's refusal, naming the name and never a value.
+//! The agent names the method and carries its credential
+//! ([`Auth`]); at each loop's start [`Auth::resolve`] turns them into
+//! what the run needs — the variables the process gets, and a file to
+//! write under the home when the method wants one — without dialing
+//! anything. Under `auth_file` the file's content is the login the
+//! run was handed: the argument, or what the last loop left of it,
+//! as [`login`](crate::login) decides.
 //!
 //! What goes where is Codex's own, not this crate's: `CODEX_API_KEY`
 //! and `CODEX_ACCESS_TOKEN` are the variables its credential store
@@ -15,15 +15,14 @@
 //! rewrites in place; `OPENAI_IDENTITY_TOKEN_FILE` names the token a
 //! workload identity login exchanges. `OPENAI_API_KEY` in the
 //! environment is none of these: the built-in provider has no
-//! `env_key`, so the `api_key` method hands the fed key to Codex as
+//! `env_key`, so the `api_key` method hands its key to Codex as
 //! `CODEX_API_KEY`.
 
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use diverge_sdk::shared::containers::secrets::Values;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::agent::Auth;
 
@@ -38,20 +37,9 @@ pub const AUTH_FILE: &str = "auth.json";
 /// The name of the workload identity token's file, under the home.
 pub const IDENTITY_TOKEN_FILE: &str = "identity-token";
 
-/// The secret the `api_key` method declares: an OpenAI API key.
-pub const OPENAI_API_KEY: &str = "OPENAI_API_KEY";
-
-/// The secret the `access_token` method declares, and the variable
-/// it is handed to Codex under: a personal access token or an Agent
-/// Identity JWT.
+/// The variable the `access_token` method's token is handed to Codex
+/// under: a personal access token or an Agent Identity JWT.
 pub const CODEX_ACCESS_TOKEN: &str = "CODEX_ACCESS_TOKEN";
-
-/// The secret the `auth_file` method declares: `auth.json`, whole.
-pub const CODEX_AUTH: &str = "CODEX_AUTH";
-
-/// The secret the `workload_identity` method declares: the identity
-/// token.
-pub const OPENAI_IDENTITY_TOKEN: &str = "OPENAI_IDENTITY_TOKEN";
 
 /// The variable Codex's credential store reads first: the API key.
 pub const CODEX_API_KEY: &str = "CODEX_API_KEY";
@@ -79,7 +67,7 @@ pub fn identity_token_file() -> PathBuf {
 }
 
 /// The login, ready for the process: what [`Auth::resolve`] made of
-/// the method and the fed secret.
+/// the method and its credential.
 pub struct Resolved {
     /// The variables the process gets, beside `CODEX_HOME`.
     pub env: BTreeMap<String, String>,
@@ -100,32 +88,31 @@ impl Resolved {
 }
 
 impl Auth {
-    /// The method applied with the fed values: the one name it
-    /// declares, taken from them and placed where Codex reads it.
-    pub fn resolve(&self, values: &Values) -> Result<Resolved, Error> {
-        let name = self.name();
-        let value = values.get(name).ok_or(Error::Missing(name))?;
+    /// The method applied: its credential placed where Codex reads
+    /// it. `kept` is the `auth_file` method's login as
+    /// [`login::current`](crate::login::current) answered it, and is
+    /// written in place of the argument when there is one; the other
+    /// methods ignore it. The one failure is `auth.json` that will
+    /// not serialize, which names nothing of its content.
+    pub fn resolve(&self, kept: Option<&Map<String, Value>>) -> Result<Resolved, serde_json::Error> {
         let mut env = BTreeMap::new();
         let mut file = None;
         match self {
-            Auth::ApiKey => {
-                env.insert(CODEX_API_KEY.to_string(), text(name, value)?);
+            Auth::ApiKey { api_key } => {
+                env.insert(CODEX_API_KEY.to_string(), api_key.clone());
             }
-            Auth::AccessToken => {
-                env.insert(CODEX_ACCESS_TOKEN.to_string(), text(name, value)?);
+            Auth::AccessToken { access_token } => {
+                env.insert(CODEX_ACCESS_TOKEN.to_string(), access_token.clone());
             }
-            Auth::AuthFile => {
-                if !value.is_object() {
-                    return Err(Error::NotObject(name));
-                }
-                let bytes = serde_json::to_vec(value).map_err(|_| Error::NotObject(name))?;
+            Auth::AuthFile { auth } => {
+                let bytes = serde_json::to_vec(kept.unwrap_or(auth))?;
                 file = Some((auth_file(), bytes));
             }
             Auth::WorkloadIdentity {
+                identity_token,
                 federation_rule_id,
                 context,
             } => {
-                let token = text(name, value)?;
                 let path = identity_token_file();
                 env.insert(
                     OPENAI_IDENTITY_TOKEN_FILE.to_string(),
@@ -135,67 +122,24 @@ impl Auth {
                 if let Some(context) = context {
                     env.insert(OPENAI_WORKLOAD_IDENTITY_CONTEXT.to_string(), context.clone());
                 }
-                file = Some((path, token.into_bytes()));
+                file = Some((path, identity_token.clone().into_bytes()));
             }
         }
         Ok(Resolved { env, file })
     }
 
-    /// What the loop leaves in its rotating secret, read back after
-    /// the last turn: for `auth_file`, `auth.json` as Codex left it,
-    /// under the name it was declared. `None` for the other methods,
-    /// which hand nothing back, and for a file that cannot be read
-    /// or is not JSON — the fed value then stands for the collect.
-    pub async fn read_back(&self) -> Option<(&'static str, Value)> {
+    /// What the loop leaves of its login, read back after the last
+    /// turn: for `auth_file`, `auth.json` as Codex left it. `None`
+    /// for the other methods, which leave nothing, and for a file
+    /// that cannot be read or is not a JSON object — what is kept
+    /// then stands.
+    pub async fn read_back(&self) -> Option<Map<String, Value>> {
         match self {
-            Auth::AuthFile => {
+            Auth::AuthFile { .. } => {
                 let bytes = tokio::fs::read(auth_file()).await.ok()?;
-                let value = serde_json::from_slice::<Value>(&bytes).ok()?;
-                Some((CODEX_AUTH, value))
+                serde_json::from_slice::<Map<String, Value>>(&bytes).ok()
             }
-            Auth::ApiKey | Auth::AccessToken | Auth::WorkloadIdentity { .. } => None,
+            Auth::ApiKey { .. } | Auth::AccessToken { .. } | Auth::WorkloadIdentity { .. } => None,
         }
-    }
-}
-
-/// The value as the text a variable or a token file carries.
-fn text(name: &'static str, value: &Value) -> Result<String, Error> {
-    match value {
-        Value::String(text) => Ok(text.clone()),
-        _ => Err(Error::NotText(name)),
-    }
-}
-
-/// The login could not be made from the fed secrets.
-#[derive(Debug)]
-pub enum Error {
-    /// The declared name is not among the fed values.
-    Missing(&'static str),
-    /// The fed value is not a JSON string, and the method wants one.
-    NotText(&'static str),
-    /// The fed value is not a JSON object, and `auth_file` wants one.
-    NotObject(&'static str),
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Missing(name) => write!(f, "the secret {name} was not fed"),
-            Error::NotText(name) => write!(f, "the secret {name} is not a JSON string"),
-            Error::NotObject(name) => write!(f, "the secret {name} is not a JSON object"),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl Error {
-    /// The failure as JSON, the shape every failure on the stream
-    /// has. Names the secret, never a value.
-    pub fn message(&self) -> serde_json::Value {
-        serde_json::json!({
-            "kind": "secrets",
-            "error": self.to_string(),
-        })
     }
 }
