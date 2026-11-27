@@ -13,9 +13,9 @@ or `"global"`.
 
 | leaf | body | answers |
 |---|---|---|
-| `create` | `type:"tool"`, `image`, `extra_memory`, `extra_disk`, `arguments`, `secrets` (names; `[]` for none) | `{"created":"<id>"}`, `{"exists":"<id>"}` |
-| `get` | `{"id"}` | `{"found":{id, created, creator, tags, template}}`, `"not_found"` |
-| `list` (`--watch`) | `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`, `count` | `{"added":…}`…, `"listed"`; with `--watch` also `{"changed":…}`, `{"removed":…}` |
+| `create` | `type:"tool"`, `image`, `extra_memory`, `extra_disk`, `arguments` | `{"created":"<id>"}`, `{"exists":"<id>"}` |
+| `get` | `{"id","arguments":<bool>}` (required; `true` needs the `arguments` grant, else `"forbidden"`) | `{"found":{id, created, creator, tags, template}}`, `"not_found"` |
+| `list` (`--watch`) | `arguments` (required bool; `true` is `"forbidden"` unless the grant reaches every template shown), `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`, `count` | `{"added":…}`…, `"listed"`; with `--watch` also `{"changed":…}`, `{"removed":…}` |
 | `delete` | `{"id"}` | `"deleted"`, `"not_found"`, `"in_use"` |
 | `tag` | `{"id","tags":[…]}` | `"tagged"`, `"not_found"` |
 | `untag` | `{"id","tags":[…]}` | `"untagged"`, `"not_found"` |
@@ -24,7 +24,7 @@ or `"global"`.
 
 | leaf | flags | body | answers |
 |---|---|---|---|
-| `create` | | `template`, optional `name`, `secrets`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find; `{"error":…}` also when that document's `type` is not `standalone_tool`, or the template names a secret the document does not state |
+| `create` | | `template`, optional `name`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find; `{"error":…}` also when that document's `type` is not `standalone_tool` |
 | `get` | | `{"tool":<tool>}` | `{"found":<item>}`, `"not_found"` |
 | `list` | `--watch` | filter + `count` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed"}`, `{"removed"}` |
 | `edit` | | `{"tool":<tool>,"patch":[…]}` | `"edited"`, `"not_found"`, `"active"`, `"in_use"` |
@@ -100,14 +100,14 @@ its agent or with its dependency template's compartment (`postgres compartments 
 
 | leaf | grant |
 |---|---|
-| `standalone-tools templates create` / `get` / `list` / `delete` / `tag` / `untag` | the same action over `standalone_tools_templates` |
-| `standalone-tools create` | `create` over `standalone_tools`; plus `mount` over each volume named and `use` over each vault key named |
+| `standalone-tools templates create` / `get` / `list` / `delete` / `tag` / `untag` | the same action over `standalone_tools_templates`; a `get` or `list` with `"arguments": true` also needs `arguments` |
+| `standalone-tools create` | `create` over `standalone_tools`; plus `mount` over each volume named |
 | `get`, `list`, `edit`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `connect` | the same action over `standalone_tools` |
 | `exec`, `terminal` | `exec` |
 | `attach-agent-instance`, `detach-agent-instance` | `attach` / `detach` over the tool and `edit` over the agent |
 | `attach-agent-template`, `detach-agent-template` | `attach` / `detach` over the tool and `attach` over the agent template |
 | reading a tool's log | `logs` over the tool |
-| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them) |
+| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them); a `get` or `list` with `"arguments": true` also needs `arguments` |
 | `dependency-tools exec`, `terminal` | `exec` over `dependency_tools` |
 | a transfer's destination | `upload` over the agent, tool, dependency tool or volume it lands in |
 

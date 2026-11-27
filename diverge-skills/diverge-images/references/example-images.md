@@ -1,7 +1,7 @@
 # The example images under `diverge-examples/`
 
 Six small images that show what a tool or an agent container can be. All take `arguments` `{}`
-(any member is refused, so a misspelled setting is never silently ignored) and state **no secrets**.
+(any member is refused, so a misspelled setting is never silently ignored) and take **no credential**.
 Build each from the workspace root: `-f diverge-examples/tools/<name>/Containerfile .` (`diverge-examples/agents/human/Containerfile` for `human`) (see the main file).
 
 Four are **dependency tools** (`"type":"dependency_tool"` in their `DIVERGE.md`): an agent declares them in its own `arguments.dependencies`, and the
@@ -62,8 +62,7 @@ Dependency entry (put it in each participating agent's `arguments.dependencies`)
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/courier" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -98,8 +97,7 @@ Dependency entry:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/taskboard" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -123,8 +121,7 @@ Dependency entry:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/memory" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -159,8 +156,7 @@ Dependency entry:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/alarm" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -194,8 +190,7 @@ the template states no mode. Tool template body for `diverge run standalone-tool
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/chat" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -219,10 +214,9 @@ Agent template body for `diverge run agents templates create`:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/human" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
 Then `agents create`, attach the tools you want to call as it, and open its frontend (the agent's
-`frontend` commands in `diverge-agents`, or its frontend tab in diverge-viewer). Secrets: none.
+`frontend` commands in `diverge-agents`, or its frontend tab in diverge-viewer).

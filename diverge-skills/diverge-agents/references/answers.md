@@ -19,15 +19,17 @@ carry `relay`. `<ref>` is an agent reference: `{"name":…}` or `{"template":…
 
 | leaf | body | answers |
 |---|---|---|
-| `agents templates create` | the template: `type:"agent"`, `image`, `extra_memory`, `extra_disk`, `arguments`, `secrets` (names; `[]` for none) | `{"created":"<id>"}`, `{"exists":"<id>"}` |
-| `agents templates get` | `{"id"}` | `{"found":<listed>}`, `"not_found"` |
-| `agents templates list` (`--watch`) | filter + `count` | `{"added":<listed>}`…, `"listed"`, then with `--watch` `{"added"}`, `{"changed"}`, `{"removed"}` |
+| `agents templates create` | the template: `type:"agent"`, `image`, `extra_memory`, `extra_disk`, `arguments` | `{"created":"<id>"}`, `{"exists":"<id>"}` |
+| `agents templates get` | `{"id","arguments":<bool>}` | `{"found":<listed>}`, `"not_found"` |
+| `agents templates list` (`--watch`) | `{"arguments":<bool>}` + filter + `count` | `{"added":<listed>}`…, `"listed"`, then with `--watch` `{"added"}`, `{"changed"}`, `{"removed"}` |
 | `agents templates delete` | `{"id"}` | `"deleted"`, `"not_found"`, `"in_use"` |
 | `agents templates tag` | `{"id","tags":[…]}` | `"tagged"`, `"not_found"` |
 | `agents templates untag` | `{"id","tags":[…]}` | `"untagged"`, `"not_found"` |
 
 A listed template: `id`, `created`, `creator`, `tags`, `tools` (tools attached to the template), `template`
-(the body as handed in). A template made again after a delete keeps its first `created` and `creator`.
+(the body as handed in; its `arguments` only when the request said `"arguments": true`, which needs the
+`arguments` grant: a `get` is `"forbidden"` without it, a `list` unless it reaches every template shown).
+`arguments` is required on both requests. A template made again after a delete keeps its first `created` and `creator`.
 
 Template list filter: `ids`, `creators`, `in_use` (bool: some agent was made from it), `all_tags`,
 `any_tags`, `created_from`, `created_to`; plus `count`.
@@ -36,7 +38,7 @@ Template list filter: `ids`, `creators`, `in_use` (bool: some agent was made fro
 
 | leaf | body | answers |
 |---|---|---|
-| `agents create` | `template`, optional `name`, `secrets`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find, or its `DIVERGE.md` says a `type` other than `"agent"`; `{"error":…}` also when the template names a secret that document does not state |
+| `agents create` | `template`, optional `name`, `provider`, `fuse_file_mounts`, `fuse_directory_mounts` | `"created"`, `"in_use"`; `{"error":{"kind":"image",…}}` when the template's image has no valid `DIVERGE.md` the daemon can find, or its `DIVERGE.md` says a `type` other than `"agent"` |
 | `agents get` | `{"agent":<ref>}` | `{"found":<agent>}`, `"not_found"` |
 | `agents list` (`--watch`) | filter + `count` | `{"added":<agent>}`…, `"listed"`, then with `--watch` `{"added"}`, `{"changed"}`, `{"removed"}` |
 | `agents edit` | `{"agent":<ref>,"patch":[…]}` | `"edited"`, `"not_found"`, `"active"`, `"in_use"` |

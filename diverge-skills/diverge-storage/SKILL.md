@@ -1,17 +1,14 @@
 ---
 name: diverge-storage
-description: Storage in Diverge through the `diverge` CLI — volumes (`diverge run volumes create|get|list|edit|delete|stat|tag|untag|filetree|download|upload|transfer`; modes persistent/ephemeral/read_only, sizes in bytes and the provider's 4 MiB floor, stored vs fixed volumes, mounting a volume into an agent or tool as a volume mount or a FUSE mount, what the provider's volume capabilities mean, `held` and `in_use` answers), the vault (`diverge run vault insert|get|list|delete|tag|untag`; keys, slots, who holds a slot, how a template's `secrets` names bind to vault keys through the agent's or tool's `secrets` map, fixed vs rotating secrets, what happens at activation and at inactive), and postgres (`diverge run postgres get|list` and `diverge run postgres compartments list|get|tag|untag|delete`; the one database the daemon serves, the three compartments every container reaches by naming `instance`, `template` or `image`, which of them are shared, how each is removed, listing open container connections). Load it when you create or resize a volume, put files into or take files out of a volume, mount storage into a container, store an API key or a login for an agent, debug a start error about a secret or a volume, or need to know where a container's database is.
+description: Storage in Diverge through the `diverge` CLI — volumes (`diverge run volumes create|get|list|edit|delete|stat|tag|untag|filetree|download|upload|transfer`; modes persistent/ephemeral/read_only, sizes in bytes and the provider's 4 MiB floor, stored vs fixed volumes, mounting a volume into an agent or tool as a volume mount or a FUSE mount, what the provider's volume capabilities mean, `held` and `in_use` answers), and postgres (`diverge run postgres get|list` and `diverge run postgres compartments list|get|tag|untag|delete`; the one database the daemon serves, the three compartments every container reaches by naming `instance`, `template` or `image`, which of them are shared, how each is removed, listing open container connections). Load it when you create or resize a volume, put files into or take files out of a volume, mount storage into a container, debug a start error about a volume, or need to know where a container's database is.
 ---
 
-# Diverge storage: volumes, the vault, postgres
+# Diverge storage: volumes, postgres
 
-Three kinds of state outlive a container:
+Two kinds of state outlive a container:
 
 - A **volume** is a directory a *provider* keeps on its disk, mounted into containers. It belongs to
   the provider, is named by `{provider, name}`, and outlives every container and connection.
-- The **vault** is the *daemon's* store of secrets: named keys, each holding one or more JSON values
-  (slots). Containers are handed values at every activation; they never ask for one and are never
-  told a key.
 - **Postgres** is the one database the *daemon* serves into its containers. Each container reaches
   three compartments of it with no credential: its own, its template's and its image's.
 
@@ -263,137 +260,6 @@ judged here only by `relay` over that record; a FUSE mount whose serve is lost e
 
 ---
 
-# The vault
-
-## What it is
-
-A **vault key** is a name and one or more values, each any JSON, numbered from `0` in the order they
-were appended: its **slots**. Secrets reach a container through three statements by three parties:
-
-1. The **template** lists the secret *names* the container needs, each one the image's `DIVERGE.md` states: `"secrets":["OPENROUTER_API_KEY"]`.
-2. The **agent or tool** made from it binds every name to a vault key on its create:
-   `"secrets":{"OPENROUTER_API_KEY":"or-key"}`.
-3. The **program**, at registration, declares which names it takes and each one's **mode**.
-
-| mode | at every activation | at inactive |
-|---|---|---|
-| `fixed` | a **random** slot's value is read and handed over; nothing is locked; many containers may read one value | nothing |
-| `rotating` | a random **free** slot is **locked** to the record (the agent, standalone tool or dependency tool) and its value handed over | the daemon collects what the program made of it, writes that into the same slot, and drops the lock |
-
-So an API key is `fixed`; a login whose refresh token is single-use (an OAuth state document, an
-`auth.json`) is `rotating`, and the refreshed login is what the next activation finds. A lock is on a
-*value*, never on a key: a key with three values serves three rotating holders at once. Which secrets
-an image states, and in which mode its program takes each, is in `diverge-images`.
-
-Binding rules (checked at the agent's or tool's create or edit):
-
-- The `secrets` map must bind **every name the template lists and no other**.
-- Each key must exist in the vault **with at least one value**, and binding it takes the `use` grant
-  over it. Otherwise the create answers its secrets error.
-- A dependency tool's secrets are resolved through the binding of the **agent** that spawns it, so a
-  dependency's secret names must be names the agent's own record binds, and names the tool's image states.
-
-What can go wrong at a start (shown as the start error in the agent's or tool's log):
-
-- "the program takes the secret X, which the template does not declare" — the image's arguments
-  select a secret the template omits. Make a template that lists it.
-- "…bound to the vault key K, which holds no value" — the key was emptied.
-- "…bound to the vault key K, no value of which is free" — every slot of a rotating secret's key is
-  held by a running container. Add a slot (`vault insert` with no `slot`) or wait for one to go
-  inactive.
-
-## Insert (make a key, append a value, replace a value)
-
-```bash
-diverge run vault insert '{"key":"or-key","value":"sk-or-…"}'                       # new key: slot 0
-diverge run vault insert '{"key":"codex-logins","value":{"auth_mode":"chatgpt","tokens":{…}}}'
-diverge run vault insert '{"key":"codex-logins","value":{…}}'                       # existing key: appends slot 1
-diverge run vault insert '{"key":"or-key","slot":0,"value":"sk-or-NEW"}'            # replaces slot 0
-```
-
-`value` is any JSON, held as given: a string for an API key, an object for a login document — the
-shape the image's secret expects. Without `slot` the value is appended (making the key if it is new);
-with `slot` that slot's value is replaced.
-
-| answer | meaning |
-|---|---|
-| `"inserted"` | the key holds the value |
-| `"not_found"` | a `slot` was named that the key does not have, or the key does not exist |
-| `"locked"` | a running container holds that slot as a rotating secret; wait, or name another slot |
-
-A bound key is inserted into like any other: the next activation may be handed the new value. This
-is how a key is rotated by hand. The value in a shell command lands in shell history; prefer reading
-it from a file (`"$(cat body.json)"`). Grants: a **new** key needs the make `{"vault":["insert"]}`;
-an **existing** key needs the `insert` action over it.
-
-## Get and list
-
-```bash
-diverge run vault get '{"key":"or-key"}'
-diverge run vault list
-diverge run vault list '{"keys":["or-key"],"any_tags":["prod"],"count":50}'
-diverge run vault list --watch
-```
-
-`get` is **the one request that answers values**:
-
-```json
-{"found":{"key":"codex-logins",
-  "slots":[{"slot":0,"locked":{"type":"agent","template":"…","index":0,"name":"coder"},"value":{…}},
-           {"slot":1,"value":{…}}],
-  "agents":[{"template":"…","index":0,"name":"coder"}],
-  "standalone_tools":[{"record":{"template":"…","index":0,"name":"notes"}}],"tags":["prod"],
-  "created":"2026-11-10T09:00:00Z","creator":{"type":"client","identity":{…}}}}
-```
-
-`locked` names the record whose running container holds that slot (absent when free). `agents` and
-`standalone_tools` are the records **binding** the key. Use `--jq` to avoid printing values you do
-not need, e.g. `--jq '.found.slots[] | {slot, locked}'`.
-
-`list` prints the same per key **without any value** (`{"added":{"key":…,"slots":[{"slot":0,"locked":…}],…}}`),
-oldest first, then `"listed"`. Filter members: `keys`, `creators`, `all_tags`, `any_tags`,
-`created_from`, `created_to`, and `count`. With `--watch` it stays open and reports locks taken and
-dropped as `{"changed":…}`, which is how to watch rotating secrets being held. Grants: `get`, `list`.
-
-## Delete
-
-```bash
-diverge run vault delete '{"key":"or-key"}'               # the whole key
-diverge run vault delete '{"key":"codex-logins","slot":1}'  # one value
-```
-
-| answer | meaning |
-|---|---|
-| `"deleted"` | the key, or the value named, is gone |
-| `"not_found"` | no such key, or no such slot |
-| `"in_use"` | (whole key) an agent or a tool binds it in its `secrets`; unbind or delete those first |
-| `"locked"` | a running container holds the value named, or one of the key's values; wait for it to go inactive |
-| `"last"` | the slot is the key's only one; a key holds at least one value, so delete the key instead |
-
-Deleting a slot does not renumber what `get` reported for the others in a way you should rely on:
-read the key again before naming a slot. Grant: `delete`.
-
-## Tag, untag
-
-```bash
-diverge run vault tag   '{"key":"or-key","tags":["prod"]}'    # "tagged"
-diverge run vault untag '{"key":"or-key","tags":["prod"]}'    # "untagged"
-```
-
-Same semantics as volume tags; `"not_found"` for a key the vault does not hold. Grant: the tagging
-shape, `{"vault":{"actions":["tag","untag"],"within":"any","tags":"any"}}`.
-
-## A worked example: an agent with an API key
-
-```bash
-diverge run vault insert '{"key":"or-key","value":"sk-or-…"}'
-# the template (see diverge-images / diverge-agents) lists "secrets":["OPENROUTER_API_KEY"]
-diverge run agents create '{"template":"<id>","name":"helper","secrets":{"OPENROUTER_API_KEY":"or-key"}}'
-diverge run vault get --jq '.found.agents' '{"key":"or-key"}'      # the agent now binds the key
-```
-
----
-
 # Postgres
 
 The daemon serves exactly **one** database into its containers, and keeps its own records in it too.
@@ -550,7 +416,7 @@ Answers:
   dependency tool's record goes away.
 
 Grants: `{"postgres_compartments":{"actions":["get","list","delete"],"within":…}}` and the tagging
-shape, as for the vault.
+shape, `{"postgres_compartments":{"actions":["tag","untag"],"within":"any","tags":"any"}}`.
 
 ---
 
@@ -559,12 +425,10 @@ shape, as for the vault.
 | family | make (bare array) | over actions (`{"actions":[…],"within":…}`) | tagging |
 |---|---|---|---|
 | `volumes` | `create` | `get`, `list`, `delete`, `edit`, `stat`, `download`, `upload`, `transfer`, `filetree`, `mount`, `fuse_serve` | `tag`, `untag` |
-| `vault` | `insert` (a new key) | `get`, `list`, `insert`, `delete`, `use` | `tag`, `untag` |
 | `postgres` | — | bare array: `get`, `list` | — |
 | `postgres_compartments` | — | `get`, `list`, `delete` | `tag`, `untag` |
 
-`mount` (volumes) and `use` (vault) are not commands: they are what naming a volume in a mount, or a
-key in a `secrets` binding, takes. `fuse_serve` (volumes) is what **another daemon's account** holds here
+`mount` (volumes) is not a command: it is what naming a volume in a mount takes. `fuse_serve` (volumes) is what **another daemon's account** holds here
 so that its containers can FUSE-mount the volume; `diverge run volumes fuse-serve` exists only for its
 schemas, and the CLI refuses to put the request. Admins hold everything. Shapes, `within` and diagnosing
 `forbidden` are in `diverge-access`.
@@ -573,8 +437,6 @@ schemas, and the CLI refuses to put the request. Admins hold everything. Shapes,
 
 - No request was run live while writing this (the daemon was down); answers are from the SDK's
   response types, the daemon's handlers and the CLI's `response-schema`.
-- Whether remaining slot numbers shift after `vault delete` with a `slot`.
-- The exact text of the create's secrets error for an unbound name or an empty key.
 - The largest size a volume may have (a resize refuses sizes whose 4 KiB block count exceeds 32
   bits, about 16 TiB; whether create applies the same bound was not traced).
 

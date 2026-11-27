@@ -1,15 +1,14 @@
 ---
 name: diverge-agents
-description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, extra_memory, extra_disk, arguments, secrets; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts, secret bindings), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, `agents frontend`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
+description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, extra_memory, extra_disk, arguments; the required `arguments` choice on `get` and `list`; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, `agents frontend`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
 ---
 
 # Diverge agents
 
 An **agent** is one container the daemon runs on a provider: an agent-loop program (a model harness, a
 script, or a person at a frontend) that takes messages and answers them, calling the MCP tools the daemon
-serves it. An agent is made from an **agent template** (image, limits, arguments, secret names), which is
-held by its hash, plus what is the agent's own: a name, a provider, mounts, and which vault key each secret
-is. The daemon keeps the agent's record and its whole conversation (its log); the container itself only runs
+serves it. An agent is made from an **agent template** (image, limits, arguments), which is
+held by its hash, plus what is the agent's own: a name, a provider and mounts. The daemon keeps the agent's record and its whole conversation (its log); the container itself only runs
 while there is work for it.
 
 Everything here is one request per command: `diverge run agents <leaf> '<JSON body>'`. Every answer is one
@@ -24,12 +23,11 @@ diverge run agents create request-schema
 ## Order of operations
 
 1. An image is in the provider's store and you know its digest (`diverge-images`).
-2. Any secret the image needs is in the vault (`diverge-storage`).
-3. `agents templates create` → the template id.
-4. `agents create` → the agent (nothing runs yet).
-5. Attach tools if wanted (`diverge-tools`).
-6. `agents message` → the container starts, the agent works, the container is stopped when idle.
-7. Read what it said with `diverge run logs` (`diverge-logs`).
+2. `agents templates create` → the template id. Any credential the image needs goes in its `arguments`.
+3. `agents create` → the agent (nothing runs yet).
+4. Attach tools if wanted (`diverge-tools`).
+5. `agents message` → the container starts, the agent works, the container is stopped when idle.
+6. Read what it said with `diverge run logs` (`diverge-logs`).
 
 ## Naming an agent: two references
 
@@ -54,8 +52,7 @@ diverge run agents templates create '{
   "image": {"digest": "sha256:b031dd…", "references": [{"registry": "docker.io", "name": "diverge-local/python"}]},
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {"python": "…script source…"},
-  "secrets": []
+  "arguments": {"python": "…script source…"}
 }'
 ```
 
@@ -65,14 +62,13 @@ diverge run agents templates create '{
 | `image` | `{"digest":"<algorithm>:<hex>","references":[{"registry":…,"name":…}]}`. The digest is the image. References only say where the bytes may be fetched and are not in the hash. The daemon refuses to start a run unless a reference names a registry the provider lists, so include one even for a locally built image. The image must be an agent image: its `DIVERGE.md` says `"type":"agent"`. |
 | `extra_memory` | Bytes, required: the memory the container gets beyond what its image's `DIVERGE.md` says it needs. The container's limit is the sum of the image's `memory` and this. `0` is what the image needs and no more. The limit is a hard ceiling: a process over it is killed. |
 | `extra_disk` | Bytes, required: what the container may write over its image beyond what the image's `DIVERGE.md` says it needs. The limit is the sum of the image's `disk` and this. `0` is what the image needs and no more. Mounted volumes are not counted. |
-| `arguments` | Any JSON value, handed to the image's program verbatim. Its shape is the image's own: read the image's `DIVERGE.md` (`diverge run images read --info`, see `diverge-images`). |
-| `secrets` | Names only, required, `[]` for none. All of the secrets the image's `DIVERGE.md` states, or any subset of them, and none the image does not state: e.g. `["OPENROUTER_API_KEY"]` for the `openrouter` image. Each agent binds every name to a vault key at create. |
+| `arguments` | Any JSON value, handed to the image's program verbatim. Its shape is the image's own: read the image's `DIVERGE.md` (`diverge run images read --info`, see `diverge-images`). A credential the image needs is a member of them (the `openrouter` image's `api_key`), so anyone who may see the template's arguments sees it. |
 
-A template has exactly these six members. It has no `description`, no `memory` and no `disk`: the image's
+A template has exactly these five members. It has no `description`, no `memory` and no `disk`: the image's
 own `DIVERGE.md` states its description and the memory and disk it needs.
 
 Answers: `{"created":"<id>"}`, `{"exists":"<id>"}` (the same template was made before; not a failure),
-`"forbidden"`, `{"error":…}`. The image is not checked here; `agents create` checks it, and refuses a template whose image is not an agent image or whose `secrets` name one the image does not state. The **id** is the lowercase hex SHA-256 of the template's canonical JSON
+`"forbidden"`, `{"error":…}`. The image is not checked here; `agents create` checks it, and refuses a template whose image is not an agent image. The **id** is the lowercase hex SHA-256 of the template's canonical JSON
 (64 characters). Capture it:
 
 ```bash
@@ -83,8 +79,8 @@ A template cannot be edited: a changed body is a new template with a new id.
 
 **Dependencies are not a template member.** The tools an agent depends on are declared by the agent's
 *program* when its container registers. For the agent-loop images in this repository that declaration is
-copied from `arguments.dependencies`, a list of dependency tool templates (image, extra_memory, extra_disk, arguments,
-secrets; the tool image's own `DIVERGE.md` states its `mode` of `lazy` or `eager` and its `scope` of `instance`, `template` or `global`; a tool
+copied from `arguments.dependencies`, a list of dependency tool templates (image, extra_memory, extra_disk,
+arguments; the tool image's own `DIVERGE.md` states its `mode` of `lazy` or `eager` and its `scope` of `instance` or `global`; a tool
 whose image says lazy and `instance` may also mount the agent's own paths). Each image must be a `dependency_tool` image. The daemon deploys them when the agent's container starts.
 See `diverge-tools` for the full shape and what each mode and scope means.
 
@@ -92,11 +88,25 @@ Other template leaves:
 
 | command | body | answers |
 |---|---|---|
-| `agents templates get` | `{"id":"<id>"}` | `{"found":{id, created, creator, tags, tools, template}}`, `"not_found"` |
-| `agents templates list` | `{}` or a filter: `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`, `count` | one `{"added":…}` per template, then `"listed"` |
+| `agents templates get` | `{"id":"<id>","arguments":false}` | `{"found":{id, created, creator, tags, tools, template}}`, `"not_found"`, `"forbidden"` |
+| `agents templates list` | `{"arguments":false}`, plus any of the filter: `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`, `count` | one `{"added":…}` per template, then `"listed"`; `"forbidden"` |
 | `agents templates delete` | `{"id":"<id>"}` | `"deleted"`, `"not_found"`, `"in_use"` (an agent was made from it: delete those agents first) |
 | `agents templates tag` | `{"id":"<id>","tags":["crew"]}` | `"tagged"`, `"not_found"` |
 | `agents templates untag` | `{"id":"<id>","tags":["crew"]}` | `"untagged"`, `"not_found"` |
+
+**`arguments` is required on `get` and `list`**, `true` or `false`: a body without it, a bare `list`
+included, is refused. Arguments carry credentials, so say `false` unless you need them.
+
+```bash
+diverge run agents templates list '{"arguments":false}'
+diverge run agents templates get '{"id":"<id>","arguments":true}'
+```
+
+- `false`: the answer's `template` has no `arguments` member. Nothing more than `get` / `list` is needed.
+- `true`: the `template` carries its `arguments`. This needs the `arguments` grant over the template, beside
+  `get` / `list`. A `get` without it answers `"forbidden"`. A `list` answers `"forbidden"` unless `arguments`
+  grants reach **every** template it would show; kept open with `--watch`, it does not show a later template
+  outside that reach.
 
 A listed template's `tools` are the tools attached to the template (every agent made from it has them).
 Tags are the caller's, not in the hash. Deleting a template removes its tool attachments with it.
@@ -107,11 +117,10 @@ Tags are the caller's, not in the hash. Deleting a template removes its tool att
 # minimal: runs on whichever provider the daemon chooses, mounts nothing
 diverge run agents create "{\"template\":\"$TPL\",\"name\":\"echo\"}"
 
-# fuller: secrets bound, pinned to a provider, one volume mounted
+# fuller: pinned to a provider, one volume mounted
 diverge run agents create '{
   "template": "<id>",
   "name": "researcher",
-  "secrets": {"OPENROUTER_API_KEY": "or-key"},
   "provider": {
     "identity": {"issuer": "https://identity.diverge.network", "subject": "ronald.provider"},
     "volume_mounts": [
@@ -123,8 +132,6 @@ diverge run agents create '{
 
 - `template` (required): an agent template id of the caller's. A tool template's id is an error.
 - `name` (optional): unique among the caller's agents; taken → `"in_use"`.
-- `secrets`: every name the template lists, and no other, each mapped to a vault key that exists with at
-  least one value. Naming a key needs the `use` grant over it. Wrong or missing names are the create's error.
 - `provider`: pins the agent to one provider (by `{"issuer","subject"}`) and mounts that provider's volumes.
   Absent, the daemon picks a provider at each start and the agent mounts no volume.
 - `fuse_file_mounts`, `fuse_directory_mounts`: files or directories of any provider's volume, served live
@@ -160,11 +167,10 @@ agent can be deployed and inactive (idling before it is stopped).
 ## Editing
 
 An edit is a JSON Patch (RFC 6902) applied to the agent's editable document: `name`, `volume_mounts`,
-`fuse_file_mounts`, `fuse_directory_mounts`, `secrets`. Applied whole or not at all.
+`fuse_file_mounts`, `fuse_directory_mounts`. Applied whole or not at all.
 
 ```bash
 diverge run agents edit '{"agent":{"name":"echo"},"patch":[{"op":"replace","path":"/name","value":"echo-2"}]}'
-diverge run agents edit '{"agent":{"name":"x"},"patch":[{"op":"replace","path":"/secrets/OPENROUTER_API_KEY","value":"or-key-2"}]}'
 ```
 
 Answers: `"edited"`, `"not_found"`, `"in_use"` (the new name is another agent's), `"active"`, `"forbidden"`,
@@ -176,7 +182,6 @@ Answers: `"edited"`, `"not_found"`, `"in_use"` (the new name is another agent's)
 - The template, image, limits, arguments and pinned provider never change. For different arguments, make a
   new template and a new agent.
 - An agent pinned to no provider cannot be given `volume_mounts`.
-- New secret bindings are used from the container's next activation.
 
 ## Deleting, tagging
 
@@ -243,7 +248,7 @@ Rules:
   whole message is refused. Either way nothing was started and the agent's log has no line of it. Text, a
   text resource and a resource link are always taken.
 - **Errors**: no such agent is an `{"error":…}` here (not `"not_found"`); so is an image that refuses a block
-  kind it cannot take (the whole message is refused), and a run that could not start (missing secret value,
+  kind it cannot take (the whole message is refused), and a run that could not start (arguments the image refuses,
   a dependency that did not deploy, no capable provider). The same failure is kept in the agent's log.
 - A first message that fails with "connection ended before the channel answered" usually means dependency
   tools were still deploying. Send it again.
@@ -458,9 +463,9 @@ diverge run agents frontend '{"agent":{"name":"me"},"method":"GET","path":"/fron
 
 Each leaf needs a grant of the same name over agents: `create` (making), and over existing agents `get`,
 `list`, `edit`, `delete`, `message`, `logs`, `download`, `upload`, `transfer`, `filetree`, `exec` (also
-`terminal`), `frontend`, `connect`, plus `tag`/`untag`. Templates: `create`, `get`, `list`, `delete`,
+`terminal`), `frontend`, `connect`, plus `tag`/`untag`. Templates: `create`, `get`, `list`, `arguments`, `delete`,
 `attach`, `tag`/`untag` over `agents_templates`. A create or edit that names a volume also needs `mount` over
-the volume; one that names a vault key needs `use` over the key; a transfer needs `transfer` over the source
+the volume; a transfer needs `transfer` over the source
 and `upload` over the destination. `"forbidden"` means no grant reaches what the request names, and nothing
 changed. A list is never partially forbidden: it sends only what the account's `list` grants reach. See
 `diverge-access`.

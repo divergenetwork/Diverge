@@ -114,7 +114,7 @@ single file (for example a credential file a vendor CLI rewrites).
 The editable document is:
 
 ```json
-{"name": "echo", "volume_mounts": [], "fuse_file_mounts": [], "fuse_directory_mounts": [], "secrets": {}}
+{"name": "echo", "volume_mounts": [], "fuse_file_mounts": [], "fuse_directory_mounts": []}
 ```
 
 ```bash

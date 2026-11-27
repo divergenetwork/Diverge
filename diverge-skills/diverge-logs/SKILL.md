@@ -141,7 +141,8 @@ or `{"kind":"client","identity":{…},"scope":…}`. `tools/list` and `resources
 ### What a command log holds
 
 One entry type, `command`: `path` (`agents/message`, `roles/create`, `logs`), `request` (the body as
-sent, `relay` included, secrets replaced), `allowed` (`false` exactly when the answer was `forbidden`; a
+sent, `relay` included, with the `arguments` of an `agents templates create` or `standalone-tools
+templates create` replaced by `"[redacted]"`), `allowed` (`false` exactly when the answer was `forbidden`; a
 request that was let through and then failed is still `true`). One entry per request; what the request
 came to is not kept. Requests the daemon could not parse are not kept.
 
@@ -194,8 +195,10 @@ Leaves with `--watch`:
 
 - Lists: `accounts list`, `roles list`, `agents list`, `agents templates list`, `standalone-tools list`,
   `standalone-tools templates list`, `connected-standalone-tools list`, `dependency-tools list`,
-  `providers list`, `providers daemons list`, `daemons list`, `volumes list`, `vault list`, `postgres list`, `postgres compartments list`,
-  `events list`.
+  `providers list`, `providers daemons list`, `daemons list`, `volumes list`, `postgres list`, `postgres compartments list`,
+  `events list`. The three lists that return templates (`agents templates list`,
+  `standalone-tools templates list`, `dependency-tools list`) need a body stating `arguments`, for example
+  `'{"arguments":false}'`.
 - Filetrees: `agents filetree`, `standalone-tools filetree`, `dependency-tools filetree` (they end at the
   first snapshot without `--watch`; see `diverge-agents` and `diverge-tools`).
 

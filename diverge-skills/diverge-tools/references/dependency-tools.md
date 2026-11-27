@@ -16,7 +16,6 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
   "extra_memory": 0,
   "extra_disk": 0,
   "arguments": {},
-  "secrets": [],
   "fuse_directory_mounts": [{"agent_path": ["workspace"], "tool_path": ["workspace"]}]
 }
 ```
@@ -26,8 +25,7 @@ the agent image's `DIVERGE.md` (`diverge run images read --info`, `diverge-image
   "image": {"digest": "sha256:…", "references": [{"registry": "docker.io", "name": "diverge-local/taskboard"}]},
   "extra_memory": 134217728,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -40,15 +38,14 @@ bytes.
 |---|---|
 | `image` | digest and references, as in any template. References are not in the id. The image must ship a valid `DIVERGE.md` that the daemon can read, and that document's `type` must be `dependency_tool`; otherwise the registration fails and the agent does not start. |
 | `extra_memory`, `extra_disk` | bytes, required: what the container gets beyond the `memory` and `disk` its image's document says it needs. The limit is the sum. `0` is what the image needs and no more. |
-| `arguments` | handed to the tool's program verbatim; the tool image's `DIVERGE.md` gives the schema |
-| `secrets` | names only, required, `[]` for none. Every name must be one the tool image's document states, and one the **agent's** own record binds; the value comes from the vault key the agent binds that name to. Otherwise the registration fails. |
+| `arguments` | handed to the tool's program verbatim; the tool image's `DIVERGE.md` gives the schema. A credential the tool needs is a member of them. |
 | `fuse_file_mounts`, `fuse_directory_mounts` | optional. Allowed only where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`; a declaration that names a mount of an image of any other mode or scope is refused. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
 
 There is no name and no description, and there is no `mode` and no `scope`: the tool image's own
 `DIVERGE.md` states those two (`"mode"`: `"lazy"`, runs while it is used, or `"eager"`, kept up while any
 agent is attached; `"scope"`: `"instance"` or `"global"`, how far the tool's container is shared). Read them with `diverge run images read --info`. The **id** is the lowercase hex SHA-256 of the
 template's canonical JSON: compact, keys sorted at every depth, absent members omitted, image references
-dropped, secret names sorted, the mounts included. Declaring the same template twice in one list is refused. A
+dropped, the mounts included. Declaring the same template twice in one list is refused. A
 dependency template cannot name the caller's volumes or a provider.
 
 ## Mode, scope, owner
@@ -80,8 +77,10 @@ every container does (see `postgres` in `diverge-storage`):
 
 ## The list item
 
-`diverge run dependency-tools list` prints `{"added":<item>}` per tool then `"listed"`; `get` prints
-`{"found":<item>}`.
+`diverge run dependency-tools list '{"arguments":false}'` prints `{"added":<item>}` per tool then `"listed"`;
+`get` prints `{"found":<item>}`. Both bodies must state `arguments`, `true` or `false`; a body without it is
+refused. `true` needs the `arguments` grant over `dependency_tools` beside `get` / `list`: a `get` without it
+answers `"forbidden"`, and a `list` answers `"forbidden"` unless the grant reaches every tool it would show.
 
 | member | meaning |
 |---|---|
@@ -90,8 +89,8 @@ every container does (see `postgres` in `diverge-storage`):
 | `index` | its number among all dependency tools ever made from this template |
 | `created`, `creator` | when the first declaring registration made it, and the agent that did |
 | `tags` | the tool's own tags (not in the hash) |
-| `template` | the template as the program declared it |
-| `mode`, `scope` | what the tool image's document says: `"lazy"` or `"eager"`, and `"instance"`, `"template"` or `"global"`. Members of the item itself, not of its `template`. |
+| `template` | the template as the program declared it; its `arguments` only when the request said `"arguments": true` |
+| `mode`, `scope` | what the tool image's document says: `"lazy"` or `"eager"`, and `"instance"` or `"global"`. Members of the item itself, not of its `template`. |
 | `agents` | the agents attached now, each `{"agent":{template,index,name},"declared":"<time>"}`; absent when none |
 | `active`, `last_active` | a call or read in flight; when that last changed |
 | `deployed`, `last_deployed` | container up; when that last changed |
@@ -143,7 +142,7 @@ To work on a lazy dependency: message the agent (which starts both), then run th
 agent goes idle, or keep the agent busy.
 
 ```bash
-ID="$(diverge run dependency-tools list --jq '.added.id // empty' '{"owners":[{"agent":{"name":"echo"}}]}' | tr -d '"' | head -1)"
+ID="$(diverge run dependency-tools list --jq '.added.id // empty' '{"arguments":false,"owners":[{"agent":{"name":"echo"}}]}' | tr -d '"' | head -1)"
 diverge run dependency-tools exec --raw "{\"dependency\":{\"template\":\"$ID\",\"owner\":{\"agent\":{\"name\":\"echo\"}}},\"argv\":[\"ls\",\"/\"]}"
 ```
 

@@ -93,7 +93,7 @@ Which member names records differs per kind; the table and the narrowing members
 ### The kinds
 
 `agents`, `agents_templates`, `standalone_tools`, `standalone_tools_templates`, `connected_standalone_tools`,
-`dependency_tools`, `providers`, `providers_daemons`, `daemons`, `accounts`, `roles`, `volumes`, `vault`,
+`dependency_tools`, `providers`, `providers_daemons`, `daemons`, `accounts`, `roles`, `volumes`,
 `postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `exec` or `terminal`
 kind: those are *actions* inside the kinds that have them (`logs` over agents, tools and accounts;
 `frontend` and `exec` over agents, standalone tools and dependency tools; a terminal is judged as `exec`).
@@ -116,7 +116,9 @@ A request naming several things is allowed only when every one is:
   A FUSE mount of a volume on **another daemon** (the mount names `daemon`): the container's grant **and**
   `relay` over that daemon's record, and nothing over the volume here; the other daemon judges its own
   `fuse_serve` grant for the account the record names.
-- Binding a vault key in `secrets`: the container's grant **and** `use` over the key.
+- Seeing a template's arguments (`"arguments": true` on `agents templates get|list`,
+  `standalone-tools templates get|list`, `dependency-tools get|list`): the `get` or `list` grant **and**
+  `arguments` over the same template. Arguments carry credentials, so give `arguments` narrowly.
 - A transfer: `transfer` over the source **and** `upload` over where it lands.
 - Any request with `relay`: `relay` over the daemons record that is the first ID, on this daemon; the
   request itself is then judged on the remote daemon, as the account the record names.
@@ -127,12 +129,16 @@ A `list` is judged record by record: it sends what the account's `list` grants r
 request's own filter) and nothing else. It is `forbidden` only when no grant holds `list` over the kind at
 all. A caller whose grants reach nothing gets `"listed"` with no items, not `forbidden`.
 
+One exception: a list whose body says `"arguments": true` is `forbidden` unless `arguments` grants reach
+**every** template the list would show. Kept open with `--watch`, it does not show a later template outside
+that reach. With `"arguments": false` the list is judged as any other and no item carries `arguments`.
+
 ## Tags, and what a creator is
 
 - **Tags** are plain strings on a record, put on with the family's `tag` request and taken off with `untag`.
   They exist so grants (and list filters) can reach groups of records without naming them. Agents, both
   kinds of template, standalone / connected / dependency tools, providers, remote daemon records, accounts,
-  roles, volumes, vault keys and the host's identities all carry tags.
+  roles, volumes and the host's identities all carry tags.
 - A tagging grant limits *which* tags: `{"roles":{"actions":["tag"],"within":"any","tags":["team-a"]}}`
   lets the holder put only `team-a` on roles. Putting several tags in one request needs one grant that
   covers all of them.
@@ -396,7 +402,7 @@ For `"forbidden"`, work through this list:
    with no grant of the action at all, `forbidden` comes before the record is even looked up.
 5. **Does the request name a second thing?** See "Requests that need more than one grant": roles named in
    an account, the agent or template of an attach, the daemons record of a connected tool, a volume
-   mounted, a vault key bound, a transfer's destination, the first `relay` ID.
+   mounted, a template's `arguments` asked for, a transfer's destination, the first `relay` ID.
 6. **Tagging:** the grant's `tags` must cover every tag in the request, or be `"any"`.
 7. **Relayed?** With `relay`, `forbidden` can come from this daemon (no `relay` grant reaching the record)
    or from the remote, which judges the request as the account the record names, by *its* roles there. If

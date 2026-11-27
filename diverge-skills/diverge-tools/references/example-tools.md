@@ -3,8 +3,7 @@
 Six images under `diverge-examples/` in the repository. Five are tools; `human` is an agent image listed here because
 it is used with them. Each image's `/.diverge/DIVERGE.md` states its type, its name, its one-line description, its arguments schema, the memory and disk it needs, for a tool its `mode` (and for a dependency tool its `scope`), and whether it serves
 a frontend; read it from a running daemon with `diverge run images read --info` (`diverge-images`), which is also
-where you get the digest to put in a template. All take `arguments: {}` (any member is refused) and no
-secrets. Each tool image states `"memory":268435456,"disk":268435456`.
+where you get the digest to put in a template. All take `arguments: {}` (any member is refused). Each tool image states `"memory":268435456,"disk":268435456`.
 
 An image is exactly one kind. `memory`, `taskboard`, `courier` and `alarm` are `dependency_tool` images: an
 agent's program declares them, and a tool template of one is refused when a tool is created from it. `chat`
@@ -40,14 +39,13 @@ diverge run agents templates create '{
     "python": "…agent script…",
     "dependencies": [
       {"image": {"digest": "<memory digest>", "references": [{"registry": "docker.io", "name": "diverge-local/memory"}]},
-       "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []}
+       "extra_memory": 0, "extra_disk": 0, "arguments": {}}
     ]
-  },
-  "secrets": []
+  }
 }'
 # → {"created":"<agent template id>"}; then agents create, agents message
 diverge run agents connect list-tools '{"agent":{"name":"echo"}}'      # <8 hex>_remember, <8 hex>_recall, <8 hex>_forget
-diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
+diverge run dependency-tools list '{"arguments":false,"owners":[{"agent":{"name":"echo"}}]}'
 ```
 
 ## taskboard — a shared board (dependency, eager, template)
@@ -134,7 +132,7 @@ diverge run dependency-tools list '{"owners":[{"agent":{"name":"echo"}}]}'
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' '{
   "type": "tool",
   "image": {"digest": "<chat digest>", "references": [{"registry": "docker.io", "name": "diverge-local/chat"}]},
-  "extra_memory": 0, "extra_disk": 0, "arguments": {}, "secrets": []
+  "extra_memory": 0, "extra_disk": 0, "arguments": {}
 }' | tr -d '"')"
 diverge run standalone-tools create "{\"template\":\"$TPL\",\"name\":\"chat\"}"
 diverge run standalone-tools attach-agent-instance '{"tool":{"name":"chat"},"agent":{"name":"echo"}}'

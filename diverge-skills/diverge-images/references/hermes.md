@@ -2,98 +2,84 @@
 
 A Hermes agent (Nous Research's agent harness): `hermes gateway` laid down from the arguments and
 driven over its API. Hermes is multi-provider; the `provider` argument picks the inference source and
-**selects the secrets** its auth needs. The toolsets select more. No credential is ever an argument.
+**carries the credential** its auth needs. A toolset that needs a credential carries its own.
 
 ## `arguments`
 
 | member | required | meaning |
 |---|---|---|
-| `provider` | yes | the inference source: an object whose `provider` member is the provider id, plus that provider's endpoint facts (table below) |
+| `provider` | yes | the inference source: an object whose `provider` member is the provider id, plus that provider's endpoint facts and credential (table below) |
 | `model` | yes | the model, in the provider's own naming |
 | `system_prompt` | no | applied per request |
 | `effort` | no | `"none"`, `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"ultra"`. Absent is the provider's default; `"none"` is reasoning explicitly disabled |
-| `toolsets` | no | Hermes's local capabilities, one switch each (below). Absent is everything off |
+| `toolsets` | no | Hermes's local capabilities, one member each (below). Absent is everything off |
 | `dependencies` | no | dependency tool templates; see [agent-loop-images.md](agent-loop-images.md) |
 
 There is no temperature and no thinking-token budget. Skills are not an argument: they arrive as
 mounts under `/root/.hermes/external-skills/`, one directory per skill holding its `SKILL.md`.
 
-## Secrets
+## Credentials
 
-The image's `DIVERGE.md` states 51 secrets, one per provider credential and toolset credential in the
-tables below, each with its name and a one-line description. A template lists the ones its arguments
-select, and may list no name the image does not state.
+Every credential is a member of the provider's object or of a toolset's object, required wherever
+that provider or toolset is chosen (two are optional, noted below). There is no other place for one.
 
-The program computes its declaration from the arguments: the provider's secrets plus each enabled
-toolset's. **The template's `secrets` must list every name selected**, and the agent's create must
-bind each to a vault key. A name selected twice (for example `XAI_API_KEY` by the `xai` provider and
-by `x_search`) is one secret.
-
-Fixed secrets are JSON strings unless noted. Rotating secrets are JSON objects (OAuth state) that the
-harness writes where Hermes reads them, reads back after the gateway exits, and hands back to be
-written into the vault slot they were locked from. A rotating key gives one value to one running
-container at a time; see `diverge-storage`.
+- Most are strings. An `oauth` member is a JSON object: the login document.
+- A login that refreshes (`oauth`) is kept by the agent itself, in its own `instance` database, as
+  the last run left it. The kept login is used while the template's `oauth` is the one it was kept
+  for; an agent made from a template with another `oauth` starts from that argument. So one login
+  serves one agent: give each agent its own.
+- Two members that set the same underlying key must carry the same value: `fal_key` of `image_gen`
+  and of `video_gen`, and `api_key` of the `xai` provider and of `x_search`. Different values are
+  refused at registration.
+- Whoever may see the template's arguments sees every credential in it. An error names the member,
+  never its value.
 
 ## Providers
 
-`provider` is `{"provider":"<id>", …}`. Most take nothing but the id.
+`provider` is `{"provider":"<id>", …}`.
 
-| `provider` id | other members | secrets (mode) |
+Each of these takes exactly `api_key` (a string, required) beside the id:
+
+`actual`, `ai-gateway`, `alibaba`, `alibaba-coding-plan`, `anthropic`, `arcee`, `commandcode`,
+`commandcode-anthropic`, `deepinfra`, `deepseek`, `fireworks`, `gemini`, `gmi`, `huggingface`,
+`kilocode`, `kimi-coding`, `kimi-coding-cn`, `meta-ai`, `minimax`, `minimax-cn`,
+`nebius-token-factory`, `novita`, `nvidia`, `ollama-cloud`, `opencode-go`, `opencode-zen`,
+`openrouter` (Hermes discards keys that do not start with `sk-or-`), `router`, `stepfun`, `upstage`,
+`xai`, `xiaomi`.
+
+The others:
+
+| `provider` id | members beside the id | credential |
 |---|---|---|
-| `actual` | | `ACTUAL_API_KEY` (fixed) |
-| `ai-gateway` | | `AI_GATEWAY_API_KEY` (fixed) |
-| `alibaba` | | `DASHSCOPE_API_KEY` (fixed) |
-| `alibaba-coding-plan` | | `ALIBABA_CODING_PLAN_API_KEY` (fixed) |
-| `anthropic` | | `ANTHROPIC_API_KEY` (fixed) |
-| `arcee` | | `ARCEEAI_API_KEY` (fixed) |
-| `azure-foundry` | `base_url` (required) | `AZURE_FOUNDRY_API_KEY` (fixed) |
-| `bedrock` | `auth` (required): `"bearer-token"`, `"access-key"` or `"session-token"`; `region` (optional) | `bearer-token`: `AWS_BEARER_TOKEN_BEDROCK`; `access-key`: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`; `session-token`: those two and `AWS_SESSION_TOKEN` (all fixed) |
-| `commandcode` | | `COMMANDCODE_API_KEY` (fixed) |
-| `commandcode-anthropic` | | `COMMANDCODE_API_KEY` (fixed) |
-| `copilot` | | `COPILOT_GITHUB_TOKEN` (fixed): an OAuth or fine-grained token (`gho_`, `ghu_`, `github_pat_`); classic `ghp_` tokens are rejected by Hermes |
-| `custom` | `base_url` (required): any OpenAI-compatible endpoint; `api_key` (optional boolean) | `CUSTOM_API_KEY` (fixed) only when `api_key` is `true`; none otherwise |
-| `deepinfra` | | `DEEPINFRA_API_KEY` (fixed) |
-| `deepseek` | | `DEEPSEEK_API_KEY` (fixed) |
-| `fireworks` | | `FIREWORKS_API_KEY` (fixed) |
-| `gemini` | | `GEMINI_API_KEY` (fixed) |
-| `gmi` | | `GMI_API_KEY` (fixed) |
-| `huggingface` | | `HF_TOKEN` (fixed) |
-| `kilocode` | | `KILOCODE_API_KEY` (fixed) |
-| `kimi-coding` | | `KIMI_API_KEY` (fixed) |
-| `kimi-coding-cn` | | `KIMI_CN_API_KEY` (fixed) |
-| `meta-ai` | | `MODEL_API_KEY` (fixed) |
-| `minimax` | | `MINIMAX_API_KEY` (fixed) |
-| `minimax-cn` | | `MINIMAX_CN_API_KEY` (fixed) |
-| `minimax-oauth` | | `MINIMAX_OAUTH` (**rotating**, JSON object) |
-| `nebius-token-factory` | | `NEBIUS_API_KEY` (fixed) |
-| `nous` | | `NOUS_OAUTH` (**rotating**, JSON object) |
-| `novita` | | `NOVITA_API_KEY` (fixed) |
-| `nvidia` | | `NVIDIA_API_KEY` (fixed) |
-| `ollama-cloud` | | `OLLAMA_API_KEY` (fixed) |
-| `openai-codex` | | `OPENAI_CODEX_OAUTH` (**rotating**, JSON object) |
-| `opencode-free` | | none (keyless) |
-| `opencode-go` | | `OPENCODE_GO_API_KEY` (fixed) |
-| `opencode-zen` | | `OPENCODE_ZEN_API_KEY` (fixed) |
-| `openrouter` | | `OPENROUTER_API_KEY` (fixed); Hermes discards keys that do not start with `sk-or-` |
-| `qwen-oauth` | | `QWEN_OAUTH` (**rotating**, JSON object: the CLI's token file) |
-| `router` | | `RAMP_ROUTER_API_KEY` (fixed) |
-| `stepfun` | | `STEPFUN_API_KEY` (fixed) |
-| `upstage` | | `UPSTAGE_API_KEY` (fixed) |
-| `vertex` | `project_id`, `region` (both optional) | `VERTEX_SERVICE_ACCOUNT_JSON` (fixed): the service-account key document **as a JSON string holding the document's text**, not as an object |
-| `xai` | | `XAI_API_KEY` (fixed) |
-| `xiaomi` | | `XIAOMI_API_KEY` (fixed) |
-| `zai` | `base_url` (optional) | `GLM_API_KEY` (fixed) |
+| `azure-foundry` | `base_url` (required), `api_key` (required) | `api_key` |
+| `bedrock` | `auth` (required, below), `region` (optional) | inside `auth` |
+| `copilot` | `github_token` (required) | `github_token`: an OAuth or fine-grained token (`gho_`, `ghu_`, `github_pat_`); classic `ghp_` tokens are rejected by Hermes |
+| `custom` | `base_url` (required): any OpenAI-compatible endpoint; `api_key` (optional string) | `api_key`, only where the endpoint needs one |
+| `minimax-oauth` | `oauth` (required, object) | `oauth` (refreshes) |
+| `nous` | `oauth` (required, object) | `oauth` (refreshes) |
+| `openai-codex` | `oauth` (required, object) | `oauth` (refreshes) |
+| `opencode-free` | none | none (keyless) |
+| `qwen-oauth` | `oauth` (required, object: the CLI's token file) | `oauth` (refreshes) |
+| `vertex` | `service_account_json` (required), `project_id`, `region` (both optional) | `service_account_json`: the service-account key document **as a JSON string holding the document's text**, not as an object |
+| `zai` | `api_key` (required), `base_url` (optional) | `api_key` |
+
+Bedrock's `auth` is an object tagged by `type`:
+
+| `auth` | members |
+|---|---|
+| `{"type":"bearer-token", …}` | `bearer_token` |
+| `{"type":"access-key", …}` | `access_key_id`, `secret_access_key` |
+| `{"type":"session-token", …}` | `access_key_id`, `secret_access_key`, `session_token` |
 
 The provider ids are the kebab-case spellings above; confirm the exact member names for a provider
-with the image's schema (`diverge run images read --info --jq '.info? // empty | .schema'`), whose descriptions carry a
-`SECRET:` paragraph per structure.
+with the image's schema (`diverge run images read --info --jq '.info? // empty | .schema'`).
 
 ## Toolsets
 
 `toolsets` is an object; every member absent is off. A plain switch takes `true`. A structured
-toolset is on when its object is present (the empty object included).
+toolset is on when its object is present.
 
-| member | value | secrets (mode) |
+| member | value | credential |
 |---|---|---|
 | `terminal` | `true` | none |
 | `file` | `true` | none |
@@ -103,19 +89,18 @@ toolset is on when its object is present (the empty object included).
 | `todo` | `true` | none |
 | `session_search` | `true` | none |
 | `memory` | `true` | none (Hermes's own `MEMORY.md` / `USER.md`) |
-| `image_gen` | `true` | `FAL_KEY` (fixed) |
-| `video_gen` | `true` | `FAL_KEY` (fixed; the same secret) |
-| `x_search` | `true` | `XAI_API_KEY` (fixed) |
-| `web` | `{}` for the keyless ring; `{"search": "tavily" \| "exa" \| "parallel" \| "keenable" \| "brave-free"}`; `{"search": {"searxng_url": "…"}}`; `{"extract": "firecrawl"}`; or both slots | search: `TAVILY_API_KEY`, `EXA_API_KEY`, `PARALLEL_API_KEY`, `KEENABLE_API_KEY` or `BRAVE_SEARCH_API_KEY`; none for SearXNG. extract: `FIRECRAWL_API_KEY`. All fixed |
-| `browser` | `{}` for the container's own headless Chromium; `{"remote": "browserbase"}`; `{"remote": {"cdp_url": "…"}}` | Browserbase: `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID` (fixed); none otherwise |
-| `tts` | `{}` for the free voice; `{"elevenlabs": true}` | `ELEVENLABS_API_KEY` (fixed) when `elevenlabs` is `true` |
-| `homeassistant` | `{"url": "…"}` (required) | `HASS_TOKEN` (fixed) |
-| `spotify` | `{"client_id": "…"}` (required) | `SPOTIFY_OAUTH` (**rotating**, JSON object: the login document) |
+| `image_gen` | `{"fal_key":"…"}` | `fal_key` |
+| `video_gen` | `{"fal_key":"…"}` | `fal_key` (the same value as `image_gen`'s when both are on) |
+| `x_search` | `{"api_key":"…"}` | `api_key`: an xAI key (the same value as the `xai` provider's when both are used) |
+| `web` | `{}` for the keyless ring; `{"search":{"backend":"tavily" \| "exa" \| "parallel" \| "keenable" \| "brave-free","api_key":"…"}}`; `{"search":{"searxng_url":"…"}}`; `{"extract":{"backend":"firecrawl","api_key":"…"}}`; or both slots | the `api_key` of each keyed slot; none for SearXNG |
+| `browser` | `{}` for the container's own headless Chromium; `{"remote":{"api_key":"…","project_id":"…"}}` for Browserbase; `{"remote":{"cdp_url":"…"}}` | Browserbase's `api_key` and `project_id`; none otherwise |
+| `tts` | `{}` for the free voice; `{"elevenlabs_api_key":"…"}` for ElevenLabs | `elevenlabs_api_key` (optional) |
+| `homeassistant` | `{"url":"…","token":"…"}` (both required) | `token` |
+| `spotify` | `{"client_id":"…","oauth":{…}}` (both required) | `oauth`: the login document (refreshes) |
 
 The caller's MCP tools (attached tools and dependencies) are always wired in and are not switches.
 Sub-agent delegation, cron, clarify and the Discord toolsets are off by design and cannot be turned
-on. Enabling a toolset without what it needs is not a registration error; the tool fails as itself
-when used.
+on.
 
 ## Minimal template body
 
@@ -126,11 +111,10 @@ when used.
   "extra_memory": 3758096384,
   "extra_disk": 7516192768,
   "arguments": {
-    "provider": { "provider": "openrouter" },
+    "provider": { "provider": "openrouter", "api_key": "<OpenRouter key>" },
     "model": "<vendor/model>",
     "toolsets": { "terminal": true, "file": true }
-  },
-  "secrets": ["OPENROUTER_API_KEY"]
+  }
 }
 ```
 
@@ -138,8 +122,7 @@ The image states `"memory":536870912,"disk":1073741824`. The container's limits 
 4294967296 bytes of memory (4 GiB) and 8589934592 bytes of disk (8 GiB).
 
 ```bash
-diverge run vault insert '{"key":"or-key","value":"sk-or-…"}'
-diverge run agents create '{"template":"<id>","name":"hermes-1","secrets":{"OPENROUTER_API_KEY":"or-key"}}'
+diverge run agents create '{"template":"<id>","name":"hermes-1"}'
 ```
 
 A fuller one, with a keyed search backend and a local OpenAI-compatible endpoint that needs no key:
@@ -149,7 +132,6 @@ A fuller one, with a keyed search backend and a local OpenAI-compatible endpoint
   "provider": { "provider": "custom", "base_url": "http://10.0.0.5:11434/v1" },
   "model": "<model>",
   "effort": "medium",
-  "toolsets": { "web": { "search": "tavily" }, "terminal": true, "file": true, "memory": true }
-},
-"secrets": ["TAVILY_API_KEY"]
+  "toolsets": { "web": { "search": { "backend": "tavily", "api_key": "<Tavily key>" } }, "terminal": true, "file": true, "memory": true }
+}
 ```

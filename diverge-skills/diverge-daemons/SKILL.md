@@ -524,7 +524,7 @@ diverge run daemons get '{"id":"'$ID_B'"}' --jq '.found.connected'    # true onc
 # dependency_tool image: a tool template of it is refused when the tool is created.
 TPL="$(diverge run standalone-tools templates create --jq '.created // .exists' \
   '{"type":"tool","image":{"digest":"sha256:<digest>","references":[{"registry":"docker.io","name":"<repository of the image>"}]},
-    "extra_memory":0,"extra_disk":0,"arguments":{},"secrets":[],"relay":["'$ID_B'"]}' | tr -d '"')"
+    "extra_memory":0,"extra_disk":0,"arguments":{},"relay":["'$ID_B'"]}' | tr -d '"')"
 diverge run standalone-tools create '{"template":"'$TPL'","name":"notebook","relay":["'$ID_B'"]}'
 
 # --- Hold B's tool on A, attach it to A's agent "echo", use it.

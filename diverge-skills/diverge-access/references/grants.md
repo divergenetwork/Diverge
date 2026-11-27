@@ -45,7 +45,6 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | `daemons` | `ids` | the remote daemon's id |
 | `identities` | `identities` | `{"issuer":…,"subject":…}` |
 | `roles` | `names` | the role's name |
-| `vault` | `keys` | the key |
 | `volumes` | `volumes` | `{"provider":{"issuer":…,"subject":…},"name":"<name>"}` |
 | `providers`, `providers_daemons`, `images` | `identities` | the provider, `{"issuer":…,"subject":…}` |
 
@@ -84,6 +83,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 |---|---|---|
 | Make | `create` | `agents templates create` |
 | Over | `get`, `list`, `delete` | the `agents templates` request of the same name |
+| Over | `arguments` | a `get` or `list` whose body says `"arguments": true` being answered with the template's arguments; held beside `get` / `list`, never instead |
 | Over | `attach` | naming the template in `attach-agent-template` / `detach-agent-template` of a standalone or connected tool (beside the tool's own `attach`/`detach`) |
 | Tagging | `tag`, `untag` | `agents templates tag` / `untag` |
 
@@ -114,6 +114,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 |---|---|---|
 | Make | `create` | `standalone-tools templates create` |
 | Over | `get`, `list`, `delete` | the request of the same name |
+| Over | `arguments` | a `get` or `list` whose body says `"arguments": true` being answered with the template's arguments; held beside `get` / `list`, never instead |
 | Tagging | `tag`, `untag` | `standalone-tools templates tag` / `untag` |
 
 `within`: `ids`, `creators`, `in_use`, `all_tags`, `any_tags`, `created_from`, `created_to`.
@@ -141,6 +142,7 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Shape | Action | Allows |
 |---|---|---|
 | Over | `get`, `list` | `dependency-tools get` / `list` |
+| Over | `arguments` | a `get` or `list` whose body says `"arguments": true` being answered with the declared template's arguments; held beside `get` / `list`, never instead |
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests on a running tool |
 | Over | `exec` | `dependency-tools exec` and `terminal` |
 | Over | `frontend` | `dependency-tools frontend` |
@@ -268,20 +270,6 @@ hold; `create` over roles plus `grant` within `"any"` plus `edit` over accounts 
 `within`: `volumes` (exact), `providers`, `names`, `modes`, `mounted`, `all_tags`, `any_tags`, `created_from`, `created_to`.
 A grant reaches a volume or a container whole; it cannot narrow by path.
 
-## vault
-
-| Shape | Action | Allows |
-|---|---|---|
-| Make | `insert` | `vault insert` into a key the vault does not hold yet |
-| Over | `insert` | `vault insert` into a key it holds (append or replace a value) |
-| Over | `get` | `vault get` (with the value) |
-| Over | `list` | `vault list` (never a value) |
-| Over | `delete` | `vault delete` |
-| Over | `use` | binding the key in a container's `secrets` at its create or edit |
-| Tagging | `tag`, `untag` | `vault tag` / `untag` |
-
-`within`: `keys`, `creators`, `all_tags`, `any_tags`, `created_from`, `created_to`.
-
 ## postgres, events (bare arrays)
 
 | Kind | Actions | Allows |
@@ -336,7 +324,6 @@ The identities signed in on the daemon's host.
  {"accounts":{"actions":["get","list"],"within":"any"}},
  {"roles":{"actions":["get","list"],"within":"any"}},
  {"volumes":{"actions":["get","list","stat"],"within":"any"}},
- {"vault":{"actions":["list"],"within":"any"}},
  {"postgres":["get","list"]},
  {"postgres_compartments":{"actions":["get","list"],"within":"any"}},
  {"events":["list"]},

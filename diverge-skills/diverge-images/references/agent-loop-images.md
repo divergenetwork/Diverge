@@ -1,7 +1,7 @@
 # The agent-loop images: python, lone, openrouter, codex, cc
 
 Reference for five of the six agent-loop images (hermes is in [hermes.md](hermes.md)). For each:
-what it is, its `arguments`, the secrets its image states and the mode its program takes each in, its dependencies, and
+what it is, its `arguments`, which of them carries its credential, its dependencies, and
 a minimal working **agent template body** for `diverge run agents templates create`.
 
 Conventions used below:
@@ -14,11 +14,8 @@ Conventions used below:
   gets beyond the `memory` and `disk` its image's `DIVERGE.md` states. The container's limit is the sum.
   Each of these five images states `"memory":536870912,"disk":1073741824`, so `0` gives a container
   512 MiB of memory and 1 GiB of disk. The extras shown are starting points, not measured minimums.
-- A template's `secrets` is a list of **names**, required, `[]` for none: all of the secrets the image's
-  `DIVERGE.md` states, or any subset of them, and none it does not state. The agent made from it binds
-  each name to a vault
-  key: `diverge run agents create '{"template":"<id>","name":"x","secrets":{"<NAME>":"<vault key>"}}'`.
-  The create must bind every name the template lists and no other.
+- A credential is a member of `arguments`. Whoever may see the template's arguments sees it, so read a
+  template with `"arguments": false` unless you need them, and never echo the value.
 - The authoritative schema of an image's arguments is its `DIVERGE.md` frontmatter:
   `diverge run images read --info --jq '.info? // empty | .schema' '{"image":{…}}'`.
 
@@ -35,8 +32,7 @@ One entry:
   "image": { "digest": "sha256:…", "references": [{ "registry": "docker.io", "name": "diverge-local/memory" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {},
-  "secrets": []
+  "arguments": {}
 }
 ```
 
@@ -44,8 +40,7 @@ One entry:
 |---|---|
 | `image` | the tool's image, same shape as everywhere. It must be a `dependency_tool` image: an agent image or a `standalone_tool` image here fails the registration |
 | `extra_memory`, `extra_disk` | required, in bytes: what the tool container gets beyond the `memory` and `disk` its image's `DIVERGE.md` states. The container's limit is the sum; `0` is what the image needs and no more |
-| `arguments` | handed to the tool's program verbatim; what it may be is the tool image's `DIVERGE.md` schema |
-| `secrets` | required, `[]` for none: names the tool needs, each one the tool image's `DIVERGE.md` states. Each must also be a name the **agent's own record** binds; the value comes through the vault key the agent binds that name to |
+| `arguments` | handed to the tool's program verbatim; what it may be is the tool image's `DIVERGE.md` schema. A credential the tool needs is a member of them |
 | `fuse_file_mounts`, `fuse_directory_mounts` | optional: the agent's own paths served into the tool (below) |
 
 An entry states no `mode` and no `scope`. The tool image's own `DIVERGE.md` states both, and no entry
@@ -77,7 +72,7 @@ nothing of any agent's. The document's `scope` says how far the tool's container
 Rules:
 
 - A dependency has no name. It is identified by the hash of its entry (image digest without
-  references, `extra_memory`, `extra_disk`, arguments, sorted secrets, mounts). Declaring the same entry twice
+  references, `extra_memory`, `extra_disk`, arguments, mounts). Declaring the same entry twice
   in one list is refused. The same eager tool entry under the same scope key is the same eager tool.
 - What a dependency tool may ask of the daemon (its permissions) is **not** in the entry: the tool's
   own program declares it at its registration. Some committed `DIVERGE.md` schemas still show a
@@ -105,7 +100,7 @@ JSON) must be a list of assistant chunks, for example
 `[{"type":"assistant_tool_call","id":"call_…","name":"<tool>","arguments":"<json string>"}]`. A
 script may never emit `user_*`, `usage` or `tool_response` chunks.
 
-Secrets: **none**. The image states none, so the template's `secrets` is `[]`.
+Credentials: **none**.
 
 Minimal template body (an echo agent):
 
@@ -117,8 +112,7 @@ Minimal template body (an echo agent):
   "extra_disk": 0,
   "arguments": {
     "python": "last = input[-1] if input else []\nsaid = ' '.join(b.get('text', '') for b in last if isinstance(b, dict) and b.get('type') == 'text') if isinstance(last, list) else ''\n[{'type': 'assistant_text_content', 'text': 'echo: ' + said}]\n"
-  },
-  "secrets": []
+  }
 }
 ```
 
@@ -150,7 +144,7 @@ registration failure. A thin-client mode is tracked as
 | `thinking` | no | whether the model may think before answering; absent follows the template |
 | `dependencies` | no | see above |
 
-Secrets: **none**. The model is on disk.
+Credentials: **none**. The model is on disk.
 
 Minimal template body:
 
@@ -160,8 +154,7 @@ Minimal template body:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/lone" }] },
   "extra_memory": 8053063680,
   "extra_disk": 0,
-  "arguments": { "bundle": "/models/lfm3-1.7b", "temperature": 0.0, "max_new_tokens": 512 },
-  "secrets": []
+  "arguments": { "bundle": "/models/lfm3-1.7b", "temperature": 0.0, "max_new_tokens": 512 }
 }
 ```
 
@@ -180,6 +173,7 @@ dependencies).
 | member | required | meaning |
 |---|---|---|
 | `model` | yes | the model to route to, in OpenRouter's `vendor/name` form |
+| `api_key` | yes | the OpenRouter API key, a string. Held from registration for the container's life and sent as the bearer token of every request. An empty one is refused at registration |
 | `system_prompt` | no | sent as the conversation's leading message |
 | `temperature`, `top_p`, `top_k`, `top_a`, `min_p` | no | sampling |
 | `frequency_penalty`, `presence_penalty`, `repetition_penalty` | no | penalties |
@@ -194,9 +188,7 @@ dependencies).
 | `context_compression` | no | `"middle_out"` |
 | `dependencies` | no | see above |
 
-Secrets: **`OPENROUTER_API_KEY`, fixed** — always, whatever the arguments. The value must be a JSON
-string (the bearer token). It is the one secret the image states. The template must list the name; a missing or non-string value fails
-the run with an error naming the secret.
+Credentials: **`api_key`**, required, whatever the other arguments.
 
 Minimal template body:
 
@@ -206,14 +198,12 @@ Minimal template body:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/openrouter" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": { "model": "<vendor/model>", "system_prompt": "You are a concise assistant." },
-  "secrets": ["OPENROUTER_API_KEY"]
+  "arguments": { "model": "<vendor/model>", "api_key": "<OpenRouter key>", "system_prompt": "You are a concise assistant." }
 }
 ```
 
 ```bash
-diverge run vault insert '{"key":"or-key","value":"sk-or-…"}'
-diverge run agents create '{"template":"<id>","name":"helper","secrets":{"OPENROUTER_API_KEY":"or-key"}}'
+diverge run agents create '{"template":"<id>","name":"helper"}'
 ```
 
 ## codex (`diverge-agents/codex`)
@@ -227,7 +217,7 @@ MCP server is the caller's tools through the proxy.
 | member | required | meaning |
 |---|---|---|
 | `model` | yes | the model, in the endpoint's own naming |
-| `auth` | yes | how Codex logs in: an object tagged `method` (below). No default, because every method bills someone |
+| `auth` | yes | how Codex logs in: an object tagged `method`, carrying that method's credential (below). No default, because every method bills someone |
 | `effort` | no | `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"` |
 | `reasoning_summary` | no | `"auto"`, `"concise"`, `"detailed"`, `"none"` — what the stream's reasoning chunks carry |
 | `verbosity` | no | `"low"`, `"medium"`, `"high"` |
@@ -235,19 +225,21 @@ MCP server is the caller's tools through the proxy.
 | `provider` | no | `{"base_url": "https://…/v1"}`: an endpoint other than OpenAI's, which must speak the Responses API. **Requires `auth.method` = `api_key`**; any other method beside a provider is refused at registration |
 | `dependencies` | no | see above |
 
-Secrets: the image states four, and the program takes **exactly one, chosen by `auth.method`**. The
-template must list that name; it may list the others too, and each name it lists must then be bound on
-the create.
+Credentials: **exactly one, a member of `auth` beside its `method`**. An empty one is refused at
+registration, in an error that names the member and never its value.
 
-| `auth` | secret name | mode | value |
-|---|---|---|---|
-| `{"method":"api_key"}` | `OPENAI_API_KEY` | fixed | a JSON string: an OpenAI API key. Handed to Codex as `CODEX_API_KEY` |
-| `{"method":"access_token"}` | `CODEX_ACCESS_TOKEN` | fixed | a JSON string: a personal access token or an Agent Identity JWT |
-| `{"method":"auth_file"}` | `CODEX_AUTH` | **rotating** | a JSON object: Codex's whole `auth.json` (for example a ChatGPT login's tokens). Written before every loop, read back after, and written back to the vault slot, so a refreshed login survives |
-| `{"method":"workload_identity","federation_rule_id":"…","context":"…"}` | `OPENAI_IDENTITY_TOKEN` | fixed | a JSON string: the identity token. `context` is optional |
+| `auth` | value |
+|---|---|
+| `{"method":"api_key","api_key":"…"}` | a string: an OpenAI API key. Handed to Codex as `CODEX_API_KEY` |
+| `{"method":"access_token","access_token":"…"}` | a string: a personal access token or an Agent Identity JWT |
+| `{"method":"auth_file","auth":{…}}` | a JSON object: Codex's whole `auth.json` (for example a ChatGPT login's tokens) |
+| `{"method":"workload_identity","identity_token":"…","federation_rule_id":"…","context":"…"}` | a string: the identity token. `context` is optional |
 
-Because `CODEX_AUTH` is rotating, its vault key gives one slot to one running container at a time. To
-run several agents on one key, insert several values (several logins) into it; see `diverge-storage`.
+`auth_file` refreshes: Codex rewrites the login as it runs, and the argument's tokens are spent by the
+first refresh. The agent keeps the refreshed login itself, in its own `instance` database, and uses it
+for as long as the template's `auth` is the one it was kept for; an agent made from a template with
+another `auth` starts from that argument. So one login serves one agent: two agents made from the same
+`auth_file` template each refresh the same login and one of them stops logging in. Give each its own.
 A ChatGPT login speaks only to OpenAI's own backend, so do not combine `auth_file` with `provider`.
 
 Minimal template body (API key):
@@ -258,16 +250,15 @@ Minimal template body (API key):
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/codex" }] },
   "extra_memory": 1610612736,
   "extra_disk": 3221225472,
-  "arguments": { "model": "<model>", "auth": { "method": "api_key" } },
-  "secrets": ["OPENAI_API_KEY"]
+  "arguments": { "model": "<model>", "auth": { "method": "api_key", "api_key": "<OpenAI key>" } }
 }
 ```
 
 The limits are the sums with what the image states: 2147483648 bytes of memory (2 GiB) and 4294967296
 bytes of disk (4 GiB).
 
-With a ChatGPT login instead: `"arguments":{"model":"<model>","auth":{"method":"auth_file"}}`,
-`"secrets":["CODEX_AUTH"]`, and the vault value is the `auth.json` content as a JSON object.
+With a ChatGPT login instead:
+`"arguments":{"model":"<model>","auth":{"method":"auth_file","auth":{…the auth.json content…}}}`.
 
 ## cc (`diverge-agents/cc`)
 
@@ -294,9 +285,8 @@ Always on, with no switch: the caller's MCP tools (attached tools and dependenci
 built-ins, `Skill` (skills are directories mounted under `~/.claude/skills`) and `ToolSearch`. Always
 off: anything that waits on a user or outlives the run (plan mode, questions, cron, artifacts).
 
-Secrets: **none**. Claude Code logs in by itself; no argument names a credential, and the image
-states no secret, so the template's `secrets` is `[]`. How a login reaches the container is not
-established (see the main file's "Not verified").
+Credentials: **none**. Claude Code logs in by itself and no argument carries a credential. How a login
+reaches the container is not established (see the main file's "Not verified").
 
 Minimal template body:
 
@@ -309,8 +299,7 @@ Minimal template body:
   "arguments": {
     "model": "<model>",
     "tools": { "bash": true, "read": true, "write": true, "edit": true, "glob": true, "grep": true }
-  },
-  "secrets": []
+  }
 }
 ```
 

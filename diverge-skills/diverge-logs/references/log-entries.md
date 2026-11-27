@@ -120,7 +120,7 @@ The daemon's own record of every exchange it routed into the tool; never the too
 
 | `type` | Members |
 |---|---|
-| `command` | `path`: the request as the daemon names it (`agents/message`, `vault/insert`, `logs`); `request`: the body as sent, `relay` and all, with secret values replaced (a vault insert's `value`, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
+| `command` | `path`: the request as the daemon names it (`agents/message`, `roles/create`, `logs`); `request`: the body as sent, `relay` and all, with what may hold a credential replaced by `"[redacted]"` (the `arguments` of an `agents/templates/create` or `standalone_tools/templates/create`, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
 
 - One entry per request. Channels opened inside a request (a cancel, a disconnect, a connect's MCP
   exchanges) are not commands.
