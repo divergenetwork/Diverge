@@ -6,8 +6,9 @@ use crate::shared::mcp;
 /// What the proxy asks the server for on a begin scope, in the one
 /// owned form both families' frames convert into, so the relay of
 /// each is written once: an agent container's are the database
-/// connections and the five MCP exchanges outward, a tool container's
-/// the database connections and the daemon connection.
+/// connections, the daemon connection and the five MCP exchanges
+/// outward, a tool container's the database connections and the
+/// daemon connection.
 ///
 /// Owned, because the frame it came from borrows the message it
 /// arrived in and an ask outlives that message: it is relayed to the
@@ -42,6 +43,7 @@ impl From<agents::begin::server::channel_request::Frame> for Ask {
             Frame::McpCallTool(request) => Ask::McpCallTool(request),
             Frame::McpReadResource(request) => Ask::McpReadResource(request),
             Frame::McpNotifications(_) => Ask::McpNotifications,
+            Frame::Daemon(request) => Ask::Daemon(request.connection_id),
         }
     }
 }

@@ -19,9 +19,8 @@ pub struct Registered {
     /// container's `Begun` carries and a tool container's begin
     /// drops.
     pub dependencies: Vec<Template>,
-    /// The grants the program holds over the daemon, which a tool
-    /// container's `Begun` carries and an agent container's begin
-    /// drops.
+    /// The grants the program holds over the daemon, which either
+    /// container's `Begun` carries.
     pub permissions: Vec<Grant>,
 }
 

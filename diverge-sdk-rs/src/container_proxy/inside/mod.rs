@@ -17,9 +17,9 @@
 //! `mcp.rs`, their notifications ignored, and [`mcp_url`] for a program
 //! whose MCP client is not this crate's, an agent container's alone,
 //! since a tool container makes no tool call outward — the daemon, the whole of its
-//! protocol over one WebSocket at `/daemon`, in `daemon.rs`, a tool
-//! container's alone, since an agent container holds no account and
-//! asks the daemon nothing — Postgres, the
+//! protocol over one WebSocket at `/daemon`, in `daemon.rs`, either
+//! kind of container's, served under the permissions its program
+//! declared — Postgres, the
 //! caller's database on the container's loopback, whose methods in
 //! `postgres.rs` are the address and the URL the program's driver
 //! dials, one URL for each of the container's three databases.

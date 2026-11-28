@@ -12,7 +12,8 @@
 //! [`Begun`](server::response::Frame::Begun) on channel `0` once the
 //! container's server has taken them — carrying what the server
 //! declared in return, the dependencies for the provider to have
-//! deployed, see [`Registered`](server::response::Registered) — and
+//! deployed and the permissions for it to have registered, see
+//! [`Registered`](server::response::Registered) — and
 //! then the agent's conversation there — every chunk, for as long as
 //! the connection lives; the finish is the proxy ending.
 //!
@@ -22,7 +23,8 @@
 //! outside — its database connections, its daemon connection, its
 //! tool calls outward. The server opens them for the
 //! image's DIVERGE.md, for the family's own exchanges — its queue — and
-//! for its half of each database connection. Same scope, opposite
+//! for its half of each database connection and of each daemon
+//! connection. Same scope, opposite
 //! directions, and neither side's channel numbers mean anything to the
 //! other.
 

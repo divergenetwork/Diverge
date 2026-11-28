@@ -5,7 +5,7 @@ use std::fmt;
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
-use crate::shared::containers::{fuse, oci, postgres, registration, write_bytes};
+use crate::shared::containers::{daemon, fuse, oci, postgres, registration, write_bytes};
 use crate::shared::mcp;
 
 /// What a provider asks a caller for while an agent container runs.
@@ -36,16 +36,16 @@ use crate::shared::mcp;
 /// | `18` | [`FuseTruncate`](Self::FuseTruncate) |
 /// | `19` | [`FuseSetattr`](Self::FuseSetattr) |
 /// | `20` | [`OciProve`](Self::OciProve) |
+/// | `21` | [`Daemon`](Self::Daemon) |
 ///
-/// Twenty-one. Six are the provider's own asks — whether the caller
+/// Twenty-two. Six are the provider's own asks — whether the caller
 /// holds an image, its manifest and blobs, the container's
 /// registration, a write's content, and the proof that the caller
 /// holds the image, numbered last because it came last — and the
 /// rest are the CONTAINER's, relayed: its database connections, its tool calls
-/// outward to the caller's MCP servers, and the files the caller
-/// mounted live. No daemon connection: an agent
-/// container holds no account and asks the daemon nothing, and only
-/// a tool container asks the caller for one.
+/// outward to the caller's MCP servers, the files the caller
+/// mounted live, and its daemon connection, numbered after the proof
+/// because it came after.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame<'a> {
     /// A manifest of the run's image, by digest. Tag `0`.
@@ -70,11 +70,11 @@ pub enum Frame<'a> {
     /// the image from the caller, before it asks for anything of it;
     /// see [`oci::has`](crate::shared::containers::oci::has).
     OciHas(oci::has::request::Request),
-    /// Register the container: deploy the dependencies it declared.
-    /// Tag `3`.
+    /// Register the container: deploy the dependencies it declared,
+    /// and hold it to the permissions it declared. Tag `3`.
     ///
     /// Opened once, after the proxy's `Begun` carried a non-empty
-    /// list of dependencies, and before the id; answered once,
+    /// list of dependencies or of permissions, and before the id; answered once,
     /// deployed or why not, and the id follows a deploy. See
     /// [`registration`](crate::shared::containers::registration).
     Registration(registration::request::Request<'a>),
@@ -155,6 +155,16 @@ pub enum Frame<'a> {
     /// the run with `ProofFailed`. See
     /// [`oci::prove`](crate::shared::containers::oci::prove).
     OciProve(oci::prove::request::Request),
+    /// A daemon connection the program opened, by the id the provider
+    /// minted. Tag `21`.
+    ///
+    /// This half is the proxy's, relayed under an id of the provider's.
+    /// What comes back on it is everything the DAEMON says, as
+    /// [`daemon::server::Frame`](crate::shared::containers::daemon::server::Frame)s;
+    /// its finish is the connection closed, and an empty finish is the
+    /// connection declined. See
+    /// [`daemon`](crate::shared::containers::daemon) for the pair.
+    Daemon(daemon::request::Daemon),
 }
 
 /// Tag for [`Frame::OciManifest`].
@@ -219,6 +229,9 @@ const FUSE_SETATTR: u8 = 19;
 
 /// Tag for [`Frame::OciProve`].
 const OCI_PROVE: u8 = 20;
+
+/// Tag for [`Frame::Daemon`].
+const DAEMON: u8 = 21;
 
 impl Encode for Frame<'_> {
     /// The JSON failure from the asks that are JSON, or a fuse id or
@@ -312,6 +325,10 @@ impl Encode for Frame<'_> {
             Frame::OciProve(request) => {
                 out.extend_from_slice(&[OCI_PROVE]);
                 request.encode(out).map_err(FrameEncodeError::Json)
+            }
+            Frame::Daemon(request) => {
+                out.extend_from_slice(&[DAEMON]);
+                request.encode(out).map_err(|error| match error {})
             }
         }
     }
@@ -422,6 +439,9 @@ impl<'a> Decode<'a> for Frame<'a> {
             OCI_PROVE => oci::prove::request::Request::decode(rest)
                 .map(Frame::OciProve)
                 .map_err(FrameError::Oci),
+            DAEMON => daemon::request::Daemon::decode(rest)
+                .map(Frame::Daemon)
+                .map_err(FrameError::Daemon),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -432,7 +452,7 @@ impl<'a> Decode<'a> for Frame<'a> {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's twenty-one.
+    /// A tag that is none of this frame's twenty-two.
     UnknownTag(u8),
     /// An image ask did not parse.
     Oci(serde_json::Error),
@@ -442,6 +462,8 @@ pub enum FrameError {
     Write(write_bytes::request::RequestError),
     /// The connection id was not four bytes.
     Postgres(postgres::request::PostgresError),
+    /// The daemon connection's id was not four bytes.
+    Daemon(daemon::request::DaemonError),
     /// A fuse ask did not decode.
     Fuse(fuse::RequestError),
     /// One of the five MCP exchanges' params did not parse.
@@ -470,6 +492,7 @@ impl fmt::Display for FrameError {
                 write!(f, "write content request did not decode: {error}")
             }
             FrameError::Postgres(error) => write!(f, "{error}"),
+            FrameError::Daemon(error) => write!(f, "{error}"),
             FrameError::Fuse(error) => write!(f, "{error}"),
             FrameError::McpParams(error) => {
                 write!(f, "mcp request params did not parse: {error}")
@@ -486,6 +509,7 @@ impl std::error::Error for FrameError {
             | FrameError::McpParams(error) => Some(error),
             FrameError::Write(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
+            FrameError::Daemon(error) => Some(error),
             FrameError::Fuse(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }

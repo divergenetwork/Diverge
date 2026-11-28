@@ -106,8 +106,8 @@ impl From<Error> for Failed {
 ///    its router's task kept to abort once the container is stopped.
 /// 4. The family's `begin` is opened on it — carrying the arguments,
 ///    the template and the image of the request — and its `Begun` awaited, with what the
-///    container declared: the dependencies, for an agent container,
-///    and the permissions, for a tool container.
+///    container declared: the dependencies and the permissions, for
+///    an agent container, and the permissions, for a tool container.
 /// 5. The id is minted and the container entered in the directory
 ///    under it — with its proxy connection and its begin scope — so
 ///    that a `containers::fuse_serve` naming the id is answered from now,
@@ -337,22 +337,22 @@ where
 /// The ask whether the caller holds the image, as this family's
 /// frame.
 fn has_ask<R: Runs>(image: &Image) -> Vec<u8> {
-    R::Ask::try_from(Own::OciHas(image)).ok().and_then(|ask| encoded(&ask)).unwrap_or_default()
+    encoded(&R::Ask::from(Own::OciHas(image))).unwrap_or_default()
 }
 
 /// The ask for a manifest the provider does not hold, as this
 /// family's frame.
 fn manifest_ask<R: Runs>(digest: &str) -> Vec<u8> {
-    R::Ask::try_from(Own::OciManifest(digest)).ok().and_then(|ask| encoded(&ask)).unwrap_or_default()
+    encoded(&R::Ask::from(Own::OciManifest(digest))).unwrap_or_default()
 }
 
 /// The ask for a blob the provider does not hold, as this family's
 /// frame.
 fn blob_ask<R: Runs>(digest: &str) -> Vec<u8> {
-    R::Ask::try_from(Own::OciBlob(digest)).ok().and_then(|ask| encoded(&ask)).unwrap_or_default()
+    encoded(&R::Ask::from(Own::OciBlob(digest))).unwrap_or_default()
 }
 
 /// The nonce check's ask, as this family's frame.
 fn prove_ask<R: Runs>(request: &oci::prove::request::Request) -> Vec<u8> {
-    R::Ask::try_from(Own::OciProve(request)).ok().and_then(|ask| encoded(&ask)).unwrap_or_default()
+    encoded(&R::Ask::from(Own::OciProve(request))).unwrap_or_default()
 }

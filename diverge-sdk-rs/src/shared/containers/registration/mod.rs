@@ -5,7 +5,8 @@
 //! the tools it depends on — each a
 //! [`dependencies::Template`](super::dependencies::Template), an
 //! agent's alone — and the permissions it holds over the daemon, each
-//! a [`Grant`](crate::shared::permission::Grant), a tool's alone. The
+//! a [`Grant`](crate::shared::permission::Grant), an agent's or a
+//! tool's. The
 //! proxy carries them on the begin's `Begun`;
 //! the provider, when either is non-empty, opens one channel on the
 //! run scope with [`request::Request`] — both verbatim, with the run's

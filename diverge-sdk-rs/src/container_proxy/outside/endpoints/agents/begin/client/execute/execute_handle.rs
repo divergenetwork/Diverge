@@ -3,15 +3,16 @@
 use super::super::channel_request;
 use crate::wire::client::handle::{Handle, SendError};
 use crate::wire::encode::{Encode, Writer};
-use crate::provider::endpoints::containers::client::answered::{Enqueue, Postgres};
+use crate::provider::endpoints::containers::client::answered::{Daemon, Enqueue, Postgres};
 use crate::provider::endpoints::containers::client::{ChannelStream, OpenError, UnaryError, unary};
-use crate::shared::containers::{enqueue, postgres};
+use crate::shared::containers::{daemon, enqueue, postgres};
 
 /// The begin scope an agent container's server holds.
 ///
 /// Every channel the server may open on it is a method here — the
 /// image's DIVERGE.md, a message for the agent, the
-/// server's half of a database connection — and so is answering a
+/// server's half of a database connection and of a daemon
+/// connection — and so is answering a
 /// channel the proxy opened, by the proxy's own channel number.
 /// Clones share the scope.
 ///
@@ -57,6 +58,22 @@ impl ExecuteHandle {
         let payload = payload(&channel_request::Frame::Enqueue(request))
             .map_err(UnaryError::Request)?;
         unary::<Enqueue>(&self.handle, self.scope, &payload).await
+    }
+
+    /// The server's half of a daemon connection the proxy announced,
+    /// quoting the id the proxy minted: what comes back is every client
+    /// frame the program sent on it, until the finish, which is the
+    /// program's socket ended. See
+    /// [`daemon`](crate::shared::containers::daemon).
+    pub async fn daemon(&self, connection_id: u32) -> Result<ChannelStream<Daemon>, OpenError> {
+        let payload = payload(&channel_request::Frame::Daemon(daemon::request::Daemon { connection_id }))
+            .map_err(OpenError::Request)?;
+        let channel = self
+            .handle
+            .send_channel_request(self.scope, &payload)
+            .await
+            .map_err(OpenError::Send)?;
+        Ok(ChannelStream::new(channel.response_receiver))
     }
 
     /// The server's half of a database connection the proxy

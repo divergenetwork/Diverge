@@ -3,11 +3,12 @@
 //!
 //! Either begin registers the arguments with the program's own server
 //! and answers `Begun` with what the program declared — the
-//! dependencies, for an agent container, and the permissions, for a
-//! tool container. [`agents()`] then starts the
+//! dependencies and the permissions, for an agent container, and the
+//! permissions, for a tool container. [`agents()`] then starts the
 //! queue's driver and serves the family's channels — the image's
 //! `/.diverge/DIVERGE.md`, the queue's two verbs, the server's half
-//! of each database connection — for the connection's life, and
+//! of each database connection and of each daemon connection — for
+//! the connection's life, and
 //! [`tools()`] serves the document and the exchanges with
 //! the tool container's MCP server. Both publish the scope to every
 //! surface inside the

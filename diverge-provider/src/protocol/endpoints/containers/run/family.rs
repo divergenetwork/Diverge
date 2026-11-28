@@ -12,7 +12,7 @@ use bytes::Bytes;
 use serde_json::Value;
 
 use super::begin::Begun;
-use super::own::{Own, Unasked};
+use super::own::Own;
 use super::run::Run;
 use diverge_sdk::wire::client::handle::Handle;
 use diverge_sdk::container_proxy::outside::client::Ask;
@@ -79,9 +79,8 @@ pub(crate) trait Family: Send + Sync + 'static {
 /// begins, and how the proxy's asks are put to the caller.
 pub(crate) trait Runs: Family {
     /// The channel request frame this end opens on the caller: every
-    /// [`Own`] as the family spells it, or [`Unasked`] for the one the
-    /// family's wire has no frame for.
-    type Ask<'a>: Encode + TryFrom<Own<'a>, Error = Unasked>;
+    /// [`Own`] as the family spells it.
+    type Ask<'a>: Encode + From<Own<'a>>;
 
     /// Begin the container's proxy: the family's begin scope on the
     /// connection `proxy`, carrying the container's `arguments`,
@@ -146,7 +145,7 @@ pub(crate) enum Opened<E> {
     /// The container's tree, watched.
     Filetree,
     /// A daemon connection the proxy announced, by an id of this
-    /// end's own: a tool container's alone.
+    /// end's own.
     Daemon(u32),
     /// One file, read.
     Read(Vec<String>),

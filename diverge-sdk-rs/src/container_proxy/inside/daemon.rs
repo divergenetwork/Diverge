@@ -22,14 +22,13 @@ impl Client {
     /// would for any client: the program mints scopes and channels,
     /// the daemon answers, and the proxy carries every frame between
     /// them. No credential is presented and none is asked for — the
-    /// connection is served under the permissions the tool's program
+    /// connection is served under the permissions the container's program
     /// declared in its [`register`](crate::container_proxy::inside::register) answer,
     /// and the proxy is the trust boundary — so the first frame on the socket is the
     /// first request. The router that reads the socket runs on a task
     /// of its own until the socket closes; the handle outlives nothing
-    /// but it. A tool container's alone: an agent container asks the
-    /// daemon nothing, and its proxy closes the
-    /// socket at once.
+    /// but it. Either kind of container dials it: an agent
+    /// container's program and a tool container's alike.
     ///
     /// A program may dial more than once; each connection is its own,
     /// with scopes of its own.

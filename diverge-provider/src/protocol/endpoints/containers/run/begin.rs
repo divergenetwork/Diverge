@@ -46,14 +46,11 @@ impl Begin {
     }
 
     /// This end's half of a daemon connection the proxy announced,
-    /// quoting the proxy's id: a tool container's begin alone has
-    /// the channel, and an agent container's answers `None`, since an
-    /// agent asks for no daemon connection and its wire has no frame
-    /// for one.
-    pub(crate) async fn daemon(&self, connection_id: u32) -> Option<Result<ChannelStream<Daemon>, OpenError>> {
+    /// quoting the proxy's id: either family's begin has the channel.
+    pub(crate) async fn daemon(&self, connection_id: u32) -> Result<ChannelStream<Daemon>, OpenError> {
         match self {
-            Begin::Agents(_) => None,
-            Begin::Tools(begin) => Some(begin.daemon(connection_id).await),
+            Begin::Agents(begin) => begin.daemon(connection_id).await,
+            Begin::Tools(begin) => begin.daemon(connection_id).await,
         }
     }
 
@@ -98,8 +95,8 @@ pub(crate) struct Begun {
     /// off its `Begun`: what the caller is asked to deploy, when any.
     /// A tool container's is empty: it declares nothing.
     pub dependencies: Vec<Template>,
-    /// The grants a tool container declared at registration, off its
-    /// `Begun`: what the caller holds it to. An agent container's is
-    /// empty: it asks the caller nothing.
+    /// The grants a container declared at registration, off its
+    /// `Begun`: what the caller holds it to, an agent container or a
+    /// tool container.
     pub permissions: Vec<Grant>,
 }

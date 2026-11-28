@@ -10,16 +10,14 @@
 //! long as the server wants it; on the begin scope the proxy opens
 //! channels of its own for
 //! everything the container asks of the world outside: its database
-//! connections, an agent container's tool calls outward, a tool
-//! container's daemon connections.
+//! connections, its daemon connections, an agent container's tool
+//! calls outward.
 //!
 //! The program beside the proxy sees none of that. On the loopback
 //! at `80` it finds a fully compliant MCP server at `/mcp` — an agent
 //! container's, a tool container's program being answered that it
 //! makes no tool call outward — and the daemon protocol as a
-//! WebSocket at `/daemon`
-//! — a tool container's, an agent container's program having the
-//! socket closed on it, since an agent holds no account; at `81` a
+//! WebSocket at `/daemon`, either kind of container's; at `81` a
 //! pgwire listener that is, to its driver, a database. Each of those
 //! becomes one channel on the begin scope, and nothing the program
 //! dials has to know.

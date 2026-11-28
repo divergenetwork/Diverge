@@ -5,7 +5,7 @@ use std::fmt;
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
-use crate::shared::containers::postgres;
+use crate::shared::containers::{daemon, postgres};
 use crate::shared::mcp;
 
 /// What the proxy asks the server for once an agent container
@@ -22,13 +22,14 @@ use crate::shared::mcp;
 /// | `3` | [`McpCallTool`](Self::McpCallTool) |
 /// | `4` | [`McpReadResource`](Self::McpReadResource) |
 /// | `5` | [`McpNotifications`](Self::McpNotifications) |
+/// | `6` | [`Daemon`](Self::Daemon) |
 ///
-/// Six: everything an agent container asks of the world outside —
+/// Seven: everything an agent container asks of the world outside —
 /// its database connections, its tool calls outward to the caller's
-/// MCP servers — which the server relays to the caller as the
-/// provider protocol's own channel requests. No daemon connection:
-/// an agent container holds no account and asks the daemon nothing;
-/// a tool container's begin has that ask and no tool call outward.
+/// MCP servers, its daemon connection — which the server relays to
+/// the caller as the provider protocol's own channel requests. A
+/// tool container's begin has the first and the last, and no tool
+/// call outward.
 /// The fuse asks are not here; each rides the scope of the mount it
 /// belongs to.
 #[derive(Debug, Clone, PartialEq)]
@@ -55,6 +56,16 @@ pub enum Frame {
     McpReadResource(mcp::read_resource::request::Request),
     /// Everything they say on their own account. Tag `5`.
     McpNotifications(mcp::notifications::request::Request),
+    /// A daemon connection the program opened, by the id the proxy
+    /// minted. Tag `6`.
+    ///
+    /// This half is the proxy's own. What comes back on it is
+    /// everything the DAEMON says, as
+    /// [`daemon::server::Frame`](crate::shared::containers::daemon::server::Frame)s;
+    /// its finish is the connection closed, and an empty finish is the
+    /// connection declined. See
+    /// [`daemon`](crate::shared::containers::daemon) for the pair.
+    Daemon(daemon::request::Daemon),
 }
 
 /// Tag for [`Frame::Postgres`].
@@ -74,6 +85,9 @@ const MCP_READ_RESOURCE: u8 = 4;
 
 /// Tag for [`Frame::McpNotifications`].
 const MCP_NOTIFICATIONS: u8 = 5;
+
+/// Tag for [`Frame::Daemon`].
+const DAEMON: u8 = 6;
 
 impl Encode for Frame {
     /// The JSON failure from the asks that are JSON; everything else
@@ -108,6 +122,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[MCP_NOTIFICATIONS]);
                 request.encode(out).map_err(|error| match error {})
             }
+            Frame::Daemon(request) => {
+                out.extend_from_slice(&[DAEMON]);
+                request.encode(out).map_err(|error| match error {})
+            }
         }
     }
 }
@@ -138,7 +156,7 @@ impl std::error::Error for FrameEncodeError {
 }
 
 impl Decode<'_> for Frame {
-    /// Four ways to fail, and each names which ask it was.
+    /// Five ways to fail, and each names which ask it was.
     type Error = FrameError;
 
     fn decode(bytes: &[u8]) -> Result<Self, Self::Error> {
@@ -167,6 +185,9 @@ impl Decode<'_> for Frame {
                 mcp::notifications::request::Request::decode(rest)
                     .unwrap_or_else(|error| match error {}),
             )),
+            DAEMON => daemon::request::Daemon::decode(rest)
+                .map(Frame::Daemon)
+                .map_err(FrameError::Daemon),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -177,7 +198,7 @@ impl Decode<'_> for Frame {
 pub enum FrameError {
     /// No bytes at all, so not even a tag.
     Empty,
-    /// A tag that is none of this frame's six.
+    /// A tag that is none of this frame's seven.
     UnknownTag(u8),
     /// The connection id was not four bytes.
     Postgres(postgres::request::PostgresError),
@@ -186,6 +207,8 @@ pub enum FrameError {
     /// One variant for five tags, because they fail the same way and
     /// the tag already said which was meant.
     McpParams(serde_json::Error),
+    /// The daemon connection's id was not four bytes.
+    Daemon(daemon::request::DaemonError),
 }
 
 impl fmt::Display for FrameError {
@@ -201,6 +224,7 @@ impl fmt::Display for FrameError {
             FrameError::McpParams(error) => {
                 write!(f, "mcp request params did not parse: {error}")
             }
+            FrameError::Daemon(error) => write!(f, "{error}"),
         }
     }
 }
@@ -210,6 +234,7 @@ impl std::error::Error for FrameError {
         match self {
             FrameError::McpParams(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
+            FrameError::Daemon(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }
     }

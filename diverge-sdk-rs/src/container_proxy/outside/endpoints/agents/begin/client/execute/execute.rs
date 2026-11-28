@@ -25,8 +25,9 @@ use crate::wire::frame;
 /// [`Unanswered`](ExecuteError::Unanswered); a chunk or a loop's word
 /// first is a proxy out of order. What comes back is the handle, the
 /// asks the proxy will open, the conversation, and what the
-/// container's program declared — the dependencies, which the
-/// server has the caller register before it sends the run's id.
+/// container's program declared — the dependencies and the
+/// permissions, which the server has the caller register before it
+/// sends the run's id.
 pub async fn execute(
     handle: &Handle,
     arguments: Value,

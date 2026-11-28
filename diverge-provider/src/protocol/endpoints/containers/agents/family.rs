@@ -18,7 +18,7 @@ use diverge_sdk::container_proxy::outside::endpoints::fuse::mount::client::execu
 use diverge_sdk::wire::decode::Decode as _;
 use crate::protocol::endpoints::containers::run::begin::{Begin, Begun};
 use crate::protocol::endpoints::containers::run::family::{Family, Opened, Runs};
-use crate::protocol::endpoints::containers::run::own::{Own, Unasked};
+use crate::protocol::endpoints::containers::run::own::Own;
 use crate::protocol::endpoints::containers::run::run::Run;
 use crate::protocol::endpoints::containers::run::serve::agent;
 use crate::protocol::endpoints::containers::run::setup::registered;
@@ -30,7 +30,7 @@ use diverge_sdk::shared::containers::response::{
     Id, VolumeFuseServed, VolumeHeld, VolumeMode, VolumeMountUnsupported, VolumeMounted,
 };
 use diverge_sdk::shared::permission::Grant;
-use diverge_sdk::shared::containers::{dependencies, fuse, oci, postgres, registration};
+use diverge_sdk::shared::containers::{daemon, dependencies, fuse, oci, postgres, registration};
 use diverge_sdk::shared::mcp;
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::shared::filetree as tree;
@@ -57,6 +57,7 @@ impl Family for Agents {
                 destination: request.destination,
             },
             channel_request::Frame::Postgres(request) => Opened::Postgres(request.connection_id),
+            channel_request::Frame::Daemon(request) => Opened::Daemon(request.connection_id),
             channel_request::Frame::FuseMount(request) => Opened::FuseMount(request),
             channel_request::Frame::Exec(request) => Opened::Exec(request),
             channel_request::Frame::TerminalOpen(size) => Opened::TerminalOpen(size),
@@ -139,7 +140,7 @@ impl Runs for Agents {
                     chunks: Some(chunks),
                     activity: None,
                     dependencies: registered.dependencies,
-                    permissions: Vec::new(),
+                    permissions: registered.permissions,
                 }),
                 Err(begin::ExecuteError::Refused(error)) => Err(error),
                 Err(error) => Err(render::proxy(error)),
@@ -151,9 +152,9 @@ impl Runs for Agents {
         Some(relayed(ask)?)
     }
 
-    /// What the agent declared — the dependencies to deploy, never
-    /// any permission — registered with the caller on this family's
-    /// `registration` channel: nothing asked when it declared none.
+    /// What the agent declared — the dependencies to deploy and the
+    /// permissions to hold — registered with the caller on this family's
+    /// `registration` channel: nothing asked when it declared neither.
     fn register(scope: &ScopeHandle, id: &str, dependencies: &[dependencies::Template], permissions: &[Grant]) -> impl Future<Output = Result<(), Error>> + Send {
         let payload = (!dependencies.is_empty() || !permissions.is_empty()).then(|| {
             encoded(&ask::Frame::Registration(registration::request::Request {
@@ -208,9 +209,9 @@ impl Runs for Agents {
     }
 }
 
-/// The proxy's ask as this family's frame; a database connection is
-/// re-asked under this end's own id, see `Own::Postgres`, and a
-/// daemon connection is nothing an agent container's proxy opens.
+/// The proxy's ask as this family's frame; a database connection and
+/// a daemon connection are re-asked under this end's own id, see
+/// `Own`.
 fn relayed(ask: &Ask) -> Option<ask::Frame<'_>> {
     Some(match ask {
         Ask::Postgres(_) => return None,
@@ -248,13 +249,11 @@ fn fuse<'a>(id: &'a str, ask: &'a MountAsk) -> ask::Frame<'a> {
     }
 }
 
-/// Every own ask as this family's frame but the daemon connection,
-/// which an agent container's wire has no frame for.
-impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
-    type Error = Unasked;
-
-    fn try_from(own: Own<'a>) -> Result<Self, Unasked> {
-        Ok(match own {
+/// Every own ask as this family's frame: an agent container's wire
+/// has a frame for each.
+impl<'a> From<Own<'a>> for ask::Frame<'a> {
+    fn from(own: Own<'a>) -> Self {
+        match own {
             Own::OciManifest(digest) => ask::Frame::OciManifest(oci::manifest::request::Request {
                 digest: digest.to_string(),
             }),
@@ -265,8 +264,8 @@ impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
                 image: image.clone(),
             }),
             Own::OciProve(request) => ask::Frame::OciProve(request.clone()),
-            Own::Daemon(_) => return Err(Unasked),
+            Own::Daemon(connection_id) => ask::Frame::Daemon(daemon::request::Daemon { connection_id }),
             Own::Postgres(connection_id) => ask::Frame::Postgres(postgres::request::Postgres { connection_id }),
-        })
+        }
     }
 }

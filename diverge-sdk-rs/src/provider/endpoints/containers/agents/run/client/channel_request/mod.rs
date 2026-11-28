@@ -2,7 +2,8 @@
 //!
 //! The five every container scope has — leaving, the tree, a read, a
 //! write, the caller's half of a database connection — and then this
-//! family's own, and the mount. See [`Frame`].
+//! family's own, the mount, and the caller's half of a daemon
+//! connection. See [`Frame`].
 
 mod frame;
 

@@ -41,8 +41,8 @@
 //!
 //! # One connection, one session
 //!
-//! The daemon serves every connection under the permissions the tool's
-//! program declared in its
+//! The daemon serves every connection under the permissions the
+//! container's program declared in its
 //! [`register`](crate::container_proxy::inside::register) answer, and no credential
 //! passes: the proxy is the trust boundary, and an `Auth` frame is the
 //! one frame of either side that neither [`client::Frame`] nor

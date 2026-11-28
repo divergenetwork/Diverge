@@ -1,6 +1,6 @@
 //! What `POST /register` answers with: the dependencies the program
 //! wants beside it, each one a tool container the caller deploys,
-//! and — a tool's — the permissions it holds over the daemon.
+//! and the permissions it holds over the daemon.
 
 use serde::{Deserialize, Serialize};
 
@@ -26,8 +26,7 @@ pub struct Response {
     pub dependencies: Vec<Template>,
     /// What the program may ask of the daemon, as grants: the whole of
     /// its authority for this run, held to nothing else, and declared
-    /// again at every start. A tool container's; an agent container's
-    /// are ignored, since an agent asks the daemon nothing. Absent,
+    /// again at every start. Either kind of container's. Absent,
     /// none: everything the program asks is refused.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub permissions: Vec<Grant>,

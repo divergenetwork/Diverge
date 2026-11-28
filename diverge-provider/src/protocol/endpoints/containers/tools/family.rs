@@ -19,7 +19,7 @@ use diverge_sdk::container_proxy::outside::endpoints::fuse::mount::client::execu
 use diverge_sdk::wire::decode::Decode as _;
 use crate::protocol::endpoints::containers::run::begin::{Begin, Begun};
 use crate::protocol::endpoints::containers::run::family::{Family, Opened, Runs};
-use crate::protocol::endpoints::containers::run::own::{Own, Unasked};
+use crate::protocol::endpoints::containers::run::own::Own;
 use crate::protocol::endpoints::containers::run::run::Run;
 use crate::protocol::endpoints::containers::run::serve::tool;
 use crate::protocol::endpoints::containers::run::setup::registered;
@@ -259,11 +259,9 @@ fn fuse<'a>(id: &'a str, ask: &'a MountAsk) -> ask::Frame<'a> {
 
 /// Every own ask as this family's frame: a tool container's wire has
 /// a frame for each.
-impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
-    type Error = Unasked;
-
-    fn try_from(own: Own<'a>) -> Result<Self, Unasked> {
-        Ok(match own {
+impl<'a> From<Own<'a>> for ask::Frame<'a> {
+    fn from(own: Own<'a>) -> Self {
+        match own {
             Own::OciManifest(digest) => ask::Frame::OciManifest(oci::manifest::request::Request {
                 digest: digest.to_string(),
             }),
@@ -276,6 +274,6 @@ impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
             Own::OciProve(request) => ask::Frame::OciProve(request.clone()),
             Own::Daemon(connection_id) => ask::Frame::Daemon(daemon::request::Daemon { connection_id }),
             Own::Postgres(connection_id) => ask::Frame::Postgres(postgres::request::Postgres { connection_id }),
-        })
+        }
     }
 }
