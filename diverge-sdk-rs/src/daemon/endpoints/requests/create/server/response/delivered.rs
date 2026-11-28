@@ -10,7 +10,7 @@ use crate::daemon::creator::Creator;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 pub struct Delivered {
-    /// Who was sent it: an account, by its identity, or a tool, as the
-    /// daemon names a party — see [`Creator`].
+    /// Who was sent it: an account, by its identity, or an agent or a
+    /// tool, as the daemon names a party — see [`Creator`].
     pub to: Creator,
 }

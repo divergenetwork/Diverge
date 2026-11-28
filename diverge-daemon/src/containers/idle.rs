@@ -9,35 +9,45 @@ use super::lifecycle::End;
 use super::{AgentRun, ToolRun};
 use crate::daemon::Daemon;
 
-/// Run the agent's idle clock until the run ends: while the agent is
-/// active — a loop runs in it, or an MCP exchange is in flight for
-/// it — or a batch of messages is on its way
-/// to it (`pending`: held by the agent's outbox pump from the moment
-/// it has the run until the batch is answered), or a use is in
-/// progress on it (a filetree watch, a download, an upload, a
-/// transfer, a command, a terminal, a frontend request), or a
-/// dependency tool of its own that mounts its files is up, the clock
-/// does not run; otherwise,
-/// `idle_seconds` after the last use with no use since, the run is
-/// stopped. The countdown begins only when both are false, and begins
-/// again from the last touch whenever both become false. The pump
-/// hears the end and does the rest.
+/// Run the agent's idle clock until the run ends. The rules:
 ///
-/// The clock never stops a run a batch is going to. Its last look is
-/// made under the run's gate lock, and the same step marks the gate
-/// `ending`: the outbox pump holds `pending` before it asks for that
-/// lock — see [`message`](super::message) — so either
-/// the look sees the hold and the run goes on, or the pump
-/// finds the gate ending, sends the run nothing, and takes
-/// its messages to the next run.
+/// 1. **What holds the run.** While any of these is so, the clock does
+///    not run:
+///    - the agent is active — a loop runs in it, or an MCP exchange is
+///      in flight for it;
+///    - a batch of messages is on its way to it (`pending`: held by
+///      the agent's outbox pump from the moment it has the run until
+///      the batch is answered);
+///    - a use is in progress on it — a filetree watch, a download, an
+///      upload, a transfer, a command, a terminal, a frontend request
+///      — or a dependency tool of its own that mounts its files is up;
+///    - its own program has a scope open on its daemon connection,
+///      whatever the scope asks, an endless stream included: an agent
+///      that wants to go idle ends its scopes. A scope makes the
+///      agent neither active nor busy.
+/// 2. **The countdown.** Otherwise, `idle_seconds` after the last use
+///    with no use since, the run is stopped. The countdown begins
+///    only when nothing holds the run, and begins again from the last
+///    touch whenever that becomes so; a hold's end is a touch.
+/// 3. **Never under a batch.** The clock never stops a run a batch is
+///    going to. Its last look is made under the run's gate lock, and
+///    the same step marks the gate `ending`: the outbox pump holds
+///    `pending` before it asks for that lock — see
+///    [`message`](super::message) — so either the look sees the hold
+///    and the run goes on, or the pump finds the gate ending, sends
+///    the run nothing, and takes its messages to the next run.
+///
+/// The pump hears the end and does the rest.
 pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
     let mut active = run.loop_active.subscribe();
     let mut inflight = run.inflight.subscribe();
     let mut pending = run.pending.subscribe();
     let mut files = run.files.subscribe();
+    let mut scopes = run.scopes.subscribe();
     let mut touched = run.touched.subscribe();
     loop {
-        if *active.borrow() || *inflight.borrow() > 0 || *pending.borrow() > 0 || *files.borrow() > 0 {
+        // Rule 1.
+        if *active.borrow() || *inflight.borrow() > 0 || *pending.borrow() > 0 || *files.borrow() > 0 || *scopes.borrow() > 0 {
             tokio::select! {
                 changed = active.changed() => {
                     if changed.is_err() {
@@ -59,15 +69,22 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
                         return;
                     }
                 }
+                changed = scopes.changed() => {
+                    if changed.is_err() {
+                        return;
+                    }
+                }
             }
             continue;
         }
+        // Rule 2.
         let last = *touched.borrow_and_update();
         let deadline = last + daemon.idle;
         tokio::select! {
             () = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)) => {
+                // Rule 3.
                 let mut gate = run.gate.lock().await;
-                if !*active.borrow() && *inflight.borrow() == 0 && *pending.borrow() == 0 && *files.borrow() == 0 && *touched.borrow() == last {
+                if !*active.borrow() && *inflight.borrow() == 0 && *pending.borrow() == 0 && *files.borrow() == 0 && *scopes.borrow() == 0 && *touched.borrow() == last {
                     gate.ending = true;
                     drop(gate);
                     run.end_as(End::Expected).await;
@@ -96,6 +113,11 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
                 }
             }
             changed = files.changed() => {
+                if changed.is_err() {
+                    return;
+                }
+            }
+            changed = scopes.changed() => {
                 if changed.is_err() {
                     return;
                 }

@@ -1,13 +1,14 @@
 //! A requester's command log: every request it put to the daemon.
 //!
-//! Three kinds of requester put requests to the daemon: an account, an
-//! administrator the configuration names, and a tool's container over
-//! its own daemon connection. The daemon keeps each request as it
+//! Four kinds of requester put requests to the daemon: an account, an
+//! administrator the configuration names, and a tool's container and
+//! an agent's container, each over its own daemon connection. The daemon keeps each request as it
 //! decides it — one [`Command`] — in the requester's own book: an
 //! account's and an administrator's book hold commands alone, read as
 //! [`logs`](crate::daemon::endpoints::logs) subjects of their own; a
 //! tool's commands go into its [`tool_log`](crate::daemon::tool_log),
-//! beside the calls it was asked.
+//! beside the calls it was asked; an agent's go into its
+//! [`agent_log`](crate::daemon::agent_log), beside its conversation.
 //!
 //! The rules:
 //!

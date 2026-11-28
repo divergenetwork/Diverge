@@ -8,7 +8,8 @@ use super::Item;
 
 /// One kind of log item, as the `type` member of an
 /// [`ItemWrapper`] names it: one variant per chunk the agent's run
-/// can stream, one for the errors, and four for the run's life — see
+/// can stream, one for the errors, one for the requests the agent's
+/// container put to the daemon, and four for the run's life — see
 /// [`lifecycle`](crate::daemon::lifecycle). What a request's
 /// `type` picks by.
 ///
@@ -29,6 +30,7 @@ use super::Item;
 /// | `usage` | [`UsageChunk`] |
 /// | `notification` | [`NotificationChunk`] |
 /// | `error` | [`Error`] |
+/// | `command` | [`Command`] |
 /// | `deployed` | [`Deployed`] |
 /// | `active` | [`Active`] |
 /// | `inactive` | [`Inactive`] |
@@ -36,6 +38,7 @@ use super::Item;
 ///
 /// [`ItemWrapper`]: crate::daemon::agent_log::ItemWrapper
 /// [`Error`]: crate::daemon::agent_log::Error
+/// [`Command`]: crate::daemon::agent_log::Command
 /// [`Deployed`]: crate::daemon::agent_log::Deployed
 /// [`Active`]: crate::daemon::agent_log::Active
 /// [`Inactive`]: crate::daemon::agent_log::Inactive
@@ -106,6 +109,9 @@ pub enum ItemType {
     /// An error a run answered with.
     #[serde(rename = "error")]
     Error,
+    /// A request the agent's container put to the daemon.
+    #[serde(rename = "command")]
+    Command,
     /// The agent's container came up on a provider.
     #[serde(rename = "deployed")]
     Deployed,
@@ -129,6 +135,7 @@ impl ItemType {
             Item::User(user) => ItemType::of_chunk(&user.chunk),
             Item::Chunk(chunk) => ItemType::of_chunk(chunk),
             Item::Error(_) => ItemType::Error,
+            Item::Command(_) => ItemType::Command,
             Item::Deployed(_) => ItemType::Deployed,
             Item::Active(_) => ItemType::Active,
             Item::Inactive(_) => ItemType::Inactive,
@@ -178,6 +185,7 @@ impl ItemType {
             ItemType::Usage => "usage",
             ItemType::Notification => "notification",
             ItemType::Error => "error",
+            ItemType::Command => "command",
             ItemType::Deployed => "deployed",
             ItemType::Active => "active",
             ItemType::Inactive => "inactive",

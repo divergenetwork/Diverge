@@ -35,9 +35,10 @@ pub fn holds(standing: &Standing, action: Over) -> bool {
     if standing.admin() {
         return true;
     }
-    standing
-        .connected_standalone_tools()
-        .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
+    standing.attached_connected_standalone_tools_hold(action)
+        || standing
+            .connected_standalone_tools()
+            .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
 }
 
 /// Whether the standing may do `action` to the connected tool the facts
@@ -46,10 +47,11 @@ pub fn over(standing: &Standing, action: Over, facts: &Facts<'_>) -> bool {
     if standing.admin() {
         return true;
     }
-    standing.connected_standalone_tools().any(|permission| match permission {
-        Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
-        _ => false,
-    })
+    standing.attached_connected_standalone_tool(action, facts.tool.id)
+        || standing.connected_standalone_tools().any(|permission| match permission {
+            Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
+            _ => false,
+        })
 }
 
 /// Whether the standing holds the tagging `action` over any connected

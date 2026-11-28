@@ -65,6 +65,10 @@ pub struct AgentRun {
     /// active nor busy. What the idle clock waits on, beside
     /// `inflight`.
     pub files: Arc<Inflight>,
+    /// The scopes its own program has open on its daemon connections,
+    /// counted by its answerer: each holds the run up for its life,
+    /// as a use does, and makes it neither active nor busy.
+    pub scopes: Arc<Inflight>,
     /// When it was last used; what the idle clock runs from.
     pub touched: watch::Sender<Instant>,
     /// What it mounts, served by the daemon.

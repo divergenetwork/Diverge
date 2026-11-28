@@ -27,7 +27,7 @@ use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, Too
 use crate::daemon::{Daemon, Kind};
 use crate::daemons;
 use crate::containers::permissions;
-use crate::judge::ToolRef;
+use crate::judge::{Container, ToolRef};
 use crate::store::agents::Agent;
 use crate::store::connected_standalone_tools::ConnectedTool;
 use crate::store::tools::{Tool, attachments};
@@ -198,6 +198,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
     let touched = watch::channel(Instant::now()).0;
     let inflight = Arc::new(Inflight::new());
     let files = Arc::new(Inflight::new());
+    let scopes = Arc::new(Inflight::new());
     let mut last = String::new();
     for (identity, handle) in candidates {
         let answerer = Arc::new(Answerer {
@@ -208,7 +209,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
                 key: agent.key(),
             })),
             sender: sender_of_agent(agent),
-            tool: None,
+            container: Container::Agent(agent.id),
             permissions: Mutex::new(Vec::new()),
             provider: identity.clone(),
             mounts: Arc::clone(&mounts),
@@ -217,7 +218,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             touched: touched.clone(),
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
-            scopes: Arc::new(Inflight::new()),
+            scopes: Arc::clone(&scopes),
             kept: Mutex::new(None),
         });
         let opened = agents_run::execute(&handle, &agents_request::Frame(container.clone()), answerer.set()).await;
@@ -258,6 +259,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             loop_active: watch::channel(false).0,
             inflight,
             files,
+            scopes,
             touched,
             mounts,
             volumes: crate::volumes::of_agent(agent),
@@ -277,9 +279,12 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
         });
         lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone(), cause).await;
         // From here a failure is the run's undoing: its container, its
-        // dependencies, its mounts and its `deployed`.
+        // dependencies, its mounts and its `deployed`. What its program
+        // declared it may ask of the daemon is kept on its row.
+        let permissions = answerer.permissions.lock().await.clone();
         let recorded: Result<(), crate::store::Error> = async {
             let mut conn = daemon.store.acquire().await?;
+            agents::set_permissions(&mut conn, agent.id, &permissions).await?;
             agents::set_deployed(&mut conn, agent.id, &identity, Utc::now()).await?;
             Ok(())
         }
@@ -377,7 +382,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<A
                 key: Key::Tool(ToolKey::Record(tool.id)),
                 caller: None,
                 sender: sender_of_tool(tool),
-                tool: Some(ToolRef::Standalone(tool.id)),
+                container: Container::Tool(ToolRef::Standalone(tool.id)),
                 permissions: Mutex::new(Vec::new()),
                 provider: identity.clone(),
                 mounts: Arc::clone(&mounts),
@@ -446,7 +451,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<A
     // From here a failure is the run's undoing: its container, its
     // mounts and its `deployed`. What its program
     // declared it may ask of the daemon is kept on its row.
-    let recorded = permissions::record(daemon, ToolRef::Standalone(tool.id), &permissions).await;
+    let recorded = permissions::record(daemon, Container::Tool(ToolRef::Standalone(tool.id)), &permissions).await;
     if let Err(error) = recorded {
         stop::undo_tool(daemon, run, false).await;
         return Err(error.into());

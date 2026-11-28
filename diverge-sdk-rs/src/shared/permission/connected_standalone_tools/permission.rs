@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::shared::permission::{Reach, Tagging, Within};
-use super::{Listed, Make, Over};
+use crate::shared::permission::{self, Reach, Tagging};
+use super::{Listed, Make, Over, Within};
 
 /// What one grant over connected tools allows, in one of three shapes
 /// told apart on the wire by their very form, as
@@ -12,7 +12,7 @@ use super::{Listed, Make, Over};
 /// reach; or an object of tagging actions, how far they
 /// reach, and which tags. An object that is none of these — an action
 /// of one shape among another's, a member missing, a `within` that is
-/// not `"any"` or a [`Tags`](crate::shared::permission::Tags) — does not decode.
+/// not `"any"`, `"attached"`, `{"tools":[…]}` or a [`Tags`](crate::shared::permission::Tags) — does not decode.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(untagged, deny_unknown_fields)]
@@ -21,13 +21,15 @@ pub enum Permission {
     /// judged but that the action is held.
     Make(Vec<Make>),
     /// Over connected tools that exist: the [`Over`] actions held,
-    /// reaching every one of them, or only those the [`Tags`](crate::shared::permission::Tags) let
+    /// reaching every one of them, the agent's attached ones, the
+    /// ones listed, or only those the [`Tags`](crate::shared::permission::Tags) let
     /// through, read as a test.
     Over {
         /// The actions.
         actions: Vec<Over>,
-        /// How far: `"any"`, the connected standalone tools listed, or the tags as a test.
-        within: Reach<Listed>,
+        /// How far: `"any"`, `"attached"`, the connected standalone
+        /// tools listed, or the tags as a test. See [`Within`].
+        within: Within,
     },
     /// Tagging connected tools: putting tags on, taking them off, or
     /// both, reaching every one or only those the [`Tags`](crate::shared::permission::Tags) let through,
@@ -38,6 +40,6 @@ pub enum Permission {
         /// How far: `"any"`, the connected standalone tools listed, or the tags as a test.
         within: Reach<Listed>,
         /// Which tags: `"any"`, or only these.
-        tags: Within<Vec<String>>,
+        tags: permission::Within<Vec<String>>,
     },
 }

@@ -19,7 +19,7 @@ use crate::containers::mcp::Served;
 use crate::containers::start::Starting;
 use crate::containers::{AgentRun, Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, undo_tool};
 use crate::daemon::{Daemon, Kind};
-use crate::judge::ToolRef;
+use crate::judge::{Container, ToolRef};
 use crate::store::agents;
 use crate::store::dependency_tools::DependencyTool;
 
@@ -155,7 +155,7 @@ async fn start(daemon: &Arc<Daemon>, tool: &DependencyTool, mounted: Option<Moun
             key: Key::Tool(key),
             caller: None,
             sender: sender.clone(),
-            tool: Some(ToolRef::Dependency(tool.id)),
+            container: Container::Tool(ToolRef::Dependency(tool.id)),
             permissions: Mutex::new(Vec::new()),
             provider: identity.clone(),
             mounts: Arc::clone(&mounts),
@@ -207,7 +207,7 @@ async fn start(daemon: &Arc<Daemon>, tool: &DependencyTool, mounted: Option<Moun
             ending: Mutex::new(None),
         });
         // From here a failure is the run's undoing.
-        if let Err(error) = permissions::record(daemon, ToolRef::Dependency(tool.id), &permissions).await {
+        if let Err(error) = permissions::record(daemon, Container::Tool(ToolRef::Dependency(tool.id)), &permissions).await {
             undo_tool(daemon, run, false).await;
             return Err(error.into());
         }

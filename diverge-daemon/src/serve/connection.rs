@@ -66,21 +66,22 @@ pub async fn connection(connection: Connection, address: IpAddr, daemon: Arc<Dae
     }
 }
 
-/// What a tool's daemon connection holds of the tool's run: given to
-/// [`client`] for a connection a tool's container opened, and to
-/// nothing else. The rules:
+/// What a container's daemon connection holds of the container's run:
+/// given to [`client`] for a connection a container opened, an
+/// agent's or a tool's, and to nothing else. The rules:
 ///
-/// 1. **Every scope holds the run.** Each request the tool's program
-///    puts to the daemon is counted in `scopes` from the moment it is
-///    read until its task ends — answered, cancelled, or its
-///    connection gone — whatever it asks, an endless stream included:
-///    rule 7 of [`idle_tool`](crate::containers::idle_tool). A tool
-///    that wants to go idle ends its scopes.
+/// 1. **Every scope holds the run.** Each request the container's
+///    program puts to the daemon is counted in `scopes` from the
+///    moment it is read until its task ends — answered, cancelled, or
+///    its connection gone — whatever it asks, an endless stream
+///    included: rule 7 of [`idle_tool`](crate::containers::idle_tool)
+///    for a tool, rule 1 of [`idle`](crate::containers::idle) for an
+///    agent. A container that wants to go idle ends its scopes.
 /// 2. **A scope's end is a use.** `touched` is noted as it is counted
 ///    out, so the run's idle clock counts from there.
 /// 3. **The count is the run's.** `scopes` is the one the run's
 ///    answerer holds and its run reads, so a scope is never counted
-///    on another run of the same tool.
+///    on another run of the same container.
 #[derive(Debug, Clone)]
 pub struct Held {
     /// The run's open daemon scopes.
@@ -92,10 +93,10 @@ pub struct Held {
 /// Serve a client admitted as `who`, past its handshake, until the
 /// socket ends.
 ///
-/// The connection counts itself in as its account — a tool's, served
-/// under the grants it declared, is no account's, and with `held`
-/// each scope it opens holds the tool's container up until the scope
-/// ends — and every
+/// The connection counts itself in as its account — a container's,
+/// served under the grants its program declared, is no account's,
+/// and with `held` each scope it opens holds the container up until
+/// the scope ends — and every
 /// scope the client opens is read as a request and handed to
 /// [`dispatch`] on a task of its own, so a slow answer never holds
 /// the socket; a frame that is not a request ends the connection.
@@ -118,15 +119,15 @@ pub async fn client(connection: Connection, who: Who, daemon: Arc<Daemon>, held:
             }
         }
         Who::Admin(identity) => daemon.live.enter_admin(identity).await,
-        Who::Tool(_) => {}
+        Who::Container(_) => {}
     }
     // The connection's closer: an account's and an administrator's may
-    // be told to close — see `accounts disconnect` — and a tool's has
-    // none.
+    // be told to close — see `accounts disconnect` — and a container's
+    // has none.
     let connected = match &who {
         Who::Account(account) => Some(Connected::Account(*account)),
         Who::Admin(identity) => Some(Connected::Admin(identity.clone())),
-        Who::Tool(_) => None,
+        Who::Container(_) => None,
     };
     let (key, mut closing) = match &connected {
         Some(connected) => {
@@ -175,7 +176,7 @@ pub async fn client(connection: Connection, who: Who, daemon: Arc<Daemon>, held:
             }
         }
         Who::Admin(identity) => daemon.live.leave_admin(identity).await,
-        Who::Tool(_) => {}
+        Who::Container(_) => {}
     }
 }
 

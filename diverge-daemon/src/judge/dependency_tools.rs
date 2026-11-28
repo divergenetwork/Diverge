@@ -6,7 +6,9 @@
 //! tool — `any`, or the family's list filter as
 //! [`filter::dependency_tools::test`] reads it, over the [`Facts`] of
 //! the row, its owner, the agents attached to it and its run, which
-//! the caller knows; a tagging action by a grant that holds it,
+//! the caller knows — or, an agent's, by an action held within
+//! `attached` where the agent's latest registration declared the
+//! tool; a tagging action by a grant that holds it,
 //! reaches the tool, and covers every tag named.
 
 use diverge_sdk::daemon::endpoints::dependency_tools::list::client::request::Filter;
@@ -22,9 +24,10 @@ pub fn holds(standing: &Standing, action: Over) -> bool {
     if standing.admin() {
         return true;
     }
-    standing
-        .dependency_tools()
-        .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
+    standing.attached_dependency_tools_hold(action)
+        || standing
+            .dependency_tools()
+            .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
 }
 
 /// Whether the standing may do `action` to the tool the facts
@@ -33,10 +36,11 @@ pub fn over(standing: &Standing, action: Over, facts: &Facts<'_>) -> bool {
     if standing.admin() {
         return true;
     }
-    standing.dependency_tools().any(|permission| match permission {
-        Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
-        Permission::Tags { .. } => false,
-    })
+    standing.attached_dependency_tool(action, facts.tool.id)
+        || standing.dependency_tools().any(|permission| match permission {
+            Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
+            Permission::Tags { .. } => false,
+        })
 }
 
 /// Whether the standing holds the tagging `action` over any dependency

@@ -9,7 +9,7 @@ use super::{Listed, Make, Over, Within};
 /// apart on the wire by their very form, as
 /// [`permission`](crate::shared::permission) states them: a bare array
 /// of [`Make`] actions; an object of [`Over`] actions and how far they
-/// reach — every agent, the tool's attached agents, those never active,
+/// reach — every agent, the asking tool's attached agents, those never active,
 /// the agents listed, or by tags; or an object
 /// of tagging actions, how far they reach, and which tags. An object
 /// that is none of these — an action of one shape among another's, a
@@ -23,7 +23,7 @@ pub enum Permission {
     /// judged but that the action is held.
     Make(Vec<Make>),
     /// Over agents that exist: the [`Over`] actions held, reaching
-    /// every one of them, the tool's attached agents, those never active,
+    /// every one of them, the asking tool's attached agents, those never active,
     /// the agents listed, or only those
     /// the [`Tags`](crate::shared::permission::Tags) let through, read as a test.
     Over {

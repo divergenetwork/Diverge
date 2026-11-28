@@ -27,7 +27,7 @@
 //!    answer was taken and is the request's; or `NotDelivered`, it was
 //!    not — the request was answered or withdrawn first, was never
 //!    sent to this listener, or is none there is. Then the finish.
-//! 4. **One listen for each party.** An account, and a tool, has at
+//! 4. **One listen for each party.** An account, an agent and a tool has at
 //!    most one listen open on the daemon, on whatever connection. A
 //!    second is answered
 //!    [`AlreadyOpen`](server::response::Frame::AlreadyOpen), alone,
@@ -37,7 +37,7 @@
 //!    connection ending. What it was sent and did not answer stays
 //!    pending for whoever else was sent it, and for the caller when it
 //!    listens again.
-//! 6. **No grant.** Any account and any tool may listen. An account
+//! 6. **No grant.** Any account, any agent and any tool may listen. An account
 //!    that is no longer one is answered `Forbidden`.
 //!
 //! Split by who SENDS, as everywhere else: the request, the channels

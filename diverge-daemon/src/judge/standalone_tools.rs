@@ -4,7 +4,9 @@
 //! create — is held or it is not; an action over a tool
 //! is allowed by a grant that holds it and whose `within` reaches the
 //! tool — `any`, or the tools list filter as [`filter::standalone_tools::test`]
-//! reads it, over the [`Facts`] of a record, which the caller knows; a tagging action by a grant that holds it,
+//! reads it, over the [`Facts`] of a record, which the caller knows —
+//! or, an agent's, by an action held within `attached` where the tool
+//! is attached to the agent or to its template; a tagging action by a grant that holds it,
 //! reaches the tool, and covers every tag named. An attach and a
 //! detach also need `edit` over the agent, which is
 //! [`agents`](super::agents)' to judge.
@@ -31,9 +33,10 @@ pub fn holds(standing: &Standing, action: Over) -> bool {
     if standing.admin() {
         return true;
     }
-    standing
-        .standalone_tools()
-        .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
+    standing.attached_standalone_tools_hold(action)
+        || standing
+            .standalone_tools()
+            .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
 }
 
 /// Whether the standing may do `action` to the tool the facts
@@ -42,10 +45,11 @@ pub fn over(standing: &Standing, action: Over, facts: &Facts<'_>) -> bool {
     if standing.admin() {
         return true;
     }
-    standing.standalone_tools().any(|permission| match permission {
-        Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
-        _ => false,
-    })
+    standing.attached_standalone_tool(action, facts.id)
+        || standing.standalone_tools().any(|permission| match permission {
+            Permission::Over { actions, within } => actions.contains(&action) && reaches(within, facts),
+            _ => false,
+        })
 }
 
 /// Whether the standing holds the tagging `action` over any tool at

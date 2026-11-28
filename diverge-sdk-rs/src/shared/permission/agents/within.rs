@@ -1,5 +1,5 @@
-//! Every agent, the tool's attached agents, those never active, the
-//! agents listed, or only these.
+//! Every agent, the agents attached to the tool that asks, those never
+//! active, the agents listed, or only these.
 
 use std::borrow::Cow;
 
@@ -22,8 +22,9 @@ use crate::shared::permission::Tags;
 ///
 /// # `attached` is the agents attached to the tool
 ///
-/// The one word the agents kind has that no other has, and that no
-/// grant of the daemon's own has: it names nothing and reaches the
+/// A word no grant of the daemon's own has: it names nothing and
+/// reaches the records on the other side of an attachment from the
+/// container that holds the grant. Over agents, that is the
 /// agents attached to the tool that holds the grant, judged at every
 /// request, whether or not any of them is active. For a standalone
 /// tool, those it is attached to directly, and every agent of every
@@ -33,7 +34,11 @@ use crate::shared::permission::Tags;
 /// for. A tool that
 /// may `message` within `attached` may message its own agents and no
 /// other, whatever their tags, which is what a tool that answers to
-/// its agents asks for.
+/// its agents asks for. Held by an agent's container it reaches
+/// nothing: an agent is attached to tools, and no agent is attached to
+/// an agent. The three tool kinds have the same word the other way:
+/// see
+/// [`standalone_tools::Within`](crate::shared::permission::standalone_tools::Within).
 ///
 /// # `never_active` is the agents that have never run
 ///

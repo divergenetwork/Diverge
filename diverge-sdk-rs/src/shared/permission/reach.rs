@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Tags;
 
-/// How far a grant a tool's program declares reaches, over one kind
+/// How far a grant a container's program declares reaches, over one kind
 /// of thing: every one of the kind, exactly the ones listed, or only
 /// those the [`Tags`] let through. `L` is the kind's own list — its
 /// `Listed`, an object of one member naming the records one by one.

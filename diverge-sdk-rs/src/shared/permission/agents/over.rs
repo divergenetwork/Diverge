@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 /// The actions over agents that exist, which a grant reaches as far as
 /// its `within` says. Snake case on the wire: `"get"`, `"delete"`,
 /// `"edit"`, `"message"`, `"logs"`, `"list"`, `"download"`, `"upload"`,
-/// `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"connect"`.
+/// `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"connect"`,
+/// `"request"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -59,4 +60,9 @@ pub enum Over {
     /// [`agents::connect`](crate::daemon::endpoints::agents::connect)
     /// does.
     Connect,
+    /// Make a request of them, as
+    /// [`requests::create`](crate::daemon::endpoints::requests::create)
+    /// does: a request is made of an agent it addresses — by itself,
+    /// by a tag, or as one of all — only where the grant reaches it.
+    Request,
 }

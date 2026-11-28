@@ -12,20 +12,17 @@ use crate::containers::deploy;
 /// The one ask a provider makes before the container's id is out, the
 /// id told here, answered in order:
 ///
-/// 1. The permissions a tool's program declared kept on the answerer:
-///    what its `/daemon` connections are served under for the run, and
-///    what the start records on the tool's row. An agent's — which the
-///    provider never sends — are dropped, since an agent asks the
-///    daemon nothing.
+/// 1. The permissions the container's program declared kept on the
+///    answerer, an agent's or a tool's alike: what its `/daemon`
+///    connections are served under for the run, and what the start
+///    records on the container's row.
 /// 2. Every dependency deployed as [`deploy`](crate::containers::deploy)
 ///    states, where the program declared any; the first that cannot be
 ///    is the run's error. A tool container declares none, and one that
 ///    does is refused there.
 impl Registrar for Answerer {
     async fn register(&self, id: String, dependencies: Vec<Template>, permissions: Vec<Grant>) -> Result<(), Error> {
-        if self.tool.is_some() {
-            *self.permissions.lock().await = permissions;
-        }
+        *self.permissions.lock().await = permissions;
         if !dependencies.is_empty() {
             deploy::deploy(self, id, dependencies).await?;
         }

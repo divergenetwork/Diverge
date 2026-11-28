@@ -15,7 +15,7 @@ use diverge_sdk::shared::mcp::attestation;
 
 use crate::containers::{Inflight, Key};
 use crate::daemon::Daemon;
-use crate::judge::ToolRef;
+use crate::judge::Container;
 use crate::store::DependencyToolId;
 use diverge_sdk::shared::permission::Grant;
 
@@ -32,16 +32,16 @@ pub struct Answerer {
     pub caller: Option<attestation::Caller>,
     /// The container as a sender.
     pub sender: Creator,
-    /// Which tool the run is, standalone or dependency: whose attached
-    /// agents its `attached` grants reach. None for an agent, which
-    /// asks the daemon nothing, and whose `/daemon` connections are
-    /// declined.
-    pub tool: Option<ToolRef>,
-    /// What the tool's container declared at its registration it may
-    /// ask of the daemon: empty until it registers, and still empty for
-    /// a program that declared none, every request of which is refused.
-    /// What its `/daemon` connections are served under, and what the
-    /// start records on the tool's row once the run is up.
+    /// Which container the run is — an agent's, or a tool's, standalone
+    /// or dependency: whose attachments its `attached` grants reach,
+    /// and whose log keeps its commands.
+    pub container: Container,
+    /// What the container's program declared at its registration it
+    /// may ask of the daemon: empty until it registers, and still empty
+    /// for a program that declared none, every request of which is
+    /// refused. What its `/daemon` connections are served under, and
+    /// what the start records on the container's row once the run is
+    /// up.
     pub permissions: Mutex<Vec<Grant>>,
     /// The provider the run is on: where the container's own paths
     /// are served from, for its dependencies.
@@ -63,11 +63,12 @@ pub struct Answerer {
     /// the agent's files is counted in for as long as it is up. A
     /// tool's answerer counts none.
     pub files: Arc<Inflight>,
-    /// The scopes a tool's program has open on its `/daemon`
+    /// The scopes the container's program has open on its `/daemon`
     /// connections: counted in for each scope's life, and what the
-    /// tool's run, which takes this when it is made, is held up by —
-    /// rule 7 of [`idle_tool`](crate::containers::idle_tool). An
-    /// agent's answerer counts none: its connections are declined.
+    /// run, which takes this when it is made, is held up by — rule 7
+    /// of [`idle_tool`](crate::containers::idle_tool) for a tool's,
+    /// and the same hold of [`idle`](crate::containers::idle) for an
+    /// agent's.
     pub scopes: Arc<Inflight>,
     /// The eager tools an agent's registration declared, once its
     /// dependencies were deployed: `None` until then, and still

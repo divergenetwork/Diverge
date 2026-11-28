@@ -16,8 +16,8 @@ pub struct Asked {
     /// The request: its content, in order, as its creator wrote it.
     /// The daemon reads none of it.
     pub request: Vec<ContentBlock>,
-    /// Who made the request: an account, by its identity, or a tool,
-    /// as the daemon names a party — see [`Creator`]. Whom an answer
+    /// Who made the request: an account, by its identity, or an agent
+    /// or a tool, as the daemon names a party — see [`Creator`]. Whom an answer
     /// goes to.
     pub from: Creator,
 }

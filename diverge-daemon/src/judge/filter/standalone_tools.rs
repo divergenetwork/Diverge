@@ -6,6 +6,7 @@ use diverge_sdk::daemon::endpoints::standalone_tools::list::client::request::Fil
 use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::daemon::key;
 
+use crate::store::ToolId;
 use crate::store::tools::Tool;
 
 /// What a tool is, as a filter and a grant see it: its row, whether
@@ -16,6 +17,8 @@ use crate::store::tools::Tool;
 /// is a connected tool, judged by
 /// [`connected_standalone_tools`](super::connected_standalone_tools).
 pub struct Facts<'a> {
+    /// Its row's id: what an agent's `attached` reaches it by.
+    pub id: ToolId,
     /// Its name, if any.
     pub name: Option<&'a str>,
     /// The template it was made from.
@@ -47,6 +50,7 @@ impl<'a> Facts<'a> {
     /// when it has one.
     pub fn record(tool: &'a Tool, active: bool, deployed: bool, agents: &'a [key::Agent], templates: &'a [String], mode: Option<Mode>) -> Facts<'a> {
         Facts {
+            id: tool.id,
             name: tool.name.as_deref(),
             template: &tool.template,
             index: tool.index,

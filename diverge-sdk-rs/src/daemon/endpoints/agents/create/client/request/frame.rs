@@ -42,7 +42,7 @@ pub struct Frame {
     /// What an agent's create and a tool's share — the template, the
     /// provider and its volumes, the FUSE mounts: see [`Inner`].
     /// Flattened, so its members are this object's own. No account:
-    /// an agent container holds none and asks the daemon nothing.
+    /// an agent container holds none.
     #[serde(flatten)]
     pub inner: Inner,
     /// The name, if any: a string of the caller's choosing, unique

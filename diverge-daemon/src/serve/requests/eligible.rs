@@ -11,7 +11,7 @@ use sqlx::PgConnection;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing};
 use crate::requests::Party;
-use crate::serve::{dependency_tools, standalone_tools};
+use crate::serve::{self, dependency_tools, standalone_tools};
 use crate::store::{self, accounts, agents, dependency_tools as dependencies, tools};
 
 /// Whether any of `named` is among `carried`: a party is addressed by
@@ -29,19 +29,30 @@ fn names(reference: &reference::Tool, tool: &tools::Tool) -> bool {
     }
 }
 
+/// Whether the agent reference names the agent: by its name, or by its
+/// template and its index.
+fn names_agent(reference: &reference::Agent, agent: &agents::Agent) -> bool {
+    match reference {
+        reference::Agent::Name { name } => agent.name.as_deref() == Some(name.as_str()),
+        reference::Agent::TemplateIndex { template, index } => agent.template == *template && agent.index == *index,
+    }
+}
+
 /// Whether the request made `to` those, by a creator of `standing`, is
 /// one `party` is sent. The rules:
 ///
 /// 1. **Addressed.** `all` addresses every party. Otherwise the party
-///    is named by itself — an account by its identity, a standalone
-///    tool by its name or its template and index, a dependency tool by
-///    its template and its owner — or carries a tag its own kind's
+///    is named by itself — an account by its identity, an agent and a
+///    standalone tool each by its name or its template and index, a
+///    dependency tool by its template and its owner — or carries a tag
+///    its own kind's
 ///    member names. An administrator is an account, addressed by its
 ///    identity and by the tags it carries.
 /// 2. **Reached.** The creator's `request` grant for the party's kind
 ///    reaches it, as that grant's reach is read everywhere else: an
-///    account by `accounts`, a standalone tool by `standalone_tools`,
-///    a dependency tool by `dependency_tools`. A listener is
+///    account by `accounts`, an agent by `agents`, with whether it
+///    is active now, a standalone tool by `standalone_tools`, a
+///    dependency tool by `dependency_tools`. A listener is
 ///    connected, and is judged as connected.
 /// 3. **Both, as of now.** The party's record is read here, so a tag
 ///    it gained or lost, and a row that is gone, are as they are at
@@ -65,6 +76,16 @@ pub async fn eligible(conn: &mut PgConnection, daemon: &Arc<Daemon>, party: &Par
                 To::Only(only) => only.accounts.contains(identity) || tagged(&only.account_tags, &tags),
             };
             addressed && judge::accounts::over_admin(standing, grant::accounts::Over::Request, identity, &tags, true)
+        }
+        Party::Agent(id) => {
+            let Some(agent) = agents::by_id(conn, *id, false).await? else {
+                return Ok(false);
+            };
+            let addressed = match to {
+                To::All => true,
+                To::Only(only) => only.agents.iter().any(|reference| names_agent(reference, &agent)) || tagged(&only.agent_tags, &agent.tags),
+            };
+            addressed && judge::agents::over(standing, grant::agents::Over::Request, &agent, serve::agents::state(daemon, agent.id).await)
         }
         Party::Standalone(id) => {
             let Some(tool) = tools::by_id(conn, *id, false).await? else {
@@ -105,12 +126,13 @@ async fn owner(conn: &mut PgConnection, tool: &dependencies::DependencyTool) -> 
 
 /// How `party` is named to a creator — in a delivery, and as who
 /// answered: an account or an administrator as the client it is, by
-/// `standing`'s own word; a tool as the tool it is, by its record,
-/// never as whoever made it. `None` for a tool whose row, or whose
-/// owner, is gone.
+/// `standing`'s own word; an agent and a tool each as what it is, by
+/// its record, never as whoever made it. `None` for an agent or a
+/// tool whose row, or whose owner, is gone.
 pub async fn named(conn: &mut PgConnection, party: &Party, standing: &Standing) -> Result<Option<Creator>, store::Error> {
     Ok(match party {
         Party::Account(_) | Party::Admin(_) => Some(standing.creator.clone()),
+        Party::Agent(id) => agents::by_id(conn, *id, false).await?.map(|agent| Creator::Agent(agent.snapshot())),
         Party::Standalone(id) => tools::by_id(conn, *id, false).await?.map(|tool| Creator::Tool(tool.snapshot())),
         Party::Dependency(id) => {
             let Some(tool) = dependencies::by_id(conn, *id, false).await? else {

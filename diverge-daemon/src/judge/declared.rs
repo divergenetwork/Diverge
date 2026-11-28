@@ -1,28 +1,28 @@
-//! A tool as it is served: the grants its container declared, and
-//! which tool it is, whose attached agents `attached` reaches.
+//! A container as it is served: the grants its program declared, and
+//! which container it is, whose attachments `attached` reaches.
 
 use std::sync::Arc;
 
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::grant::{self, Converted, Grant};
 
-use crate::containers::ToolKey;
-use crate::store::{DependencyToolId, ToolId};
+use crate::containers::{Key, ToolKey};
+use crate::store::{AgentId, DependencyToolId, ToolId};
 
-/// What a tool's container declared at its registration, fixed for
+/// What a container's program declared at its registration, fixed for
 /// the run: the creator its requests make things as, the daemon's
-/// grants its declaration converts to, and the actions over agents it
-/// holds within `attached`, which no daemon grant can say and which
-/// are judged against the agents attached to the tool.
+/// grants its declaration converts to, and the actions it holds within
+/// `attached`, kind by kind, which no daemon grant can say and which
+/// are judged against what is attached to the container.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fixed {
-    /// What the tool's requests make things as: the tool itself, a
-    /// `Creator::Tool`.
+    /// What the container's requests make things as: the container
+    /// itself, a `Creator::Tool` or a `Creator::Agent`.
     pub creator: Creator,
     /// Every grant a role could hold, in no order.
     pub grants: Vec<Grant>,
-    /// The actions over agents held within `attached`, in no order.
-    pub attached_actions: Vec<grant::agents::Over>,
+    /// The actions held within `attached`, kind by kind, in no order.
+    pub attached: grant::Attached,
 }
 
 impl Fixed {
@@ -31,7 +31,7 @@ impl Fixed {
         Fixed {
             creator,
             grants: converted.grants,
-            attached_actions: converted.attached_actions,
+            attached: converted.attached,
         }
     }
 }
@@ -59,13 +59,37 @@ impl ToolRef {
     }
 }
 
-/// A tool, as its `/daemon` connections are served: what its container
-/// declared, and which tool it is, whose attached agents — read fresh
-/// for every request — are what `attached` reaches.
+/// Which container a run is, by its row: the two kinds whose program
+/// may open a `/daemon` connection and put requests to the daemon.
+/// What tells them apart is what `attached` reaches — see
+/// [`Standing`](super::Standing) — and whose log keeps its commands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Container {
+    /// An agent's container: attached to the tools it is served.
+    Agent(AgentId),
+    /// A tool's container, standalone or dependency: attached to
+    /// agents.
+    Tool(ToolRef),
+}
+
+impl Container {
+    /// The container's run's key.
+    pub fn key(self) -> Key {
+        match self {
+            Container::Agent(id) => Key::Agent(id),
+            Container::Tool(tool) => Key::Tool(tool.key()),
+        }
+    }
+}
+
+/// A container, as its `/daemon` connections are served: what its
+/// program declared, and which container it is, whose attachments —
+/// read fresh for every request — are what `attached` reaches.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declared {
-    /// What the container declared.
+    /// What the container's program declared.
     pub fixed: Arc<Fixed>,
-    /// The tool, by its row: whose attachments `attached` reaches.
-    pub tool: ToolRef,
+    /// The container, by its row: whose attachments `attached`
+    /// reaches.
+    pub container: Container,
 }

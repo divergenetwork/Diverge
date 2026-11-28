@@ -102,10 +102,13 @@ CREATE TABLE IF NOT EXISTS diverge.agents (
     name                  TEXT UNIQUE,
     -- The provider it is pinned to and that provider's volumes
     -- mounted, as the create named them. No account: an agent holds
-    -- none, and asks the daemon nothing.
+    -- none.
     provider              JSONB,
     fuse_file_mounts      JSONB NOT NULL DEFAULT '[]',
     fuse_directory_mounts JSONB NOT NULL DEFAULT '[]',
+    -- What its container declared it may ask of the daemon at its
+    -- registration when it last started; empty for none.
+    permissions           JSONB NOT NULL DEFAULT '[]',
     -- The provider it was last deployed on.
     last_provider         JSONB,
     -- When its container last came up or went down.

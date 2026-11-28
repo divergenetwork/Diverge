@@ -26,7 +26,7 @@ pub type PairFrames = Pin<Box<dyn Stream<Item = pair::server::Owned> + Send>>;
 /// program — by the same session and dispatch a socket gets, no token
 /// passing; what
 /// comes back is the session's frames as the daemon's half of the
-/// pair. Where `held` is given — a tool's container, by its run's
+/// pair. Where `held` is given — a container's, by its run's
 /// answerer — every frame received is noted as a use of the
 /// container, and every scope the program opens holds the container
 /// up for the scope's life: see [`Held`]. The far side's

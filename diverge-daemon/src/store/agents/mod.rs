@@ -2,7 +2,7 @@
 //!
 //! [`Agent`] is one as the store holds it: a template and what the
 //! create added — a name, a provider and its volumes, mounts across
-//! providers; no account, since an agent asks the daemon nothing —
+//! providers; no account, since no container holds one —
 //! with its once-and-for-all
 //! index, the provider it last ran on and when, its tags, who made
 //! it. The container is work made from the row and is nowhere in it;
@@ -12,7 +12,8 @@
 //! edit may change; [`delete`] removes one, its attachments with it;
 //! [`set_tags`] writes the tags; [`set_deployed`] keeps where and when
 //! its container last came up or went down, [`set_active`] when its
-//! loop last began or ended.
+//! loop last began or ended, [`set_permissions`] what its container
+//! last declared it may ask of the daemon.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
@@ -23,6 +24,7 @@ mod create;
 mod delete;
 mod edit;
 mod load;
+mod permissions;
 mod row;
 mod tags;
 
@@ -32,4 +34,5 @@ pub use create::*;
 pub use delete::*;
 pub use edit::*;
 pub use load::*;
+pub use permissions::*;
 pub use tags::*;

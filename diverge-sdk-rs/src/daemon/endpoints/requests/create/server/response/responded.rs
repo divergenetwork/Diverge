@@ -12,8 +12,8 @@ pub struct Responded {
     /// The answer: its content, in order, as the listener wrote it.
     /// The daemon reads none of it.
     pub response: Vec<ContentBlock>,
-    /// Who answered: an account, by its identity, or a tool, as the
-    /// daemon names a party — see [`Creator`]. One of those the
+    /// Who answered: an account, by its identity, or an agent or a
+    /// tool, as the daemon names a party — see [`Creator`]. One of those the
     /// request was delivered to.
     pub from: Creator,
 }
