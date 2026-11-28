@@ -9,7 +9,7 @@ import { Creator } from "../../../../../creator/creator.js";
  * Sent once for each listener, and never again for it.
  */
 export const Delivered = z.object({
-  /** Who was sent it: an account, by its identity, or a tool, as the daemon names a party. */
+  /** Who was sent it: an account, by its identity, or an agent or a tool, as the daemon names a party. */
   to: Creator,
 });
 export type Delivered = z.infer<typeof Delivered>;

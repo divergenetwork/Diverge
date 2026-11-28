@@ -1,8 +1,8 @@
 // Grants over agents.
 //
-// What a dependency tool template may ask over agents, in the shapes
+// What a container's program may ask over agents, in the shapes
 // `permission` states: `Make`, the actions that bring one into being; `Over`,
-// the actions over those that exist, reaching all, those listed, or by tags, by the tool's
+// the actions over those that exist, reaching all, those listed, or by tags, by the asking tool's
 // attachments, or by a list of agents (`Key`); and
 // `Permission`, one grant's worth of either, or of tagging. The
 // daemon's grants over agents are made of the same actions.

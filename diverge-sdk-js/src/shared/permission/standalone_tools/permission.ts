@@ -7,6 +7,7 @@ import { within } from "../within.js";
 import { Make } from "./make.js";
 import { Over } from "./over.js";
 import { Listed } from "./listed.js";
+import { Within } from "./within.js";
 
 /**
  * What one grant over tools allows, in one of three shapes told apart
@@ -20,12 +21,12 @@ import { Listed } from "./listed.js";
 export const Permission = z.union([
   /** To make: the `Make` actions held, as a bare array. Nothing is judged but that the action is held. */
   z.array(Make),
-  /** Over tools that exist: the `Over` actions held, reaching every one, or only those the tags let through, read as a test. */
+  /** Over tools that exist: the `Over` actions held, reaching every one, the agent's attached ones, those listed, or only those the tags let through, read as a test. */
   z.strictObject({
     /** The actions. */
     actions: z.array(Over),
-    /** How far: `"any"`, the standalone tools listed, or the tags as a test. */
-    within: reach(Listed),
+    /** How far: `"any"`, `"attached"`, the standalone tools listed, or the tags as a test. See `Within`. */
+    within: Within,
   }),
   /** Tagging tools: putting tags on, taking them off, or both, reaching every one or only those the tags let through, and touching any tag or only the ones listed. */
   z.strictObject({

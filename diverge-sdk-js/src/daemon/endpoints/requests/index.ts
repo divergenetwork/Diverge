@@ -1,5 +1,5 @@
 // Requests: a question one party puts to others, and the one answer
-// it gets. `create` makes one of accounts and tools, each by itself or
+// it gets. `create` makes one of accounts, agents and tools, each by itself or
 // by a tag, or of all the caller may ask; every one of them that
 // `listen`s is sent it; the first answer the daemon takes is the
 // request's, and every other listener it was sent to is told it is

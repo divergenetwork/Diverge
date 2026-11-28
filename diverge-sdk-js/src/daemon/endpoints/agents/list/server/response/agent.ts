@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Creator } from "../../../../../../daemon/creator/creator.js";
 import { Tool } from "../../../../../../daemon/key/tool.js";
 import type { Keyed } from "../../../../../../shared/listing/keyed.js";
+import { Grant } from "../../../../../../shared/permission/grant.js";
 import { Provider } from "../../../../../agent_log/provider.js";
 
 /**
@@ -43,6 +44,8 @@ export const Agent = z.object({
   tools: z.array(Tool).optional(),
   /** The dependency templates its LAST registration declared, by id, in the order it first declared them, each once: what it depends on now, as `dependency_tools` lists the same attachments from the other side. A registration replaces them whole. Absent when empty — an agent that never registered, or declared nothing. */
   dependencies: z.array(z.string()).optional(),
+  /** What its container declared it may ask of the daemon, at its registration when it last started. Declared anew at every start, so it changes as the image does. Absent when empty — an agent whose container declared none, or has never started. */
+  permissions: z.array(Grant).optional(),
   /** Its tags, sorted bytewise: what `tag` put on it and `untag` has not taken off. Absent when empty. */
   tags: z.array(z.string()).optional(),
 });

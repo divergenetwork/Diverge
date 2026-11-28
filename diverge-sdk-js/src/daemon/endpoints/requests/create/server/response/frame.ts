@@ -22,9 +22,9 @@ export const Frame = z.union([
   z.strictObject({ delivered: Delivered }),
   /** It was answered. Tag `2`. */
   z.strictObject({ responded: Responded }),
-  /** The caller holds no `request` grant: over accounts, over standalone tools, or over dependency tools. Tag `3`. */
+  /** The caller holds no `request` grant: over accounts, over agents, over standalone tools, or over dependency tools. Tag `3`. */
   z.literal("forbidden"),
-  /** The request is made of nobody: no account and no tool there is is both one the request addresses and one the caller's `request` grants reach. Tag `4`. */
+  /** The request is made of nobody: no account, no agent and no tool there is is both one the request addresses and one the caller's `request` grants reach. Tag `4`. */
   z.literal("no_recipient"),
   /** A failure. Tag `5`. */
   z.strictObject({ error: Error }),

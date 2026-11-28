@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Tags } from "./tags.js";
 
 /**
- * How far a grant a tool's program declares reaches, over one kind of
+ * How far a grant a container's program declares reaches, over one kind of
  * thing: every one of the kind, exactly the ones listed, or only
  * those the `Tags` let through. `listed` is the kind's own list, its
  * `Listed`: an object of one member naming the records one by one.

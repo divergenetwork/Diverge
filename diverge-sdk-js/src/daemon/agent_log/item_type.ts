@@ -4,7 +4,8 @@ import { z } from "zod";
 
 /**
  * One kind of item, as a log request narrows to it: the sixteen
- * chunk kinds by their `type`, the error, and the four steps of a
+ * chunk kinds by their `type`, the error, the request the agent's
+ * container put to the daemon, and the four steps of a
  * run's life — `deployed`, `active`, `inactive`, `undeployed`.
  */
 export const ItemType = z.enum([
@@ -25,6 +26,7 @@ export const ItemType = z.enum([
   "usage",
   "notification",
   "error",
+  "command",
   "deployed",
   "active",
   "inactive",
