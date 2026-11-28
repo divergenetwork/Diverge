@@ -90,8 +90,9 @@ its agent or with its dependency template's compartment (`postgres compartments 
 |---|---|
 | `create` | nothing |
 | attach to an agent or template | `lazy`: nothing. `eager`: deployed, and held while attached |
-| an agent's container starts and declares it (dependency) | deployed; `eager`: held while declared |
-| an attached agent begins a loop | deployed; held while that agent is active |
+| an agent it is served to starts (attached, or declared by its program) | deployed, with every other tool that agent is served; held while the agent is starting. A tool that cannot be deployed fails that agent's start. `eager`: held as well while attached or declared |
+| a message is on its way into an agent it is served to | brought back if it had gone down (failing the message if it cannot be); held until the agent is active |
+| an agent it is served to is active | held |
 | an MCP exchange into it | deployed; held while in flight |
 | `standalone-tools connect` | deployed; held while the scope is open |
 | `exec`, `terminal`, `frontend` | deployed; held while it runs |

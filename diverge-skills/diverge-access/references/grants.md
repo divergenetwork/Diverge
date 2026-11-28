@@ -71,7 +71,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `filetree` | `agents filetree` |
 | Over | `exec` | `agents exec`, and `agents terminal` (a terminal is judged as `exec`) |
 | Over | `frontend` | `agents frontend` |
-| Over | `connect` | `agents connect …` (MCP exchanges run as the agent) |
+| Over | `connect` | `agents connect …`: MCP exchanges run as the agent, with its tools, logged as its calls. Opening the scope deploys the agent and holds its container up while the scope is open. It does not make the agent active, writes nothing to its log, and does not block its edit or delete |
 | Over | `request` | being asked by `requests create`: a request reaches the agent (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `agents tag`, `agents untag` |
 

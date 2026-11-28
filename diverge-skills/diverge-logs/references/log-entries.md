@@ -21,7 +21,7 @@ Only the daemon writes these. A log reads `deployed`, zero or more `active … i
 | `type` | When | Members |
 |---|---|---|
 | `deployed` | The container is up on a provider. Before anything the run does. | `identity`: the provider, `{"issuer":…,"subject":…}`; `cause`: what deployed it (below) |
-| `active` | The run began working. Agent: a loop runs in it, or an MCP exchange is in flight for it (its own, a dependency's, or one run as it through `agents connect`). Tool: an ask came in while none was in flight. Kept only on a change. | none |
+| `active` | The run began working. Agent: a loop runs in it, or an MCP exchange its own container asked for is in flight. An exchange run as it through `agents connect` is neither. Tool: an ask came in while none was in flight. Kept only on a change. | none |
 | `inactive` | The run ceased working. Never kept after `undeployed`. The idle clock (`idle_seconds`) runs from here, unless something else still holds the container. | none |
 | `undeployed` | The container is down, however it went down. | `identity` (the provider), `interrupted` (true if it was working; an `inactive` then precedes this), `reason` (only when unexpected) |
 
@@ -31,9 +31,10 @@ uses the container afterwards is not recorded.
 | `cause` | Whose | Meaning |
 |---|---|---|
 | `message` | agent | A message for the agent, which starts a loop. |
-| `connect` | agent, tool | An MCP exchange run as the agent through `agents connect`: it deploys the agent, and any tool it is put to that is down. For a standalone tool, also a `standalone-tools connect` scope opening. |
-| `registration` | dependency tool | An agent's container started and its program declared the tool. |
-| `agent_active` | tool | An agent the tool is attached to began a loop, or made an exchange that found it down. |
+| `connect` | agent, tool | A connect scope opening: `agents connect` on an agent, `standalone-tools connect` on a standalone tool. Also, for a tool an agent is served, an exchange run as that agent on an `agents connect` scope that found the tool down. |
+| `registration` | dependency tool | An agent's container started and its program declared the tool, of either scope, lazy or eager. |
+| `agent_deployed` | standalone or connected tool | An agent the tool is attached to was deployed: every tool an agent is served is deployed with it. A dependency tool the agent's program declared says `registration`. |
+| `agent_active` | tool | The tool had gone down while an agent it is served to stayed up, and was brought back for that agent: before a message was delivered to it, or by an exchange of its own container that found the tool down. |
 | `attachment` | eager tool | An agent came to be attached to it. |
 | `restart` | eager tool | Still held, it was started again: after its container ended, or at the daemon's start. |
 | `dependency_tool` | agent | A dependency tool that mounts the agent's files was deployed while the agent's container was down. |

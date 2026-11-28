@@ -163,8 +163,10 @@ Filter members (all optional; lists match any one of, except `all_tags`): `names
 `active` (`true`, `false`, `"ever"`, `"never"`), `deployed`, `dependency_tool_templates`, `all_tags`,
 `any_tags`, `created_from`, `created_to`, and `count` (keep to the first N that match).
 
-`active` means a loop is running or an MCP exchange is in flight; `deployed` means the container is up. An
-agent can be deployed and inactive (idling before it is stopped).
+`active` means a loop is running, or an MCP exchange the agent's own container asked for is in flight.
+Nothing else makes an agent active, and from outside only a message does: not a file operation, not a
+`frontend` request, not `agents connect`. `deployed` means the container is up. An agent can be deployed
+and inactive (held by a use, or idling before it is stopped).
 
 ## Editing
 
@@ -234,9 +236,19 @@ Rules:
   program accepted the message (the loop it started took it, or it went onto the program's own queue). It
   does not mean the agent has answered. The answer is in the log.
 - **Nothing takes a message back.** There is no cancel and no dequeue.
-- **The first message starts the container** (and every dependency tool the agent declares). The request
-  waits for that, however long it takes; use `--timeout` if you need a bound. An abandoned request does not
-  recall the message.
+- **The first message starts the container, and every tool the agent is served**: the dependency tools its
+  program declares (either scope, lazy or eager), the standalone tools attached to it or to its template,
+  and the connected tools. They are started together once the program has registered, and all are waited
+  for. **If any one cannot be deployed, the agent's start fails**, naming that tool, and the message answers
+  that `{"error":…}`. The same start, with the same rule, is what a file operation, `exec`, `terminal`,
+  `frontend` or `agents connect` runs on an agent that is down.
+- **A message for an agent that is already up** first brings back any tool it is served that has gone down
+  since. One that cannot be brought back fails the message, and nothing is delivered.
+- **The agent holds its tools** while it is starting (from its registration), while a message is on its way
+  into it, and while it is active. A start for anything but a message lets them go when it finishes, and
+  each then idles out by itself.
+- The request waits for all of that, however long it takes; use `--timeout` if you need a bound. An
+  abandoned request does not recall the message.
 - **Order**: messages to one agent are delivered in the order one connection sent them. Each CLI command is
   its own connection, so run commands one after another when order matters.
 - **Joining**: messages that are waiting while the agent starts are joined, in order, into its first turn as
@@ -362,7 +374,7 @@ Only the daemon writes these four items, in this order, per run of the container
 
 ```
 deployed            container is up on a provider (names the provider)
-  active            a loop began, or an MCP exchange is in flight
+  active            a loop began, or an exchange the agent's own container asked for is in flight
     user_text_content / assistant_* / tool_response / usage …
   inactive          the work ceased; the idle clock runs from here
   active … inactive (again, for each further stretch of work)
@@ -372,7 +384,7 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
 - `undeployed` with a `reason` is an unexpected end: `provider_lost`, `provider_disabled`,
   `provider_edited`, `daemon_stopped`, `daemon_died` (the daemon was killed; the entry was written at its next start, so its time is the restart's), `mount_lost` (a FUSE mount lost its serve), `exited` (the container exited by itself) or `failed` (an `error`
   item just before says how). `interrupted: true` means it was working when it went down.
-- `deployed` carries `cause`, what found the container down and started it: `message`, `connect`, `dependency_tool`, or one of `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend`.
+- `deployed` carries `cause`, what found the container down and started it: `message`, `connect` (an `agents connect` scope opening), `dependency_tool`, or one of `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend`.
   `dependency_tool` means a dependency tool that mounts this agent's files was deployed while the agent was
   down; that tool holds the agent's container up for as long as the tool is up.
 - A run that never came up keeps an `error` item and no `deployed`.
@@ -386,7 +398,8 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
 
 Runs one MCP exchange exactly as the agent's own container would: the same merged tool list, the same names,
 logged in each tool's log as the agent's call. Use it to see what an agent can call, or to drive a tool by
-hand as that agent. Body is `{"agent":<reference>}`; the exchange is the subcommand.
+hand as that agent. Body is `{"agent":<reference>}`; the exchange is the subcommand. Each CLI command opens
+one connect scope, runs its one exchange and closes it.
 
 ```bash
 diverge run agents connect list-tools '{"agent":{"name":"echo"}}'
@@ -399,9 +412,17 @@ diverge run agents connect read-resource --uri 'memo://1' '{"agent":{"name":"ech
   `nextCursor` as `--cursor` for the next.
 - Tool names are `<prefix>_<tool name>`, the prefix naming which attached tool serves it (see
   `diverge-tools`). Each listed tool also says who serves it under `_meta` → `diverge.network`.
-- An exchange starts the agent's container and its tools if they are down, and keeps the agent `active`
-  while in flight. A container that will not start is that exchange's error.
-- The connect itself answers `"not_found"`, `"forbidden"` or `{"error":…}` when it cannot be opened.
+- **Opening the scope deploys the agent** if its container is down (the ordinary start, with every tool it
+  is served) and **holds the container up for as long as the scope is open**, with or without an exchange in
+  flight. The idle countdown starts when the scope closes.
+- **Nothing on it makes the agent active** or keeps it active, and nothing of it is written to the agent's
+  log. An agent held only by a connect can be edited or deleted; the scope then ends.
+- An exchange holds the tool it reaches while it is in flight, and deploys that tool if it is down.
+- The scope ends when the client disconnects, when its connection ends, or when the agent's container ends.
+  A container that ended is not started again under an open scope.
+- The connect itself answers `"not_found"`, `"forbidden"` or `{"error":…}` when it cannot be opened; a
+  container that will not start, a tool it is served that cannot be deployed among the reasons, is that
+  `{"error":…}`.
 - The wire has a fifth exchange, the notifications stream. The CLI does not carry it.
 
 ## Files in the container
@@ -428,7 +449,8 @@ diverge run agents transfer '{"agent":{"name":"echo"},"path":["workspace"],"to":
 ```
 
 - A container that is not running is **started for the operation and stopped after it**, so these read the
-  image plus the mounts, not the previous run's own disk.
+  image plus the mounts, not the previous run's own disk. That start deploys every tool the agent is served
+  and fails, with the operation, if any one cannot be deployed.
 - `filetree` shows the whole container including FUSE mounts; one snapshot line, then changes under `--watch`.
 - `download` prints one line per file written. `"not_found"` is no such agent or nothing at the path. A
   directory with no files prints nothing.

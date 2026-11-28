@@ -72,8 +72,8 @@ every container does (see `postgres` in `diverge-storage`):
 - Every dependency tool is undeployed `idle_seconds` after nothing holds it, by the one list of holds in
   the skill's `SKILL.md`. An attachment holds an eager tool and no other. An eager tool whose container ends
   is started again while any agent is attached, and at every daemon start.
-- An `instance` tool can go down while its agent's container is up and idle; the agent's next loop deploys
-  it again. One that mounts its agent's files holds that container up while it is up, and goes down with it.
+- An `instance` tool can go down while its agent's container is up and idle; the next message for
+  the agent brings it back before it is delivered. One that mounts its agent's files holds that container up while it is up, and goes down with it.
 - In a request you may name an agent owner either way (`{"agent":{"name":"echo"}}` works); answers always use
   the template-and-index form.
 - The same eager tool template under the same owner is the same eager tool: a second agent declaring it joins it.

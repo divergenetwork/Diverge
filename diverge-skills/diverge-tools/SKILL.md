@@ -79,12 +79,16 @@ A tool template has exactly these five members. It has no `mode`, no `memory`, n
 - The image must be a `standalone_tool` image. `templates create` does not read the image; a template of
   an agent image or of a `dependency_tool` image is refused when a tool is created from it.
 
-A tool's container is **deployed** by the first thing that uses it and **undeployed** `idle_seconds`
-(default 10) after the last thing holding it lets go. The rule is the same for every tool, standalone,
+A tool's container is **deployed** by the first thing that uses it, the start of an agent it is served to
+among them, and **undeployed** `idle_seconds` (default 10) after the last thing holding it lets go. The rule is the same for every tool, standalone,
 connected or dependency. What **holds** a tool:
 
-1. An agent it is attached to is **active**. A deployed, inactive agent holds nothing. An agent's loop
-   beginning also deploys every tool the agent is served.
+1. An agent it is served to is **starting** (from its registration on), has **a message on its way** into
+   it, or is **active**. A deployed agent that is none of the three holds nothing. Served means attached to
+   the agent or its template, or, for a dependency tool, declared by the agent's latest registration. An
+   agent's start deploys every tool it is served, all together, and **fails if any one cannot be
+   deployed**; a message for an agent that is already up first brings back any that went down, and fails if
+   one cannot be brought back.
 2. An MCP exchange in flight into it: a call, a read, a tools list or a resources list.
 3. An open `standalone-tools connect` scope, with or without an exchange in flight.
 4. A `filetree` watch, a `download`, an `upload` or a `transfer` in progress.
@@ -198,7 +202,7 @@ image says `"mode":"lazy","scope":"instance"` and the `courier` image says `"mod
 | the tool image says | lives | owner |
 |---|---|---|
 | `lazy`, `scope: "instance"` | deployed when the agent's container starts, or by the first thing that uses it; then held and undeployed as any tool | that agent |
-| `lazy`, `scope: "template"` | one container for every agent that declares it, from any agent template; deployed by the first thing that uses it, undeployed once nothing holds it | nobody (`"template"`) |
+| `lazy`, `scope: "template"` | one container for every agent that declares it, from any agent template; deployed when any of them starts, or by the first thing that uses it; undeployed once nothing holds it | nobody (`"template"`) |
 | `eager`, `scope: "instance"` | held as well while its agent declares it | that agent |
 | `eager`, `scope: "template"` | one for every agent that declares it, from any agent template; held as well while any declares it | nobody (`"template"`) |
 
@@ -220,12 +224,13 @@ every tool of the same image. A `template` tool has no `instance` database.
   agent declares any more is undeployed once nothing else holds it and `idle_seconds` have passed; its record
   and its databases stay.
 - An `instance` tool has its own idle time. It can go down while its agent's container is up and idle, and
-  the agent's next loop deploys it again.
+  the next message for the agent brings it back before it is delivered.
 - An `instance` tool that mounts its agent's files needs the agent's container: deploying it starts that
   container if it is down, it holds that container up for as long as it is up itself, it goes down when
   that container does, and a mount that is lost fails it. One with no mounts is deployed alone.
-- A dependency that will not deploy fails the agent's start: the message answers `{"error":…}` and the
-  agent's log keeps an `error` naming the dependency.
+- A tool that will not deploy fails the agent's start, whatever its kind: a dependency of either scope and
+  mode, an attached standalone tool, a connected tool. The message (or the file operation or connect that
+  asked for the start) answers `{"error":…}` and the agent's log keeps an `error` naming the tool.
 - An instance tool is deleted with its agent. A template-scoped tool's record goes only when its dependency
   template's `template` compartment is deleted (`postgres compartments delete`, in `diverge-storage`),
   which removes every tool of that template.
