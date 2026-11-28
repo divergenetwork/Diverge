@@ -46,10 +46,10 @@ One entry:
 An entry states no `mode` and no `scope`. The tool image's own `DIVERGE.md` states both, and no entry
 says another: read them with `diverge run images read --info`.
 
-`"mode":"lazy"` in the tool image's document — runs only while it is used. With `"scope":"instance"` it is deployed when the
-agent's container starts and stopped with the agent's run. With `"scope":"template"`
-it is one container for every agent that declares it, started by the first use and stopped once
-nothing has used it for the daemon's idle time.
+`"mode":"lazy"` in the tool image's document — runs while anything holds it, and is undeployed the daemon's
+idle time after the last hold lets go (the holds are listed in `diverge-tools`). With `"scope":"instance"` it is
+deployed when the agent's container starts, or by the first thing that uses it. With `"scope":"template"`
+it is one container for every agent that declares it, deployed by the first thing that uses it.
 
 Where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`, and only there, an entry
 may mount the agent's own files, live over FUSE; an entry that names a mount of an image of any other
@@ -60,8 +60,8 @@ mode or scope is refused:
 "fuse_directory_mounts": [{ "agent_path": ["workspace"],        "tool_path": ["workspace"] }]
 ```
 
-`"mode":"eager"` in the tool image's document — made once when the first agent that declares it registers, kept
-running while any agent is attached, and retired after the daemon's idle time once none is. It mounts
+`"mode":"eager"` in the tool image's document — made once when the first agent that declares it registers, and held
+as well while any agent is attached, running or not; once none is, it is held and undeployed as a lazy tool is. It mounts
 nothing of any agent's. The document's `scope` says how far the tool's container is shared:
 
 | `scope` | one tool per |

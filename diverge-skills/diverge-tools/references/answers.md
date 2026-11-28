@@ -69,13 +69,13 @@ files already there that the source lacks stay.
 | `list` | `--watch` | filter + `count` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed"}`, `{"removed"}` |
 | `tag` | | `{"dependency":<dep>,"tags":[…]}` | `"tagged"`, `"not_found"` |
 | `untag` | | `{"dependency":<dep>,"tags":[…]}` | `"untagged"`, `"not_found"` |
-| `filetree` | `--watch` | `{"dependency":<dep>}` | as standalone; `"not_found"` also when it does not run |
-| `download` | `--path <LOCAL>` (required) | `{"dependency":<dep>,"path":[…]}` | as standalone; `"not_found"` also when it does not run |
-| `upload` | `--path <LOCAL>` (required) | `{"kind":"file"|"directory","dependency":<dep>,"path":[…],…}` | `"uploaded"`, `"not_found"` (also when it does not run) |
+| `filetree` | `--watch` | `{"dependency":<dep>}` | as standalone |
+| `download` | `--path <LOCAL>` (required) | `{"dependency":<dep>,"path":[…]}` | as standalone |
+| `upload` | `--path <LOCAL>` (required) | `{"kind":"file"|"directory","dependency":<dep>,"path":[…],…}` | `"uploaded"`, `"not_found"` |
 | `transfer` | | `{"dependency":<dep>,"path":[…],"to":<destination>}` | `"transferred"`, `"not_found"`, `"no_destination"`, `"held"` |
-| `exec` | `--raw` | `{"dependency":<dep>,"argv":[…],…}` | as standalone; `"not_found"` when it does not run |
-| `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone; `"not_found"` when it does not run |
-| `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone; `"not_found"` when it does not run |
+| `exec` | `--raw` | `{"dependency":<dep>,"argv":[…],…}` | as standalone |
+| `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone |
+| `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone |
 
 A dependency tool's list item carries `mode` and `scope` as its own members (what the tool's image says),
 beside its `template`. List filter members `modes` and `scopes` match them.
@@ -86,15 +86,22 @@ its agent or with its dependency template's compartment (`postgres compartments 
 
 ## What starts or holds a tool's container
 
-| trigger | standalone, image says `lazy` | standalone, image says `eager` | dependency |
-|---|---|---|---|
-| `create` | nothing | nothing | (no create) |
-| attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |
-| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `template`) is started |
-| `connect` exchange | started, held while open | held while open | (no connect) |
-| `exec`, `terminal`, `frontend` | started, held while running | already up or started | must already run |
-| `filetree`, `download`, `upload`, `transfer` | started, stopped after | used as it runs, or started and stopped after | must already run |
-| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `template`: stopped; eager: retired once no agent is attached |
+| trigger | what it does to the tool's container |
+|---|---|
+| `create` | nothing |
+| attach to an agent or template | `lazy`: nothing. `eager`: deployed, and held while attached |
+| an agent's container starts and declares it (dependency) | deployed; `eager`: held while declared |
+| an attached agent begins a loop | deployed; held while that agent is active |
+| an MCP exchange into it | deployed; held while in flight |
+| `standalone-tools connect` | deployed; held while the scope is open |
+| `exec`, `terminal`, `frontend` | deployed; held while it runs |
+| `filetree`, `download`, `upload`, `transfer` | deployed; held while in progress |
+| a scope the tool itself has open on the daemon | held while open |
+| nothing holding it for `idle_seconds` | undeployed |
+
+Every row applies to standalone and dependency tools alike (a dependency tool has no `create`, attach or
+`connect`). A dependency tool that mounts its agent's files brings its agent's container up with it and
+holds it up. None of these makes a tool `active`: only an unanswered call or read does.
 
 ## Grants by leaf
 

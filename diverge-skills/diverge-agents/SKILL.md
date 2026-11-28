@@ -81,7 +81,7 @@ A template cannot be edited: a changed body is a new template with a new id.
 *program* when its container registers. For the agent-loop images in this repository that declaration is
 copied from `arguments.dependencies`, a list of dependency tool templates (image, extra_memory, extra_disk,
 arguments; the tool image's own `DIVERGE.md` states its `mode` of `lazy` or `eager` and its `scope` of `instance` or `template`; a tool
-whose image says lazy and `instance` may also mount the agent's own paths). Each image must be a `dependency_tool` image. The daemon deploys them when the agent's container starts.
+whose image says lazy and `instance` may also mount the agent's own paths). Each image must be a `dependency_tool` image. The daemon deploys them when the agent's container starts; each is then held and undeployed by its own idle time, and the agent's next loop deploys again any that went down.
 See `diverge-tools` for the full shape and what each mode and scope means.
 
 Other template leaves:
@@ -192,8 +192,9 @@ diverge run agents untag  '{"agent":{"name":"echo"},"tags":["blue"]}'          #
 ```
 
 - Delete is irreversible: the container is stopped, the record goes, the name is free. Its
-  `{"template","index"}` is never given to another agent. An agent with a loop running answers `"active"`
-  and is left alone; wait and retry. Its instance-owned dependency tools go with it.
+  `{"template","index"}` is never given to another agent. An agent that is active answers `"active"`
+  and is left alone; so does one whose dependency tool has a call or a read unanswered. Wait and retry.
+  Its instance-owned dependency tools go with it.
 - Tags are plain strings. Tagging an existing tag, or untagging an absent one, is not a failure. Tags are
   what grants and filters select by (`diverge-access`).
 
@@ -368,6 +369,9 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
 - `undeployed` with a `reason` is an unexpected end: `provider_lost`, `provider_disabled`,
   `provider_edited`, `daemon_stopped`, `daemon_died` (the daemon was killed; the entry was written at its next start, so its time is the restart's), `mount_lost` (a FUSE mount lost its serve), `exited` (the container exited by itself) or `failed` (an `error`
   item just before says how). `interrupted: true` means it was working when it went down.
+- `deployed` carries `cause`, what found the container down and started it: `message`, `connect`, `dependency_tool`, or one of `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend`.
+  `dependency_tool` means a dependency tool that mounts this agent's files was deployed while the agent was
+  down; that tool holds the agent's container up for as long as the tool is up.
 - A run that never came up keeps an `error` item and no `deployed`.
 - Each user part carries `sender` (who sent the message) and `key` (which message it belongs to).
 

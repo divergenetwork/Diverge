@@ -125,7 +125,7 @@ Dependency entry:
 }
 ```
 
-- The image's document says `"mode":"lazy","scope":"instance"`: deployed with each run of the agent and stopped with it. The notes stay in the
+- The image's document says `"mode":"lazy","scope":"instance"`: deployed when the agent's container starts, and undeployed once nothing holds it. The notes stay in the
   tool's `instance` database between runs, which is the parent agent's own.
 - The tool tells no caller apart and records no owner: each agent that declares it has a notebook of its own.
 - It is a `dependency_tool` image, so it cannot be made into a standalone tool: a tool template of it

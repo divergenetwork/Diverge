@@ -564,9 +564,9 @@ What each member means:
 - `memory`, `disk` — whole numbers of bytes: what a container of the image needs. A template or a
   dependency declaration does not repeat them. It states `extra_memory` and `extra_disk`, what the
   container gets beyond them, and the container's limit is the sum.
-- `mode` — a tool's image only. `lazy`: every tool made from the image runs while it is used. `eager`:
-  it is kept running while anything holds it. No template and no declaration says another (see
-  `diverge-tools`).
+- `mode` — a tool's image only. `lazy`: every tool made from the image runs while anything holds it.
+  `eager`: it is held as well by any agent attached to it, running or not. No template and no declaration
+  says another (see `diverge-tools` for the list of holds).
 - `scope` — a dependency tool's image only. How far every tool container made from the image is shared:
   `instance` (one per agent) or `template` (one for all). No declaration says another. It does not decide
   what the tool's databases are (see `postgres` in `diverge-storage`), except that a `template` tool has

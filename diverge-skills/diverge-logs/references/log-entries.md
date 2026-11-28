@@ -20,10 +20,24 @@ Only the daemon writes these. A log reads `deployed`, zero or more `active … i
 
 | `type` | When | Members |
 |---|---|---|
-| `deployed` | The container is up on a provider. Before anything the run does. | `identity`: the provider, `{"issuer":…,"subject":…}` |
+| `deployed` | The container is up on a provider. Before anything the run does. | `identity`: the provider, `{"issuer":…,"subject":…}`; `cause`: what deployed it (below) |
 | `active` | The run began working. Agent: a loop runs in it, or an MCP exchange is in flight for it (its own, a dependency's, or one run as it through `agents connect`). Tool: an ask came in while none was in flight. Kept only on a change. | none |
-| `inactive` | The run ceased working. Never kept after `undeployed`. The idle clock (`idle_seconds`) runs from here. | none |
+| `inactive` | The run ceased working. Never kept after `undeployed`. The idle clock (`idle_seconds`) runs from here, unless something else still holds the container. | none |
 | `undeployed` | The container is down, however it went down. | `identity` (the provider), `interrupted` (true if it was working; an `inactive` then precedes this), `reason` (only when unexpected) |
+
+`deployed.cause`, always present: the one thing that found the container down and started it. What
+uses the container afterwards is not recorded.
+
+| `cause` | Whose | Meaning |
+|---|---|---|
+| `message` | agent | A message for the agent, which starts a loop. |
+| `connect` | agent, tool | An MCP exchange run as the agent through `agents connect`: it deploys the agent, and any tool it is put to that is down. For a standalone tool, also a `standalone-tools connect` scope opening. |
+| `registration` | dependency tool | An agent's container started and its program declared the tool. |
+| `agent_active` | tool | An agent the tool is attached to began a loop, or made an exchange that found it down. |
+| `attachment` | eager tool | An agent came to be attached to it. |
+| `restart` | eager tool | Still held, it was started again: after its container ended, or at the daemon's start. |
+| `dependency_tool` | agent | A dependency tool that mounts the agent's files was deployed while the agent's container was down. |
+| `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend` | agent, tool | That request into the container. A transfer's destination says `transfer`. |
 
 `undeployed.reason`, present only for an end nobody asked for:
 
@@ -38,8 +52,8 @@ Only the daemon writes these. A log reads `deployed`, zero or more `active … i
 | `exited` | The container exited on its own. |
 | `failed` | The run's stream failed; the `error` entry kept just before says how. |
 
-No `reason` means the run was taken down on purpose: gone idle, its record deleted, or (a dependency
-service) retired. A run that never came up keeps an `error` and no `deployed`. Work cut short because a
+No `reason` means the run was taken down on purpose: gone idle with nothing holding it, or its record
+deleted. A run that never came up keeps an `error` and no `deployed`. Work cut short because a
 connection under it went is not an `inactive`: the run stays `active` until proven alive or until its
 `undeployed` says `interrupted`.
 

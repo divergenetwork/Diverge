@@ -90,7 +90,7 @@ Every entry has `logs_index`, `created` and `type`. The common ones:
 
 | `type` | Meaning | Members worth reading |
 |---|---|---|
-| `deployed` | The agent's container came up on a provider. First entry of every run. | `identity` (the provider) |
+| `deployed` | The agent's container came up on a provider. First entry of every run. | `identity` (the provider), `cause` (what deployed it: `message`, `connect`, a request's name, …) |
 | `active` / `inactive` | The agent began / ceased working (a loop running or an MCP exchange in flight). Alternate inside a run. The idle clock runs from `inactive`. | |
 | `undeployed` | The container went down. Last entry of a run. | `identity`, `interrupted` (was it working), `reason` only when unexpected |
 | `user_text_content` | One text part of a message that landed. | `text`, `key` (the message's id), `sender` |
