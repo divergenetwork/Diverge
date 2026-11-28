@@ -94,9 +94,10 @@ Which member names records differs per kind; the table and the narrowing members
 
 `agents`, `agents_templates`, `standalone_tools`, `standalone_tools_templates`, `connected_standalone_tools`,
 `dependency_tools`, `providers`, `providers_daemons`, `daemons`, `accounts`, `roles`, `volumes`,
-`postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `exec` or `terminal`
+`postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `api`, `exec` or `terminal`
 kind: those are *actions* inside the kinds that have them (`logs` over agents, tools and accounts;
-`frontend` and `exec` over agents, standalone tools and dependency tools; a terminal is judged as `exec`).
+`exec` over agents, standalone tools and dependency tools; `frontend` and `api` over standalone tools and
+dependency tools only; a terminal is judged as `exec`).
 
 **Every action of every kind, and which command needs it, is in
 [references/grants.md](references/grants.md).** Read it before writing a role.
@@ -412,8 +413,9 @@ For `"forbidden"`, work through this list:
    that identity is one of the remote's administrators (and has no stored account there), it is allowed
    everything there.
 8. **Is the requester a container?** A tool's container and an agent's container each hold only what
-   their image's program declared at registration, and are no account. A container is also refused by
-   `frontend` and `standalone-tools connect` whatever it declared, since those need an account. See
+   their image's program declared at registration, and are no account. No request is closed to a
+   container as such: `frontend`, `api` and `standalone-tools connect` are judged for it as for an
+   account. See
    "Grants a container's image declares" in the grants reference.
 9. **Read the command log.** The daemon keeps every request a requester put, with whether it was let
    through. As an administrator (or with `logs` over accounts):

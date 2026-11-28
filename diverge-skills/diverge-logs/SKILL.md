@@ -143,7 +143,7 @@ or `{"kind":"client","identity":{…},"scope":…}`. `tools/list` and `resources
 
 One entry type, `command`: `path` (`agents/message`, `roles/create`, `logs`), `request` (the body as
 sent, `relay` included, with the `arguments` of an `agents templates create` or `standalone-tools
-templates create` replaced by `"[redacted]"`), `allowed` (`false` exactly when the answer was `forbidden`; a
+templates create`, and every header's value of a tool's `frontend` or `api` request, replaced by `"[redacted]"`), `allowed` (`false` exactly when the answer was `forbidden`; a
 request that was let through and then failed is still `true`). One entry per request; what the request
 came to is not kept. Requests the daemon could not parse are not kept.
 

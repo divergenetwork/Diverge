@@ -1,12 +1,12 @@
 ---
 name: diverge-agents
-description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, extra_memory, extra_disk, arguments; the required `arguments` choice on `get` and `list`; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, `agents frontend`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
+description: Diverge agents through the `diverge run agents` commands — agent templates (`agents templates create|get|list|delete|tag|untag`; the template body with image, extra_memory, extra_disk, arguments; the required `arguments` choice on `get` and `list`; the template id as a hash), agents (`agents create|get|list|edit|delete|tag|untag`, provider pin, volume mounts, FUSE mounts), asking an agent something with `agents message` (`type` `chat`: content blocks, delivery order, idle stop and restart; `type` `structured_decisions`: a prompt and typed questions — noul, choice, score — answered with numbers in the log; `watch` to get back the agent's log for that request), MCP as an agent (`agents connect list-tools|call-tool|list-resources|read-resource`), files in an agent's container (`agents filetree|download|upload|transfer`), `agents exec`, `agents terminal`, agent references (`{"name":…}` vs `{"template":…,"index":…}`), and the agent lifecycle its log shows (deployed, active, inactive, undeployed). Load it when asked to make, run, message, inspect, change, debug or delete a Diverge agent or agent template.
 ---
 
 # Diverge agents
 
 An **agent** is one container the daemon runs on a provider: an agent-loop program (a model harness, a
-script, or a person at a frontend) that takes messages and answers them, calling the MCP tools the daemon
+script, or a person answering through a tool) that takes messages and answers them, calling the MCP tools the daemon
 serves it. An agent is made from an **agent template** (image, limits, arguments), which is
 held by its hash, plus what is the agent's own: a name, a provider and mounts. The daemon keeps the agent's record and its whole conversation (its log); the container itself only runs
 while there is work for it.
@@ -164,8 +164,8 @@ Filter members (all optional; lists match any one of, except `all_tags`): `names
 `any_tags`, `created_from`, `created_to`, and `count` (keep to the first N that match).
 
 `active` means a loop is running, or an MCP exchange the agent's own container asked for is in flight.
-Nothing else makes an agent active, and from outside only a message does: not a file operation, not a
-`frontend` request, not `agents connect`. `deployed` means the container is up. An agent can be deployed
+Nothing else makes an agent active, and from outside only a message does: not a file operation, not
+`agents connect`. `deployed` means the container is up. An agent can be deployed
 and inactive (held by a use, or idling before it is stopped).
 
 ## Editing
@@ -240,8 +240,8 @@ Rules:
   program declares (either scope, lazy or eager), the standalone tools attached to it or to its template,
   and the connected tools. They are started together once the program has registered, and all are waited
   for. **If any one cannot be deployed, the agent's start fails**, naming that tool, and the message answers
-  that `{"error":…}`. The same start, with the same rule, is what a file operation, `exec`, `terminal`,
-  `frontend` or `agents connect` runs on an agent that is down.
+  that `{"error":…}`. The same start, with the same rule, is what a file operation, `exec`, `terminal`
+  or `agents connect` runs on an agent that is down.
 - **A message for an agent that is already up** first brings back any tool it is served that has gone down
   since. One that cannot be brought back fails the message, and nothing is delivered.
 - **The agent holds its tools** while it is starting (from its registration), while a message is on its way
@@ -384,7 +384,7 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
 - `undeployed` with a `reason` is an unexpected end: `provider_lost`, `provider_disabled`,
   `provider_edited`, `daemon_stopped`, `daemon_died` (the daemon was killed; the entry was written at its next start, so its time is the restart's), `mount_lost` (a FUSE mount lost its serve), `exited` (the container exited by itself) or `failed` (an `error`
   item just before says how). `interrupted: true` means it was working when it went down.
-- `deployed` carries `cause`, what found the container down and started it: `message`, `connect` (an `agents connect` scope opening), `dependency_tool`, or one of `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend`.
+- `deployed` carries `cause`, what found the container down and started it: `message`, `connect` (an `agents connect` scope opening), `dependency_tool`, or one of `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`.
   `dependency_tool` means a dependency tool that mounts this agent's files was deployed while the agent was
   down; that tool holds the agent's container up for as long as the tool is up.
 - A run that never came up keeps an `error` item and no `deployed`.
@@ -461,7 +461,7 @@ diverge run agents transfer '{"agent":{"name":"echo"},"path":["workspace"],"to":
   Answers `"transferred"`, `"not_found"`, `"no_destination"`, `"held"` (a volume at either end is in use by a
   running container or another file operation). Existing files at the destination that the source lacks stay.
 
-## exec, terminal, frontend
+## exec, terminal
 
 ```bash
 # one command, no shell in between; JSON lines by default
@@ -475,8 +475,6 @@ diverge run agents exec --raw '{"agent":{"name":"echo"},"argv":["sh","-c","cat /
 diverge run agents terminal '{"agent":{"name":"echo"},"cols":120,"rows":40}'
 printf 'ls /\nexit\n' | diverge run agents terminal '{"agent":{"name":"echo"},"cols":120,"rows":40}'
 
-# one HTTP request to the page the agent's program serves; body is stdin
-diverge run agents frontend '{"agent":{"name":"me"},"method":"GET","path":"/frontend/","headers":[]}' </dev/null
 ```
 
 - `exec`: `argv` is required and run as is (use `["sh","-c","…"]` for pipes). `cwd` and `env` are optional.
@@ -484,11 +482,11 @@ diverge run agents frontend '{"agent":{"name":"me"},"method":"GET","path":"/fron
   `{"signaled":<signal>}`. Ending the command kills the one in the container.
 - `terminal`: `cols` and `rows` are required. When stdin ends the shell receives Ctrl-D. Piped use is
   possible but output is a terminal's (escape codes). Prefer `exec` for scripted work.
-- `frontend`: only paths beginning `/frontend` are reachable. `headers` is a list of `[name, value]` pairs.
-  The response head is one JSON line on **stderr**, the body raw on **stdout**; exit `0` for a whole
-  response. `"no_frontend"` means the image declares none (its `DIVERGE.md` has no `"frontend": true`).
-- All three start a stopped container and hold it up while they run.
-- `exec` and `terminal` both need the `exec` grant; `frontend` needs `frontend`.
+- Both start a stopped container and hold it up while they run.
+- `exec` and `terminal` both need the `exec` grant.
+- An agent has no `frontend` and no `api`: those are a tool's alone (`diverge-tools`), and an agent image's
+  `DIVERGE.md` may state neither. An agent whose program needs a page or an HTTP interface declares a
+  dependency tool that has one, and reaches it with `dependency-tools api`.
 
 ## An agent's permissions
 
@@ -506,7 +504,10 @@ for an agent: that direction is a tool's (see `diverge-tools`).
   its first start (absent before, or when it declares none).
 - The daemon holds the agent to exactly those. An action held only within `"attached"` is held at all only
   while a tool of that kind is attached.
-- An agent has no account, so `frontend` and `standalone-tools connect` refuse it whatever it declares.
+- No request is closed to an agent's container as such. With the grant, it may use a tool's `frontend` and
+  `api` and `standalone-tools connect`; the tool is told the caller is this agent (see `diverge-tools`).
+- The program is told which record it is when it registers: its template's id and its own `index`. So it
+  can name its own `instance` dependency tools, each `{"template":"<dependency template id>","owner":{"agent":{"template":"<its template>","index":<its index>}}}`.
 - A scope the program has open on its daemon connection holds the container up, without making the agent
   active. A program that wants its container to go idle closes its streams.
 - Every request the agent's container puts to the daemon is kept in the agent's own log as a `command`
@@ -518,7 +519,7 @@ for an agent: that direction is a tool's (see `diverge-tools`).
 
 Each leaf needs a grant of the same name over agents: `create` (making), and over existing agents `get`,
 `list`, `edit`, `delete`, `message`, `logs`, `download`, `upload`, `transfer`, `filetree`, `exec` (also
-`terminal`), `frontend`, `connect`, plus `tag`/`untag`. Templates: `create`, `get`, `list`, `arguments`, `delete`,
+`terminal`), `connect`, plus `tag`/`untag`. Templates: `create`, `get`, `list`, `arguments`, `delete`,
 `attach`, `tag`/`untag` over `agents_templates`. A create or edit that names a volume also needs `mount` over
 the volume; a transfer needs `transfer` over the source
 and `upload` over the destination. `"forbidden"` means no grant reaches what the request names, and nothing
@@ -538,7 +539,7 @@ changed. A list is never partially forbidden: it sends only what the account's `
 - That a stopped container's own disk is discarded (so only mounts, the agent's and the tools' databases and the log carry
   state between runs). This follows from the template and create documentation ("its state is its
   conversation … and nothing on any provider's disk") but was not tested.
-- `agents frontend` and `agents terminal` were not run live while writing this; behaviour is from the CLI and
+- `agents terminal` was not run live while writing this; behaviour is from the CLI and
   SDK source.
 - The installed binary's `agents message response-schema` may still describe a cancel; the source has none,
   and the rules above follow the source.

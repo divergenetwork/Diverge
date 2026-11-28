@@ -1,10 +1,10 @@
 # The example images under `diverge-examples/`
 
-Six small images that show what a tool or an agent container can be. All take `arguments` `{}`
+Seven small images that show what a tool or an agent container can be. All take `arguments` `{}`
 (any member is refused, so a misspelled setting is never silently ignored) and take **no credential**.
 Build each from the workspace root: `-f diverge-examples/tools/<name>/Containerfile .` (`diverge-examples/agents/human/Containerfile` for `human`) (see the main file).
 
-Four are **dependency tools** (`"type":"dependency_tool"` in their `DIVERGE.md`): an agent declares them in its own `arguments.dependencies`, and the
+Five are **dependency tools** (`"type":"dependency_tool"` in their `DIVERGE.md`): an agent declares them in its own `arguments.dependencies` (`human-desk` is declared by the `human` agent's own program), and the
 daemon deploys them. A tool template of one is refused when a tool is created from it. One is a
 **standalone tool** (`"type":"standalone_tool"`) made by hand from a tool template; an agent that
 declares it as a dependency is refused. One is an **agent**.
@@ -19,7 +19,8 @@ dependency entry says another.
 | `memory` | dependency tool | lazy, `instance` | none | yes |
 | `alarm` | dependency tool | eager, `template` | `message` over agents `attached` | yes |
 | `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
-| `human` | agent, frontend | — | none | yes |
+| `human-desk` | dependency tool, frontend and API | eager, `instance` | none | yes |
+| `human` | agent | — | `api` over dependency tools `attached` | — |
 
 Each tool image states `"memory":268435456,"disk":268435456`; `human` states
 `"memory":536870912,"disk":1073741824`. Every body below gives `"extra_memory":0,"extra_disk":0`: what
@@ -199,12 +200,16 @@ Then make a tool of the template (`standalone-tools create`), attach it to the a
 `diverge-tools`). A person's message carries the account the daemon stamped the page's request with;
 an agent's, the agent the daemon attested. Every message is kept in the tool's database.
 
-## human — an agent with no model: you are the agent (agent, frontend)
+## human and human-desk — an agent with no model: you are the agent (agent, and its dependency tool)
 
-When someone messages it, the message waits on its frontend until a person answers. The person
+Two images, since an agent has no frontend. `human` is the agent: it has no page, declares one
+dependency tool, `human-desk`, and the grant `api` over its attached dependency tools. `human-desk`
+(`"mode":"eager"`, `"scope":"instance"`, `"frontend":true`, `"api":true`) is the page and the desk
+behind it; the agent reaches it over `api`, and the person over `frontend`.
+
+When someone messages the agent, the message waits at the desk until a person answers. The person
 writes the agent's replies, calls its tools by hand with JSON arguments, and ends the turn, which
-sends everything done back as the agent's turn. Nothing times out. The transcript is kept in the
-agent's database, so it survives the container starting again.
+sends everything done back as the agent's turn. Nothing times out.
 
 Agent template body for `diverge run agents templates create`:
 
@@ -218,5 +223,7 @@ Agent template body for `diverge run agents templates create`:
 }
 ```
 
-Then `agents create`, attach the tools you want to call as it, and open its frontend (the agent's
-`frontend` commands in `diverge-agents`, or its frontend tab in diverge-viewer).
+Then `agents create`, attach the tools you want to call as it, and open the desk's frontend: the
+`dependency-tools frontend` command in `diverge-tools`, naming the desk by its template id (the agent's
+`dependencies` entry on `agents get`) and the owner `{"agent":{"name":"<the agent>"}}`, or its
+frontend tab in diverge-viewer.

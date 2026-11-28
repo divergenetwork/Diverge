@@ -38,7 +38,8 @@ uses the container afterwards is not recorded.
 | `attachment` | eager tool | An agent came to be attached to it. |
 | `restart` | eager tool | Still held, it was started again: after its container ended, or at the daemon's start. |
 | `dependency_tool` | agent | A dependency tool that mounts the agent's files was deployed while the agent's container was down. |
-| `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`, `frontend` | agent, tool | That request into the container. A transfer's destination says `transfer`. |
+| `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal` | agent, tool | That request into the container. A transfer's destination says `transfer`. |
+| `frontend`, `api` | tool | That request into the tool's program. |
 
 `undeployed.reason`, present only for an end nobody asked for:
 
@@ -136,7 +137,7 @@ The daemon's own record of every exchange it routed into the tool; never the too
 
 | `type` | Members |
 |---|---|
-| `command` | `path`: the request as the daemon names it (`agents/message`, `roles/create`, `logs`); `request`: the body as sent, `relay` and all, with what may hold a credential replaced by `"[redacted]"` (the `arguments` of an `agents/templates/create` or `standalone_tools/templates/create`, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
+| `command` | `path`: the request as the daemon names it (`agents/message`, `roles/create`, `logs`); `request`: the body as sent, `relay` and all, with what may hold a credential replaced by `"[redacted]"` (the `arguments` of an `agents/templates/create` or `standalone_tools/templates/create`, every value of an `exec`'s `env`, every header's value of a tool's `frontend` or `api` request, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
 
 - One entry per request. Channels opened inside a request (a cancel, a disconnect, a connect's MCP
   exchanges) are not commands.

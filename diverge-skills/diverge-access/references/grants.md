@@ -70,7 +70,6 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `transfer` | `agents transfer` (source side) |
 | Over | `filetree` | `agents filetree` |
 | Over | `exec` | `agents exec`, and `agents terminal` (a terminal is judged as `exec`) |
-| Over | `frontend` | `agents frontend` |
 | Over | `connect` | `agents connect …`: MCP exchanges run as the agent, with its tools, logged as its calls. Opening the scope deploys the agent and holds its container up while the scope is open. It does not make the agent active, writes nothing to its log, and does not block its edit or delete |
 | Over | `request` | being asked by `requests create`: a request reaches the agent (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `agents tag`, `agents untag` |
@@ -101,6 +100,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests; `upload` also covers a transfer landing in the tool |
 | Over | `exec` | `standalone-tools exec` and `terminal` |
 | Over | `frontend` | `standalone-tools frontend` |
+| Over | `api` | `standalone-tools api` |
 | Over | `connect` | `standalone-tools connect …`: serving the tool's MCP exchanges to a client, **including another daemon that holds it as a connected tool** |
 | Over | `logs` | `logs` with `of.type` = `standalone_tool` |
 | Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
@@ -147,6 +147,7 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests on a running tool |
 | Over | `exec` | `dependency-tools exec` and `terminal` |
 | Over | `frontend` | `dependency-tools frontend` |
+| Over | `api` | `dependency-tools api` |
 | Over | `logs` | `logs` with `of.type` = `dependency_tool` |
 | Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `dependency-tools tag` / `untag` |
@@ -356,5 +357,5 @@ the other side of an attachment from the container that holds the grant, and not
   tool with no attached agent that lists agents on such a grant alone is answered `"forbidden"`.
 - Over agents alone there is one word besides, `"never_active"`: agents that have never run.
 
-Neither word is valid in a role's grant. A container, having no account, cannot use `frontend` or
-`standalone-tools connect` whatever it declares. See `diverge-tools`, `diverge-agents` and `diverge-images`.
+Neither word is valid in a role's grant. A container may use every request its grants reach,
+`frontend`, `api` and `standalone-tools connect` included. See `diverge-tools`, `diverge-agents` and `diverge-images`.

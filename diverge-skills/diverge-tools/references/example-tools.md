@@ -1,8 +1,8 @@
 # The example tools
 
-Six images under `diverge-examples/` in the repository. Five are tools; `human` is an agent image listed here because
-it is used with them. Each image's `/.diverge/DIVERGE.md` states its type, its name, its one-line description, its arguments schema, the memory and disk it needs, for a tool its `mode` (and for a dependency tool its `scope`), and whether it serves
-a frontend; read it from a running daemon with `diverge run images read --info` (`diverge-images`), which is also
+Seven images under `diverge-examples/` in the repository. Six are tools; `human` is an agent image listed here because
+it is used with them. Each image's `/.diverge/DIVERGE.md` states its type, its name, its one-line description, its arguments schema, the memory and disk it needs, for a tool its `mode` (and for a dependency tool its `scope`), and for a tool whether it serves
+a frontend or an API; read it from a running daemon with `diverge run images read --info` (`diverge-images`), which is also
 where you get the digest to put in a template. All take `arguments: {}` (any member is refused). Each tool image states `"memory":268435456,"disk":268435456`.
 
 An image is exactly one kind. `memory`, `taskboard`, `courier` and `alarm` are `dependency_tool` images: an
@@ -152,12 +152,27 @@ diverge run standalone-tools delete '{"tool":{"name":"chat"}}'
 diverge run standalone-tools templates delete "{\"id\":\"$TPL\"}"
 ```
 
-## human — an agent with no model (agent image, frontend)
+## human and human-desk — an agent with no model (agent image, and its dependency tool)
 
-Not a tool. An agent image whose "model" is a person: a message waits on its frontend until someone answers
-there, writing the agent's replies, calling its attached tools by hand, and ending the turn. Nothing times
-out. Make it like any agent (`agents templates create` with `arguments: {}`, `agents create`), attach the
-tools the person should be able to call, and open its frontend (`agents frontend`, or the viewer). It is the
+`human` is not a tool. It is an agent image whose "model" is a person, and it has no page of its own, since
+an agent has no frontend. It declares one dependency tool, `human-desk` (`"mode": "eager"`,
+`"scope": "instance"`, `"frontend": true`, `"api": true`), and the grant `api` over its attached dependency
+tools.
+
+- A message waits at the desk until someone answers there: writing the agent's replies, calling its
+  attached tools by hand, and ending the turn. Nothing times out.
+- The agent reaches the desk over `api`; the person reaches it over `frontend`.
+- Make `human` like any agent (`agents templates create` with `arguments: {}`, `agents create`) and attach
+  the tools the person should be able to call. The desk is made by the agent's registration.
+- Open the desk's frontend, not the agent's: the viewer's frontend tab on the dependency tool, or
+
+```bash
+diverge run dependency-tools frontend '{"dependency":{"template":"<desk template id>","owner":{"agent":{"name":"me"}}},"method":"GET","path":"/frontend/","headers":[]}' </dev/null
+```
+
+  The desk's template id is the agent's `dependencies` entry on `agents get`.
+
+It is the
 quickest way to exercise a tool exactly as an agent would without a model: so is
 `diverge run agents connect call-tool` against any agent the tool is attached to.
 

@@ -137,7 +137,7 @@ There is no `dependency-tools delete`.
 
 ## Operating on a dependency tool
 
-`filetree`, `download`, `upload`, `transfer`, `exec`, `terminal`, `frontend` all take
+`filetree`, `download`, `upload`, `transfer`, `exec`, `terminal`, `frontend`, `api` all take
 `"dependency":{"template":…,"owner":…}`. A tool whose container is not running is **deployed** for the
 request and held up while it runs; it is undeployed `idle_seconds` after nothing holds it. None of them
 makes the tool active.

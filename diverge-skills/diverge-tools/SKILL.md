@@ -1,6 +1,6 @@
 ---
 name: diverge-tools
-description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `extra_memory`, `extra_disk`, the required `arguments` choice on `get` and `list`), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (the tool image's `mode` lazy or eager and `scope` instance or template, owner; `dependency-tools get|list|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend (`filetree|download|upload|transfer|exec|terminal|frontend` in both families). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
+description: Diverge tools (MCP-server containers served to agents) through `diverge run standalone-tools` and `diverge run dependency-tools` — standalone tool templates (`standalone-tools templates create|get|list|delete|tag|untag`, `extra_memory`, `extra_disk`, the required `arguments` choice on `get` and `list`), standalone tools (`standalone-tools create|get|list|edit|delete|tag|untag`), attaching and detaching a tool to one agent or to an agent template (`attach-agent-instance`, `attach-agent-template`, `detach-agent-instance`, `detach-agent-template`), dependency tools an agent's image declares (the tool image's `mode` lazy or eager and `scope` instance or template, owner; `dependency-tools get|list|tag|untag`), how an agent sees a tool's MCP tools (name prefixes), `standalone-tools connect list-tools|call-tool|list-resources|read-resource`, tool logs, a tool's permissions, and tool files/exec/terminal/frontend/api (`filetree|download|upload|transfer|exec|terminal|frontend|api` in both families; `frontend` is a website for people, `api` is plain HTTP for a caller that knows the protocol; both are a tool's alone). Load it when asked to give an agent a tool, make, attach, detach, inspect, debug or delete a tool, or work with the example tools courier, taskboard, memory, alarm, chat.
 ---
 
 # Diverge tools
@@ -93,7 +93,7 @@ connected or dependency. What **holds** a tool:
 3. An open `standalone-tools connect` scope, with or without an exchange in flight.
 4. A `filetree` watch, a `download`, an `upload` or a `transfer` in progress.
 5. An `exec` in progress, or an open `terminal`.
-6. A `frontend` request in progress.
+6. A `frontend` or an `api` request in progress.
 7. Any scope the tool's own program has open on its daemon connection, an endless stream included. A tool
    that wants to go idle closes its streams.
 8. `eager` only: any agent attached to it, running or not.
@@ -332,16 +332,20 @@ Example, the alarm tool: `[{"agents":{"actions":["message"],"within":"attached"}
   first start (absent before, or when it declares none).
 - The daemon holds the tool to exactly those. A tool that messages an agent it is not attached to is
   refused. An action held only within `"attached"` is held at all only while an agent is attached.
-- A tool has no account, so `frontend` and `standalone-tools connect` refuse it whatever it declares.
+- No request is closed to a tool's container as such. With the grant, it may use another tool's `frontend`
+  and `api` and `standalone-tools connect`; the tool reached is told the caller is this tool.
+- The program is told which record it is when it registers: its template's id and, for a standalone tool,
+  its own `index`; for a dependency tool, its `owner` (`"template"`, or `{"agent":{"template":…,"index":…}}`).
 - There is no permission named `self` in the current source: the closest is `"attached"`.
 - Every request a tool puts to the daemon is kept in the tool's own log as a `command` item: the request's
   path and body and `allowed` (`false` exactly when the daemon answered `forbidden`). Read these to see why a
   tool could not reach an agent.
 
-## Files, exec, terminal, frontend
+## Files, exec, terminal, frontend, api
 
-Both families have the same seven leaves as agents, with the same flags and answers (see `diverge-agents`
-for the full description); only the reference member differs: `"tool":<ref>` for standalone,
+Both families have the six file, `exec` and `terminal` leaves agents have, with the same flags and answers
+(see `diverge-agents` for the full description), and two leaves that are a tool's alone: `frontend` and
+`api`. Only the reference member differs between the families: `"tool":<ref>` for standalone,
 `"dependency":{"template":…,"owner":…}` for dependency tools.
 
 ```bash
@@ -352,7 +356,9 @@ diverge run standalone-tools transfer '{"tool":{"name":"chat"},"path":["data"],"
 diverge run standalone-tools exec --raw '{"tool":{"name":"chat"},"argv":["ls","-la","/"]}'
 diverge run standalone-tools terminal '{"tool":{"name":"chat"},"cols":120,"rows":40}'
 diverge run standalone-tools frontend '{"tool":{"name":"chat"},"method":"GET","path":"/frontend/","headers":[]}' </dev/null
+echo '{"q":"hello"}' | diverge run standalone-tools api '{"tool":{"name":"search"},"method":"POST","path":"/api/query","headers":[["Content-Type","application/json"]]}'
 
+diverge run dependency-tools api '{"dependency":{"template":"<id>","owner":"template"},"method":"GET","path":"/api/status","headers":[]}' </dev/null
 diverge run dependency-tools exec --raw '{"dependency":{"template":"<id>","owner":"template"},"argv":["env"]}'
 diverge run dependency-tools download --path ./out '{"dependency":{"template":"<id>","owner":{"agent":{"name":"echo"}}},"path":["data"]}'
 ```
@@ -364,12 +370,51 @@ What happens when the container is not running:
 | standalone tool | **deployed** for the operation and held up while it runs; undeployed `idle_seconds` after nothing holds it |
 | dependency tool | **deployed** for the operation and held up while it runs, the same. One that mounts its agent's files brings its agent's container up with it; if that agent, started, no longer declares the tool, the answer is `"not_found"` (`"no_destination"` as a transfer destination). |
 
-- `frontend` reaches only paths under `/frontend`, and answers `"no_frontend"` when the image's `DIVERGE.md`
-  does not declare one. Of the examples only `chat` (and the `human` agent) has a frontend. The response head
-  is a JSON line on stderr and the body is raw on stdout.
-- Grants: `download`, `upload`, `transfer`, `filetree`, `exec` (also `terminal`), `frontend`, each over the
-  tool. For dependency tools the grant is over `dependency_tools`.
+- Grants: `download`, `upload`, `transfer`, `filetree`, `exec` (also `terminal`), `frontend`, `api`, each over
+  the tool. For dependency tools the grant is over `dependency_tools`.
 - A connected standalone tool's files and container are on the other daemon: none of these leaves find it.
+
+### frontend and api: two doors into a tool's program
+
+A tool's program is one HTTP server. Two parts of it can be reached from outside, each only if the image's
+`DIVERGE.md` declares it:
+
+| | reaches paths beneath | declared by | for | undeclared answers |
+|---|---|---|---|---|
+| `frontend` | `/frontend` | `"frontend": true` | pages a person looks at | `"no_frontend"` |
+| `api` | `/api` | `"api": true` | plain HTTP, for a caller that already knows the program's protocol | `"no_api"` |
+
+They work the same way. One command is one HTTP request:
+
+- **BODY** carries the request's head: the reference, `method`, `path` and `headers`, a list of
+  `[name, value]` pairs. There are no flags for these.
+- **The request's body is the command's stdin**, sent as it is read. Use `</dev/null` for none.
+- **The answer's head** is one JSON line on **stderr**: `{"head":{"status":…,"headers":[…]}}`. **Its body**
+  is raw on **stdout**. Exit `0` for a whole response.
+- **A `101` answer** switches protocols: from then on stdin is sent to the program and what the program
+  sends comes out on stdout, both ways at once, until either side ends.
+- A refusal is one JSON line on stderr and exit `1`: `"not_found"`, `"forbidden"`, `"no_frontend"` or
+  `"no_api"`, `{"error":…}`.
+- Each deploys a tool that is down and holds it up while the request is in progress. Neither makes the
+  tool active.
+- An agent has neither. A connected tool's are the other daemon's.
+- Of the examples, `chat` and `human-desk` have a frontend, and `human-desk` has an API.
+
+**Who is calling.** Any requester the grants reach may call either: an account, an agent's container, a
+tool's container. The daemon sets one header on the request, `diverge.network`, replacing any the caller
+sent, whose value is JSON saying who it is:
+
+```json
+{"kind":"client","identity":{"issuer":"…","subject":"…"},"scope":"<uuid>"}
+{"kind":"agent","image":{…},"template":"<id>","index":3,"name":"echo"}
+{"kind":"tool","tool":{"kind":"created","image":{…},"template":"<id>","index":1,"name":"chat"},"scope":"<uuid>"}
+{"kind":"tool","tool":{"kind":"dependency","image":{…},"template":"<id>","owner":"template"},"scope":"<uuid>"}
+```
+
+- A `client`'s and a `tool`'s `scope` is new for each request; an `agent` has none and is the same caller
+  as on its MCP calls.
+- `name` is absent where the record has none. A program decides for itself whom it serves: `chat`'s
+  frontend refuses a caller that is not a `client`.
 
 `dependency-tools get` and `list` take the same required `arguments` member as the template requests
 above, judged by the `arguments` grant over `dependency_tools`: with `true` the item's `template` carries the
@@ -388,7 +433,8 @@ Each is an image under `diverge-examples/` with a `DIVERGE.md` (read it with `di
 | `memory` | an agent's notebook: remember, recall, forget | `dependency_tool`, `lazy`, `instance` |
 | `alarm` | an agent sets alarms that message it later (once or cron) | `dependency_tool`, `eager`, `template` |
 | `chat` | a person chats with attached agents through the tool's frontend | `standalone_tool`, `eager`, has a frontend |
-| `human` | not a tool: an **agent** image with no model, driven by a person at its frontend | agent (`diverge-agents`) |
+| `human-desk` | the page a person answers as the `human` agent at | `dependency_tool`, `eager`, `instance`, has a frontend and an API |
+| `human` | not a tool: an **agent** image with no model (`diverge-examples/agents/human`), answered by a person at its `human-desk` | agent |
 
 ## Pitfalls
 
@@ -416,7 +462,7 @@ Each is an image under `diverge-examples/` with a `DIVERGE.md` (read it with `di
 
 ## Not verified
 
-- `standalone-tools terminal`, `frontend` and every `dependency-tools` container leaf were not run live while
+- `standalone-tools terminal`, `frontend`, `api` and every `dependency-tools` container leaf were not run live while
   writing this; behaviour is from the CLI and SDK source.
 - Whether a dependency tool's exposed prefix escalates (`-2`) when two dependency template ids share their
   first 8 characters; the prefix registry is shared, so it should.

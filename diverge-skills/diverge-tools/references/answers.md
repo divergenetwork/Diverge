@@ -45,7 +45,8 @@ or `"template"`.
 | `transfer` | | `{"tool":<tool>,"path":[…],"to":<destination>}` | `"transferred"`, `"not_found"`, `"no_destination"`, `"held"` |
 | `exec` | `--raw` | `{"tool":<tool>,"argv":[…],"cwd":[…]?,"env":{…}?}` | `{"stdout":"<base64>"}`, `{"stderr":"<base64>"}`…, then `{"exited":<code>}` or `{"signaled":<n>}`; `"not_found"` |
 | `terminal` | | `{"tool":<tool>,"cols":<n>,"rows":<n>}` | shell output raw on stdout; other answers as a JSON line on stderr |
-| `frontend` | | `{"tool":<tool>,"method":…,"path":"/frontend/…","headers":[[name,value]…]}`, body on stdin | head as a JSON line on stderr, body raw on stdout; `"not_found"`, `"no_frontend"` on stderr |
+| `frontend` | | `{"tool":<tool>,"method":…,"path":"/frontend/…","headers":[[name,value]…]}`, body on stdin | head as a JSON line on stderr, body raw on stdout; `"not_found"`, `"forbidden"`, `"no_frontend"`, `{"error":…}` on stderr |
+| `api` | | `{"tool":<tool>,"method":…,"path":"/api/…","headers":[[name,value]…]}`, body on stdin | as `frontend`, with `"no_api"` where it has `"no_frontend"` |
 
 A standalone tool's list item: `name`, `template`, `index`, `mode` (what the tool's image says), `provider` (where it runs or last ran),
 `id` (container id while running), `creator`, `created`, `active`, `last_active`, `deployed`,
@@ -76,6 +77,7 @@ files already there that the source lacks stay.
 | `exec` | `--raw` | `{"dependency":<dep>,"argv":[…],…}` | as standalone |
 | `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone |
 | `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone |
+| `api` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone |
 
 A dependency tool's list item carries `mode` and `scope` as its own members (what the tool's image says),
 beside its `template`. List filter members `modes` and `scopes` match them.
@@ -95,7 +97,7 @@ its agent or with its dependency template's compartment (`postgres compartments 
 | an agent it is served to is active | held |
 | an MCP exchange into it | deployed; held while in flight |
 | `standalone-tools connect` | deployed; held while the scope is open |
-| `exec`, `terminal`, `frontend` | deployed; held while it runs |
+| `exec`, `terminal`, `frontend`, `api` | deployed; held while it runs |
 | `filetree`, `download`, `upload`, `transfer` | deployed; held while in progress |
 | a scope the tool itself has open on the daemon | held while open |
 | nothing holding it for `idle_seconds` | undeployed |
@@ -110,12 +112,12 @@ holds it up. None of these makes a tool `active`: only an unanswered call or rea
 |---|---|
 | `standalone-tools templates create` / `get` / `list` / `delete` / `tag` / `untag` | the same action over `standalone_tools_templates`; a `get` or `list` with `"arguments": true` also needs `arguments` |
 | `standalone-tools create` | `create` over `standalone_tools`; plus `mount` over each volume named |
-| `get`, `list`, `edit`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `connect` | the same action over `standalone_tools` |
+| `get`, `list`, `edit`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `api`, `connect` | the same action over `standalone_tools` |
 | `exec`, `terminal` | `exec` |
 | `attach-agent-instance`, `detach-agent-instance` | `attach` / `detach` over the tool and `edit` over the agent |
 | `attach-agent-template`, `detach-agent-template` | `attach` / `detach` over the tool and `attach` over the agent template |
 | reading a tool's log | `logs` over the tool |
-| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them); a `get` or `list` with `"arguments": true` also needs `arguments` |
+| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `api` | the same action over `dependency_tools` (there is no making action: registrations make them); a `get` or `list` with `"arguments": true` also needs `arguments` |
 | `dependency-tools exec`, `terminal` | `exec` over `dependency_tools` |
 | a transfer's destination | `upload` over the agent, tool, dependency tool or volume it lands in |
 

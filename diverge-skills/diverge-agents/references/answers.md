@@ -99,13 +99,12 @@ On a failure part-way, files that already landed stay; each file is whole or as 
 |---|---|---|---|
 | `agents exec` | `--raw` | `{"agent":<ref>,"argv":[…],"cwd":[…]?,"env":{…}?}` | `{"stdout":"<base64>"}`, `{"stderr":"<base64>"}` any number, then `{"exited":<code>}` or `{"signaled":<n>}`; or `"not_found"` |
 | `agents terminal` | | `{"agent":<ref>,"cols":<n>,"rows":<n>}` | the shell's output raw on stdout; `"not_found"`, `"forbidden"`, `{"error":…}` as a JSON line on stderr; exit code is the shell's |
-| `agents frontend` | | `{"agent":<ref>,"method":"GET","path":"/frontend/…","headers":[["Accept","text/html"]]}`, request body on stdin | response head as one JSON line on stderr, body raw on stdout; `"not_found"`, `"no_frontend"`, `"forbidden"`, `{"error":…}` on stderr |
 
 ## What starts or holds the container
 
 | operation | container not running |
 |---|---|
 | `message`, `connect` exchanges | started, with its dependency tools; stopped by the idle clock after `idle_seconds` unused |
-| `exec`, `terminal`, `frontend` | started for it, held up while it runs |
+| `exec`, `terminal` | started for it, held up while it runs |
 | `filetree`, `download`, `upload`, `transfer` | started for the operation and held up until it ends, when its idle time begins |
 | `create`, `get`, `list`, `edit`, `tag`, `untag` | nothing is started |

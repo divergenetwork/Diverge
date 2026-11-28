@@ -1,6 +1,6 @@
 ---
 name: diverge-images
-description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `type` of `agent`, `standalone_tool` or `dependency_tool`, `name`, `description`, `schema`, `memory`, `disk`, a tool's `mode`, a dependency tool's `scope`, `frontend`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human) with each one's `arguments`, the credential members among them, dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` an image takes or which of them carries its credential, when you build or rebuild an image, or when you read an image's DIVERGE.md.
+description: Container images in Diverge — what an image reference is (`{digest, references:[{registry,name}]}`), where a provider gets an image from (its Store, its podman cache, a listed registry, the caller), how to build an image on a provider with `diverge run images build` and get its digest, the image's `/.diverge/DIVERGE.md` (frontmatter `type` of `agent`, `standalone_tool` or `dependency_tool`, `name`, `description`, `schema`, `memory`, `disk`, a tool's `mode`, a dependency tool's `scope`, a tool's `frontend` and `api`), the `diverge run images read` command (the one way to an image's `DIVERGE.md`), and a reference of every image in the repository — the six agent-loop images (python, lone, openrouter, codex, hermes, cc) and the example images (courier, taskboard, memory, alarm, chat, human, human-desk) with each one's `arguments`, the credential members among them, dependencies and a minimal template body. Load it when you need an image digest for a template, when a deploy fails with the image unavailable or "the provider pulls from no registry the image's references name", when you need to know what `arguments` an image takes or which of them carries its credential, when you build or rebuild an image, or when you read an image's DIVERGE.md.
 ---
 
 # Diverge images
@@ -513,12 +513,14 @@ The parse rules, in the order they are checked:
    anything else (`"tool"` among them), is an error. The type decides which members are allowed.
 5. All three types: `name` (string, required: see rule 6), `description` (string, required: one line, 1 to 132
    characters, no line break or other control character, no space at either end), `schema` (required),
-   `memory` and `disk` (each required: a whole number of bytes),
-   `frontend` (boolean, optional, `false` when absent). An agent's also: `chat` and `structured_decisions` (each
+   `memory` and `disk` (each required: a whole number of bytes).
+   An agent's also: `chat` and `structured_decisions` (each
    `false` or an object, never `true`; optional, `false` when absent). A standalone tool's also: `mode`
-   (required: `"lazy"` or `"eager"`; there is no default). A dependency tool's also: `mode`, the same,
+   (required: `"lazy"` or `"eager"`; there is no default), and `frontend` and `api` (each a boolean,
+   optional, `false` when absent). A dependency tool's also: `mode`, `frontend` and `api`, the same,
    and `scope` (required: `"instance"` or `"template"`). **A tool's must not have `chat`
-   or `structured_decisions` at all, not even as `false`.** An agent's must not have `mode` or `scope`,
+   or `structured_decisions` at all, not even as `false`.** **An agent's must not have `frontend` or `api`
+   at all, not even as `false`**, nor `mode` or `scope`,
    and a standalone tool's must not have `scope`. A missing member, **any member that is not
    one of its type's** (`secrets` among them: no document has one), or a wrong type is an error.
 6. **`name` is what a repository may be named, but that it may have capitals**: 1 to 128 bytes,
@@ -535,7 +537,7 @@ The parse rules, in the order they are checked:
 9. The body is everything after the closing fence, verbatim.
 
 Written out, the members are in this order: `type`, `name`, `description`, `schema`, `memory`, `disk`,
-`mode`, `scope`, `frontend`, `chat`, `structured_decisions`.
+`mode`, `scope`, `frontend`, `api`, `chat`, `structured_decisions`.
 
 There is no `icons` member: an `icons` in the frontmatter is an unknown member, and an error.
 
@@ -571,8 +573,8 @@ What each member means:
   `instance` (one per agent) or `template` (one for all). No declaration says another. It does not decide
   what the tool's databases are (see `postgres` in `diverge-storage`), except that a `template` tool has
   no `instance` database.
-- `frontend` — `true` when the program serves a web UI beneath `/frontend` (see the `frontend`
-  commands in `diverge-agents` / `diverge-tools`). To look like the rest of Diverge in the person's
+- `frontend` — a tool's image only. `true` when the program serves a web UI beneath `/frontend` (see the
+  `frontend` commands in `diverge-tools`). To look like the rest of Diverge in the person's
   theme, the page links `<link rel="stylesheet" href="/diverge/theme.css">` and
   `<script src="/diverge/theme.js"></script>` after its own styles, and names every colour, size,
   space and edge by the theme's roles (`--bg`, `--surface`, `--line`, `--line-strong`, `--text`,
@@ -580,7 +582,16 @@ What each member means:
   `--radius-md`… as in `diverge-theme/theme.css`). The viewer answers both on the frontend's own
   address, outside `/frontend`, and keeps the page's `data-theme` the person's. Elsewhere both are
   missing, so a page keeps fallback values of its own. Not taking them is allowed: the page is its
-  maker's. The example `chat`, `human` and identity pages take them.
+  maker's. The example `chat`, `human-desk` and identity pages take them.
+- `api` — a tool's image only. `true` when the program answers plain HTTP beneath `/api`, for a caller
+  that already knows its protocol: an agent or another tool over its daemon connection, or a person with
+  the CLI (see the `api` commands in `diverge-tools`). A frontend is pages for a person; an API is
+  whatever HTTP the program speaks. A program may have both, either or neither. Nothing outside `/frontend`
+  and `/api` is reachable from outside the container.
+- **Who is calling.** Every frontend request and every API request reaches the program with the header
+  `diverge.network`, set by the daemon in place of any the caller sent: JSON saying whether the caller is
+  a `client` (an account), an `agent` or a `tool`. The three forms are in `diverge-tools`. The program
+  decides whom it serves.
 - **Icons are files, not members.** An image ships up to three, each optional, each by a fixed name in the
   same `.diverge` folder: `icon.svg` (an SVG), `icon-512.png` (a PNG of exactly 512×512), `icon-64.png`
   (a PNG of exactly 64×64). The file being there is the whole declaration. A provider answers each on
@@ -610,6 +621,11 @@ What each member means:
 - **Both are enforced** on `agents message`: `chat` for a request of type `chat`, and
   `structured_decisions` for one of type `structured_decisions` (see `diverge-agents`). A request for a mode the image says
   `false` to is refused by the daemon and never reaches the container.
+- **A program is told who it is.** Its `POST /register` body carries its `arguments`, its `template` (the
+  id), its `image`, and which record of that template it is: `"index": N` for an agent or a standalone
+  tool, `"owner": "template"` or `"owner": {"agent":{"template":…,"index":…}}` for a dependency tool. The
+  template and that member are the record's own name in anything the program asks of the daemon, so an
+  agent can name its own `instance` dependency tools: `{"template":"<dependency template id>","owner":{"agent":{"template":"<its template>","index":<its index>}}}`.
 - **What a program is handed.** Its `POST /run` body is tagged: `{"type":"chat","messages":[…]}` or
   `{"type":"structured_decisions","key":…,"content":[…],"questions":[…]}`. A program that declares
   structured decisions answers that run by echoing the decision as one `user_structured_decisions` chunk,
@@ -690,7 +706,7 @@ Lines printed: first the daemon's answer; after a `{"held":…}`, any further `{
 | `"not_found"` | no source the daemon asked holds any platform wanted |
 | `"forbidden"` | the account holds neither `read` over any provider nor `relay` over any remote daemon record |
 | `{"error":…}` | a failure; after a `held`, the source could not read the document, or it is not one |
-| `{"info":{"type":"agent","name":…,"description":"…","schema":{…},"memory":N,"disk":N,"frontend":true,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent`, `standalone_tool` or `dependency_tool`; `mode` in a tool's, `scope` in a dependency tool's; `frontend`, `chat` and `structured_decisions` each absent when false, the last two never in a tool's) |
+| `{"info":{"type":"agent","name":…,"description":"…","schema":{…},"memory":N,"disk":N,"chat":{…},"body":"…"}}` | the document, parsed (`type` is `agent`, `standalone_tool` or `dependency_tool`; `mode` in a tool's, `scope` in a dependency tool's; `frontend` and `api` only in a tool's, `chat` and `structured_decisions` only in an agent's, each absent when false) |
 | `"missing"` | the image ships no `/.diverge/DIVERGE.md` |
 | `{"media_type":"…","body":"…"}` | the manifest asked for |
 | `{"path":"…","bytes":N}` | the blob asked for, written |
@@ -745,7 +761,8 @@ above with `-f <dir>/Containerfile .`.
 | `diverge-examples/tools/alarm` | `alarm` | `dependency_tool`: eager, `template` | `{}` | none |
 | `diverge-examples/tools/chat` | `chat` | `standalone_tool`: eager, has a frontend | `{}` | none |
 | `diverge-tools/identity-diverge-network` | `identity-diverge-network` | `standalone_tool`: lazy, has a frontend | `{}` | none |
-| `diverge-examples/agents/human` | `human` | agent, no model, has a frontend | `{}` | none |
+| `diverge-examples/agents/human` | `human` | agent, no model; answered by a person at its `human-desk` | `{}` | none |
+| `diverge-examples/tools/human-desk` | `human-desk` | `dependency_tool`: eager, `instance`, has a frontend and an API | `{}` | none |
 
 Each agent image states `"memory":536870912,"disk":1073741824`. Each tool image states
 `"memory":268435456,"disk":268435456`.
@@ -758,7 +775,7 @@ a minimal working template body:
 - [references/hermes.md](references/hermes.md) — hermes: every provider id and its credential members, every
   toolset.
 - [references/example-images.md](references/example-images.md) — courier, taskboard, memory, alarm,
-  chat, human.
+  chat, human, human-desk.
 
 ### Credentials are arguments
 
