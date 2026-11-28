@@ -2,15 +2,18 @@
 
 use std::net::IpAddr;
 use std::sync::Arc;
+use std::time::Instant;
 
 use diverge_sdk::wire::connection::Connection;
 use diverge_sdk::wire::handshake::{self, Handshook};
 use diverge_sdk::wire::server::received::Received;
 use diverge_sdk::wire::server::session::Session;
 use futures_util::StreamExt as _;
+use tokio::sync::watch;
 use tokio::task::JoinSet;
 
 use super::{Turns, dispatch};
+use crate::containers::Inflight;
 use crate::daemon::{Connected, Daemon};
 use crate::store::AccountId;
 use crate::judge::{Admitted, Expected, Hold, Who};
@@ -53,7 +56,7 @@ pub async fn connection(connection: Connection, address: IpAddr, daemon: Arc<Dae
             if let Some(hold) = hold {
                 hold.release().await;
             }
-            client(connection, who, daemon).await;
+            client(connection, who, daemon, None).await;
         }
         (_, hold) => {
             if let Some(hold) = hold {
@@ -63,11 +66,36 @@ pub async fn connection(connection: Connection, address: IpAddr, daemon: Arc<Dae
     }
 }
 
+/// What a tool's daemon connection holds of the tool's run: given to
+/// [`client`] for a connection a tool's container opened, and to
+/// nothing else. The rules:
+///
+/// 1. **Every scope holds the run.** Each request the tool's program
+///    puts to the daemon is counted in `scopes` from the moment it is
+///    read until its task ends — answered, cancelled, or its
+///    connection gone — whatever it asks, an endless stream included:
+///    rule 7 of [`idle_tool`](crate::containers::idle_tool). A tool
+///    that wants to go idle ends its scopes.
+/// 2. **A scope's end is a use.** `touched` is noted as it is counted
+///    out, so the run's idle clock counts from there.
+/// 3. **The count is the run's.** `scopes` is the one the run's
+///    answerer holds and its run reads, so a scope is never counted
+///    on another run of the same tool.
+#[derive(Debug, Clone)]
+pub struct Held {
+    /// The run's open daemon scopes.
+    pub scopes: Arc<Inflight>,
+    /// Where a use of the run's container is noted.
+    pub touched: watch::Sender<Instant>,
+}
+
 /// Serve a client admitted as `who`, past its handshake, until the
 /// socket ends.
 ///
 /// The connection counts itself in as its account — a tool's, served
-/// under the grants it declared, is no account's — and every
+/// under the grants it declared, is no account's, and with `held`
+/// each scope it opens holds the tool's container up until the scope
+/// ends — and every
 /// scope the client opens is read as a request and handed to
 /// [`dispatch`] on a task of its own, so a slow answer never holds
 /// the socket; a frame that is not a request ends the connection.
@@ -81,7 +109,7 @@ pub async fn connection(connection: Connection, address: IpAddr, daemon: Arc<Dae
 /// being served that its feed has closed, and then every task still
 /// answering is waited for, since an answer composed is an answer
 /// sent, and the connection counts itself out.
-pub async fn client(connection: Connection, who: Who, daemon: Arc<Daemon>) {
+pub async fn client(connection: Connection, who: Who, daemon: Arc<Daemon>, held: Option<Held>) {
     let mut session = Session::new(connection);
     match &who {
         Who::Account(account) => {
@@ -125,7 +153,13 @@ pub async fn client(connection: Connection, who: Who, daemon: Arc<Daemon>) {
         let turn = turns.next();
         let daemon = Arc::clone(&daemon);
         let who = who.clone();
+        // A tool's own scope holds the tool's run for the scope's
+        // life, whatever it asks: counted in here, as the scope is
+        // read, and out when its task ends, which is a use of the
+        // container, so the idle clock counts from there.
+        let using = held.as_ref().map(|held| held.scopes.enter_use(held.touched.clone()));
         scopes.spawn(async move {
+            let _using = using;
             dispatch(scope, &payload, turn, who, &daemon).await;
         });
     }

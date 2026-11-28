@@ -55,13 +55,20 @@ pub struct Answerer {
     pub pulls: Arc<Pulls>,
     /// Where a use is noted.
     pub touched: watch::Sender<Instant>,
-    /// The MCP exchanges in flight: the agent's own, which a lazy
-    /// dependency shares with its agent.
+    /// The MCP exchanges in flight for the run: an agent's own, which
+    /// its run takes when it is made. A tool's answerer counts none.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress: the agent's own, which a dependency
-    /// deployed for it shares, so that a use on the dependency holds
-    /// the agent — with which the dependency stops — up.
+    /// The uses in progress on the run: an agent's own, which its run
+    /// takes when it is made, and which a dependency tool that mounts
+    /// the agent's files is counted in for as long as it is up. A
+    /// tool's answerer counts none.
     pub files: Arc<Inflight>,
+    /// The scopes a tool's program has open on its `/daemon`
+    /// connections: counted in for each scope's life, and what the
+    /// tool's run, which takes this when it is made, is held up by —
+    /// rule 7 of [`idle_tool`](crate::containers::idle_tool). An
+    /// agent's answerer counts none: its connections are declined.
+    pub scopes: Arc<Inflight>,
     /// The eager tools an agent's registration declared, once its
     /// dependencies were deployed: `None` until then, and still
     /// `None` for a program that declared nothing, which is never

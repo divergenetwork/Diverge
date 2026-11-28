@@ -7,7 +7,7 @@
 //! nothing is the one named, forbidden, or that it failed, and
 //! finishes. The terminal is the scope: while it is open the client
 //! writes the shell's stdin and sets its size on channels, at any time,
-//! and its close — or the client gone — kills the shell. A dependency tool that is not running is not found: nothing is started for it. One that runs is held up — with the agent it was deployed for — while the terminal is open.
+//! and its close — or the client gone — kills the shell. A dependency tool whose container is not running is deployed for the terminal, and held up while it is open; a tool that mounts its agent's files brings its agent's container up with it, and one its agent no longer declares is not found.
 //! Split by who SENDS: the request and the channels are in [`client`],
 //! the output in [`server`].
 

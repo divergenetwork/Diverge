@@ -3,8 +3,9 @@
 //! An agent's program answers its registration with the tools it
 //! depends on, each a dependency tool template, and the provider asks
 //! the daemon to deploy them before the container's id is out, the id
-//! told with the ask. [`deploy`] starts every one at once, each a tool
-//! container of the agent's own: on any connected provider, tried in
+//! told with the ask. [`deploy`] records every one, and deploys those
+//! that are the agent's own or eager, each a tool
+//! container: on any connected provider, tried in
 //! random order; its mounts the agent's paths served live from the
 //! agent's container; its limits what its image needs and what its
 //! template adds; its
@@ -16,15 +17,18 @@
 //! that is not lazy and of the `instance` scope, is
 //! refused. The first that
 //! cannot be deployed — an eager tool whose start fails included — is the
-//! run's error, and the rest are stopped. A dependency lives for as
-//! long as the agent's container does, and no longer. A tool
+//! run's error. A dependency's run, once up, is held and undeployed as
+//! every tool's is — see [`idle_tool`](crate::containers::idle_tool) —
+//! and one that mounts its agent's files goes down with its agent's
+//! container. [`tool`] is one run of any dependency tool, which every
+//! deploy of one comes to. A tool
 //! container declares no dependencies and is never deployed for.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
-mod alone;
 mod deploy;
+mod tool;
 
-pub use alone::*;
 pub use deploy::*;
+pub use tool::*;

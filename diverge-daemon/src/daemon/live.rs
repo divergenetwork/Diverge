@@ -22,7 +22,7 @@ use crate::containers::eager::State;
 use crate::commands::Commander;
 use crate::containers::lifecycle::RunLog;
 use crate::containers::message::Waiting;
-use crate::containers::{AgentRun, ConnectionId, Key, ToolKey, ToolRun};
+use crate::containers::{AgentRun, ConnectionId, Guard, Holds, Key, ToolKey, ToolRun};
 use crate::daemons::Peer;
 use crate::judge::AgentState;
 use crate::database::Scope;
@@ -124,11 +124,17 @@ pub struct Live {
     agents: Mutex<HashMap<AgentId, Arc<AgentRun>>>,
     /// The tools running now, or joined: records and dependency tools.
     tools: Mutex<HashMap<ToolKey, Arc<ToolRun>>>,
-    /// Every eager tool kept since the start, run or no run, by its tool
-    /// — a record whose image's mode is an eager tool, or a dependency
-    /// tool's row whose template is one: whether it is held, and its
-    /// supervisor and its clock.
+    /// Every eager tool kept now, run or no run, by its tool — a
+    /// record whose image's mode is an eager tool, or a dependency
+    /// tool's row whose template is one — while any agent is attached
+    /// to it: its supervisor, and what its last start came to.
     eager: Mutex<HashMap<ToolKey, Arc<State>>>,
+    /// What holds each tool up from outside its run — the active
+    /// agents it is served to, an eager tool's attachments — by its
+    /// key, run or no run: see [`Holds`].
+    /// An entry leaves once it holds nothing: see
+    /// [`release_holds`](Self::release_holds).
+    holds: Mutex<HashMap<ToolKey, Arc<Holds>>>,
     /// Every compartment's role touched since the start, by the role:
     /// its password, in memory only. By the role and not by the
     /// container, since a role two containers reach has one password.
@@ -967,9 +973,43 @@ impl Live {
         (state, true)
     }
 
-    /// The eager tool is retired: its state, once.
+    /// The eager tool is kept no more: its state, once.
     pub async fn remove_eager_state(&self, key: ToolKey) -> Option<Arc<State>> {
         self.eager.lock().await.remove(&key)
+    }
+
+    /// What holds the tool from outside its run: the one entry kept
+    /// under its key, made now if there was none. See [`Holds`].
+    pub async fn holds(&self, key: ToolKey) -> Arc<Holds> {
+        Arc::clone(self.holds.lock().await.entry(key).or_default())
+    }
+
+    /// One active agent the tool is served to holds it from now on,
+    /// until the guard is dropped: counted in under the lock the entry
+    /// is forgotten under, so the count is never an entry's that has
+    /// left.
+    pub async fn hold_agent(&self, key: ToolKey) -> Guard {
+        self.holds.lock().await.entry(key).or_default().agents.enter()
+    }
+
+    /// Forget the tool's holds if they hold nothing: no agent counted,
+    /// nothing attached, no run live under the key, no
+    /// start of one in progress and no eager tool kept under it — so
+    /// that nobody who could still count into the entry, or read it,
+    /// has it. Asked whenever a hold is let go and whenever a run
+    /// ends; an entry that holds something is left as it is.
+    pub async fn release_holds(&self, key: ToolKey) {
+        let mut holds = self.holds.lock().await;
+        let Some(entry) = holds.get(&key) else {
+            return;
+        };
+        if entry.any() {
+            return;
+        }
+        if self.tools.lock().await.contains_key(&key) || self.eager.lock().await.contains_key(&key) || self.starting.lock().await.contains_key(&Key::Tool(key)) {
+            return;
+        }
+        holds.remove(&key);
     }
 
     /// Every eager tool's state.

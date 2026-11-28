@@ -1,9 +1,10 @@
-//! The supervisor: an eager tool's container kept running while it is
-//! held.
+//! The supervisor: an eager tool's container run again while an agent
+//! is attached to it.
 
 use std::sync::Arc;
 use std::time::Duration;
 
+use diverge_sdk::daemon::lifecycle::Cause;
 use tokio::sync::watch;
 
 use super::{Outcome, State};
@@ -17,40 +18,60 @@ use crate::store::{DependencyToolId, ToolId, dependency_tools, tools};
 /// short enough that an eager tool is back soon after one comes up.
 const RETRY: Duration = Duration::from_secs(5);
 
-/// Keep the eager tool's container running until the eager tool is
-/// retired: while nothing holds it the supervisor waits; while
-/// something does, its container is started — on the first candidate
-/// provider that runs it — and waited on to its end, and started
-/// again; a start that fails is tried again after `RETRY`. Each
-/// start's outcome is said on `outcomes` — up once the run is live,
-/// or why it failed — which is what a registration that declared the
-/// eager tool waits on. A row that is gone is an eager tool deleted, and the
-/// supervisor ends. The run's end is taken down here as well as by
-/// its waiter, so that the next start does not find the old run
-/// still live.
+/// Keep the eager tool's container running for as long as the tool is
+/// kept, which is for as long as an agent is attached to it. The
+/// rules:
+///
+/// 1. **Started while attached.** While the tool's
+///    [`Holds`](crate::containers::Holds) say an agent is attached,
+///    its container is started — on the first candidate provider that
+///    runs it, or found running already — and waited on to its end,
+///    and started again. While they say none is, the supervisor
+///    waits: the run, if one is up, is its idle clock's.
+/// 2. **The first start is the keep's.** It is deployed by what kept
+///    the tool — the state's `first` — and every start after a run
+///    came up is a [`Cause::Restart`].
+/// 3. **A start that fails is tried again** after `RETRY`.
+/// 4. **Every start's outcome is said** on `outcomes` — up once the
+///    run is live, or why it failed — which is what a registration
+///    that declared the eager tool waits on.
+/// 5. **A row that is gone is an eager tool deleted**, and the
+///    supervisor ends.
+///
+/// The run's end is taken down here as well as by its waiter, so that
+/// the next start does not find the old run still live. Nothing here
+/// undeploys a tool: that is its run's idle clock alone, which the
+/// attachment holds.
 pub async fn supervise(daemon: Arc<Daemon>, key: ToolKey, state: Arc<State>, outcomes: watch::Sender<Option<Outcome>>) {
-    let mut held = state.held.subscribe();
+    let mut attached = daemon.live.holds(key).await.attached.subscribe();
+    // Rule 2.
+    let mut cause = state.first;
     loop {
-        if !*held.borrow_and_update() {
-            if held.changed().await.is_err() {
+        // Rule 1.
+        if !*attached.borrow_and_update() {
+            if attached.changed().await.is_err() {
                 return;
             }
             continue;
         }
         let started = match key {
-            ToolKey::Record(id) => record(&daemon, id).await,
+            ToolKey::Record(id) => record(&daemon, id, cause).await,
             // A connected tool is never an eager tool here: nothing to keep.
             ToolKey::Connected(_) => Started::Gone,
-            ToolKey::Dependency(id) => dependency(&daemon, id).await,
+            ToolKey::Dependency(id) => dependency(&daemon, id, cause).await,
         };
         match started {
+            // Rule 5.
             Started::Gone => return,
             Started::Run(run) => {
+                // Rule 4.
                 outcomes.send_replace(Some(Outcome::Up));
+                cause = Cause::Restart;
                 let ended = run.handle.wait().await;
                 run.end_as(End::Unexpected(ended.reason())).await;
                 stop::ended_tool(&daemon, run).await;
             }
+            // Rule 3.
             Started::Failed(reason) => {
                 outcomes.send_replace(Some(Outcome::Failed(reason)));
                 tokio::time::sleep(RETRY).await;
@@ -71,13 +92,13 @@ enum Started {
 }
 
 /// One start of a tool on record's container.
-async fn record(daemon: &Arc<Daemon>, id: ToolId) -> Started {
+async fn record(daemon: &Arc<Daemon>, id: ToolId, cause: Cause) -> Started {
     let tool = match daemon.store.acquire().await {
         Ok(mut conn) => tools::by_id(&mut conn, id, false).await,
         Err(error) => Err(error),
     };
     match tool {
-        Ok(Some(tool)) => match crate::containers::start::tool(daemon, &tool).await {
+        Ok(Some(tool)) => match crate::containers::start::tool(daemon, &tool, cause).await {
             Ok(run) => Started::Run(run),
             Err(error) => Started::Failed(error.to_string()),
         },
@@ -87,13 +108,13 @@ async fn record(daemon: &Arc<Daemon>, id: ToolId) -> Started {
 }
 
 /// One start of a dependency eager tool's container.
-async fn dependency(daemon: &Arc<Daemon>, id: DependencyToolId) -> Started {
+async fn dependency(daemon: &Arc<Daemon>, id: DependencyToolId, cause: Cause) -> Started {
     let tool = match daemon.store.acquire().await {
         Ok(mut conn) => dependency_tools::by_id(&mut conn, id, false).await,
         Err(error) => Err(error),
     };
     match tool {
-        Ok(Some(tool)) => match crate::containers::deploy::alone(daemon, &tool).await {
+        Ok(Some(tool)) => match crate::containers::deploy::tool(daemon, &tool, None, cause).await {
             Ok(run) => Started::Run(run),
             Err(error) => Started::Failed(error.to_string()),
         },

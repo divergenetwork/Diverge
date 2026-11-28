@@ -87,7 +87,7 @@ impl Acceptor for DaemonAcceptor {
                 return;
             };
             // Rule 4.
-            serve::client(wire, who, Arc::clone(&daemon)).await;
+            serve::client(wire, who, Arc::clone(&daemon), None).await;
             hold.release().await;
         });
         // Rule 1.

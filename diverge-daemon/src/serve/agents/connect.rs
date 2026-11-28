@@ -114,7 +114,7 @@ async fn deployed(daemon: &Arc<Daemon>, id: AgentId) -> Result<Arc<AgentRun>, Er
     let Some(agent) = agent else {
         return Err(failed(&"the agent is gone"));
     };
-    containers::agent(daemon, &agent).await.map_err(|error| failed(&error))
+    containers::agent(daemon, &agent, diverge_sdk::daemon::lifecycle::Cause::Connect).await.map_err(|error| failed(&error))
 }
 
 /// One channel, answered as the agent's own container's exchange is.
@@ -143,7 +143,9 @@ async fn answer(daemon: Arc<Daemon>, scope: Arc<ScopeHandle>, id: AgentId, chann
             return;
         }
     };
-    let context = run.context(&daemon);
+    // An exchange run as the agent deploys a served tool as a connect
+    // does, not as the agent active.
+    let context = containers::mcp::Context { cause: diverge_sdk::daemon::lifecycle::Cause::Connect, ..run.context(&daemon) };
     match ask {
         channel_request::Frame::Disconnect => {}
         // Rules 2 to 4.

@@ -23,10 +23,12 @@
 //!
 //! # The scope holds the tool
 //!
-//! While the scope is open the tool is in use by it, as it is by an
+//! While the scope is open the tool is held by it, with or without an
+//! exchange in flight, as it is by an
 //! active agent it is attached to: it does not stop while the scope is
 //! open unless it is deleted or its container ends, and a scope opened
-//! on a tool already running is a use of it. What the client sends in
+//! on a tool already running is a use of it. An eager tool is held by
+//! a scope exactly as a lazy one is. What the client sends in
 //! a request's `_meta` reaches the tool as sent; what the tool answers
 //! is attested by this daemon under `_meta`, as every answer of its
 //! own containers is, and the client passes that on.

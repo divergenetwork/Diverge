@@ -27,7 +27,7 @@ use tokio::task::AbortHandle;
 use super::fuse::Mounts;
 use super::lifecycle::{End, RunLog};
 use super::mcp::{Context, Served};
-use super::{ConnectionId, Frames, Inflight, Key, ToolKey, Use};
+use super::{ConnectionId, Frames, Guard, Holds, Inflight, Key, ToolKey, Use};
 use crate::content::Pieces;
 use crate::daemon::Daemon;
 use crate::store::dependency_tools::DependencyTool;
@@ -54,13 +54,16 @@ pub struct AgentRun {
     pub handle: AgentHandle,
     /// Whether a loop runs in it now, as the proxy's two words say.
     pub loop_active: watch::Sender<bool>,
-    /// The MCP exchanges in flight for it: its own, and its
-    /// dependencies'. The other thing that makes it active.
+    /// The MCP exchanges in flight for it: its container's own, and
+    /// those run as it. The other thing that makes it active.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress on it — a filetree watch, a download,
-    /// an upload, a transfer — each holding the run up for its length,
-    /// as `inflight` does, but no work: they make it neither active nor
-    /// busy. What the idle clock waits on, beside `inflight`.
+    /// The uses in progress on it — a filetree watch, a download, an
+    /// upload, a transfer, a command, a terminal, a frontend request,
+    /// and a dependency tool of its own that mounts its files, for as
+    /// long as that tool's run is up — each holding the run up for its
+    /// length, as `inflight` does, but no work: they make it neither
+    /// active nor busy. What the idle clock waits on, beside
+    /// `inflight`.
     pub files: Arc<Inflight>,
     /// When it was last used; what the idle clock runs from.
     pub touched: watch::Sender<Instant>,
@@ -71,6 +74,12 @@ pub struct AgentRun {
     pub volumes: Vec<reference::Volume>,
     /// The tools it is served: attached ones and its dependencies.
     pub served: Arc<Mutex<Served>>,
+    /// The hold it has on every tool it is served, while it is active:
+    /// `Some`, one guard per served tool, from its turn to active to
+    /// its turn to inactive, and `None` between — see
+    /// [`activity`](super::activity). Taken before `served` by whoever
+    /// takes both, so the two are changed in step.
+    pub holding: Mutex<Option<HashMap<ToolKey, Guard>>>,
     /// The messages enqueued and not yet swept, by key, with who sent
     /// each: what a user part is logged as. See [`Message`] for when
     /// one leaves.
@@ -270,15 +279,17 @@ impl AgentRun {
     }
 
     /// Whether the agent is active now: a loop runs in it, or an MCP
-    /// exchange is in flight for it or for one of its dependencies.
-    /// Exactly those two, and nothing else.
+    /// exchange is in flight for it. Exactly those two, and nothing
+    /// else.
     pub fn is_active(&self) -> bool {
         *self.loop_active.borrow() || self.inflight.is_busy()
     }
 
     /// The merge's context for the agent: its tools, its caller and
     /// its sender — what its own container's exchanges are answered
-    /// with, and what an exchange run as the agent is answered with.
+    /// with, and what an exchange run as the agent is answered with —
+    /// deploying a served tool as the agent active does; an exchange
+    /// run as the agent sets the cause its own.
     pub fn context(&self, daemon: &Arc<Daemon>) -> Context {
         Context {
             daemon: Arc::clone(daemon),
@@ -286,6 +297,7 @@ impl AgentRun {
             caller: Some(self.attestation.clone()),
             sender: self.sender.clone(),
             served: Arc::clone(&self.served),
+            cause: diverge_sdk::daemon::lifecycle::Cause::AgentActive,
         }
     }
 }
@@ -617,11 +629,10 @@ impl std::fmt::Display for AskError {
     }
 }
 
-/// A running tool: the scope held on it, what holds it up — the
-/// connect scopes on it and the exchanges in flight into it — and what
-/// it mounts: a record's container, a connected tool's connection, or
-/// a dependency tool's container, a lazy one's for its agent's
-/// run or one run of an eager tool's.
+/// A running tool: the scope held on it, what holds it up — see
+/// [`idle_tool`](super::idle_tool), which states every hold — and
+/// what it mounts: a record's container, a connected tool's
+/// connection, or a dependency tool's container.
 pub struct ToolRun {
     /// The record, or the dependency tool's row.
     pub id: ToolKey,
@@ -641,25 +652,39 @@ pub struct ToolRun {
     pub handle: ToolHandle,
     /// Whether the tool is an eager tool: a tool on record whose template's
     /// mode is, or a dependency tool whose template is. An eager tool is
-    /// held by its attachments and its connect scopes and retired by
-    /// its clock, never stopped for want of use.
+    /// held, beside everything that holds any tool, by its
+    /// attachments, and started again while they hold it.
     pub eager: bool,
     /// The connect scopes other daemons hold on it now: each a real
     /// connection, holding the run up for the scope's life.
     pub connections: Mutex<HashSet<ConnectionId>>,
     /// Whether a connect scope holds it now: `true` while
-    /// `connections` is not empty, kept in step under their lock. What
-    /// the idle clock waits on, beside what is in flight.
+    /// `connections` is not empty, kept in step under their lock. One
+    /// of the holds the idle clock waits on.
     pub held: watch::Sender<bool>,
-    /// The exchanges in flight into it — an agent's MCP ask, a connect
-    /// scope's, a file operation — each a real use, holding the run up
-    /// until it is answered, however it ends. What a detach mid-call
-    /// leaves standing: the call is answered still.
+    /// What holds it from outside the run: the active agents it is
+    /// served to, and an eager tool's attachments — the tool's one
+    /// [`Holds`], which outlives the run.
+    pub holds: Arc<Holds>,
+    /// The scopes its own program has open on its daemon connections,
+    /// each holding the run up from its opening to its end: counted
+    /// by the run's answerer, which serves those connections — see
+    /// [`client`](crate::serve::client).
+    pub scopes: Arc<Inflight>,
+    /// The use it holds on its agent's run, where it mounts its
+    /// agent's files: taken when the run is made and let go when it is
+    /// down, so the agent's container is up for as long as this one
+    /// is. `None` for a tool that mounts nothing of an agent's.
+    pub agent: Mutex<Option<Use>>,
+    /// The MCP exchanges in flight into it — an agent's ask, a connect
+    /// scope's — each a real use, holding the run up until it is
+    /// answered, however it ends. What a detach mid-call leaves
+    /// standing: the call is answered still.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress on it — a filetree watch, a download,
-    /// an upload, a transfer — each holding the run up for its length,
-    /// as `inflight` does, but no work: they make it neither active nor
-    /// busy. What the idle clock waits on, beside `inflight`.
+    /// The uses in progress on it — a filetree watch, a download, an
+    /// upload, a transfer, a command, a terminal, a frontend request —
+    /// each holding the run up for its length, as `inflight` does, but
+    /// no work: they make it neither active nor busy.
     pub files: Arc<Inflight>,
     /// When it was last used.
     pub touched: watch::Sender<Instant>,
@@ -675,7 +700,7 @@ pub struct ToolRun {
     /// two editors adding mounts are served one after the other.
     pub edits: Mutex<()>,
     /// The tasks that are the run's: the pump — a connected tool's
-    /// waiter — and a lazy tool's idle clock.
+    /// waiter — and the idle clock.
     pub tasks: Mutex<Vec<AbortHandle>>,
     /// What it is as a dependency tool, when it is one: the row, as
     /// it was when this run started.
@@ -722,16 +747,6 @@ impl ToolRun {
     /// up until the last clone is dropped, which touches it.
     pub fn file_use(&self) -> Arc<Use> {
         Arc::new(self.files.enter_use(self.touched.clone()))
-    }
-
-    /// Whether anything holds the run up: a connect scope another
-    /// daemon holds on it, or an exchange in flight into it. Exactly
-    /// those two — an attachment holds nothing, and an agent merely
-    /// mid-loop nothing — and a lazy tool's idle clock ends the
-    /// run `idle_seconds` after both last became false. Asked under
-    /// the connections lock by whoever lets go of a scope.
-    pub fn held_now(&self, connections: &HashSet<ConnectionId>) -> bool {
-        !connections.is_empty() || self.inflight.is_busy()
     }
 
     /// Attest `meta` as this tool's: the daemon's own word on

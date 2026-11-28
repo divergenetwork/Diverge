@@ -62,8 +62,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     daemon.live.changed(Kind::Agents);
     daemon.live.changed(Kind::StandaloneTools);
     if eager {
-        eager::keep(daemon, ToolKey::Record(tool.id)).await;
-        eager::held(daemon, ToolKey::Record(tool.id)).await;
+        eager::held(daemon, ToolKey::Record(tool.id), diverge_sdk::daemon::lifecycle::Cause::Attachment).await;
     }
     containers::attached(daemon, &tool, &[agent.id]).await;
     Ok(Frame::Attached)

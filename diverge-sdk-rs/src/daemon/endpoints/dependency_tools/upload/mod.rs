@@ -9,9 +9,10 @@
 //! and the scope finishes. Each file lands whole, every parent made,
 //! replacing what was at its path and touching nothing else; a content
 //! channel that ends in an error abandons that file, and the answer is
-//! the error. The tool's container is written as it runs: a dependency
-//! tool that does not run is not started for the operation, and is
-//! `NotFound`; nothing is stopped or released when the operation ends.
+//! the error. A dependency tool whose container is not running is
+//! deployed for the operation, and held up while it is written; a
+//! tool that mounts its agent's files brings its agent's container up
+//! with it, and one its agent no longer declares is `NotFound`.
 //! Nothing else about the tool changes.
 //!
 //! The content travels on channels the daemon opens, since only a

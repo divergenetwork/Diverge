@@ -2,19 +2,20 @@
 
 use std::sync::Arc;
 
+use diverge_sdk::daemon::lifecycle::Cause;
 use diverge_sdk::shared::containers::info::Mode;
 
-use super::{held, keep};
+use super::held;
 use crate::containers::ToolKey;
 use crate::daemon::Daemon;
 use crate::store::{self, dependency_tools, tools};
 
 /// At the daemon's start: every eager tool on record with an agent or an
-/// agent template attached is kept — its supervisor starts its container — a
+/// agent template attached is kept — its supervisor starts its
+/// container, as a restart — a
 /// dependency tool whose template is an eager tool, and a tool on record
 /// whose image's mode is. One with none attached is left as it is:
-/// nothing holds it, and the next attach or connect that holds it
-/// keeps it up.
+/// nothing holds it, and the next attach keeps it up.
 pub async fn boot(daemon: &Arc<Daemon>) -> Result<(), store::Error> {
     let kept = {
         let mut conn = daemon.store.acquire().await?;
@@ -33,8 +34,7 @@ pub async fn boot(daemon: &Arc<Daemon>) -> Result<(), store::Error> {
         kept
     };
     for key in kept {
-        keep(daemon, key).await;
-        held(daemon, key).await;
+        held(daemon, key, Cause::Restart).await;
     }
     Ok(())
 }

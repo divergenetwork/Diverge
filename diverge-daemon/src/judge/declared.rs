@@ -6,6 +6,7 @@ use std::sync::Arc;
 use diverge_sdk::daemon::creator::Creator;
 use diverge_sdk::daemon::grant::{self, Converted, Grant};
 
+use crate::containers::ToolKey;
 use crate::store::{DependencyToolId, ToolId};
 
 /// What a tool's container declared at its registration, fixed for
@@ -45,6 +46,17 @@ pub enum ToolRef {
     /// A dependency tool: attached to the agents whose registration
     /// declared its template, and still does.
     Dependency(DependencyToolId),
+}
+
+impl ToolRef {
+    /// The tool's run's key: what its run, its log and its holds are
+    /// kept under.
+    pub fn key(self) -> ToolKey {
+        match self {
+            ToolRef::Standalone(id) => ToolKey::Record(id),
+            ToolRef::Dependency(id) => ToolKey::Dependency(id),
+        }
+    }
 }
 
 /// A tool, as its `/daemon` connections are served: what its container

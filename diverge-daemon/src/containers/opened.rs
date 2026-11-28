@@ -42,8 +42,8 @@ pub enum Opened {
     /// A tool's run, or the connect scope held on another daemon's
     /// tool, whose every file operation answers an error; and, for a
     /// run here, the file use this is, which holds the run up until
-    /// the last clone is dropped — a dependency tool's on its agent's
-    /// run, with which it stops.
+    /// the last clone is dropped — a dependency tool's on its own
+    /// run, as a standalone tool's is.
     Tool(Arc<ToolRun>, Option<Arc<Use>>),
 }
 

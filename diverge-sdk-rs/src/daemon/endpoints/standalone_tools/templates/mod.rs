@@ -5,8 +5,8 @@
 //! everything about a tool that is not its name, not the provider it
 //! runs on, not its own mounts, and not what its image says of
 //! itself — the [`Mode`](crate::shared::containers::info::Mode) its
-//! tools are kept by among it, lazy, run while used, or eager, kept
-//! while any agent is attached or any connect is open. The image is a
+//! tools are kept by among it, lazy, run while anything holds one, or
+//! eager, held as well by any agent attached. The image is a
 //! standalone tool's: its document's `type` is `standalone_tool`. A caller makes one
 //! with [`create`] and names it afterwards by its id, so the same
 //! template made twice is one template; a [`tool`](super) is created

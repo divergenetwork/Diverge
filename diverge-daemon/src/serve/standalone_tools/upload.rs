@@ -54,7 +54,7 @@ async fn serve(scope: Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon:
         return Ok(Frame::Forbidden);
     }
     scope.allowed().await;
-    let opened = match files::open_tool(daemon, &tool).await {
+    let opened = match files::open_tool(daemon, &tool, diverge_sdk::daemon::lifecycle::Cause::Upload).await {
         Ok(opened) => opened,
         Err(error) => return Ok(Frame::Error(reply::failure(&error))),
     };

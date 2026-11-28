@@ -8,7 +8,8 @@
 //!
 //! 1. **Deployed first.** [`Deployed`] is kept when the run's
 //!    container is up on a provider, and before anything the run
-//!    does. No `active` is ever kept before its run's `deployed`.
+//!    does, and says what deployed it, a [`Cause`]. No `active` is
+//!    ever kept before its run's `deployed`.
 //! 2. **Active and inactive bracket work.** `active` is kept when the
 //!    run begins working — an agent's loop runs, or an MCP exchange
 //!    is in flight for it; a tool has an ask in flight — and
@@ -26,8 +27,8 @@
 //!    and no `inactive` of a run is ever kept after its `undeployed`,
 //!    and no ask of a run is kept or answered after it.
 //! 4. **Expected or not.** A run taken down because it was asked to
-//!    be — gone idle, its record deleted, its template's eager tool
-//!    retired — carries no `reason`. A run that ended unexpectedly
+//!    be — gone idle, its record deleted, the agent's container
+//!    whose files it mounts gone down — carries no `reason`. A run that ended unexpectedly
 //!    carries exactly one [`Reason`], and that `reason` is the only
 //!    place a log says so: a plain `error` never records a drop.
 //! 5. **Brackets nest.** A log reads `deployed`, zero or more
@@ -38,11 +39,13 @@
 //! Its own files are flattened into it, so everything is named through
 //! this module and not through the file it lives in.
 
+mod cause;
 mod deployed;
 mod provider;
 mod reason;
 mod undeployed;
 
+pub use cause::*;
 pub use deployed::*;
 pub use provider::*;
 pub use reason::*;

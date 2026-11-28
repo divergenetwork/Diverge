@@ -20,7 +20,7 @@
 //! declared it, and a tool it declared before and not again is its
 //! dependency no more. A tool outlives the registrations. An instance
 //! tool goes with its agent's delete, its `instance` compartment with
-//! it; no request here deletes a tool, and what removes a template's
+//! it, and the agent's delete is refused while such a tool is active; no request here deletes a tool, and what removes a template's
 //! every tool, the template-scoped one among them, is the delete of the
 //! dependency template's
 //! [compartment](crate::daemon::endpoints::postgres::compartments::delete).

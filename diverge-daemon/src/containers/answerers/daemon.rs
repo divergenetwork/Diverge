@@ -19,7 +19,9 @@ use crate::serve::{self, PairFrames};
 /// agent's, which asks the daemon nothing: served by
 /// [`serve::serve_pair`], the same session and dispatch a socket gets,
 /// for that standing — no token passes. Every frame the program sends
-/// is a use of the container.
+/// is a use of the container, and every scope it has open holds the
+/// container up for the scope's life: rule 7 of
+/// [`idle_tool`](crate::containers::idle_tool).
 impl DaemonAnswerer for Answerer {
     type Frames = PairFrames;
 
@@ -30,6 +32,6 @@ impl DaemonAnswerer for Answerer {
             fixed: Arc::new(Fixed::new(self.sender.clone(), Converted::from(permissions))),
             tool,
         });
-        Some(serve::serve_pair(Arc::clone(&self.daemon), who, from_program, Some(self.touched.clone())))
+        Some(serve::serve_pair(Arc::clone(&self.daemon), who, from_program, Some(serve::Held { scopes: Arc::clone(&self.scopes), touched: self.touched.clone() })))
     }
 }

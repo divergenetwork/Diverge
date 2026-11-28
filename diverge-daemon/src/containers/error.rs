@@ -19,6 +19,9 @@ pub enum StartError {
     Store(store::Error),
     /// The template the record names is not on record any more.
     NoTemplate(String),
+    /// The dependency tool is not on record any more: its row is gone,
+    /// its agent is, or its agent's program no longer declares it.
+    Gone,
     /// No provider to run on.
     Provider(NoProvider),
     /// The remote daemon's record a connected tool names, by ID, is not
@@ -51,6 +54,7 @@ impl fmt::Display for StartError {
         match self {
             StartError::Store(error) => write!(f, "{error}"),
             StartError::NoTemplate(id) => write!(f, "the template {id} is not on record"),
+            StartError::Gone => f.write_str("the dependency tool is not on record any more"),
             StartError::Provider(error) => write!(f, "{error}"),
             StartError::NoDaemon(id) => write!(f, "no remote daemon's record has the ID `{id}`"),
             StartError::Daemon(error) => write!(f, "{error}"),

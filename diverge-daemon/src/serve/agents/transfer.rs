@@ -58,7 +58,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     }
     scope.allowed().await;
     drop(conn);
-    let opened = match files::open_agent(daemon, &agent).await {
+    let opened = match files::open_agent(daemon, &agent, diverge_sdk::daemon::lifecycle::Cause::Transfer).await {
         Ok(opened) => opened,
         Err(error) => return Ok(Frame::Error(reply::failure(&error))),
     };

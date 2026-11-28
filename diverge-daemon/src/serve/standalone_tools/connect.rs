@@ -89,7 +89,7 @@ async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon
     scope.allowed().await;
     let template = tool.template.clone();
     let connection = daemon.live.mint_connection().await;
-    let run = match containers::use_tool(daemon, &tool).await {
+    let run = match containers::use_tool(daemon, &tool, diverge_sdk::daemon::lifecycle::Cause::Connect).await {
         Ok(run) => run,
         Err(error) => {
             let error = match (error.unsupported(), error.no_source()) {
@@ -101,7 +101,7 @@ async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon
             return Ok(());
         }
     };
-    let scoped = Scoped { run: Arc::clone(&run), caller: Arc::clone(&caller), hold: Some(containers::connect(daemon, &run, connection).await) };
+    let scoped = Scoped { run: Arc::clone(&run), caller: Arc::clone(&caller), hold: Some(containers::connect(&run, connection).await) };
     reply::reply(
         scope,
         &Frame::Connected {

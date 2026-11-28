@@ -1,6 +1,8 @@
 //! Starting a run: the container made from the record.
 
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -8,6 +10,7 @@ use chrono::Utc;
 use diverge_sdk::shared::mcp::attestation;
 use diverge_sdk::shared::relay::Relay;
 use diverge_sdk::daemon::agent_log::{self as log, Item};
+use diverge_sdk::daemon::lifecycle::Cause;
 use diverge_sdk::daemon::endpoints::standalone_tools::connect::client::{execute as tools_connect, request as connect_request};
 use diverge_sdk::shared::containers::info::Mode;
 use diverge_sdk::provider::endpoints::containers::agents::run::client::{execute as agents_run, request as agents_request};
@@ -30,11 +33,12 @@ use crate::store::connected_standalone_tools::ConnectedTool;
 use crate::store::tools::{Tool, attachments};
 use crate::store::{agents, agents_templates, connected_standalone_tools as connected_records, tools as tool_records, tools_templates};
 
-/// The agent's run, started now if it was not up: the providers it
+/// The agent's run, started now if it was not up, `cause` being what
+/// started it: the providers it
 /// may run on found, the mounts served, the attached tools served
 /// idle, the run opened on the first provider that runs it — its
-/// dependencies deployed meanwhile, the lazy ones stopped again
-/// when that provider does not — its dependencies settled to none
+/// dependencies deployed meanwhile, those that mount its files stopped
+/// again when that provider does not — its dependencies settled to none
 /// when its program declared none, and
 /// its id taken, the log told
 /// it began, the pump and the idle clock running. A start that fails
@@ -44,14 +48,14 @@ use crate::store::{agents, agents_templates, connected_standalone_tools as conne
 /// states. The start runs in a task of its own, waited for: a caller
 /// cancelled midway — an exchange aborted with its scope — neither
 /// tears it nor orphans what it opened.
-pub async fn agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun>, StartError> {
+pub async fn agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Result<Arc<AgentRun>, StartError> {
     let (daemon, agent) = (Arc::clone(daemon), agent.clone());
     let started = tokio::spawn(async move {
         let _starting = Starting::hold(&daemon, Key::Agent(agent.id)).await;
         if let Some(run) = daemon.live.agent_run(agent.id).await {
             return Ok(run);
         }
-        match start_agent(&daemon, &agent).await {
+        match start_agent(&daemon, &agent, cause).await {
             Ok(run) => Ok(run),
             Err(error) => {
                 let log = daemon.live.log(&daemon.store, agent.id).await;
@@ -71,10 +75,22 @@ pub async fn agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun>,
     started.await.unwrap_or_else(|error| Err(StartError::Unfinished(error.to_string())))
 }
 
+/// [`agent`], as a future whose type is named: what a dependency
+/// tool's deploy starts its agent by. An agent's start deploys the
+/// tools its program declares, and the deploy of a tool that mounts
+/// its agent's files starts its agent, so the two futures would each
+/// hold the other; naming this one's type here is what lets the
+/// compiler close the two.
+pub fn agent_for(daemon: Arc<Daemon>, record: Agent, cause: Cause) -> Pin<Box<dyn Future<Output = Result<Arc<AgentRun>, StartError>> + Send>> {
+    Box::pin(async move { agent(&daemon, &record, cause).await })
+}
+
 /// The start lock of one agent or tool, held for the length of its
 /// start (see [`starting`](crate::daemon::Live::starting)): let go
 /// however the start ends — returned, failed, panicked — and the
-/// lock's entry then forgotten once nobody else holds it. A drop
+/// lock's entry then forgotten once nobody else holds it, and a
+/// tool's holds with it where the start left no run and they hold
+/// nothing. A drop
 /// cannot wait on the live map's lock, so that is a task of its own.
 pub(super) struct Starting {
     /// The daemon whose map the entry is in.
@@ -100,12 +116,17 @@ impl Drop for Starting {
         drop(self.held.take());
         if let Ok(runtime) = tokio::runtime::Handle::try_current() {
             let (daemon, key) = (Arc::clone(&self.daemon), self.key);
-            runtime.spawn(async move { daemon.live.started(key).await });
+            runtime.spawn(async move {
+                daemon.live.started(key).await;
+                if let Key::Tool(tool) = key {
+                    daemon.live.release_holds(tool).await;
+                }
+            });
         }
     }
 }
 
-async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun>, StartError> {
+async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Result<Arc<AgentRun>, StartError> {
     let (template, attached, connected) = {
         let mut conn = daemon.store.acquire().await?;
         let template = agents_templates::by_id(&mut conn, &agent.template, false)
@@ -196,6 +217,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             touched: touched.clone(),
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
+            scopes: Arc::new(Inflight::new()),
             kept: Mutex::new(None),
         });
         let opened = agents_run::execute(&handle, &agents_request::Frame(container.clone()), answerer.set()).await;
@@ -204,16 +226,18 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
         let (id, handle, stream) = match opened {
             Ok(opened) => opened,
             Err(error) => {
-                // Dependencies deployed for this attempt go with it.
-                let deployed = {
+                // The dependencies served for this attempt go with it,
+                // and those that mount this attempt's container are
+                // stopped: the next attempt registers anew.
+                let own = {
                     let mut set = served.lock().await;
-                    let deployed = set.lazy();
-                    for run in &deployed {
-                        set.remove(run.id);
+                    let own = set.own();
+                    for id in &own {
+                        set.remove(ToolKey::Dependency(*id));
                     }
-                    deployed
+                    own
                 };
-                stop::stop_dependencies(daemon, deployed, End::Expected).await;
+                stop::stop_mounted(daemon, &own, End::Expected).await;
                 last = format!("{error:?}");
                 continue;
             }
@@ -238,6 +262,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             mounts,
             volumes: crate::volumes::of_agent(agent),
             served,
+            holding: Mutex::new(None),
             messages: Arc::new(Mutex::new(HashMap::new())),
             pending: Arc::new(Inflight::new()),
             gate: Mutex::new(Gate { ending: false }),
@@ -250,7 +275,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
             ending: Mutex::new(None),
             ended: watch::channel(false).0,
         });
-        lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone()).await;
+        lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone(), cause).await;
         // From here a failure is the run's undoing: its container, its
         // dependencies, its mounts and its `deployed`.
         let recorded: Result<(), crate::store::Error> = async {
@@ -287,34 +312,35 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent) -> Result<Arc<AgentRun
     Err(StartError::Run(last))
 }
 
-/// The tool's run, started now: its container run on the first of its
+/// The tool's run, started now, `cause` being what started it: its
+/// container run on the first of its
 /// providers that runs it, with its mounts served.
 /// [`pump_tool`](super::pump_tool) reads the
-/// container's activity to its end and takes the run down; a
-/// lazy tool's idle clock ends it `idle_seconds` after the last
-/// use, nothing in flight and no connect open. A tool declares no
+/// container's activity to its end and takes the run down; its idle
+/// clock ends it `idle_seconds` after the last hold left it, as
+/// [`idle_tool`](super::idle_tool) states. A tool declares no
 /// dependencies, so nothing is served to it. Whether the tool is a
 /// eager tool is its image's mode, read here for the run. A start that
 /// fails after its run was made is undone as
 /// [`undo_tool`](stop::undo_tool) states; the start runs in a task of
 /// its own, waited for, as an agent's does. A connected tool's run is
 /// [`connected`]'s.
-pub async fn tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, StartError> {
+pub async fn tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<Arc<ToolRun>, StartError> {
     let (daemon, tool) = (Arc::clone(daemon), tool.clone());
     let started = tokio::spawn(async move {
         let _starting = Starting::hold(&daemon, Key::Tool(ToolKey::Record(tool.id))).await;
         if let Some(run) = daemon.live.tool_run(ToolKey::Record(tool.id)).await {
             return Ok(run);
         }
-        start_tool(&daemon, &tool).await
+        start_tool(&daemon, &tool, cause).await
     });
     started.await.unwrap_or_else(|error| Err(StartError::Unfinished(error.to_string())))
 }
 
-async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, StartError> {
+async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<Arc<ToolRun>, StartError> {
     let touched = watch::channel(Instant::now()).0;
     let (template, pinned) = (&tool.template, &tool.provider);
-    let (identity, container, handle, mounts, attestation, eager, stream, permissions) = {
+    let (identity, container, handle, mounts, attestation, eager, stream, permissions, scopes) = {
         let record = {
             let mut conn = daemon.store.acquire().await?;
             tools_templates::by_id(&mut conn, template, false)
@@ -360,6 +386,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 touched: touched.clone(),
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
+                scopes: Arc::new(Inflight::new()),
                 kept: Mutex::new(None),
             });
             let started = tools_run::execute(&handle, &tools_request::Frame(container.clone()), answerer.set()).await;
@@ -368,7 +395,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             match started {
                 Ok((id, handle, stream)) => {
                     let permissions = answerer.permissions.lock().await.clone();
-                    opened = Some((identity, id.id, handle, stream, permissions));
+                    opened = Some((identity, id.id, handle, stream, permissions, Arc::clone(&answerer.scopes)));
                     break;
                 }
                 Err(error) => {
@@ -376,7 +403,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
                 }
             }
         }
-        let Some((identity, id, handle, stream, permissions)) = opened else {
+        let Some((identity, id, handle, stream, permissions, scopes)) = opened else {
             mounts.stop().await;
             return Err(StartError::Run(last));
         };
@@ -387,7 +414,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             name: tool.name.clone(),
         };
         let eager = document.mode() == Some(Mode::Eager);
-        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, permissions)
+        (identity, Some(id), ToolHandle::Run(handle), mounts, attestation, eager, stream, permissions, scopes)
     };
     let run = Arc::new(ToolRun {
         id: ToolKey::Record(tool.id),
@@ -399,6 +426,9 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
         eager,
         connections: Mutex::new(HashSet::new()),
         held: watch::channel(false).0,
+        holds: daemon.live.holds(ToolKey::Record(tool.id)).await,
+        scopes,
+        agent: Mutex::new(None),
         inflight: Arc::new(Inflight::new()),
         files: Arc::new(Inflight::new()),
         touched,
@@ -421,7 +451,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
         stop::undo_tool(daemon, run, false).await;
         return Err(error.into());
     }
-    lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone()).await;
+    lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone(), cause).await;
     let recorded: Result<(), crate::store::Error> = async {
         let mut conn = daemon.store.acquire().await?;
         tool_records::set_deployed(&mut conn, tool.id, &identity, Utc::now()).await?;
@@ -443,15 +473,14 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
             tasks.push(tokio::spawn(pump_tool::pump_tool(Arc::clone(daemon), Arc::clone(&run), stream)).abort_handle());
             // A mount's serve lost is the run's end: see `lost_tool`.
             tasks.push(tokio::spawn(lost::lost_tool(Arc::clone(&run))).abort_handle());
-            if !run.eager {
-                tasks.push(tokio::spawn(idle::idle_tool(Arc::clone(daemon), Arc::clone(&run))).abort_handle());
-            }
+            tasks.push(tokio::spawn(idle::idle_tool(Arc::clone(daemon), Arc::clone(&run))).abort_handle());
         }
     }
     Ok(run)
 }
 
-/// The connected tool's run, connected now: the daemon its record
+/// The connected tool's run, connected now, `cause` being what
+/// connected it: the daemon its record
 /// names connected to, over the one connection to it, and that
 /// daemon's connect opened naming the tool, relayed along the record's
 /// route when it has one, which starts the container on the daemon
@@ -460,22 +489,22 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool) -> Result<Arc<ToolRun>, S
 /// provider reserved, no permission kept. The waiter takes the run down
 /// when the connect scope ends, which the other daemon finishes when
 /// the tool's run ends there; the idle clock ends it `idle_seconds`
-/// after the last use, nothing in flight. A connected tool is never a
+/// after the last hold left it. A connected tool is never a
 /// eager tool here. The start runs in a task of its own, waited for, as a
 /// tool's does.
-pub async fn connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<Arc<ToolRun>, StartError> {
+pub async fn connected(daemon: &Arc<Daemon>, tool: &ConnectedTool, cause: Cause) -> Result<Arc<ToolRun>, StartError> {
     let (daemon, tool) = (Arc::clone(daemon), tool.clone());
     let started = tokio::spawn(async move {
         let _starting = Starting::hold(&daemon, Key::Tool(ToolKey::Connected(tool.id))).await;
         if let Some(run) = daemon.live.tool_run(ToolKey::Connected(tool.id)).await {
             return Ok(run);
         }
-        start_connected(&daemon, &tool).await
+        start_connected(&daemon, &tool, cause).await
     });
     started.await.unwrap_or_else(|error| Err(StartError::Unfinished(error.to_string())))
 }
 
-async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<Arc<ToolRun>, StartError> {
+async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool, cause: Cause) -> Result<Arc<ToolRun>, StartError> {
     let record = {
         let mut conn = daemon.store.acquire().await?;
         crate::store::daemons::by_id(&mut conn, tool.daemon, false).await?
@@ -510,6 +539,11 @@ async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<A
         eager: false,
         connections: Mutex::new(HashSet::new()),
         held: watch::channel(false).0,
+        holds: daemon.live.holds(key).await,
+        // A connected tool's program is another daemon's, and opens
+        // nothing on this one.
+        scopes: Arc::new(Inflight::new()),
+        agent: Mutex::new(None),
         inflight: Arc::new(Inflight::new()),
         files: Arc::new(Inflight::new()),
         touched: watch::channel(Instant::now()).0,
@@ -524,7 +558,7 @@ async fn start_connected(daemon: &Arc<Daemon>, tool: &ConnectedTool) -> Result<A
         log: daemon.live.tool_log(&daemon.store, key).await,
         ending: Mutex::new(None),
     });
-    lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity).await;
+    lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity, cause).await;
     // From here a failure is the run's undoing: its connect and its
     // `deployed`.
     let recorded: Result<(), crate::store::Error> = async {

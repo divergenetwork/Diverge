@@ -12,12 +12,12 @@
 //! tool, a dependency tool or a volume that is none, that a volume at
 //! either end is held, forbidden, or that it failed, and the scope
 //! finishes. The bytes never reach the client. What lands where is the
-//! destination's to say. The source's container is read as it runs: a
-//! dependency tool that does not run is not started for the operation,
-//! and is `NotFound`; nothing is stopped or released when the
-//! operation ends. A dependency tool the destination names that does
-//! not run is `NoDestination`, the same way; an agent or a created
-//! tool the destination names that is not running is started for the
+//! destination's to say. A dependency tool whose container is not
+//! running is deployed for the operation, and held up while it is
+//! read; a tool that mounts its agent's files brings its agent's
+//! container up with it, and one its agent no longer declares is
+//! `NotFound`. An agent, a created
+//! tool or a dependency tool the destination names that is not running is started for the
 //! operation and stopped when it finishes.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the

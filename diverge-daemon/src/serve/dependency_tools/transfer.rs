@@ -1,5 +1,5 @@
-//! Transferring a file or a directory out of a running dependency
-//! tool's container.
+//! Transferring a file or a directory out of a dependency tool's
+//! container.
 
 use std::sync::Arc;
 
@@ -9,7 +9,7 @@ use diverge_sdk::daemon::grant::dependency_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::Opened;
+use crate::containers::StartError;
 use crate::content;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
@@ -29,13 +29,15 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 }
 
 /// `Forbidden` with no `transfer` grant at all; `NotFound` for a
-/// template that is none, an owner it has no tool for, a tool that
-/// does not run, or a path at which nothing is; `Forbidden` for a
+/// template that is none, an owner it has no tool for, a tool gone
+/// since, or a path at which nothing is; `Forbidden` for a
 /// template the grants do not reach, or a destination they do not;
 /// `NoDestination`; `Held` for a destination volume that is held; else
-/// the copy — through the provider when both ends run on it — and
-/// `Transferred`. Nothing is started at this end, and nothing is
-/// released after.
+/// the tool's container deployed if it was down (see
+/// [`open_dependency`](crate::serve::files::open_dependency)), which
+/// failing is the `Error`, the copy — through the provider when both
+/// ends run on it — and `Transferred`, the run held up while it is
+/// made.
 async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut conn = daemon.store.acquire().await?;
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -44,7 +46,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     if !judge::dependency_tools::holds(&standing, Over::Transfer) {
         return Ok(Frame::Forbidden);
     }
-    let Some((tool, Some(run))) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
+    let Some((tool, _)) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
         return Ok(Frame::NotFound);
     };
     if !reaches(&mut conn, daemon, &standing, Over::Transfer, &tool).await? {
@@ -61,8 +63,11 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     }
     scope.allowed().await;
     drop(conn);
-    let using = run.file_use();
-    let opened = Opened::Tool(run, Some(using));
+    let opened = match crate::serve::files::open_dependency(daemon, tool.id, diverge_sdk::daemon::lifecycle::Cause::Transfer).await {
+        Ok(opened) => opened,
+        Err(StartError::Gone) => return Ok(Frame::NotFound),
+        Err(error) => return Ok(Frame::Error(reply::failure(&error))),
+    };
     opened.touch();
     Ok(match transfers::copy(daemon, Source::Opened(opened), &frame.path, frame.to).await {
         Ok(()) => Frame::Transferred,

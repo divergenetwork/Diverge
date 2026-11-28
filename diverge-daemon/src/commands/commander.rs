@@ -1,7 +1,7 @@
 //! Whose book a request is kept in.
 
 use crate::containers::ToolKey;
-use crate::judge::{ToolRef, Who};
+use crate::judge::Who;
 use crate::store::AccountId;
 use crate::store::hash;
 
@@ -29,10 +29,7 @@ impl Commander {
         match who {
             Who::Account(id) => Some(Commander::Account(*id)),
             Who::Admin(identity) => hash::identity_key(identity).ok().map(|key| Commander::Admin(AdminKey(key))),
-            Who::Tool(declared) => Some(Commander::Tool(match declared.tool {
-                ToolRef::Standalone(id) => ToolKey::Record(id),
-                ToolRef::Dependency(id) => ToolKey::Dependency(id),
-            })),
+            Who::Tool(declared) => Some(Commander::Tool(declared.tool.key())),
         }
     }
 }

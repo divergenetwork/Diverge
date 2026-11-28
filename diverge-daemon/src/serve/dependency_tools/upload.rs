@@ -1,4 +1,4 @@
-//! Uploading a file or a directory into a running dependency tool's
+//! Uploading a file or a directory into a dependency tool's
 //! container.
 
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use diverge_sdk::daemon::grant::dependency_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::Opened;
+use crate::containers::StartError;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::serve::files::{Into, What};
@@ -29,11 +29,13 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 
 /// `Forbidden` with no `upload` grant at all; `NotFound` for a
 /// template that is none, an owner it has no tool under, or a tool
-/// that does not run; `Forbidden` for a tool the grants do not reach;
-/// else every file asked for on its own channel and landed at the
+/// gone since; `Forbidden` for a tool the grants do not reach;
+/// else the tool's container deployed if it was down (see
+/// [`files::open_dependency`]), which failing is the `Error`, and
+/// every file asked for on its own channel and landed at the
 /// path, every parent made, and `Uploaded`; a file whose content ends
-/// in an error is the `Error`, files landed before it staying. Nothing
-/// is started, and nothing is released after.
+/// in an error is the `Error`, files landed before it staying. The
+/// run is held up while they land.
 async fn serve(scope: Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let (reference, path, what) = match &frame {
         request::Frame::File { dependency, path, .. } => (dependency, path, What::File),
@@ -46,7 +48,7 @@ async fn serve(scope: Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon:
     if !judge::dependency_tools::holds(&standing, Over::Upload) {
         return Ok(Frame::Forbidden);
     }
-    let Some((tool, Some(run))) = resolve(&mut conn, daemon, reference, false).await? else {
+    let Some((tool, _)) = resolve(&mut conn, daemon, reference, false).await? else {
         return Ok(Frame::NotFound);
     };
     let reached = reaches(&mut conn, daemon, &standing, Over::Upload, &tool).await?;
@@ -55,8 +57,11 @@ async fn serve(scope: Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon:
         return Ok(Frame::Forbidden);
     }
     scope.allowed().await;
-    let using = run.file_use();
-    let opened = Opened::Tool(run, Some(using));
+    let opened = match files::open_dependency(daemon, tool.id, diverge_sdk::daemon::lifecycle::Cause::Upload).await {
+        Ok(opened) => opened,
+        Err(StartError::Gone) => return Ok(Frame::NotFound),
+        Err(error) => return Ok(Frame::Error(reply::failure(&error))),
+    };
     opened.touch();
     Ok(match files::upload(scope, daemon, Into::Opened(&opened), path, what).await {
         Ok(()) => Frame::Uploaded,

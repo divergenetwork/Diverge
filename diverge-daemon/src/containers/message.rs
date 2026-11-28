@@ -200,7 +200,7 @@ async fn watched(daemon: Arc<Daemon>, id: AgentId) {
 /// ends it; a pump that dies is [`watched`]'s.
 async fn pump(daemon: Arc<Daemon>, id: AgentId) {
     while let Some(agent) = daemon.live.waiting(id).await {
-        let run = match super::agent(&daemon, &agent).await {
+        let run = match super::agent(&daemon, &agent, diverge_sdk::daemon::lifecycle::Cause::Message).await {
             Ok(run) => run,
             Err(error) => {
                 answer(daemon.live.take_waiting(id).await, &Fate::Error(unstarted(&error)));

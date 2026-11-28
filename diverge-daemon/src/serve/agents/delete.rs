@@ -27,11 +27,12 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 }
 
 /// `Forbidden` with no `delete` grant at all; `NotFound`; `Forbidden`
-/// for an agent the grants do not reach; `Active` while a loop runs
-/// in it; else the agent gone — its container stopped if it was up,
+/// for an agent the grants do not reach; `Active` while it is active,
+/// or while any dependency tool it owns is — a call or a read that
+/// tool was asked still unanswered; else the agent gone — its container stopped if it was up,
 /// its attachments with it, its own compartment of the database
 /// dropped with its every table, the dependency tools it owns gone
-/// with theirs, each eager tool among them retired, every other dependency tool and every tool on record
+/// with theirs, each one's run stopped, every other dependency tool and every tool on record
 /// it was attached to told,
 /// its name free, its MCP session in every tool running forgotten,
 /// every watch on its log ended and the log removed.
@@ -54,6 +55,13 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     }
     if state.active {
         return Ok(Frame::Active);
+    }
+    // The tools it owns go with it, and one that is working is not
+    // taken out from under its ask.
+    for tool in dependency_tools::of_owner_agent(&mut tx, agent.id).await? {
+        if daemon.live.is_busy(containers::ToolKey::Dependency(tool.id)).await {
+            return Ok(Frame::Active);
+        }
     }
     let attached = dependency_tools::of_agent(&mut tx, agent.id).await?;
     let detached = tools::attachments::of_agent(&mut tx, agent.id).await?;

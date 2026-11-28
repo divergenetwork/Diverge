@@ -29,7 +29,8 @@ pub struct Listed {
     /// agent, or nobody. See [`key::Owner`].
     pub owner: key::Owner,
     /// How the tool is kept running, as its image's `mode` says: lazy,
-    /// run while used, or eager, kept while any agent is attached. See
+    /// run while anything holds it, or eager, held as well by any
+    /// agent attached to it. See
     /// [`Mode`].
     pub mode: Mode,
     /// How far the tool is shared, as its image's `scope` says: one

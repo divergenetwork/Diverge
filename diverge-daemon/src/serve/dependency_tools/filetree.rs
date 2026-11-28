@@ -1,4 +1,4 @@
-//! Watching a running dependency tool's container tree.
+//! Watching a dependency tool's container tree.
 
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ use diverge_sdk::daemon::grant::dependency_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::Opened;
+use crate::containers::StartError;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::serve::{files, reply};
@@ -24,13 +24,13 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 
 /// `Forbidden` with no `filetree` grant at all; `NotFound` for a
 /// template that is none, an owner it has no tool under, or a tool
-/// that does not run; `Forbidden` for a tool the grants do not reach;
-/// else a snapshot of the whole tree, the daemon's mounts spliced in,
+/// gone since; `Forbidden` for a tool the grants do not reach;
+/// else the tool's container deployed if it was down (see
+/// [`files::open_dependency`]), which failing is the `Error`, and a
+/// snapshot of the whole tree, the daemon's mounts spliced in,
 /// then every change until the client cancels, the run ends, or the
-/// stream fails. Nothing is started. The watch is a file use for its
-/// whole length, held on the agent the dependency was deployed for —
-/// with which it stops — so the agent's idle clock counts from its
-/// end.
+/// stream fails. The watch holds the tool's run up for its whole
+/// length, so the tool's idle clock counts from its end.
 async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<(), store::Error> {
     let mut conn = daemon.store.acquire().await?;
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -41,7 +41,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         reply::reply(scope, &Frame::Forbidden).await;
         return Ok(());
     }
-    let Some((tool, Some(run))) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
+    let Some((tool, _)) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
         reply::reply(scope, &Frame::NotFound).await;
         return Ok(());
     };
@@ -52,8 +52,17 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         return Ok(());
     }
     scope.allowed().await;
-    let using = run.file_use();
-    let opened = Opened::Tool(run, Some(using));
+    let opened = match files::open_dependency(daemon, tool.id, diverge_sdk::daemon::lifecycle::Cause::Filetree).await {
+        Ok(opened) => opened,
+        Err(StartError::Gone) => {
+            reply::reply(scope, &Frame::NotFound).await;
+            return Ok(());
+        }
+        Err(error) => {
+            reply::reply(scope, &Frame::Error(reply::failure(&error))).await;
+            return Ok(());
+        }
+    };
     let outcome = files::watch(scope, &opened, &|scope, frame| {
         Box::pin(async move {
             reply::reply(scope, &Frame::Filetree(frame)).await;

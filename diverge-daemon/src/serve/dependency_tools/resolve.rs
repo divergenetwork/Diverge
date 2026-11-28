@@ -14,7 +14,9 @@ use crate::store::{self, dependency_tools};
 /// under its owner — with its run, if its container is up: nothing
 /// for a template that is none or an owner it has no tool under.
 /// With `lock`, the row is locked for the transaction. Nothing is
-/// started.
+/// started here: a request that needs the container up deploys it
+/// after it is judged, by
+/// [`open_dependency`](crate::serve::files::open_dependency).
 pub async fn resolve(
     conn: &mut PgConnection,
     daemon: &Daemon,

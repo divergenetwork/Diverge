@@ -60,7 +60,7 @@ async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<
     agents_templates::delete(&mut tx, &record.id).await?;
     tx.commit().await?;
     for tool in detached {
-        eager::held(daemon, ToolKey::Record(tool)).await;
+        eager::held(daemon, ToolKey::Record(tool), diverge_sdk::daemon::lifecycle::Cause::Attachment).await;
     }
     daemon.live.changed(Kind::AgentsTemplates);
     daemon.live.changed(Kind::PostgresCompartments);

@@ -6,7 +6,9 @@ use diverge_sdk::daemon::reference;
 use diverge_sdk::daemon::transfer::Destination;
 
 use super::Fail;
-use crate::containers::{self, Opened, running_dependency};
+use diverge_sdk::daemon::lifecycle::Cause;
+
+use crate::containers::{self, Opened, StartError};
 use crate::daemon::Daemon;
 use crate::store::{agents, tools};
 use crate::volumes;
@@ -32,11 +34,10 @@ pub enum Sink {
 }
 
 impl Sink {
-    /// The destination resolved: its agent or tool found and started,
-    /// or joined, for the operation, its dependency tool found running
-    /// and taken as it is, its volume found on its provider;
-    /// `NoDestination` for one that is none — a dependency tool that
-    /// does not run among them, since nothing starts one.
+    /// The destination resolved: its agent or tool — standalone or
+    /// dependency — found and started, or joined, for the operation,
+    /// deployed by the transfer where it was down, its volume found on
+    /// its provider; `NoDestination` for one that is none.
     pub async fn resolve(daemon: &Arc<Daemon>, destination: Destination) -> Result<Sink, Fail> {
         match destination {
             Destination::Agent { agent, path } => {
@@ -49,7 +50,7 @@ impl Sink {
                 let Some(record) = record else {
                     return Err(Fail::NoDestination);
                 };
-                let run = containers::agent(daemon, &record).await.map_err(|error| Fail::Error(error.to_string()))?;
+                let run = containers::agent(daemon, &record, Cause::Transfer).await.map_err(|error| Fail::Error(error.to_string()))?;
                 Ok(Sink::Opened {
                     opened: {
                         let using = run.file_use();
@@ -68,7 +69,7 @@ impl Sink {
                 let Some(record) = record else {
                     return Err(Fail::NoDestination);
                 };
-                let run = containers::use_tool(daemon, &record).await.map_err(|error| Fail::Error(error.to_string()))?;
+                let run = containers::use_tool(daemon, &record, Cause::Transfer).await.map_err(|error| Fail::Error(error.to_string()))?;
                 let using = run.file_use();
                 Ok(Sink::Opened {
                     opened: Opened::Tool(run, Some(using)),
@@ -76,14 +77,19 @@ impl Sink {
                 })
             }
             Destination::Dependency { dependency, path } => {
-                let run = {
+                let record = {
                     let mut conn = daemon.store.acquire().await.map_err(|error| Fail::Error(error.to_string()))?;
-                    running_dependency(daemon, &mut conn, &dependency)
+                    crate::store::dependency_tools::by_reference(&mut conn, &dependency, false)
                         .await
                         .map_err(|error| Fail::Error(error.to_string()))?
                 };
-                let Some(run) = run else {
+                let Some(record) = record else {
                     return Err(Fail::NoDestination);
+                };
+                let run = match containers::use_dependency(daemon, record.id, Cause::Transfer).await {
+                    Ok(run) => run,
+                    Err(StartError::Gone) => return Err(Fail::NoDestination),
+                    Err(error) => return Err(Fail::Error(error.to_string())),
                 };
                 Ok(Sink::Opened {
                     opened: {

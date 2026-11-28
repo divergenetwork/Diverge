@@ -65,12 +65,13 @@ impl DependencyTool {
         Ok((memory, disk))
     }
 
-    /// Whether its run is one agent's run's: a lazy tool whose scope
-    /// is `instance`, deployed with its agent's container and stopped
-    /// with it. Every other tool's run stands alone — an eager
-    /// tool's, kept by the daemon, and a lazy tool's that is many
-    /// agents', started by its first use.
-    pub fn runs_with_agent(&self) -> bool {
+    /// Whether it is one agent's own: a lazy tool whose scope is
+    /// `instance`, deployed at its agent's registration, and the one
+    /// kind of tool that may mount its agent's files. Every other
+    /// tool is an eager one, kept by the daemon while any agent is
+    /// attached, or a lazy one that is many agents', deployed by its
+    /// first use.
+    pub fn own(&self) -> bool {
         !self.is_eager() && self.scope == Scope::Instance
     }
 
