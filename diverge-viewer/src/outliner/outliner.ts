@@ -64,11 +64,17 @@ export function flipLine(registry: Phaser.Data.DataManager, type: EdgeType): voi
   keep("lines", () => registry.get(LINES));
 }
 
-/** What the world has to say, or `null` when nothing. */
-function words(status: Status | undefined): string | null {
+/**
+ * What the world has to say, or `null` when nothing. While it waits
+ * for the daemon: that it is waiting, drawn with moving dots, and why
+ * the last try failed, if one did, drawn beneath it as a failure.
+ */
+type Said = { waiting: boolean; text: string; failure: string | null };
+
+function words(status: Status | undefined): Said | null {
   if (status === undefined) return null;
-  if (status.kind === "waiting") return status.reason === null ? "Waiting for the daemon…" : `Waiting for the daemon… (${status.reason})`;
-  return status.forbidden.length === 0 ? null : `Not allowed to list: ${status.forbidden.join(", ")}`;
+  if (status.kind === "waiting") return { waiting: true, text: "Waiting for the daemon", failure: status.reason };
+  return status.forbidden.length === 0 ? null : { waiting: false, text: `Not allowed to list: ${status.forbidden.join(", ")}`, failure: null };
 }
 
 /** A button with its classes, its label for those who cannot see its glyph, and what it marks for focus to come back to. */
@@ -299,9 +305,24 @@ export function outliner(game: Phaser.Game): void {
       if (form === "open") {
         if (said !== null) {
           const p = document.createElement("p");
-          p.className = "said";
-          p.textContent = said;
+          p.className = said.waiting ? "said waiting" : "said";
+          p.textContent = said.text;
+          if (said.waiting) {
+            p.setAttribute("role", "status");
+            const dots = document.createElement("span");
+            dots.className = "dots";
+            dots.setAttribute("aria-hidden", "true");
+            for (let i = 0; i < 3; i += 1) dots.append(document.createElement("i"));
+            p.append(dots);
+          }
           root.append(p);
+          if (said.failure !== null) {
+            const why = document.createElement("p");
+            why.className = "said failed";
+            why.setAttribute("role", "alert");
+            why.textContent = said.failure;
+            root.append(why);
+          }
         }
         // Rule 2: what to show.
         const show = document.createElement("div");

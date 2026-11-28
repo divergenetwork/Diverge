@@ -185,6 +185,10 @@ export class Board extends Phaser.Scene {
       this.route,
       (world) => (this.nodes ? this.apply(world) : this.draw(world)),
       (change) => this.pulses?.told(change),
+      // While nothing is drawn yet: why not, for the outliner to say.
+      (reason) => {
+        if (!this.nodes) this.say(STATUS, { kind: "waiting", reason } satisfies Status);
+      },
     );
   }
 

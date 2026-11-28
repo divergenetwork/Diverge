@@ -59,9 +59,24 @@ const e = daemon.endpoints;
  *    `route` (`relayed`): by our own daemon for `[]`, its frames carrying
  *    no `relay`; else by the daemon at the route's end, through each
  *    before it.
+ * 8. `failed` is told why the world is not whole yet, or `null` once
+ *    nothing stands in its way: while any list has never been whole,
+ *    the last failure of each such list — a list that could not be
+ *    opened, one that failed, one that ended with no word — as
+ *    `<list>: <why>`, joined; told only when what it says changes, and
+ *    never again once every list has been whole once.
  */
-export function follow(route: Route, changed: (world: Snapshot) => void, event: (change: shared.listing.Change<Event>) => void): Watching {
+export function follow(route: Route, changed: (world: Snapshot) => void, event: (change: shared.listing.Change<Event>) => void, failed: (reason: string | null) => void = () => {}): Watching {
   let stopped = false;
+  // Rule 8: each list's last failure, while it has never been whole.
+  const failures = new Map<string, string>();
+  let told: string | null = null;
+  const tellFailed = () => {
+    const reason = failures.size === 0 ? null : [...failures].map(([name, why]) => `${name}: ${why}`).join("; ");
+    if (reason === told) return;
+    told = reason;
+    failed(reason);
+  };
   const cancels = new Set<{ cancel(): Promise<void> }>();
   const names = new Map<string, string>();
   const frontends = new Set<string>();
@@ -166,11 +181,21 @@ export function follow(route: Route, changed: (world: Snapshot) => void, event: 
               list.listing.items = [];
               list.forbidden = true;
               list.listed = true;
+              // Rule 8.
+              failures.delete(spec.name);
+              tellFailed();
               soon();
               break;
             }
             const change = spec.change(frame);
-            if (change === null) break;
+            if (change === null) {
+              // Rule 8: an answer that is no change is the list's failure, in its own words.
+              if (!list.listed) {
+                failures.set(spec.name, typeof frame === "string" ? frame : JSON.stringify(frame));
+                tellFailed();
+              }
+              break;
+            }
             if (change.kind === "listed") {
               if (told !== null) {
                 const keys = told;
@@ -179,6 +204,9 @@ export function follow(route: Route, changed: (world: Snapshot) => void, event: 
               }
               list.forbidden = false;
               list.listed = true;
+              // Rule 8.
+              failures.delete(spec.name);
+              tellFailed();
               soon();
               continue;
             }
@@ -187,8 +215,17 @@ export function follow(route: Route, changed: (world: Snapshot) => void, event: 
             tell?.(change);
             soon();
           }
-        } catch {
-          // Rule 1: opened again below.
+          // Rule 8: a list that ended before it was ever whole, with no word of why.
+          if (!list.listed && !stopped && !failures.has(spec.name)) {
+            failures.set(spec.name, "ended with no answer");
+            tellFailed();
+          }
+        } catch (error) {
+          // Rule 1: opened again below. Rule 8: why, while it has never been whole.
+          if (!list.listed && !stopped) {
+            failures.set(spec.name, error instanceof Error ? error.message : String(error));
+            tellFailed();
+          }
         }
         if (cancel) cancels.delete(cancel);
         if (!stopped) await new Promise((wake) => setTimeout(wake, AGAIN));
