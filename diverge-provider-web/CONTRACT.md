@@ -201,7 +201,8 @@ between a Client and a Container, without reading it: every channel
 the Proxy opens on a begin Scope and every ask a FUSE Mount makes on
 its Scope, with the Client's answer; the content of a Client's write;
 the bytes of a read; the bytes of a transfer, from one Container into
-another; a filetree; a database connection; the MCP exchanges
+another; a filetree; a database connection; a daemon connection a
+Container's program opens; the MCP exchanges
 into a tool Container; and a daemon connection between a Daemon
 Connector and an Acceptor.
 
@@ -1231,8 +1232,9 @@ templates and the permissions are both empty. On a
 Container declares no dependencies, and its begin's answer carries
 none — and the `registration` Channel carries the
 permissions the tool Container's program declared, verbatim and
-unread. On a `containers::agents::run` Scope the permissions are always
-empty.
+unread. On a `containers::agents::run` Scope the `registration` Channel
+carries the templates and the permissions the agent Container's
+program declared, verbatim and unread.
 
 (i) **Send the id.** The id the Provider chose in (h) shall be unique
 among the Containers it is running and not derivable from the
@@ -1482,15 +1484,15 @@ frame; that answers exactly one begin Scope per connection, holding the
 arguments, the template id and the image it carries for the
 Container's life
 and answering, for an agent Container, with the dependency tool
-templates the program declared, unread, and, for a
+templates and the permissions the program declared, unread, and, for a
 tool Container, with the permissions the program declared, unread, and no
 dependencies; that sends no error on the begin Scope after `Begun`;
 that marks an agent Container's loops with `Active` before the first
 chunk of each and `Inactive` after the last; that marks a tool Container's activity with
 `Active` before the first exchange in flight is delivered and
-`Inactive` after the last is answered; that opens no daemon Channel for an agent Container
-and no MCP Channel outward for a tool Container, answering the
-program of either that it has no such thing; that sets nothing under
+`Inactive` after the last is answered; that opens
+no MCP Channel outward for a tool Container, answering its
+program that it has no such thing; that sets nothing under
 `_meta` on any MCP exchange it relays, in either direction, or on
 any chunk of an agent's conversation, and alters nothing of them;
 that makes each

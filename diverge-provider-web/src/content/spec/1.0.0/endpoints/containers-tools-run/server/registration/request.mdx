@@ -39,10 +39,11 @@ draft: false
   Postgres compartments; and `volumes` for volumes. An agent and a standalone tool are each
   listed as an object of exactly two members, `template`, a string,
   and `index`, an unsigned integer: the record of that index among
-  the records made from that template. Over agents alone, a `within`
-  may also be the string `attached`, which reaches the agents
-  attached to the tool, or the string `never_active`, which reaches
-  the agents that have never run. The server relays the array as the
+  the records made from that template. Over agents, over standalone
+  tools, over connected standalone tools and over dependency tools,
+  a `within` of an object of `actions` and `within` may also be the
+  string `attached`. Over agents alone, it may also be the string
+  `never_active`. The server relays the array as the
   proxy sent it and reads none of it.
 - **Malformed.** A channel request whose payload does not decode as
   stated is answered by a channel response finish that no channel
@@ -78,6 +79,21 @@ and, for the grant over agents, by
 `diverge-sdk-rs/src/shared/permission/agents/within.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/permission/agents/within.rs
+```
+
+and by `diverge-sdk-rs/src/shared/permission/standalone_tools/within.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/permission/standalone_tools/within.rs
+```
+
+and by `diverge-sdk-rs/src/shared/permission/connected_standalone_tools/within.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/permission/connected_standalone_tools/within.rs
+```
+
+and by `diverge-sdk-rs/src/shared/permission/dependency_tools/within.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/permission/dependency_tools/within.rs
 ```
 
 and by `diverge-sdk-rs/src/shared/permission/agents/key.rs`:

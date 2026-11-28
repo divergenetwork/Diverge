@@ -41,8 +41,8 @@ states nothing about the client beyond the order
    connection has not begun.
 3. **The server answers `Begun`.** Exactly once, and before any chunk,
    carrying what the container's program answered its registration
-   with: the dependency tool templates it declared. The server reads
-   none of them.
+   with: the dependency tool templates it declared and the
+   permissions it declared. The server reads none of them.
 4. **The server relays the conversation.** A message the client sends
    on an [enqueue](/container-proxy-endpoints/agents-begin/client/enqueue/) channel is the
    only thing that starts a loop or joins its queue. The server sends
@@ -58,13 +58,11 @@ states nothing about the client beyond the order
   connection.
 - **Both directions.** The server opens channels on this scope for
   everything the container asks of the world outside it — its
-  database connections, its tool calls outward — and the
+  database connections, its tool calls outward, its daemon
+  connections — and the
   client opens channels on it for the
-  queue and its half of each
-  database connection.
-- **No daemon connection.** An agent container holds no account and
-  asks the daemon nothing: the server opens no daemon channel on
-  this scope, and the client opens none.
+  queue, its half of each
+  database connection and its half of each daemon connection.
 - **No error after `Begun`.** After `Begun`, the server sends no
   error response. A loop that ends, however it ends, is reported by
   `Inactive` and by nothing else on the scope.

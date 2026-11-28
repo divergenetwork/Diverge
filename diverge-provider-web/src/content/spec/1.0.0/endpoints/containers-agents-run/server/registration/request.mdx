@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload of the channel request the server sends: the tag byte 3 and the ask, the run’s id and the dependency tool templates as JSON.'
+summary: 'The payload of the channel request the server sends: the tag byte 3 and the ask, the run’s id, the dependency tool templates and the permissions as JSON.'
 order: 1
 draft: false
 ---
@@ -35,8 +35,11 @@ draft: false
   those.
 - **`extra_memory`, `extra_disk`.** What the tool container is given
   beyond what its image's document states.
-- **`permissions`.** Absent. An agent container declares no
-  permissions, and the server carries none on an agents-run scope.
+- **`permissions`.** An array of grants, in the order the program
+  declared them; absent when empty. Each grant has the form the
+  [registration request](/endpoints/containers-tools-run/server/registration/request/)
+  of a tools run states. The server relays the array as the proxy
+  sent it and reads none of it.
 - **The mounts.** Each mount of `fuse_file_mounts` and of
   `fuse_directory_mounts` is an object of `agent_path` and
   `tool_path`, both arrays of path components: a file or a directory

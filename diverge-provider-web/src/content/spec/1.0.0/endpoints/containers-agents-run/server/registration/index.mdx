@@ -1,21 +1,23 @@
 ---
 title: 'Registration'
-summary: 'Tag 3: the server asks the client to register the container, carrying the run’s id and the dependency tool templates the program declared, verbatim; the client answers with exactly one channel response, deployed or an error, and the channel response finish; the server sends the id only after a deploy, and anything but a deploy is the run’s error.'
+summary: 'Tag 3: the server asks the client to register the container, carrying the run’s id and the dependency tool templates and the permissions the program declared, verbatim; the client answers with exactly one channel response, deployed or an error, and the channel response finish; the server sends the id only after a deploy, and anything but a deploy is the run’s error.'
 order: 3
 draft: false
 ---
 
 The server opens this channel when the `Begun` the proxy answered its
-begin with carries one or more dependencies:
+begin with carries one or more dependencies or one or more
+permissions: the dependencies are
 the tool containers the container's program declared when it was
-registered, each as a dependency tool template. The client's answer decides whether
-the run goes on. What the client does with a template is not
-prescribed.
+registered, each as a dependency tool template, and the permissions are
+the grants it declared. The client's answer decides whether
+the run goes on. What the client does with a template or with a
+permission is not prescribed.
 
 - **When.** After the begin has been answered and before the id is
   sent, beside the FUSE mounts. Exactly once per run, and never on a
   connect scope. The server opens no registration channel when the
-  list of dependencies is empty.
+  list of dependencies and the list of permissions are both empty.
 - **The id.** The server mints the run's id before it opens the
   channel, and enters the container among those it runs before it
   asks: a [containers::fuse_serve](/endpoints/containers-fuse-serve/) naming
