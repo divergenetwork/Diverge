@@ -3,9 +3,10 @@
 import { z } from "zod";
 
 /**
- * The agent began working: a loop runs in it, or an MCP exchange is in
- * flight for it. `type` is the string `active`, and nothing lies beside
- * it. Kept only between the run's `deployed` and its `undeployed`, and
+ * The agent began working: a loop runs in it, or an MCP exchange its
+ * own container asked for is in flight. An exchange run as it through
+ * `agents.connect` is neither. `type` is the string `active`, and
+ * nothing lies beside it. Kept only between the run's `deployed` and its `undeployed`, and
  * only on a change.
  */
 export const Active = z.object({

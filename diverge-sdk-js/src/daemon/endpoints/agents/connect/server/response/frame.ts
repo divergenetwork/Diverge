@@ -8,10 +8,15 @@ import { Error } from "../../../../../../shared/error.js";
  * An agents connect's answer: connected, no agent is the one named,
  * forbidden, or a failure. Exactly one, first, and nothing follows it
  * on the scope for its life: what follows comes on the channels the
- * client opens. The finish is the disconnect's answer.
+ * client opens. The finish follows the disconnect, the client's
+ * connection ending, or the agent's container ending. `connected`
+ * says the agent's container is up — started for the connect if it
+ * was down, with every tool the agent is served — and held up by the
+ * scope until the scope ends; a container that will not start is the
+ * error, in the place of `connected`.
  */
 export const Frame = z.union([
-  /** The agent is the one named, and the grants reach it. Carries nothing. Tag `0`. */
+  /** The agent is the one named, the grants reach it, and its container is up and held by the scope. Carries nothing. Tag `0`. */
   z.literal("connected"),
   /** No agent is the one named. Tag `1`. */
   z.literal("not_found"),
