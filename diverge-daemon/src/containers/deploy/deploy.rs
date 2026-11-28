@@ -38,7 +38,11 @@ use crate::store::{self, AgentId, DependencyToolId, hash};
 ///    tool of it under the owner its `scope` names — the agent
 ///    itself, its agent template, or nobody — made or found made, the
 ///    agent attached to each as of now, and detached from every tool
-///    it no longer declares.
+///    it no longer declares. With the records written, the agent's
+///    setup is past its registration: from here it holds every tool
+///    it is served, those just declared among them — see
+///    [`Holding`](crate::containers::Holding) — until its start is
+///    over, or fails.
 /// 3. A lazy tool whose scope is `instance` is the agent's own:
 ///    every one is deployed now, at once, in a task of its own, waited
 ///    for (see [`start_all`]), and served to the agent under its
@@ -49,16 +53,18 @@ use crate::store::{self, AgentId, DependencyToolId, hash};
 ///    orphans none.
 /// 4. An eager tool is kept up, its attachments read anew, and its run
 ///    waited for — live already, or its supervisor's next start up —
-///    and served the same way.
+///    every one at once, and served the same way.
 /// 5. A lazy tool whose scope is `template` is many
-///    agents': it is not started here. It is served idle, and the
-///    first use starts it — see
-///    [`use_dependency`](crate::containers::tools::use_dependency).
+///    agents': it is served here, and deployed with every other tool
+///    the agent is served as soon as the registration is answered —
+///    see [`served`](super::served), which the agent's start runs —
+///    its failure failing the start as any other's does.
 /// 6. Every tool the agent left is told its attachments changed.
 ///
 /// What is deployed here is held and undeployed afterwards as every
 /// tool is: an agent that goes on to sit idle may find a tool of its
-/// own gone down, and its next loop brings it back.
+/// own gone down, and the next message for it brings it back before
+/// it is delivered.
 ///
 /// A tool container asking, an agent gone, a store that refuses the
 /// records, no provider to run on, a path of the agent's that cannot
@@ -116,6 +122,9 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
     let (tools, left) = record(daemon, agent, &creator, &declared)
         .await
         .map_err(|reason| error("", &reason))?;
+    // Rule 2: past the registration, the agent holds its tools.
+    let keys: Vec<ToolKey> = tools.iter().map(|tool| ToolKey::Dependency(tool.id)).collect();
+    answerer.holding.begin(daemon, &answerer.served, &keys).await;
     let mounted = Mounted {
         provider: answerer.provider.clone(),
         container: id,
@@ -129,19 +138,19 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
         Ok(Err((template_id, reason))) => return Err(error(&template_id, &reason)),
         Err(failure) => return Err(error("", &failure.to_string())),
     }
-    let mut kept = Vec::new();
-    for tool in &tools {
-        if !tool.is_eager() {
-            continue;
-        }
-        let key = ToolKey::Dependency(tool.id);
-        eager::held(daemon, key, Cause::Registration).await;
-        if let Err(reason) = eager::up(daemon, key).await {
-            stop::stop_mounted(daemon, &owned, End::Expected).await;
-            return Err(error(&tool.template, &reason));
-        }
-        kept.push(tool.id);
+    // Rule 4: each told to read its attachments, then every one
+    // waited for at once; the first that is not up, in the order
+    // declared, is the error.
+    let eager: Vec<&DependencyTool> = tools.iter().filter(|tool| tool.is_eager()).collect();
+    for tool in &eager {
+        eager::held(daemon, ToolKey::Dependency(tool.id), Cause::Registration).await;
     }
+    let up = future::join_all(eager.iter().map(|tool| eager::up(daemon, ToolKey::Dependency(tool.id)))).await;
+    if let Some((tool, reason)) = eager.iter().zip(up).find_map(|(tool, up)| up.err().map(|reason| (tool, reason))) {
+        stop::stop_mounted(daemon, &owned, End::Expected).await;
+        return Err(error(&tool.template, &reason));
+    }
+    let kept: Vec<DependencyToolId> = eager.iter().map(|tool| tool.id).collect();
     for id in left {
         eager::held(daemon, ToolKey::Dependency(id), Cause::Attachment).await;
     }
@@ -154,8 +163,9 @@ pub async fn deploy(answerer: &Answerer, id: String, templates: Vec<Template>) -
             // A lazy tool of the agent's own: deployed above.
             served.insert_own(tool.id, &tool.template, &short(&tool.template));
         } else {
-            // A lazy tool shared with other agents: served idle, and
-            // started by the first use.
+            // A lazy tool shared with other agents: served here, and
+            // deployed by the agent's start as soon as this is
+            // answered.
             served.insert_shared(tool.id, &tool.template, &short(&tool.template));
         }
     }

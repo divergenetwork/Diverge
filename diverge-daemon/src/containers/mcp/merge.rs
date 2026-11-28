@@ -51,9 +51,8 @@ pub struct Context {
     /// The served set.
     pub served: Arc<Mutex<Served>>,
     /// What a served tool is deployed by, where an exchange here finds
-    /// it down and starts it: an agent's own exchange and its loop's
-    /// beginning are the agent active, and an exchange run as the
-    /// agent is a connect.
+    /// it down and starts it: an agent's own exchange is the agent
+    /// active, and an exchange run as the agent is a connect.
     pub cause: Cause,
 }
 
@@ -142,15 +141,6 @@ async fn relayed(served: &Mutex<Served>, daemon: &Daemon, key: ToolKey) -> Optio
 /// served to one, and no session could name it.
 fn no_caller() -> ErrorData {
     ErrorData::invalid_params("a tool container calls no tool", None)
-}
-
-/// Every idle served tool started: what a loop beginning does, so its
-/// calls find their containers up.
-pub async fn start_all(context: &Context) {
-    let keys = context.served.lock().await.keys();
-    for key in keys {
-        let _ = running(context, key).await;
-    }
 }
 
 /// The union of every served tool's tools, each name under its

@@ -11,7 +11,8 @@
 //! a volume that is none, that a volume at either end is held,
 //! forbidden, or that it failed, and the scope finishes. The bytes never reach the client.
 //! What lands where is the destination's to say. An agent's container that is not running is
-//! started for the operation and stopped when it finishes; one the
+//! started for the operation — with every tool the agent is served, any one of which failing to deploy fails the start and the request with it —
+//! and stopped when it finishes; one the
 //! daemon has running anyway — a loop in it — is used as it runs, and
 //! nothing else about the agent changes. An agent or a created tool the
 //! destination names that is not running is started and stopped the

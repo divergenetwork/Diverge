@@ -15,9 +15,11 @@ use crate::daemon::Daemon;
 ///    not run:
 ///    - the agent is active — a loop runs in it, or an MCP exchange
 ///      its own container asked for is in flight;
-///    - a batch of messages is on its way to it (`pending`: held by
+///    - a message is on its way into it (`pending`: held by
 ///      the agent's outbox pump from the moment it has the run until
-///      the batch is answered);
+///      the batch is answered, and by each message of the batch until
+///      it is echoed, as rule 5 of [`Message`](super::Message)
+///      states);
 ///    - a use is in progress on it — a filetree watch, a download, an
 ///      upload, a transfer, a command, a terminal, a frontend request,
 ///      an `agents connect` scope open on it, with or without an
@@ -138,12 +140,17 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
 /// and since its last use. The holds, each of every kind of tool but
 /// where it says otherwise:
 ///
-/// 1. **An agent the tool is attached to is active.** Attached means,
-///    for a standalone or a connected tool, attached to the agent or
-///    to its template; for a dependency tool, declared by the agent's
-///    latest registration. An agent that is deployed and not active
-///    holds nothing. The agent's turn to active also deploys the tool:
-///    a loop's beginning starts every tool the agent is served.
+/// 1. **An agent the tool is served to is in setup past its
+///    registration, has a message on its way, or is active** — any
+///    of the three, as [`Holding`](super::Holding) states. Served
+///    means, for a standalone or a connected tool, attached to the
+///    agent or to its template; for a dependency tool, declared by
+///    the agent's latest registration. An agent that is deployed and
+///    is none of the three holds nothing. The tool is deployed with
+///    it: an agent's start deploys every tool it is served once its
+///    registration is over, and a message for an agent that was up
+///    already brings back, before it is delivered, any that had gone
+///    down — see [`deploy::served`](super::deploy::served).
 /// 2. **An MCP exchange in flight into it**: a tool call, a resource
 ///    read, a tools list or a resources list, from an agent's
 ///    container, as an agent, or on a connect scope. An exchange
@@ -216,7 +223,7 @@ struct Watched {
     inflight: watch::Receiver<usize>,
     /// Rules 4 to 6: the uses in progress on it.
     files: watch::Receiver<usize>,
-    /// Rule 1: the active agents it is served to.
+    /// Rule 1: the agents it is served to that hold their tools now.
     agents: watch::Receiver<usize>,
     /// Rule 7: its own open daemon scopes.
     scopes: watch::Receiver<usize>,

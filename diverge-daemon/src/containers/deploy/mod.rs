@@ -21,14 +21,19 @@
 //! every tool's is — see [`idle_tool`](crate::containers::idle_tool) —
 //! and one that mounts its agent's files goes down with its agent's
 //! container. [`tool`] is one run of any dependency tool, which every
-//! deploy of one comes to. A tool
+//! deploy of one comes to. [`served`] deploys every tool an agent is
+//! served that is down, of every kind, all at once: what the agent's
+//! start does once its registration is over, and what a message does
+//! before it is delivered. A tool
 //! container declares no dependencies and is never deployed for.
 //!
 //! Its own files are flattened into it, so everything is named
 //! through this module and not through the file it lives in.
 
 mod deploy;
+mod served;
 mod tool;
 
 pub use deploy::*;
+pub use served::*;
 pub use tool::*;

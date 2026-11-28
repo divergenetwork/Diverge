@@ -33,9 +33,12 @@
 //!
 //! # The run
 //!
-//! A tool has at most one run: a lazy tool's container, while it is
-//! used — for the `instance` scope, while its agent's container runs —
-//! and an eager tool's, while the daemon keeps it up.
+//! A tool has at most one run: a lazy tool's container, while
+//! something holds it, and an eager tool's, while the daemon keeps it
+//! up. Every tool an agent's program declares, of either scope, is
+//! deployed when the agent's container starts — one that cannot be
+//! fails the agent's start — and is held while that agent is being
+//! started, has a message on its way or is active.
 //! It is listed on the tool, by where it runs, and nowhere else —
 //! never among the [`standalone_tools`](super::standalone_tools), whose
 //! endpoints find no dependency tool. A tool is named by its template

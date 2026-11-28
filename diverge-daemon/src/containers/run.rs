@@ -27,7 +27,7 @@ use tokio::task::AbortHandle;
 use super::fuse::Mounts;
 use super::lifecycle::{End, RunLog};
 use super::mcp::{Context, Served};
-use super::{ConnectionId, Frames, Guard, Holds, Inflight, Key, ToolKey, Use};
+use super::{ConnectionId, Frames, Guard, Holding, Holds, Inflight, Key, ToolKey, Use};
 use crate::content::Pieces;
 use crate::daemon::Daemon;
 use crate::store::dependency_tools::DependencyTool;
@@ -54,6 +54,11 @@ pub struct AgentRun {
     pub handle: AgentHandle,
     /// Whether a loop runs in it now, as the proxy's two words say.
     pub loop_active: watch::Sender<bool>,
+    /// How many `inactive`s the run's pump has read: one more at each,
+    /// counted before the messages are swept. What tells a message
+    /// marked delivered whether a loop has ended since it was taken:
+    /// rule 5 of [`Message`].
+    pub inactives: watch::Sender<u64>,
     /// The MCP exchanges in flight for it: those its own container
     /// asked for, counted by its answerer, and no other — one run as
     /// it on an `agents connect` scope is not counted here. The other
@@ -81,21 +86,31 @@ pub struct AgentRun {
     pub volumes: Vec<reference::Volume>,
     /// The tools it is served: attached ones and its dependencies.
     pub served: Arc<Mutex<Served>>,
-    /// The hold it has on every tool it is served, while it is active:
-    /// `Some`, one guard per served tool, from its turn to active to
-    /// its turn to inactive, and `None` between — see
-    /// [`activity`](super::activity). Taken before `served` by whoever
-    /// takes both, so the two are changed in step.
-    pub holding: Mutex<Option<HashMap<ToolKey, Guard>>>,
+    /// The hold it has on every tool it is served, while it is in
+    /// setup past its registration, has a message on its way or is
+    /// active, and its setup's count: made with the start, and shared
+    /// with its answerer, since the hold begins at the registration,
+    /// before the run is made — see [`Holding`].
+    pub holding: Arc<Holding>,
+    /// The setup's count of a start made for a message, from the
+    /// start's end until the agent's outbox pump has entered `pending`
+    /// for the message, which takes it: so the tools the setup
+    /// deployed are held from the registration to the loop with no
+    /// moment between. `None` for a start made for anything else,
+    /// whose setup's count is dropped at the start's end.
+    pub arrival: Mutex<Option<Guard>>,
     /// The messages enqueued and not yet swept, by key, with who sent
     /// each: what a user part is logged as. See [`Message`] for when
     /// one leaves.
     pub messages: Arc<Mutex<HashMap<String, Message>>>,
-    /// The requests on their way to the run: entered by the agent's
+    /// The messages on their way into the run: entered by the agent's
     /// outbox pump each turn, once it has the run and before it
     /// sends to it, and left when every request of that turn is
-    /// answered; several turns may hold it at once — see
-    /// [`message`](super::message). What the idle clock waits on.
+    /// answered; and entered once more for each message taken, until
+    /// the message is echoed — rule 5 of [`Message`]. Several turns
+    /// may hold it at once — see [`message`](super::message). What
+    /// the idle clock waits on, and one of the three things the agent
+    /// holds its tools by.
     pub pending: Arc<Inflight>,
     /// Whether the daemon is ending the run, under one lock for the
     /// idle clock's last look and the outbox pump's: see [`Gate`].
@@ -170,6 +185,22 @@ pub struct Gate {
 ///    run, whose end empties the map — drops it unsaid, and the
 ///    message is echoed no more: an item under a key the map does not
 ///    hold is kept as any other chunk, with no sender.
+/// 5. **It is on its way until it is echoed.** Each entry counts once
+///    in the run's `pending` — `arriving` — from the moment it is
+///    made. A message's fate is said on one stream and its loop's
+///    beginning on another, in no order the daemon can go by, so the
+///    turn's own count may be let go before the daemon has heard the
+///    loop the message started begin; the echo is on the stream the
+///    loop's beginning is on, after it. So the count is let go when
+///    the echo is taken, by which time the agent is active; or, for a
+///    program that echoes nothing, once the message is delivered and
+///    an `inactive` has been read since it was taken — at that
+///    `inactive` where the message was marked delivered first, and at
+///    the mark where the `inactive` was read first, which `inactives`
+///    tells; or with the entry, however it leaves. So an echoed
+///    message holds the agent's tools from the moment it is taken to
+///    its loop with no moment between, and no message holds them past
+///    the end of a loop it could have been taken by.
 #[derive(Debug)]
 pub struct Message {
     /// Who sent it.
@@ -180,12 +211,28 @@ pub struct Message {
     pub swept: bool,
     /// Where its echo is said, until it is: rule 4.
     pub echo: Option<oneshot::Sender<u64>>,
+    /// Its count in the run's `pending`, until it is echoed: rule 5.
+    pub arriving: Option<Guard>,
+    /// The run's `inactives` when the entry was made: rule 5.
+    pub inactives: u64,
 }
 
 impl Message {
-    /// A message just enqueued: rule 1.
-    pub fn new(sender: Creator, echo: oneshot::Sender<u64>) -> Self {
-        Message { sender, delivered: false, swept: false, echo: Some(echo) }
+    /// A message just enqueued — rule 1 — on its way from now:
+    /// `arriving` is its count in the run's `pending`, and `inactives`
+    /// the run's count of them as of now, rule 5.
+    pub fn new(sender: Creator, echo: oneshot::Sender<u64>, arriving: Guard, inactives: u64) -> Self {
+        Message { sender, delivered: false, swept: false, echo: Some(echo), arriving: Some(arriving), inactives }
+    }
+
+    /// The message was delivered: rule 3's mark, and by rule 5 on its
+    /// way no more where an `inactive` has been read since it was
+    /// taken — `inactives` being the run's count now.
+    pub fn delivered(&mut self, inactives: u64) {
+        self.delivered = true;
+        if inactives > self.inactives {
+            self.arriving = None;
+        }
     }
 }
 
@@ -241,15 +288,24 @@ impl AgentRun {
         taken
     }
     /// Rule 3 of [`Message`], at an `inactive`: every delivered entry
-    /// marked at an earlier one removed, and the delivered rest marked.
+    /// marked at an earlier one removed, and the delivered rest marked
+    /// — and, by rule 5, on their way no more.
     pub async fn sweep_messages(&self) {
         let mut messages = self.messages.lock().await;
         messages.retain(|_, message| !(message.delivered && message.swept));
         for message in messages.values_mut() {
             if message.delivered {
                 message.swept = true;
+                message.arriving = None;
             }
         }
+    }
+
+    /// Whether the agent holds the tools it is served now: it is in
+    /// setup past its registration, a message is on its way into it,
+    /// or it is active — rule 1 of [`Holding`]. Exactly those three.
+    pub fn holds_tools(&self) -> bool {
+        self.holding.setup.is_busy() || self.pending.is_busy() || self.is_active()
     }
 
     /// The container was used: the idle clock starts over.
@@ -296,8 +352,9 @@ impl AgentRun {
     /// The merge's context for the agent: its tools, its caller and
     /// its sender — what its own container's exchanges are answered
     /// with, and what an exchange run as the agent is answered with —
-    /// deploying a served tool as the agent active does; an exchange
-    /// run as the agent sets the cause its own.
+    /// deploying a served tool that its own exchange finds down as
+    /// the agent active does; an exchange run as the agent sets the
+    /// cause its own.
     pub fn context(&self, daemon: &Arc<Daemon>) -> Context {
         Context {
             daemon: Arc::clone(daemon),
@@ -670,8 +727,8 @@ pub struct ToolRun {
     /// `connections` is not empty, kept in step under their lock. One
     /// of the holds the idle clock waits on.
     pub held: watch::Sender<bool>,
-    /// What holds it from outside the run: the active agents it is
-    /// served to, and an eager tool's attachments — the tool's one
+    /// What holds it from outside the run: the agents it is served to
+    /// that hold their tools now, and an eager tool's attachments — the tool's one
     /// [`Holds`], which outlives the run.
     pub holds: Arc<Holds>,
     /// The scopes its own program has open on its daemon connections,

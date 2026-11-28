@@ -42,6 +42,16 @@ pub enum StartError {
     Unsupported(String),
     /// The provider did not run it, in its own words or the wire's.
     Run(String),
+    /// A tool the agent is served could not be deployed: the name the
+    /// agent is served it under, and why, in the tool's start's own
+    /// words. An agent is up with every tool it is served up, or it
+    /// is not up.
+    Tool {
+        /// The name the agent is served the tool under.
+        name: String,
+        /// Why it could not be deployed.
+        reason: String,
+    },
     /// The log could not be written.
     Logs(logs::Error),
     /// The start's own task ended without finishing it: it panicked,
@@ -62,6 +72,7 @@ impl fmt::Display for StartError {
             StartError::Document(what) => write!(f, "{what}"),
             StartError::Unsupported(what) => write!(f, "a provider's capabilities exclude it: {what}"),
             StartError::Run(error) => write!(f, "the provider did not run the container: {error}"),
+            StartError::Tool { name, reason } => write!(f, "the tool `{name}` the agent is served could not be deployed: {reason}"),
             StartError::Logs(error) => write!(f, "the log: {error}"),
             StartError::Unfinished(error) => write!(f, "the start did not finish: {error}"),
         }

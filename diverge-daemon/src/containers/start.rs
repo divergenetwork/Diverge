@@ -23,7 +23,7 @@ use super::capable::Needs;
 use super::fuse::Mounts;
 use super::lifecycle::{self, End};
 use super::mcp::Served;
-use super::{AgentRun, Gate, Inflight, activity, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, eager, stop};
+use super::{AgentRun, Gate, Holding, Inflight, activity, deploy, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, lost, provider, pump, pump_tool, sender_of_agent, sender_of_connected, sender_of_tool, serve_name, serve_name_connected, eager, stop};
 use crate::daemon::{Daemon, Kind};
 use crate::daemons;
 use crate::containers::permissions;
@@ -35,12 +35,12 @@ use crate::store::{agents, agents_templates, connected_standalone_tools as conne
 
 /// The agent's run, started now if it was not up, `cause` being what
 /// started it: the providers it
-/// may run on found, the mounts served, the attached tools served
-/// idle, the run opened on the first provider that runs it — its
+/// may run on found, the mounts served, the attached tools served,
+/// the run opened on the first provider that runs it — its
 /// dependencies deployed meanwhile, those that mount its files stopped
 /// again when that provider does not — its dependencies settled to none
-/// when its program declared none, and
-/// its id taken, the log told
+/// when its program declared none, its id taken, every tool it is
+/// served deployed — see [`start_agent`]'s setup rules — the log told
 /// it began, the pump and the idle clock running. A start that fails
 /// keeps an `Error` item in the log, and the mounts opened are let go;
 /// one that fails after
@@ -126,6 +126,38 @@ impl Drop for Starting {
     }
 }
 
+/// One start of an agent. Its SETUP, the part of it the agent's tools
+/// are held through, by these rules:
+///
+/// 1. **The setup's hold begins at the registration.** Where the
+///    program declared a dependency, the registration begins it, once
+///    the declaration is on record — see
+///    [`deploy`](super::deploy::deploy). Where it declared nothing it
+///    is registered for nothing, and the hold begins as soon as the
+///    container's id is out. From there the agent holds every tool it
+///    is served — [`Holding`]. Tools the program declared on an
+///    earlier start and not on this one are not served, not held and
+///    not touched.
+/// 2. **Every served tool is deployed, at once, and waited for** —
+///    [`deploy::served`]: the dependency tools of either scope, lazy
+///    or eager, the attached standalone tools and the connected ones.
+///    This is before the run's `deployed` is kept: an agent whose
+///    tools are not all up did not come up.
+/// 3. **One that cannot be deployed fails the start**, naming it —
+///    [`StartError::Tool`] — and so fails whatever asked for the
+///    start: the message, the file operation, the connect. The run is
+///    undone, the hold let go, and what did come up is left to its own
+///    idle clock; no other provider is tried, since the tool's
+///    failure is not this provider's.
+/// 4. **The hold ends with the start**, unless the start was made for
+///    a message: then the setup's count is kept on the run —
+///    `arrival` — until the agent's outbox pump has entered the
+///    message's own hold, so the tools are held from the registration
+///    to the loop with no moment between. A start for anything else
+///    lets the tools go as it ends, and their idle countdowns begin.
+/// 5. **An attempt that fails lets go.** A provider that does not run
+///    the container ends that attempt's hold; the next attempt's
+///    registration begins its own.
 async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Result<Arc<AgentRun>, StartError> {
     let (template, attached, connected) = {
         let mut conn = daemon.store.acquire().await?;
@@ -199,6 +231,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
     let inflight = Arc::new(Inflight::new());
     let files = Arc::new(Inflight::new());
     let scopes = Arc::new(Inflight::new());
+    let holding = Holding::new();
     let mut last = String::new();
     for (identity, handle) in candidates {
         let answerer = Arc::new(Answerer {
@@ -219,6 +252,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             inflight: Arc::clone(&inflight),
             files: Arc::clone(&files),
             scopes: Arc::clone(&scopes),
+            holding: Arc::clone(&holding),
             kept: Mutex::new(None),
         });
         let opened = agents_run::execute(&handle, &agents_request::Frame(container.clone()), answerer.set()).await;
@@ -239,6 +273,8 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
                     own
                 };
                 stop::stop_mounted(daemon, &own, End::Expected).await;
+                // Setup rule 5.
+                holding.forget(daemon).await;
                 last = format!("{error:?}");
                 continue;
             }
@@ -246,6 +282,9 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
         if answerer.kept.lock().await.is_none() {
             eager::settle(daemon, agent.id).await;
         }
+        // Setup rule 1: begun by the registration where there was
+        // one, and here where the program declared nothing.
+        holding.begin(daemon, &served, &[]).await;
         let run = Arc::new(AgentRun {
             id: agent.id,
             attestation: attestation::Caller::Agent(attestation::Agent {
@@ -257,6 +296,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             container: id.id,
             handle,
             loop_active: watch::channel(false).0,
+            inactives: watch::channel(0).0,
             inflight,
             files,
             scopes,
@@ -264,7 +304,8 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             mounts,
             volumes: crate::volumes::of_agent(agent),
             served,
-            holding: Mutex::new(None),
+            holding: Arc::clone(&holding),
+            arrival: Mutex::new(None),
             messages: Arc::new(Mutex::new(HashMap::new())),
             pending: Arc::new(Inflight::new()),
             gate: Mutex::new(Gate { ending: false }),
@@ -277,6 +318,11 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             ending: Mutex::new(None),
             ended: watch::channel(false).0,
         });
+        // Setup rules 2 and 3.
+        if let Err((name, reason)) = deploy::served(daemon, &run.served, &deploy::Mounted::of(&run), deploy::Causes::SETUP).await {
+            stop::undo_agent(daemon, run, false).await;
+            return Err(StartError::Tool { name, reason });
+        }
         lifecycle::deployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, identity.clone(), cause).await;
         // From here a failure is the run's undoing: its container, its
         // dependencies, its mounts and its `deployed`. What its program
@@ -310,6 +356,11 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
                 let losing = tokio::spawn(lost::lost_agent(Arc::clone(&run)));
                 tasks.extend([pumping.abort_handle(), clock.abort_handle(), watching.abort_handle(), losing.abort_handle()]);
             }
+        }
+        // Setup rule 4.
+        let setup = run.holding.end().await;
+        if cause == Cause::Message {
+            *run.arrival.lock().await = setup;
         }
         return Ok(run);
     }
@@ -392,6 +443,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<A
                 inflight: Arc::new(Inflight::new()),
                 files: Arc::new(Inflight::new()),
                 scopes: Arc::new(Inflight::new()),
+                holding: Holding::new(),
                 kept: Mutex::new(None),
             });
             let started = tools_run::execute(&handle, &tools_request::Frame(container.clone()), answerer.set()).await;

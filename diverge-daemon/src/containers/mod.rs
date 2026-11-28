@@ -21,9 +21,11 @@
 //! tool, whose run is this daemon's connect on another daemon's tool,
 //! opened by [`connected`]; [`use_dependency`] is the same for a
 //! dependency tool, of either mode and scope; [`Holds`] are what
-//! holds a tool from outside its run, and [`hold_tools`] and
-//! [`release_tools`] an active agent's hold on every tool it is
-//! served; [`attached`], [`attached_connected`] and
+//! holds a tool from outside its run, and [`Holding`] — with
+//! [`hold_tools`] and [`release_tools`] — an agent's hold on every
+//! tool it is served, while it is in setup past its registration,
+//! has a message on its way or is active;
+//! [`attached`], [`attached_connected`] and
 //! [`detached`] keep running agents' served sets in step with the
 //! attachments;
 //! [`mcp`] is the one tool list an agent sees and the routing of its
@@ -31,7 +33,10 @@
 //! dependency tools under their owners and deploys them then and there
 //! — a lazy tool of the agent's own, and an eager tool, which
 //! [`eager`] keeps for as long as any agent is attached to it, as it
-//! keeps a tool on record whose image's mode is eager;
+//! keeps a tool on record whose image's mode is eager — and deploys
+//! every tool an agent is served, whichever kind, at the agent's
+//! start and before a message is delivered to it, the first that
+//! cannot be deployed failing the start or the message;
 //! [`fuse`] serves the mounts — another provider's volume bridged, or
 //! an agent's path into its dependency; [`images`] answers a
 //! provider's image asks from the other providers connected. [`Key`]
@@ -56,6 +61,7 @@ mod attached;
 mod build;
 mod error;
 pub mod capable;
+mod holding;
 mod holds;
 mod idle;
 mod inflight;
@@ -88,6 +94,7 @@ pub use activity::*;
 pub use attached::*;
 pub use build::*;
 pub use error::*;
+pub use holding::*;
 pub use holds::*;
 pub use idle::*;
 pub use inflight::*;

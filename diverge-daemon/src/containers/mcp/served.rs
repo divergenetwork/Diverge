@@ -14,8 +14,10 @@ use crate::store::tools::Tool;
 /// run — up or not, and a new one after every end — is the live set's
 /// to find; or a dependency tool, by its row, whose run is the live
 /// set's to find as well: a lazy one of the agent's own, a lazy one
-/// shared with other agents, or an eager one. Whichever it is, its
-/// run is started at the first use that finds none.
+/// shared with other agents, or an eager one. Whichever it is, it is
+/// deployed with the agent — at the agent's start, and again before a
+/// message is delivered where it has gone down — and an exchange that
+/// finds it down all the same starts it.
 pub enum Entry {
     /// A standalone tool the agent has, directly or through its
     /// template: its record. Its run is looked up at every use and

@@ -13,7 +13,7 @@ use crate::containers::images::Pulls;
 use crate::containers::mcp::Served;
 use diverge_sdk::shared::mcp::attestation;
 
-use crate::containers::{Inflight, Key};
+use crate::containers::{Holding, Inflight, Key};
 use crate::daemon::Daemon;
 use crate::judge::Container;
 use crate::store::DependencyToolId;
@@ -70,6 +70,11 @@ pub struct Answerer {
     /// and the same hold of [`idle`](crate::containers::idle) for an
     /// agent's.
     pub scopes: Arc<Inflight>,
+    /// An agent's hold on the tools it is served, which its run takes
+    /// when it is made: begun here, at the registration, once what
+    /// the program declared is on record — see [`Holding`]. A tool's
+    /// answerer holds none.
+    pub holding: Arc<Holding>,
     /// The eager tools an agent's registration declared, once its
     /// dependencies were deployed: `None` until then, and still
     /// `None` for a program that declared nothing, which is never

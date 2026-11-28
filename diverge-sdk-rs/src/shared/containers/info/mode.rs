@@ -15,13 +15,14 @@ use serde::{Deserialize, Serialize};
 /// Its container is started for the first thing that uses it and
 /// stopped once the caller's idle time has passed with nothing
 /// holding it. What holds a tool, of either mode and either kind: an
-/// agent it is attached to being active, an exchange in flight into
+/// agent it is served to being started, having a message on its way
+/// or being active, an exchange in flight into
 /// it, a connect scope open on it, a file operation, a command, a
 /// terminal or a frontend request in progress on it, and any scope
-/// its own program has open on the caller. A dependency tool of the
-/// `instance` scope is deployed, besides, when its agent's container
-/// starts, and one of the `template` scope by the first thing that
-/// uses it; either is then held and stopped as any tool is.
+/// its own program has open on the caller. Every tool an agent is
+/// served, a dependency tool of either scope among them, is deployed,
+/// besides, when the agent's container starts, and is then held and
+/// stopped as any tool is.
 ///
 /// # An eager tool is held by its attachments as well
 ///

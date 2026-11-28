@@ -69,8 +69,8 @@ impl DependencyTool {
     /// `instance`, deployed at its agent's registration, and the one
     /// kind of tool that may mount its agent's files. Every other
     /// tool is an eager one, kept by the daemon while any agent is
-    /// attached, or a lazy one that is many agents', deployed by its
-    /// first use.
+    /// attached, or a lazy one that is many agents', deployed with
+    /// each agent that declares it and by any use that finds it down.
     pub fn own(&self) -> bool {
         !self.is_eager() && self.scope == Scope::Instance
     }

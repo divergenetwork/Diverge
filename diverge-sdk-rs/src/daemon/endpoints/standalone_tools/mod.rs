@@ -30,15 +30,19 @@
 //! # One container per tool
 //!
 //! However many agents a tool is attached to, one tool container runs.
-//! It is deployed by the first thing that uses it and undeployed
+//! It is deployed by the first thing that uses it — the start of an
+//! agent it is attached to among them, which deploys every tool the
+//! agent is served and fails where one cannot be — and undeployed
 //! `idle_seconds` after the last thing that held it let go. What holds
-//! it: an agent it is attached to being active; an MCP exchange in
+//! it: an agent it is attached to being started, having a message on
+//! its way or being active; an MCP exchange in
 //! flight into it; a connect scope open on it; a file tree watch, a
 //! download, an upload or a transfer in progress on it; a command
 //! running in it or a terminal open in it; a frontend request in
 //! progress; and any scope its own program has open on the daemon. An
-//! attachment alone holds a lazy tool not at all, and an agent's loop
-//! begins by starting the tools it is served. An eager tool, its
+//! attachment alone holds a lazy tool not at all, and a message for
+//! an agent that is up brings back, before it is delivered, any tool
+//! the agent is served that has gone down. An eager tool, its
 //! image's `mode`, is held as well by the attachment itself — to any
 //! agent or any template, whether or not an agent runs — and is
 //! started again while attached whenever its container ends. None of

@@ -17,7 +17,7 @@ use crate::containers::fuse::Mounts;
 use crate::containers::images::Pulls;
 use crate::containers::mcp::Served;
 use crate::containers::start::Starting;
-use crate::containers::{AgentRun, Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, undo_tool};
+use crate::containers::{AgentRun, Holding, Inflight, Key, StartError, ToolHandle, ToolKey, ToolRun, build, idle, permissions, provider, pump_tool, undo_tool};
 use crate::daemon::{Daemon, Kind};
 use crate::judge::{Container, ToolRef};
 use crate::store::agents;
@@ -165,6 +165,7 @@ async fn start(daemon: &Arc<Daemon>, tool: &DependencyTool, mounted: Option<Moun
             inflight: Arc::new(Inflight::new()),
             files: Arc::new(Inflight::new()),
             scopes: Arc::new(Inflight::new()),
+            holding: Holding::new(),
             kept: Mutex::new(None),
         });
         let started = tools_run::execute(&handle, &tools_request::Frame(container.clone()), answerer.set()).await;

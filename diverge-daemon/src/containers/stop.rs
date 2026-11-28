@@ -7,7 +7,7 @@ use diverge_sdk::daemon::lifecycle::Reason;
 use futures_util::future;
 
 use super::lifecycle::{self, End};
-use super::{AgentRun, ToolHandle, ToolKey, ToolRun, eager, release_tools, tool_log};
+use super::{AgentRun, ToolHandle, ToolKey, ToolRun, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
 use crate::store::{AgentId, DependencyToolId, agents, connected_standalone_tools as connected_records, tools as tool_records};
 
@@ -83,7 +83,10 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     let end = run.end().await;
     lifecycle::undeployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, end.reason()).await;
     run.loop_active.send_replace(false);
-    release_tools(daemon, &run).await;
+    // Whatever the run still counted — a setup, a message on its way —
+    // its hold on its tools is over with it.
+    drop(run.arrival.lock().await.take());
+    run.holding.forget(daemon).await;
     let own = run.served.lock().await.own();
     stop_mounted(daemon, &own, end).await;
     run.mounts.stop().await;

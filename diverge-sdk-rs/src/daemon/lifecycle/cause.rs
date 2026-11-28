@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 /// [`Connect`](Self::Connect), a [`DependencyTool`](Self::DependencyTool)
 /// or one of the seven requests into its container. A tool's run is
 /// deployed by a [`Registration`](Self::Registration), an
+/// [`AgentDeployed`](Self::AgentDeployed), an
 /// [`AgentActive`](Self::AgentActive), an
 /// [`Attachment`](Self::Attachment), a [`Restart`](Self::Restart), a
 /// [`Connect`](Self::Connect) or one of the seven requests into its
@@ -29,7 +30,15 @@ pub enum Cause {
     /// An agent's container started and its program declared the tool
     /// at its registration. A dependency tool's alone.
     Registration,
-    /// An agent the tool is attached to began a loop. A tool's alone.
+    /// An agent the tool is served to was deployed: every tool an
+    /// agent is served is deployed with it. A standalone or a
+    /// connected tool's; a dependency tool the agent's program
+    /// declared is a [`Registration`](Self::Registration).
+    AgentDeployed,
+    /// A tool an agent is served had gone down while the agent's
+    /// container stayed up, and was brought back for the agent: before
+    /// a message was delivered to it, or by an exchange of its own
+    /// container that found the tool down. A tool's alone.
     AgentActive,
     /// An agent came to be attached to an eager tool. A tool's alone.
     Attachment,

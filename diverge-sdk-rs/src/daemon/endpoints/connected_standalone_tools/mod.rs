@@ -35,8 +35,12 @@
 //!
 //! However many agents a connected tool is attached to, the daemon
 //! holds at most one connect on it, as a lazy standalone tool's
-//! container is held: opened for the first use — an agent's call in
-//! flight — and let go `idle_seconds` after the last. An attachment
+//! container is held: opened when an agent it is attached to is
+//! deployed, or for the first use that finds it closed, held while
+//! such an agent is being started, has a message on its way or is
+//! active, and while a call is in flight, and let go `idle_seconds`
+//! after the last of those. A connect that cannot be opened fails the
+//! start of the agent it was opened for. An attachment
 //! alone holds nothing open, and a create connects nothing. Whether
 //! the connect is held is the tool's `deployed` in a [`list`].
 //!

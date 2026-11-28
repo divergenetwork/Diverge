@@ -13,8 +13,8 @@ use tokio::sync::watch;
 /// own container asked for, and no other — and one for the uses in
 /// progress on its container; a tool's run has the same two, into it
 /// and on it; and a tool's [`Holds`](super::Holds) have one for the
-/// active agents it is served to and one for its own open daemon
-/// scopes.
+/// agents it is served to that hold their tools now, and its run one
+/// for its own open daemon scopes.
 ///
 /// Why an agent's exchanges are one of the two things that make it
 /// active: a loop that has said its last chunk may still be waiting

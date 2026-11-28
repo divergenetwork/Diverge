@@ -984,8 +984,9 @@ impl Live {
         Arc::clone(self.holds.lock().await.entry(key).or_default())
     }
 
-    /// One active agent the tool is served to holds it from now on,
-    /// until the guard is dropped: counted in under the lock the entry
+    /// One agent the tool is served to — in setup past its
+    /// registration, with a message on its way, or active — holds it
+    /// from now on, until the guard is dropped: counted in under the lock the entry
     /// is forgotten under, so the count is never an entry's that has
     /// left.
     pub async fn hold_agent(&self, key: ToolKey) -> Guard {

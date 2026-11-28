@@ -14,10 +14,11 @@ use super::Inflight;
 /// 1. **One per tool.** [`Live::holds`](crate::daemon::Live::holds)
 ///    hands out the one kept under the key, made at the first ask.
 ///    A run takes it at its start and keeps it for its life.
-/// 2. **`agents`** counts the agents the tool is served to that are
-///    active now: entered by an agent's turn to active, left at its
-///    turn to inactive and at its run's end — see
-///    [`hold_tools`](super::hold_tools).
+/// 2. **`agents`** counts the agents the tool is served to that hold
+///    their tools now — each in setup past its registration, with a
+///    message on its way, or active: entered when an agent comes to
+///    hold its tools, left when it holds them no more and at its
+///    run's end — see [`Holding`](super::Holding).
 /// 3. **`attached`** is whether any agent is attached to the tool,
 ///    running or not, said only of an eager tool — see
 ///    [`eager::held`](super::eager::held). A lazy tool's is never
@@ -33,7 +34,8 @@ use super::Inflight;
 /// over with it — and are counted on the run itself.
 #[derive(Debug)]
 pub struct Holds {
-    /// The active agents the tool is served to: rule 2.
+    /// The agents the tool is served to that hold their tools now:
+    /// rule 2.
     pub agents: Arc<Inflight>,
     /// Whether any agent is attached to an eager tool: rule 3.
     pub attached: watch::Sender<bool>,
