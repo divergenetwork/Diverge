@@ -58,7 +58,8 @@ pub enum Over {
     /// Run MCP exchanges as one — list and call its tools, list and
     /// read its resources, as its own container would — as
     /// [`agents::connect`](crate::daemon::endpoints::agents::connect)
-    /// does.
+    /// does: the scope deploys its container and holds it up while it
+    /// is open, and makes it neither active nor busy.
     Connect,
     /// Make a request of them, as
     /// [`requests::create`](crate::daemon::endpoints::requests::create)

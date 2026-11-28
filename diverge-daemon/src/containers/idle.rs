@@ -13,13 +13,15 @@ use crate::daemon::Daemon;
 ///
 /// 1. **What holds the run.** While any of these is so, the clock does
 ///    not run:
-///    - the agent is active — a loop runs in it, or an MCP exchange is
-///      in flight for it;
+///    - the agent is active — a loop runs in it, or an MCP exchange
+///      its own container asked for is in flight;
 ///    - a batch of messages is on its way to it (`pending`: held by
 ///      the agent's outbox pump from the moment it has the run until
 ///      the batch is answered);
 ///    - a use is in progress on it — a filetree watch, a download, an
-///      upload, a transfer, a command, a terminal, a frontend request
+///      upload, a transfer, a command, a terminal, a frontend request,
+///      an `agents connect` scope open on it, with or without an
+///      exchange in flight
 ///      — or a dependency tool of its own that mounts its files is up;
 ///    - its own program has a scope open on its daemon connection,
 ///      whatever the scope asks, an endless stream included: an agent

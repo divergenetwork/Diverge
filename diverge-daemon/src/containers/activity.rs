@@ -12,9 +12,10 @@ use crate::daemon::{Daemon, Kind};
 /// Follow the agent's activity until the run ends. The rules:
 ///
 /// 1. **Active is two things.** The agent is active exactly while a
-///    loop runs in it or an MCP exchange is in flight for it — its
-///    container's own, a dependency's, or one run as it through
-///    `agents connect` — as [`AgentRun::is_active`] states.
+///    loop runs in it or an MCP exchange its own container asked for
+///    is in flight, as [`AgentRun::is_active`] states. An exchange run
+///    as it on an `agents connect` scope is neither: it is counted
+///    nowhere on the agent's run.
 /// 2. **Every turn is kept.** When it becomes active, and when it
 ///    ceases, the log keeps `active` or `inactive` — only while this
 ///    run is the one deployed, as

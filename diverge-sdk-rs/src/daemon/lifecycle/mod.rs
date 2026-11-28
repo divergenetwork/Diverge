@@ -12,7 +12,9 @@
 //!    ever kept before its run's `deployed`.
 //! 2. **Active and inactive bracket work.** `active` is kept when the
 //!    run begins working — an agent's loop runs, or an MCP exchange
-//!    is in flight for it; a tool has an ask in flight — and
+//!    its own container asked for is in flight, and nothing else:
+//!    not a use of its container, and not an exchange run as it on
+//!    an `agents connect` scope; a tool has an ask in flight — and
 //!    `inactive` when it ceases. They alternate, `active` first,
 //!    each kept only on a change. Work that ends without a clean
 //!    completion — an exchange cut short because a scope or a

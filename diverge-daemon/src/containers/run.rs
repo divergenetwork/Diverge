@@ -54,11 +54,14 @@ pub struct AgentRun {
     pub handle: AgentHandle,
     /// Whether a loop runs in it now, as the proxy's two words say.
     pub loop_active: watch::Sender<bool>,
-    /// The MCP exchanges in flight for it: its container's own, and
-    /// those run as it. The other thing that makes it active.
+    /// The MCP exchanges in flight for it: those its own container
+    /// asked for, counted by its answerer, and no other — one run as
+    /// it on an `agents connect` scope is not counted here. The other
+    /// thing that makes it active.
     pub inflight: Arc<Inflight>,
     /// The uses in progress on it — a filetree watch, a download, an
     /// upload, a transfer, a command, a terminal, a frontend request,
+    /// an `agents connect` scope open on it,
     /// and a dependency tool of its own that mounts its files, for as
     /// long as that tool's run is up — each holding the run up for its
     /// length, as `inflight` does, but no work: they make it neither
@@ -283,8 +286,9 @@ impl AgentRun {
     }
 
     /// Whether the agent is active now: a loop runs in it, or an MCP
-    /// exchange is in flight for it. Exactly those two, and nothing
-    /// else.
+    /// exchange its own container asked for is in flight. Exactly
+    /// those two, and nothing else: no use of its container, and no
+    /// exchange run as it on an `agents connect` scope.
     pub fn is_active(&self) -> bool {
         *self.loop_active.borrow() || self.inflight.is_busy()
     }

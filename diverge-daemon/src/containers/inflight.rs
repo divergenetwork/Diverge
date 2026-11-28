@@ -10,7 +10,7 @@ use tokio::sync::watch;
 /// How many of one thing are in progress now, kept as a watch so an
 /// idle clock sees every change. An agent's run has one for the MCP
 /// exchanges being answered for it — a list, a call, a read its
-/// container asked for, or one run as it — and one for the uses in
+/// own container asked for, and no other — and one for the uses in
 /// progress on its container; a tool's run has the same two, into it
 /// and on it; and a tool's [`Holds`](super::Holds) have one for the
 /// active agents it is served to and one for its own open daemon

@@ -21,8 +21,10 @@ use serde::{Deserialize, Serialize};
 pub enum Cause {
     /// A message for the agent, which starts a loop. An agent's alone.
     Message,
-    /// An MCP exchange on a connect scope: on an agent's, one run as
-    /// the agent; on a standalone tool's, the scope's opening.
+    /// A connect scope: on an agent's and on a standalone tool's, the
+    /// scope's opening; and, of a tool an agent is served, an exchange
+    /// run as the agent on an agent's connect scope that found the
+    /// tool down.
     Connect,
     /// An agent's container started and its program declared the tool
     /// at its registration. A dependency tool's alone.
