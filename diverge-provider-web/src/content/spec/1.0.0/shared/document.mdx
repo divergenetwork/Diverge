@@ -37,8 +37,7 @@ three icons.
 - **The members of every type.** A frontmatter of any type has the
   member `name`, a string, the member `description`, a string, the
   member `schema`, a JSON object, the member `memory` and the member
-  `disk`. It has at most one further member that every type has:
-  `frontend`, a boolean.
+  `disk`. No further member is a member of every type.
 - **`name`.** The value of `name` is at least 1 byte and at most 128
   bytes long. It is one or more runs, joined by separators. A run is
   one or more bytes, each a byte of `a` to `z`, a byte of `A` to `Z`
@@ -81,9 +80,13 @@ three icons.
   which both are `false`, in which both are absent, or in which one is
   `false` and the other is absent, is not a document.
 - **The members of a standalone tool's.** A standalone tool's
-  frontmatter has exactly one member further: `mode`.
+  frontmatter has the member `mode` further, and at most two members
+  besides: `frontend` and `api`.
 - **The members of a dependency tool's.** A dependency tool's
-  frontmatter has exactly two members further: `mode` and `scope`.
+  frontmatter has the members `mode` and `scope` further, and at most
+  two members besides: `frontend` and `api`.
+- **`frontend`, `api`.** The value of each is a boolean. An absent
+  member has the value `false`.
 - **`mode`.** The value of `mode` is exactly the string `lazy` or
   exactly the string `eager`. It states how a caller keeps a tool
   container of the image running.
@@ -93,8 +96,8 @@ three icons.
   declare it.
 - **A member of another type.** A member of one type is not a member
   of another. `chat` and `structured_decisions` are members of an
-  agent's frontmatter only. `mode` is a member of a standalone tool's
-  and of a dependency tool's only. `scope` is a member of a
+  agent's frontmatter only. `mode`, `frontend` and `api` are members
+  of a standalone tool's and of a dependency tool's only. `scope` is a member of a
   dependency tool's only. A frontmatter that has a member of a type
   that is not its own, whatever the member's value, `false` included,
   is not a document.
@@ -141,11 +144,19 @@ tool's document, as the file is.
 - **`memory`.** A number: the frontmatter's `memory`.
 - **`disk`.** A number: the frontmatter's `disk`.
 - **`body`.** A string: the body, verbatim.
-- **`frontend`.** Present only with the value `true`, when the
+- **`frontend`.** In a standalone tool's document and in a dependency
+  tool's document only. Present only with the value `true`, when the
   frontmatter's `frontend` is `true`. It states that the image's
   program serves a frontend, as the
   [frontend](/container-proxy-endpoints/frontend/) endpoint provides.
   Its absence states that the program serves none.
+- **`api`.** In a standalone tool's document and in a dependency
+  tool's document only. Present only with the value `true`, when the
+  frontmatter's `api` is `true`. It states that the image's program
+  serves an API, as the [api](/container-proxy-endpoints/api/)
+  endpoint provides. Its absence states that the program serves none.
+- **An agent's document has neither `frontend` nor `api`.** The
+  server sends neither member in an agent's document.
 - **`chat`.** In an agent's document only. Present only with the
   frontmatter's object, when the frontmatter's `chat` is an object. It
   states how the agent's program chats. Its absence states that the
@@ -165,9 +176,9 @@ tool's document, as the file is.
   A standalone tool's document has neither, and a dependency tool's
   document has neither.
 - **The count.** An agent's document has at least eight and at most
-  ten members. A standalone tool's document has at least eight and
-  at most nine. A dependency tool's document has at least nine and at
-  most ten.
+  nine members. A standalone tool's document has at least eight and
+  at most ten. A dependency tool's document has at least nine and at
+  most eleven.
 - **No other member.** The server sends no member further.
 
 ## Not a document
@@ -192,8 +203,8 @@ of the channel that asked states, and sends no part of the file.
    defines it is such a member.
 6. The object has a member that is not a member of its type. In a
    tool's frontmatter of either type, `chat` and
-   `structured_decisions` are such members. In an agent's, `mode` and
-   `scope` are. In a standalone tool's, `scope` is. In a frontmatter
+   `structured_decisions` are such members. In an agent's, `mode`,
+   `scope`, `frontend` and `api` are. In a standalone tool's, `scope` is. In a frontmatter
    of any type, `secrets` is.
 7. The value of `name` is not as [The file](#the-file) states the
    `name` of a frontmatter.

@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload is the tag byte 1 followed by the request as JSON: the image, the template id, the limits, the mounts and the arguments.'
+summary: 'The payload is the tag byte 1 followed by the request as JSON: the image, the template id, which record of the template the container is, the limits, the mounts and the arguments.'
 order: 1
 draft: false
 ---
@@ -34,6 +34,16 @@ as JSON, read as [Notation](/endpoints/#notation) provides.
   verbatim in the begin scope's request beside `arguments`, so the
   container's program is told which template it runs as, and reads
   it for nothing else.
+- **`index`, `owner`.** Exactly one of the two members, beside
+  `template`: which of the records made from that template the
+  container is, as the client names it. `index` is an unsigned
+  integer. `owner` is exactly the string `template`, or an object of
+  exactly one member, `agent`, an object of `template`, a string,
+  `index`, an unsigned integer, and `name`, a string, absent where
+  the agent has none. The server carries the member
+  verbatim in the begin scope's request beside `template`, so the
+  container's program is told which record it is, and reads it for
+  nothing else.
 - **`memory`, `disk`.** Limits in bytes: the memory the container may
   use, and the bytes the container may write to its own filesystem.
   Neither governs a mount. The `overlay_disk` of a mount governs
@@ -110,6 +120,11 @@ The request is defined by `diverge-sdk-rs/src/provider/endpoints/containers/tool
 The container is defined by `diverge-sdk-rs/src/shared/containers/request/container.rs`:
 
 ```rust include=diverge-sdk-rs/src/shared/containers/request/container.rs
+```
+
+Which record the container is, is defined by `diverge-sdk-rs/src/shared/containers/request/which.rs`:
+
+```rust include=diverge-sdk-rs/src/shared/containers/request/which.rs
 ```
 
 and by `diverge-sdk-rs/src/shared/containers/request/image.rs`:
