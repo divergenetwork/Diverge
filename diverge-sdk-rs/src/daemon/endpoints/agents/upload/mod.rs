@@ -12,7 +12,7 @@
 //! container that is not running is started for the operation — with
 //! every tool the agent is served, any one of which failing to deploy
 //! fails the start, and the operation with it — and
-//! stopped when it finishes; one the daemon has running anyway — a loop
+//! held up until it finishes, when its idle time begins; one the daemon has running anyway — a loop
 //! in it — is used as it runs, and nothing else about the agent
 //! changes.
 //!

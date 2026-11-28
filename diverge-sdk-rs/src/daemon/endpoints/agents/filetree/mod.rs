@@ -13,7 +13,7 @@
 //! mount to, and a change under one from the same
 //! source. An agent's container that is not running is started for the
 //! watch — with every tool the agent is served, any one of which failing to deploy fails the start and the request with it —
-//! and stopped when the scope ends; one the daemon has running
+//! and held up until the scope ends, when its idle time begins; one the daemon has running
 //! anyway is used as it runs.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the

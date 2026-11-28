@@ -13,8 +13,7 @@ use crate::store::tools::Tool;
 /// The agent's container, started if it was not up — `cause` being
 /// what started it — with the use
 /// held on it for as long as the [`Opened`] lives: the idle clock stops
-/// it `idle_seconds` after the use and every other one are over, which
-/// is what "stopped when it finishes" means under the idle rule.
+/// it `idle_seconds` after the use and every other one are over.
 pub async fn open_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Result<Opened, String> {
     containers::agent(daemon, agent, cause)
         .await

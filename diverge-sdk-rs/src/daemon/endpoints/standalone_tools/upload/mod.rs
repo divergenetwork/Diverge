@@ -10,7 +10,7 @@
 //! path and touching nothing else; a content channel that ends in an
 //! error abandons that file, and the answer is the error. A created
 //! tool's container that is not running is started for the operation
-//! and stopped when it finishes; one the daemon has running anyway — an
+//! and held up until it finishes, when its idle time begins; one the daemon has running anyway — an
 //! attached agent active — is used as it runs. Nothing else about the
 //! tool changes. A connected tool's files are on the other daemon, and
 //! no request here finds one.

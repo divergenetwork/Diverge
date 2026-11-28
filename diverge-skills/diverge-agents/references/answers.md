@@ -107,5 +107,5 @@ On a failure part-way, files that already landed stay; each file is whole or as 
 |---|---|
 | `message`, `connect` exchanges | started, with its dependency tools; stopped by the idle clock after `idle_seconds` unused |
 | `exec`, `terminal`, `frontend` | started for it, held up while it runs |
-| `filetree`, `download`, `upload`, `transfer` | started for the operation, stopped when it ends |
+| `filetree`, `download`, `upload`, `transfer` | started for the operation and held up until it ends, when its idle time begins |
 | `create`, `get`, `list`, `edit`, `tag`, `untag` | nothing is started |

@@ -11,8 +11,8 @@ import { Destination } from "../../../../../../daemon/transfer/destination.js";
  * container to a destination: see `daemon.transfer.Destination` for
  * what lands where. The bytes never reach the client: the daemon
  * copies on its own connections. A container at either end that is
- * not running is started for the operation and stopped when it
- * finishes — an agent's with every tool the agent is served, any one
+ * not running is started for the operation and held up until it
+ * finishes, when its idle time begins — an agent's with every tool the agent is served, any one
  * of which failing to deploy fails the start and the request with it; a dependency tool the destination names that is not
  * running is deployed for the operation, and one its agent no longer
  * declares is `no_destination`.

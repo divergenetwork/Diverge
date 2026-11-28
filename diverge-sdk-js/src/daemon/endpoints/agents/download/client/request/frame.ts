@@ -11,7 +11,7 @@ import { Agent } from "../../../../../../daemon/reference/agent.js";
  * named: a file's chunks carry the empty path, a directory's each
  * file's path within it — see `daemon.download.Chunk`. A container
  * that is not running is started for the operation — with every tool the agent is served, any one of which failing to deploy fails the start and the operation with it —
- * and stopped when it finishes.
+ * and held up until it finishes, when its idle time begins.
  */
 export const Frame = z.object({
   /** The agent: by name, or by template and index. */

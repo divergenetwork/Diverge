@@ -18,7 +18,7 @@
 //! container up with it, and such a tool its agent then no longer declares is
 //! `NotFound`. An agent, a created
 //! tool or a dependency tool the destination names that is not running is started for the
-//! operation and stopped when it finishes.
+//! operation and held up until it finishes, when its idle time begins.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the
 //! question is in [`client`] — and the daemon answers, so the answer is

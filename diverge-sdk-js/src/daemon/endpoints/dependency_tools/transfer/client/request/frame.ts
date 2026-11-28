@@ -16,7 +16,7 @@ import { Destination } from "../../../../../../daemon/transfer/destination.js";
  * agent's files brings its agent's container up with it, and such a tool its
  * agent then no longer declares is `not_found`. An agent, a created tool
  * or a dependency tool the destination names that is not running is
- * started for the operation and stopped when it finishes.
+ * started for the operation and held up until it finishes, when its idle time begins.
  */
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */
