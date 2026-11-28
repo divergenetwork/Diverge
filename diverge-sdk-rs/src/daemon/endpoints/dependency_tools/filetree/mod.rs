@@ -5,8 +5,7 @@
 //! every mount in it, the FUSE mounts the daemon itself serves spliced
 //! in at their mount points — and then one frame per change, for as
 //! long as the scope lives, and finishes when the client cancels or the
-//! tool's run ends; or answers that no dependency tool is the one named
-//! or none runs, forbidden, or that it failed, and finishes. The tree
+//! tool's run ends; or answers that no dependency tool is the one named, forbidden, or that it failed, and finishes. The tree
 //! is the provider protocol's [`filetree`](crate::shared::filetree)
 //! stream, which leaves the FUSE mounts out, made whole by the daemon:
 //! each mount's subtree from the filetree channel of the

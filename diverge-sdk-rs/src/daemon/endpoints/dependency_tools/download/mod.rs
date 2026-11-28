@@ -5,8 +5,7 @@
 //! every file under a directory — one
 //! [chunk](crate::daemon::download::Chunk) at a time, each a piece of
 //! one file with the file's path relative to what was asked for, and
-//! finishes; or answers that no dependency tool is the one named or
-//! none runs, or that nothing is at the path, forbidden, or that it
+//! finishes; or answers that no dependency tool is the one named, or that nothing is at the path, forbidden, or that it
 //! failed, and finishes. A dependency tool whose container is not
 //! running is deployed for the operation, and held up while it is
 //! read; a tool that mounts its agent's files brings its agent's

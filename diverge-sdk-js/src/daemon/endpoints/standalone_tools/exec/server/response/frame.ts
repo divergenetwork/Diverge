@@ -23,7 +23,7 @@ export const Frame = z.union([
   z.strictObject({ exited: z.number().int() }),
   /** A signal ended it, this one. Last. Tag `3`. */
   z.strictObject({ signaled: z.number().int() }),
-  /** Nothing is the one named — or, for a dependency tool, none runs. Tag `4`. */
+  /** Nothing is the one named. Tag `4`. */
   z.literal("not_found"),
   /** The account holds no `exec` grant reaching it. Tag `5`. */
   z.literal("forbidden"),

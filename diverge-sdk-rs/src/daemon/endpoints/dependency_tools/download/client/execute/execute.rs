@@ -35,7 +35,7 @@ pub enum Item {
         /// it.
         body: Bytes,
     },
-    /// No dependency tool is the one named, or none runs, or nothing is at the path.
+    /// No dependency tool is the one named, or nothing is at the path.
     NotFound,
     /// The account the request is served for holds no grant allowing
     /// it.

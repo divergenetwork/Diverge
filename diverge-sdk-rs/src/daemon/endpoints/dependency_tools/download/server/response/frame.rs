@@ -32,7 +32,7 @@ use crate::shared::error::Error;
 /// A directory with no file in it: a scope that finishes with no
 /// response before it is that answer, not a failure. A zero-byte file
 /// is one chunk, never nothing. [`NotFound`](Self::NotFound) is an
-/// ANSWER: no dependency tool is the one named, or none runs, or
+/// ANSWER: no dependency tool is the one named, or
 /// nothing is at the path, and
 /// nothing was sent. An [`Error`](Self::Error) is a failure: the daemon
 /// could not read, or could not go on reading, in its own words. Chunks
@@ -57,7 +57,7 @@ use crate::shared::error::Error;
 pub enum Frame<'a> {
     /// One piece of one file, with its path. Tag `0`.
     Chunk(Chunk<'a>),
-    /// No dependency tool is the one named, or none runs, or nothing is at the path; nothing was
+    /// No dependency tool is the one named, or nothing is at the path; nothing was
     /// sent. Tag `1`.
     NotFound,
     /// The account the request is served for holds no grant allowing

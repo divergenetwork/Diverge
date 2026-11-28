@@ -28,8 +28,7 @@ pub enum Frame {
         #[schemars(with = "String")]
         Bytes,
     ),
-    /// Tag `2`: nothing is a standalone tool by that reference — or, for a
-    /// dependency tool, none runs.
+    /// Tag `2`: nothing is a standalone tool by that reference.
     NotFound,
     /// Tag `3`: the requester holds no `api` grant reaching it.
     Forbidden,

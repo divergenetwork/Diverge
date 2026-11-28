@@ -19,7 +19,7 @@ import * as download from "../../../../../../daemon/download/chunk.js";
 export const Frame = z.union([
   /** One piece of one file, by its path and its size. Tag `0`. */
   z.strictObject({ chunk: download.ChunkJson }),
-  /** No dependency tool is the one named, none runs, or nothing is at the path; nothing was sent. Tag `1`. */
+  /** No dependency tool is the one named, or nothing is at the path; nothing was sent. Tag `1`. */
   z.literal("not_found"),
   /** The account the request is served for holds no grant allowing it; nothing was sent. Tag `2`. */
   z.literal("forbidden"),

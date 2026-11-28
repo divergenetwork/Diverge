@@ -18,7 +18,7 @@ import { Error } from "../../../../../../shared/error.js";
 export const Frame = z.union([
   /** Every file is in place. Tag `0`. */
   z.literal("uploaded"),
-  /** No dependency tool is the one named, or none runs; nothing landed. Tag `1`. */
+  /** No dependency tool is the one named; nothing landed. Tag `1`. */
   z.literal("not_found"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `2`. */
   z.literal("forbidden"),

@@ -5,7 +5,7 @@
 //! each file's content on a channel of its own; the client answers each
 //! in pieces and finishes it, and when every channel has finished the
 //! daemon answers once that the files are in place, that no dependency
-//! tool is the one named or none runs, forbidden, or that it failed,
+//! tool is the one named, forbidden, or that it failed,
 //! and the scope finishes. Each file lands whole, every parent made,
 //! replacing what was at its path and touching nothing else; a content
 //! channel that ends in an error abandons that file, and the answer is

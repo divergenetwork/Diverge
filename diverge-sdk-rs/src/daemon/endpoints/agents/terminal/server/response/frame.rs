@@ -29,8 +29,7 @@ pub enum Frame {
     Exited(i32),
     /// Tag `2`: a signal ended it, this one. Last.
     Signaled(i32),
-    /// Tag `3`: nothing is an agent by that reference — or, for a
-    /// dependency tool, none runs.
+    /// Tag `3`: nothing is an agent by that reference.
     NotFound,
     /// Tag `4`: the account holds no `exec` grant reaching it.
     Forbidden,
