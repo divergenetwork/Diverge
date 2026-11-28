@@ -50,6 +50,15 @@ pub async fn held(daemon: &Arc<Daemon>, key: ToolKey, cause: Cause) {
     }
 }
 
+/// An agent was detached from the tool, or an agent template it was
+/// attached to is gone: [`held`], read anew. A detach deploys nothing.
+/// Where the tool is still attached by another way and so still
+/// kept, what keeps it is that attachment, which is the cause a start
+/// of it would carry.
+pub async fn detached(daemon: &Arc<Daemon>, key: ToolKey) {
+    held(daemon, key, Cause::Attachment).await;
+}
+
 /// Whether the tool is an eager tool with an agent attached, from the
 /// records.
 async fn attached(conn: &mut PgConnection, key: ToolKey) -> Result<bool, store::Error> {

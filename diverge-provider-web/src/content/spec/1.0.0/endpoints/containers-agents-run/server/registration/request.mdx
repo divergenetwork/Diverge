@@ -32,38 +32,24 @@ draft: false
   dependency tool's: the `type` of its
   [document](/shared/document/) is `dependency_tool`. The document
   states the tool's `mode`, its `scope`, its `memory` and its `disk`. A template states none of
-  those. A template whose image's document is an agent's or a
-  standalone tool's is the registration's error, in the client's
-  words.
+  those.
 - **`extra_memory`, `extra_disk`.** What the tool container is given
-  beyond what its image's document states. The `memory` of the tools
-  run is the document's `memory` and `extra_memory`, summed. The
-  `disk` of the tools run is the document's `disk` and `extra_disk`,
-  summed. A sum over `18446744073709551615` is the registration's
-  error, in the client's words.
+  beyond what its image's document states.
 - **`permissions`.** Absent. An agent container declares no
   permissions, and the server carries none on an agents-run scope.
 - **The mounts.** Each mount of `fuse_file_mounts` and of
   `fuse_directory_mounts` is an object of `agent_path` and
   `tool_path`, both arrays of path components: a file or a directory
-  of the agent container the client serves live at a path of the
-  tool container. A template names a mount only where its image's
-  document states the `mode` `lazy` and the `scope` `instance`. A
-  template that names one or more mounts and whose image's document
-  states any other `mode` or any other `scope` is the registration's
-  error, in the client's words. The payload of such a template
-  decodes: the rule is the client's to hold, since the server reads
-  no document for it.
+  of the agent container served live at a path of the
+  tool container. The server reads no document for a template, and
+  refuses no template for its mounts.
 - **The id of a template.** A template has no name. The client names
   a dependency by the template's id: the lowercase hexadecimal
   SHA-256 of the template as compact JSON with absent members
   omitted, the image's `references` absent too, the keys of every
   object sorted bytewise at every depth, the `arguments` and every
   object inside them included, and the mounts included. One image under different names is one
-  template. Two templates with one id are one dependency, and an
-  array that holds one id twice is refused by the client as its
-  error. The container calls the tool's tools by whatever names the
-  client's merged list shows.
+  template. Two templates with one id are one dependency.
 - **Malformed.** A channel request whose payload does not decode as
   stated is answered by a channel response finish that no channel
   response precedes, and the server does nothing else for it.
