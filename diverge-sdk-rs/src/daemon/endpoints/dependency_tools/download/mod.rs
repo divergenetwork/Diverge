@@ -10,7 +10,7 @@
 //! failed, and finishes. A dependency tool whose container is not
 //! running is deployed for the operation, and held up while it is
 //! read; a tool that mounts its agent's files brings its agent's
-//! container up with it, and one its agent no longer declares is
+//! container up with it, and such a tool its agent then no longer declares is
 //! `NotFound`. Nothing else about the tool changes.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the

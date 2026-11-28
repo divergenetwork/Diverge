@@ -14,7 +14,7 @@
 //! one from the same source. A dependency tool whose container is
 //! not running is deployed for the watch, and held up for as long as
 //! the watch is open; a tool that mounts its agent's files brings its
-//! agent's container up with it, and one its agent no longer declares
+//! agent's container up with it, and such a tool its agent then no longer declares
 //! is `NotFound`.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the

@@ -13,7 +13,7 @@ import { Dependency } from "../../../../../../daemon/reference/dependency.js";
  * watch is of the whole container. A tool whose
  * container is not running is deployed for it, and held up meanwhile;
  * a tool that mounts its agent's files brings its agent's container up
- * with it, and one its agent no longer declares is `not_found`.
+ * with it, and such a tool its agent then no longer declares is `not_found`.
  */
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */

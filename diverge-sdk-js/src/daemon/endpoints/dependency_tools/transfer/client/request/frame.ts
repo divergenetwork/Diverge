@@ -13,8 +13,8 @@ import { Destination } from "../../../../../../daemon/transfer/destination.js";
  * never reach the client: the daemon copies on its own connections.
  * A source whose container is not running is deployed for the
  * operation, and held up while it is read; a tool that mounts its
- * agent's files brings its agent's container up with it, and one its
- * agent no longer declares is `not_found`. An agent, a created tool
+ * agent's files brings its agent's container up with it, and such a tool its
+ * agent then no longer declares is `not_found`. An agent, a created tool
  * or a dependency tool the destination names that is not running is
  * started for the operation and stopped when it finishes.
  */
