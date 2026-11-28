@@ -17,5 +17,6 @@ export * as write_bytes from "./write_bytes/index.js";
 export * as exec from "./exec/index.js";
 export * as terminal from "./terminal/index.js";
 export * as frontend from "./frontend/index.js";
+export * as api from "./api/index.js";
 export * as oci from "./oci/index.js";
 export * as structured_decisions from "./structured_decisions/index.js";

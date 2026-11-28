@@ -10,21 +10,21 @@ import * as response from "../server/response/index.js";
 
 /**
  * Send the request and hand back its answer — each item a
- * `response.Item`, a body with its bytes — and the `Frontend` that
+ * `response.Item`, a body with its bytes — and the `Api` that
  * writes its body and cancels it. Leaving the stream early abandons the
  * scope, which drops the request too.
  */
-export async function execute(handle: Handle, frame: request.Frame): Promise<[ExecuteStream<response.Item>, Frontend]> {
+export async function execute(handle: Handle, frame: request.Frame): Promise<[ExecuteStream<response.Item>, Api]> {
   const scope = await open(handle, frame, request.encode);
-  return [new ExecuteStream(scope, response.decode), new Frontend(handle, scope.scope)];
+  return [new ExecuteStream(scope, response.decode), new Api(handle, scope.scope)];
 }
 
 /**
- * The way into an open frontend request: each call one channel request
+ * The way into an open API request: each call one channel request
  * on the scope. A scope already finished takes nothing more, and is not
  * an error.
  */
-export class Frontend {
+export class Api {
   readonly #handle: Handle;
   readonly #scope: number;
 

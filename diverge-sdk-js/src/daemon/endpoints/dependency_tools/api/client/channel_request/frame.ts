@@ -1,10 +1,10 @@
-// The channels a client opens on a frontend request.
+// The channels a client opens on an API request.
 
 import { tagged } from "../../../../../../wire/encode.js";
 
 /**
- * What a client puts into a frontend request: `body`, tag `0`, a piece
- * of the request's body — after a `101`, of what the page sends — as it
+ * What a client puts into an API request: `body`, tag `0`, a piece
+ * of the request's body — after a `101`, of what the caller sends — as it
  * is; `end`, tag `1`, the body done; `cancel`, tag `2`, the request
  * dropped, answered by the scope's finish. A `body` and an `end` are
  * each answered by the channel's finish once taken, and the next `body`

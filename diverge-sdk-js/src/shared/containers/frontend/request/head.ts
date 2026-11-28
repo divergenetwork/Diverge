@@ -4,7 +4,8 @@ import { z } from "zod";
 
 /**
  * One HTTP request's head: the method, the path with its query —
- * `/frontend` or beneath it — and the headers in their order, each a
+ * `/frontend` or beneath it; for an API request, which has the same
+ * form, `/api` or beneath it — and the headers in their order, each a
  * name and a value; a name may repeat.
  */
 export const Head = z.object({

@@ -31,8 +31,12 @@ import { z } from "zod";
  * - `dependency_tool`: a dependency tool of the agent's that mounts
  *   the agent's files was deployed while the agent's container was
  *   down. An agent's alone.
- * - `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`,
- *   `frontend`: that request into the container.
+ * - `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal`:
+ *   that request into the container.
+ * - `frontend`: a request to the frontend the tool's program serves. A
+ *   tool's alone: an agent's program serves none.
+ * - `api`: a request to the API the tool's program serves. A tool's
+ *   alone.
  */
 export const Cause = z.enum([
   "message",
@@ -50,5 +54,6 @@ export const Cause = z.enum([
   "exec",
   "terminal",
   "frontend",
+  "api",
 ]);
 export type Cause = z.infer<typeof Cause>;

@@ -22,7 +22,7 @@ export const Frame = z.union([
   z.strictObject({ body: z.base64() }),
   /** Nothing is the one named — or, for a dependency tool, none runs. Tag `2`. */
   z.literal("not_found"),
-  /** The account holds no `frontend` grant reaching it. Tag `3`. */
+  /** The requester holds no `frontend` grant reaching it. Tag `3`. */
   z.literal("forbidden"),
   /** The tool's image declares no frontend. Tag `4`. */
   z.literal("no_frontend"),

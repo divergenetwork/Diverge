@@ -1,18 +1,18 @@
-// A frontend request's answer.
+// An API request's answer.
 
 import { z } from "zod";
 import { DecodeError, jsonOf, splitTag } from "../../../../../../wire/decode.js";
 import { Error } from "../../../../../../shared/error.js";
 import { base64 } from "../../../../../../shared/containers/exec/response/base64.js";
-import { Head } from "../../../../../../shared/containers/frontend/output/head.js";
+import { Head } from "../../../../../../shared/containers/api/output/head.js";
 
 /**
- * A frontend request's answer, as JSON writes it: the response's head;
+ * An API request's answer, as JSON writes it: the response's head;
  * a piece of its body, its bytes in standard base64; or nothing is the
- * one named, forbidden, no frontend, or a failure. What the stream
+ * one named, forbidden, no API, or a failure. What the stream
  * yields is the `Item`, the same frame with the bytes. A stream:
  * exactly one `head`, then any number of `body`, then the finish; or
- * exactly one `not_found`, `forbidden`, `no_frontend` or `error`, then
+ * exactly one `not_found`, `forbidden`, `no_api` or `error`, then
  * the finish; an `error` also ends a body broken off.
  */
 export const Frame = z.union([
@@ -20,12 +20,12 @@ export const Frame = z.union([
   z.strictObject({ head: Head }),
   /** A piece of the response's body. Tag `1`. */
   z.strictObject({ body: z.base64() }),
-  /** Nothing is the one named. Tag `2`. */
+  /** Nothing is the one named — or, for a dependency tool, none runs. Tag `2`. */
   z.literal("not_found"),
-  /** The account holds no `frontend` grant reaching it. Tag `3`. */
+  /** The requester holds no `api` grant reaching it. Tag `3`. */
   z.literal("forbidden"),
-  /** The agent's image declares no frontend. Tag `4`. */
-  z.literal("no_frontend"),
+  /** The tool's image declares no API. Tag `4`. */
+  z.literal("no_api"),
   /** No answer, or the daemon failed. Tag `5`. */
   z.strictObject({ error: Error }),
 ]);
@@ -37,14 +37,14 @@ export type Item =
   | { readonly body: Uint8Array }
   | "not_found"
   | "forbidden"
-  | "no_frontend"
+  | "no_api"
   | { readonly error: Error };
 
 const HEAD = 0;
 const BODY = 1;
 const NOT_FOUND = 2;
 const FORBIDDEN = 3;
-const NO_FRONTEND = 4;
+const NO_API = 4;
 const ERROR = 5;
 
 /**
@@ -63,8 +63,8 @@ export function decode(bytes: Uint8Array): Item {
       return "not_found";
     case FORBIDDEN:
       return "forbidden";
-    case NO_FRONTEND:
-      return "no_frontend";
+    case NO_API:
+      return "no_api";
     case ERROR:
       return { error: Error.parse(jsonOf(rest)) };
     default:
