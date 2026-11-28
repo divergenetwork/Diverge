@@ -48,7 +48,7 @@ pub async fn create(conn: &mut PgConnection, new: &New) -> Result<Created, Error
     let inserted = sqlx::query(
         "INSERT INTO diverge.tools (template, provider, index, name, \
          fuse_file_mounts, fuse_directory_mounts, creator) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
     )
     .bind(&new.template)
     .bind(new.provider.as_ref().map(Json))

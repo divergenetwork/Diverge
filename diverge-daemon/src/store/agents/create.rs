@@ -41,7 +41,7 @@ pub async fn create(conn: &mut PgConnection, new: &New) -> Result<Created, Error
     let index = counters::next(conn, &format!("agents:{}", new.template)).await?;
     let inserted = sqlx::query(
         "INSERT INTO diverge.agents (template, index, name, provider, fuse_file_mounts, fuse_directory_mounts, creator) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
     )
     .bind(&new.template)
     .bind(i64::try_from(index).unwrap_or(i64::MAX))
