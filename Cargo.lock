@@ -1522,6 +1522,24 @@ dependencies = [
  "axum",
  "diverge-sdk",
  "futures-util",
+ "hex",
+ "rmcp",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tokio",
+]
+
+[[package]]
+name = "diverge-example-human-desk"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "diverge-sdk",
+ "futures-util",
+ "hyper",
+ "hyper-util",
  "rmcp",
  "schemars 1.2.3",
  "serde",

@@ -1,5 +1,5 @@
 //! The frontend, beneath `/frontend`: the page, and one live socket per
-//! open page, through which the person is the agent.
+//! open page, through which the person is the agent the desk is for.
 //!
 //! The rules:
 //!
@@ -7,15 +7,18 @@
 //!    served whole: one HTML file, its script and its style inline.
 //! 2. `GET /frontend/ws` is the desk, live. On opening it sends who the
 //!    page is (`me`), the transcript and whether the agent is waiting
-//!    (`hello`), then the tools the agent may call (`tools`); after
-//!    that, every chunk recorded (`entry`), every turn opened or ended
-//!    (`state`), and trouble no act owns (`trouble`).
+//!    (`hello`), then the tools the agent may call, as it last listed
+//!    them (`tools`); after that, every chunk recorded (`entry`), every
+//!    turn opened or ended (`state`), every listing of the agent's
+//!    (`tools`), and trouble no act owns (`trouble`).
 //! 3. A text frame from the page is one act, a JSON object by `type`:
 //!    `reply` with `text`, `call` with `name` and `arguments` (an
-//!    object), `end`, or `tools`, which lists them again. An act the
+//!    object), `end`, or `tools`, which asks the agent to list them
+//!    again. An act the
 //!    desk refuses, or one that does not read, is answered on that
 //!    socket alone with `refused` and why.
-//! 4. A request with no stamp, or one stamped as an agent, is `403`.
+//! 4. A request with no stamp, or one stamped as an agent or as a
+//!    tool, is `403`: the page is a person's.
 
 use axum::Router;
 use axum::extract::State;
@@ -30,7 +33,7 @@ use serde_json::{Value, json};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::caller::person;
-use crate::desk::Desk;
+use crate::desk::{Desk, Told};
 
 /// The page, whole.
 const PAGE: &str = include_str!("page.html");
@@ -94,14 +97,14 @@ async fn sit(mut socket: WebSocket, desk: Desk, identity: Identity) {
     if !send(&mut socket, json!({ "type": "hello", "transcript": transcript, "waiting": waiting })).await {
         return;
     }
-    if !send(&mut socket, tools(&desk).await).await {
+    if !send(&mut socket, shown(&desk.tools(false).await)).await {
         return;
     }
     loop {
         tokio::select! {
             heard = told.recv() => match heard {
-                Ok(told) => {
-                    let value = serde_json::to_value(&told).unwrap_or(Value::Null);
+                Ok(heard) => {
+                    let value = shown(&heard);
                     if let Some(id) = value.get("entry").and_then(|entry| entry.get("id")).and_then(Value::as_i64) {
                         if id <= seen {
                             continue;
@@ -122,7 +125,7 @@ async fn sit(mut socket: WebSocket, desk: Desk, identity: Identity) {
             frame = socket.recv() => match frame {
                 Some(Ok(Frame::Text(text))) => {
                     let answer = match serde_json::from_str::<Act>(&text) {
-                        Ok(Act::Tools) => Some(tools(&desk).await),
+                        Ok(Act::Tools) => Some(shown(&desk.tools(true).await)),
                         Ok(act) => act_on(&desk, act).await.err().map(|why| json!({ "type": "refused", "error": why })),
                         Err(error) => Some(json!({ "type": "refused", "error": format!("the act does not read: {error}") })),
                     };
@@ -140,8 +143,8 @@ async fn sit(mut socket: WebSocket, desk: Desk, identity: Identity) {
 }
 
 /// An act done at the desk. A tool call is placed here, where it may be
-/// refused; the call itself runs on a task of its own, so the socket
-/// goes on while it does, and its response is told to every page.
+/// refused; the call itself is the agent's to make, and its response
+/// is told to every page when it comes.
 async fn act_on(desk: &Desk, act: Act) -> Result<(), String> {
     match act {
         Act::Reply { text } => {
@@ -150,20 +153,13 @@ async fn act_on(desk: &Desk, act: Act) -> Result<(), String> {
             }
             desk.reply(text).await
         }
-        Act::Call { name, arguments } => {
-            let placed = desk.place(name, arguments).await?;
-            tokio::spawn(placed.finish());
-            Ok(())
-        }
+        Act::Call { name, arguments } => desk.place(name, arguments).await,
         Act::End => desk.end().await,
         Act::Tools => Ok(()),
     }
 }
 
-/// The tools, as the page is told them.
-async fn tools(desk: &Desk) -> Value {
-    match desk.tools().await {
-        Ok(tools) => json!({ "type": "tools", "tools": tools }),
-        Err(error) => json!({ "type": "tools", "tools": [], "error": error }),
-    }
+/// One thing a page is told, as the JSON it is sent.
+fn shown(told: &Told) -> Value {
+    serde_json::to_value(told).unwrap_or(Value::Null)
 }

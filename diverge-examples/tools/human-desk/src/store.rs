@@ -1,6 +1,7 @@
 //! The transcript, kept: every chunk the agent's runs were made of, in
-//! the agent's own database, so a page opened later — or after the
-//! container started again — shows the whole of it.
+//! the desk's `instance` database — its one agent's, and no other's —
+//! so a page opened later, or after the container started again,
+//! shows the whole of it.
 
 use diverge_sdk::container_proxy::inside::Client;
 use diverge_sdk::provider::endpoints::containers::agents::run::server::response::AgenticLoopChunk;

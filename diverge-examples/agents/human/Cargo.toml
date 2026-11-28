@@ -3,7 +3,7 @@ name = "diverge-example-human"
 version = "1.0.0"
 edition = "2024"
 authors = ["Diverge <admin@diverge.network>"]
-description = "An example Diverge agent container with no model: a person is the agent, through its web frontend"
+description = "An example Diverge agent container with no model: a person is the agent, at its desk, a tool of its own"
 license = "MIT"
 repository = "https://github.com/divergenetwork/Diverge"
 homepage = "https://diverge.network"
@@ -15,17 +15,15 @@ path = "src/main.rs"
 
 [dependencies]
 # The SDK, by path: the container's contract with the proxy beside it
-# (registration, the run, the queue, Postgres, the MCP
-# session), the chunks a run is made of, and the caller the daemon
-# stamps on every frontend request.
+# (registration, the run, the queue, the daemon connection, the MCP
+# session), the chunks a run is made of, and the daemon's API request
+# the agent reaches its desk by.
 diverge-sdk = { path = "../../../diverge-sdk-rs" }
 # The run as a generator of events.
 async-stream = { version = "0.3.6" }
 # The program's door: an HTTP server on the loopback the proxy dials,
-# `/register`, `/run` as server-sent events,
-# the queue's two verbs, and the frontend beneath `/frontend`, its
-# live sockets included.
-axum = { version = "0.8.9", features = ["ws"] }
+# `/register`, `/run` as server-sent events, and the queue's verb.
+axum = { version = "0.8.9" }
 # The tools the person calls, over the proxy's MCP; the same version
 # and features the agent images use.
 rmcp = { version = "3.11.0", default-features = false, features = ["client", "transport-streamable-http-client-reqwest"] }
@@ -33,11 +31,13 @@ rmcp = { version = "3.11.0", default-features = false, features = ["client", "tr
 schemars = { version = "1.2.3" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
-# The transcript: the agent's database, through the proxy's loopback
-# pgwire. `json` binds a chunk as jsonb.
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
-# A socket's two halves.
-futures-util = { version = "0.3.34", default-features = false, features = ["std", "sink"] }
-# The runtime under the listener, the desk's lock, the run's channel,
-# and the fan-out to open pages.
+# The id of the dependency the agent declares, as the daemon names
+# it: the SHA-256 of the template's canonical bytes, in hexadecimal.
+# The same versions the daemon hashes with.
+sha2 = { version = "=0.11.1" }
+hex = { version = "0.4.3" }
+# The desk's answers, as a stream.
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+# The runtime under the listener, the desk's locks, and the turn's
+# way up.
 tokio = { version = "1.54.1", default-features = false, features = ["net", "rt-multi-thread", "sync", "macros"] }
