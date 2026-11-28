@@ -162,7 +162,7 @@ tools.
 - A message waits at the desk until someone answers there: writing the agent's replies, calling its
   attached tools by hand, and ending the turn. Nothing times out.
 - The agent reaches the desk over `api`; the person reaches it over `frontend`.
-- Make `human` like any agent (`agents templates create` with `arguments: {}`, `agents create`) and attach
+- Make `human` like any agent (`agents templates create` with `arguments: {"desk": <the human-desk image>}`, `agents create`) and attach
   the tools the person should be able to call. The desk is made by the agent's registration.
 - Open the desk's frontend, not the agent's: the viewer's frontend tab on the dependency tool, or
 

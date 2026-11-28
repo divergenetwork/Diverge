@@ -219,9 +219,13 @@ Agent template body for `diverge run agents templates create`:
   "image": { "digest": "<digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/human" }] },
   "extra_memory": 0,
   "extra_disk": 0,
-  "arguments": {}
+  "arguments": {
+    "desk": { "digest": "<human-desk digest>", "references": [{ "registry": "docker.io", "name": "diverge-local/human-desk" }] }
+  }
 }
 ```
+
+`arguments.desk` is required: it names the `human-desk` image the agent declares as its desk.
 
 Then `agents create`, attach the tools you want to call as it, and open the desk's frontend: the
 `dependency-tools frontend` command in `diverge-tools`, naming the desk by its template id (the agent's

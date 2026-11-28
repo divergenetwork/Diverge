@@ -761,7 +761,7 @@ above with `-f <dir>/Containerfile .`.
 | `diverge-examples/tools/alarm` | `alarm` | `dependency_tool`: eager, `template` | `{}` | none |
 | `diverge-examples/tools/chat` | `chat` | `standalone_tool`: eager, has a frontend | `{}` | none |
 | `diverge-tools/identity-diverge-network` | `identity-diverge-network` | `standalone_tool`: lazy, has a frontend | `{}` | none |
-| `diverge-examples/agents/human` | `human` | agent, no model; answered by a person at its `human-desk` | `{}` | none |
+| `diverge-examples/agents/human` | `human` | agent, no model; answered by a person at its `human-desk` | `{"desk": <the human-desk image>}` | none |
 | `diverge-examples/tools/human-desk` | `human-desk` | `dependency_tool`: eager, `instance`, has a frontend and an API | `{}` | none |
 
 Each agent image states `"memory":536870912,"disk":1073741824`. Each tool image states
