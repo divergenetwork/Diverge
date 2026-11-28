@@ -23,6 +23,7 @@ use tokio::task::AbortHandle;
 
 use super::{Entry, Outbox, Push, Served, exposed, split};
 use crate::containers::lifecycle::{Answer, Ask, End};
+use crate::containers::start::Starting;
 use crate::containers::{AskError, Key, ToolKey, ToolRun, events, tool_log, tools};
 use crate::daemon::Daemon;
 use crate::store::DependencyToolId;
@@ -75,13 +76,20 @@ enum Next {
 /// if it holds none: an attached tool's — a standalone tool's run or a
 /// connected tool's connect — or a dependency tool's, as
 /// [`use_dependency`](tools::use_dependency) deploys one. What deploys
-/// it is the context's cause. One case deploys nothing: a dependency
+/// it is the context's cause. One case waits first: a dependency
 /// tool asked for by an agent whose own run is not live yet — its
-/// container's exchange, come before its start is over. The deploy of
-/// a tool that mounts its agent's files waits for its agent's start,
-/// and this exchange is inside that start, so it is answered that the
-/// tool is not up, which the registration that is deploying it will
-/// soon make untrue.
+/// container's exchange, come before its start is over. The rules:
+///
+/// 1. The exchange waits for the agent's start to be over, by its
+///    start lock, and holds nothing once it is: the start waits for
+///    no exchange of the container's, each of which is answered in a
+///    task of its own, so the wait ends.
+/// 2. A start that left the agent's run live: the exchange goes on as
+///    any other, and finds the tool the registration deployed, or
+///    deploys it.
+/// 3. A start that left none: the exchange is answered that the
+///    agent's container did not start. Nothing is started for it — a
+///    container that is gone asks for nothing.
 pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, String> {
     let next = {
         let served = context.served.lock().await;
@@ -104,7 +112,12 @@ pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, St
             if let Key::Agent(agent) = context.user
                 && context.daemon.live.agent_run(agent).await.is_none()
             {
-                return Err("the tool is not up yet: its agent's container is still starting".to_string());
+                // Rule 1.
+                drop(Starting::hold(&context.daemon, Key::Agent(agent)).await);
+                // Rule 3.
+                if context.daemon.live.agent_run(agent).await.is_none() {
+                    return Err("the tool is not up: its agent's container did not start".to_string());
+                }
             }
             tools::use_dependency(&context.daemon, id, context.cause).await.map_err(|error| error.to_string())?
         }
