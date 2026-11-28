@@ -7,14 +7,16 @@ import { Dependency } from "../../../../../../daemon/reference/dependency.js";
 import { Destination } from "../../../../../../daemon/transfer/destination.js";
 
 /**
- * Ask the daemon to copy a file or a directory out of a running
+ * Ask the daemon to copy a file or a directory out of a
  * dependency tool's container to a destination: see
  * `daemon.transfer.Destination` for what lands where. The bytes
  * never reach the client: the daemon copies on its own connections.
- * The source is read as it runs and is never started; an agent or a
- * created tool the destination names that is not running is started
- * for the operation and stopped when it finishes; a dependency tool
- * that is not running is `no_destination`.
+ * A source whose container is not running is deployed for the
+ * operation, and held up while it is read; a tool that mounts its
+ * agent's files brings its agent's container up with it, and such a tool its
+ * agent then no longer declares is `not_found`. An agent, a created tool
+ * or a dependency tool the destination names that is not running is
+ * started for the operation and held up until it finishes, when its idle time begins.
  */
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */

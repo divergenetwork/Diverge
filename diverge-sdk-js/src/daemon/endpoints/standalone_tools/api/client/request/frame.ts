@@ -1,0 +1,32 @@
+// One HTTP request to a standalone tool's API.
+
+import { z } from "zod";
+import { json, tagged } from "../../../../../../wire/encode.js";
+import { Relay } from "../../../../../../shared/relay.js";
+import { Tool } from "../../../../../../daemon/reference/tool.js";
+import { Head } from "../../../../../../shared/containers/api/request/head.js";
+
+/**
+ * One HTTP request to a standalone tool's API: the tool, then the head's
+ * own members — `method`, `path`, `headers` — as
+ * `shared.containers.api.request.Head` states them. Whoever asks — an
+ * account, an agent's container or a tool's, each under the same
+ * grant — the program is told who, in the request's `diverge.network`
+ * header: the `Caller` as the daemon attests it, set in place of any
+ * the request carried.
+ */
+export const Frame = Head.extend({
+  /** Whose API. */
+  tool: Tool,
+  /** Served by another daemon: see `Relay`. Absent, served here. */
+  relay: Relay.optional(),
+});
+export type Frame = z.infer<typeof Frame>;
+
+/** This frame's tag among the scope-opening requests: one byte at the front of the payload. */
+const TAG = 173;
+
+/** The payload: the tag, then the frame as JSON, as every request of the daemon's is. */
+export function encode(frame: Frame): Uint8Array {
+  return tagged(TAG, json(frame));
+}

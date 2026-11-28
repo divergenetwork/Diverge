@@ -6,6 +6,7 @@ import { Tagging } from "../tagging.js";
 import { within } from "../within.js";
 import { Over } from "./over.js";
 import { Listed } from "./listed.js";
+import { Within } from "./within.js";
 
 /**
  * What one grant over dependency tools allows, in one of two shapes told apart
@@ -17,12 +18,12 @@ import { Listed } from "./listed.js";
  * serde tries them.
  */
 export const Permission = z.union([
-  /** Over dependency tools that exist: the `Over` actions held, reaching every one, or only those the tags let through, read as a test. */
+  /** Over dependency tools that exist: the `Over` actions held, reaching every one, the agent's attached ones, those listed, or only those the tags let through, read as a test. */
   z.strictObject({
     /** The actions. */
     actions: z.array(Over),
-    /** How far: `"any"`, the dependency tools listed, or the tags as a test. */
-    within: reach(Listed),
+    /** How far: `"any"`, `"attached"`, the dependency tools listed, or the tags as a test. See `Within`. */
+    within: Within,
   }),
   /** Tagging dependency tools: putting tags on, taking them off, or both, reaching every one or only those the tags let through, and touching any tag or only the ones listed. */
   z.strictObject({

@@ -1,5 +1,6 @@
-// An agent's log: an item with its place and its time, one of seven
-// kinds — a user part with its sender, a chunk of the loop, an error,
+// An agent's log: an item with its place and its time — a user part
+// with its sender, a chunk of the loop, an error, a request the
+// agent's container put to the daemon (the `command_log`'s `Command`),
 // and the four steps of a run's life — and the provider a run names.
 // Read by `endpoints.logs`, the subject an agent.
 

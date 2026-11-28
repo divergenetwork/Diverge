@@ -13,12 +13,12 @@
 //! the request by that account's
 //! [roles](crate::daemon::endpoints::roles): each a list of
 //! [grants](crate::daemon::grant), the union of which is what the
-//! account may do. No container is served for an account. A tool's
-//! container, standalone or dependency, holds the grants its program
-//! declared at its registration and nothing else — see the
+//! account may do. No container is served for an account. A
+//! container — an agent's, a standalone tool's or a dependency tool's —
+//! holds the grants its program
+//! declared at its registration and nothing else: see the
 //! `permissions` of the
-//! [`register`](crate::container_proxy::inside::register) answer — and
-//! an agent container asks the daemon nothing.
+//! [`register`](crate::container_proxy::inside::register) answer.
 //!
 //! An account is named by its identity, a [`Reference`]: one account
 //! per identity. [`create`] makes one, holding roles from the first;

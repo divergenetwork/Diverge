@@ -24,8 +24,8 @@ use crate::shared::containers::{daemon, postgres};
 /// relays to the caller as the provider protocol's own channel
 /// requests. No tool call outward: a tool container makes none, and
 /// a proxy serving one answers its program's MCP client with an
-/// error; an agent container's begin has those asks and no daemon
-/// connection. The fuse asks are not here; each rides the scope of
+/// error; an agent container's begin has those asks beside these
+/// two. The fuse asks are not here; each rides the scope of
 /// the mount it belongs to.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {

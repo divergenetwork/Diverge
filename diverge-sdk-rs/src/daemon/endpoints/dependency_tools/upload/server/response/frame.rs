@@ -8,7 +8,7 @@ use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
 
 /// An upload's answer: the files are in place, no dependency tool is
-/// the one named or none runs, forbidden, or a failure.
+/// the one named, forbidden, or a failure.
 ///
 /// An upload is one question and one reply, sent once every content
 /// channel has finished, so there is exactly one of these per scope,
@@ -21,7 +21,7 @@ use crate::shared::error::Error;
 /// # Answers, and one failure
 ///
 /// [`NotFound`](Self::NotFound) is an ANSWER: the daemon looked, and no
-/// dependency tool is the one named, or none runs, and nothing was
+/// dependency tool is the one named, and nothing was
 /// asked for and nothing landed.
 /// An [`Error`](Self::Error) is the absence of an answer: a content
 /// channel ended in an error, a path was never finished, the container
@@ -51,7 +51,7 @@ use crate::shared::error::Error;
 pub enum Frame {
     /// Every file is in place. Tag `0`.
     Uploaded,
-    /// No dependency tool is the one named, or none runs; nothing landed. Tag `1`.
+    /// No dependency tool is the one named; nothing landed. Tag `1`.
     NotFound,
     /// The account the request is served for holds no grant allowing
     /// it; nothing changed. Tag `2`.

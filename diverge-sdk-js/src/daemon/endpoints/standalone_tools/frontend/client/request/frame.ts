@@ -9,7 +9,11 @@ import { Head } from "../../../../../../shared/containers/frontend/request/head.
 /**
  * One HTTP request to a standalone tool's frontend: the tool, then the head's
  * own members — `method`, `path`, `headers` — as
- * `shared.containers.frontend.request.Head` states them.
+ * `shared.containers.frontend.request.Head` states them. Whoever asks — an
+ * account, an agent's container or a tool's, each under the same
+ * grant — the program is told who, in the request's `diverge.network`
+ * header: the `Caller` as the daemon attests it, set in place of any
+ * the request carried.
  */
 export const Frame = Head.extend({
   /** Whose frontend. */

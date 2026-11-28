@@ -16,8 +16,8 @@ use crate::shared::permission::Grant;
 /// mounts say, on the database and under the grants it names — and
 /// serves to the container under the template's id among the MCP
 /// servers it answers the container's tool calls with. Each permission is a
-/// grant the container's program holds over the caller for the run, a
-/// tool's alone, and the whole of what it may ask. The provider asks
+/// grant the container's program holds over the caller for the run,
+/// an agent's or a tool's, and the whole of what it may ask. The provider asks
 /// once per run, before the id, and only when the container declared
 /// at least one of either; the run goes on to its id on `Ok` and ends
 /// on `Err`, the container stopped, with the error carried to the

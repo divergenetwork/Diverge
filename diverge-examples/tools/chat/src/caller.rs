@@ -35,6 +35,7 @@ pub fn agent(meta: &MetaObject) -> Result<Participant, Failure> {
     match attestation::request(meta) {
         Ok(Caller::Agent(agent)) => Ok(Participant { template: agent.key.template, index: agent.key.index as i64, name: agent.key.name }),
         Ok(Caller::Client { identity, .. }) => Err(Failure::Caller(format!("{identity} is a client over a connect, not an agent"))),
+        Ok(Caller::Tool { .. }) => Err(Failure::Caller("a tool over a connect, not an agent".to_string())),
         Err(error) => Err(Failure::Caller(error.to_string())),
     }
 }
@@ -49,6 +50,7 @@ pub fn person(headers: &HeaderMap) -> Result<(Identity, String), Failure> {
     match serde_json::from_str::<Caller>(text) {
         Ok(Caller::Client { identity, scope }) => Ok((identity, scope)),
         Ok(Caller::Agent(_)) => Err(Failure::Caller("an agent, not a person".to_string())),
+        Ok(Caller::Tool { .. }) => Err(Failure::Caller("a tool, not a person".to_string())),
         Err(error) => Err(Failure::Caller(error.to_string())),
     }
 }

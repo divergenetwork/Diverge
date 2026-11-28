@@ -121,8 +121,9 @@ pub enum Answer<I> {
 /// How a run is ending, said once, by whoever ends it first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum End {
-    /// Asked to end: gone idle, its record deleted, retired, its
-    /// owner's run over. Its `undeployed` carries no reason.
+    /// Asked to end: gone idle, its record deleted, or the agent's
+    /// run whose files it mounts over. Its `undeployed` carries no
+    /// reason.
     Expected,
     /// Ended without anyone asking: its `undeployed` carries the
     /// reason.
@@ -269,8 +270,8 @@ async fn close<B: RunBook>(root: &PathBuf, book: B, log: &RunLog, state: &mut Li
     active
 }
 
-/// Rule 1: the run of `epoch` deployed on `provider`.
-pub async fn deployed<B: RunBook>(root: PathBuf, book: B, log: Arc<RunLog>, epoch: u64, provider: Identity) {
+/// Rule 1: the run of `epoch` deployed on `provider`, by `cause`.
+pub async fn deployed<B: RunBook>(root: PathBuf, book: B, log: Arc<RunLog>, epoch: u64, provider: Identity, cause: items::Cause) {
     whole(async move {
         let mut state = log.lock.lock().await;
         match &*state {
@@ -280,7 +281,7 @@ pub async fn deployed<B: RunBook>(root: PathBuf, book: B, log: Arc<RunLog>, epoc
             }
             Lifecycle::Undeployed => {}
         }
-        let deployed = items::Deployed { provider: Provider { identity: provider.clone() } };
+        let deployed = items::Deployed { provider: Provider { identity: provider.clone() }, cause };
         write(&root, book, &log.latest, B::deployed(deployed)).await;
         *state = Lifecycle::Deployed { epoch, provider, active: false, open: BTreeMap::new(), interrupted: BTreeSet::new() };
     })

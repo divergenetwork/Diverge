@@ -12,24 +12,25 @@ use crate::judge::{Declared, Fixed, Who};
 use diverge_sdk::daemon::grant::Converted;
 use crate::serve::{self, PairFrames};
 
-/// A connection the container's program opened, taken when the
-/// container is a tool's — served under the grants its program
-/// declared at its registration, none if it declared none, with the
-/// agents its `attached` reaches read fresh — and declined for an
-/// agent's, which asks the daemon nothing: served by
+/// A connection the container's program opened, an agent's or a
+/// tool's alike: served under the grants its program declared at its
+/// registration, none if it declared none, with what its `attached`
+/// reaches read fresh, by
 /// [`serve::serve_pair`], the same session and dispatch a socket gets,
 /// for that standing — no token passes. Every frame the program sends
-/// is a use of the container.
+/// is a use of the container, and every scope it has open holds the
+/// container up for the scope's life: rule 7 of
+/// [`idle_tool`](crate::containers::idle_tool), and the same hold of an
+/// agent's clock.
 impl DaemonAnswerer for Answerer {
     type Frames = PairFrames;
 
     async fn connect(&self, _: u32, from_program: Receiver<pair::client::Owned>) -> Option<Self::Frames> {
-        let tool = self.tool?;
         let permissions = self.permissions.lock().await.clone();
-        let who = Who::Tool(Declared {
+        let who = Who::Container(Declared {
             fixed: Arc::new(Fixed::new(self.sender.clone(), Converted::from(permissions))),
-            tool,
+            container: self.container,
         });
-        Some(serve::serve_pair(Arc::clone(&self.daemon), who, from_program, Some(self.touched.clone())))
+        Some(serve::serve_pair(Arc::clone(&self.daemon), who, from_program, Some(serve::Held { scopes: Arc::clone(&self.scopes), touched: self.touched.clone() })))
     }
 }

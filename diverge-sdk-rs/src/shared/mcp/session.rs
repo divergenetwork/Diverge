@@ -17,20 +17,25 @@
 //!    notifications request and the close.
 //! 2. Two callers are one session when their [`key`]s are one: an
 //!    agent by its template and its index, a client by its issuer, its
-//!    subject and its scope — one connect scope, one session. The image
+//!    subject and its scope, a tool by its kind, its template, its
+//!    index or its owner, and its scope — one connect scope, one
+//!    session. The image
 //!    and the name are not the session's, so an agent renamed keeps its
 //!    session.
 //! 3. Only the exchanges toward a tool container carry a session. An
 //!    agent container's own asks, which reach the daemon and not a
 //!    tool, carry the bare request as before.
 //! 4. A session ends when its caller's side closes it
-//!    ([`close_session`]): when the one connect scope a client's
-//!    session was minted for ends, and when the agent a session
-//!    belongs to is deleted. The proxy holds the session no longer.
+//!    ([`close_session`]): when the one connect scope a client's or a
+//!    tool's session was minted for ends, and when the agent a session
+//!    belongs to is deleted — an agent's connect scope ending closes
+//!    nothing, since the session is the agent's and not the scope's.
+//!    The proxy holds the session no longer.
 
 use serde::Deserialize;
 
-use super::attestation::Caller;
+use super::attestation::{Caller, Tool};
+use crate::daemon::key::Owner;
 use super::{call_tool, close_session, list_resources, list_tools, notifications, read_resource};
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
@@ -49,6 +54,12 @@ pub fn key(caller: &Caller) -> String {
     match caller {
         Caller::Agent(agent) => format!("agent:{}:{}", agent.key.template, agent.key.index),
         Caller::Client { identity, scope } => format!("client:{}:{}:{}", identity.issuer, identity.subject, scope),
+        Caller::Tool { tool, scope } => match tool {
+            Tool::Created { template, index, .. } => format!("tool:created:{template}:{index}:{scope}"),
+            Tool::Connected { template, index, daemon, .. } => format!("tool:connected:{}:{template}:{index}:{scope}", daemon.0),
+            Tool::Dependency { template, owner: Owner::Agent(agent), .. } => format!("tool:dependency:{template}:agent:{}:{}:{scope}", agent.template, agent.index),
+            Tool::Dependency { template, owner: Owner::Template, .. } => format!("tool:dependency:{template}:template:{scope}"),
+        },
     }
 }
 

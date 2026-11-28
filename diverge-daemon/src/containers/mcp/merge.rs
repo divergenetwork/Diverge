@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use futures_util::{Stream, StreamExt as _};
 use diverge_sdk::daemon::creator::Creator;
+use diverge_sdk::daemon::lifecycle::Cause;
 use diverge_sdk::daemon::tool_log::{self as log, Item};
 use diverge_sdk::shared::mcp::attest_request;
 use diverge_sdk::shared::mcp::attestation;
@@ -22,6 +23,7 @@ use tokio::task::AbortHandle;
 
 use super::{Entry, Outbox, Push, Served, exposed, split};
 use crate::containers::lifecycle::{Answer, Ask, End};
+use crate::containers::start::Starting;
 use crate::containers::{AskError, Key, ToolKey, ToolRun, events, tool_log, tools};
 use crate::daemon::Daemon;
 use crate::store::DependencyToolId;
@@ -48,81 +50,87 @@ pub struct Context {
     pub sender: Creator,
     /// The served set.
     pub served: Arc<Mutex<Served>>,
+    /// What a served tool is deployed by, where an exchange here finds
+    /// it down and starts it: an agent's own exchange is the agent
+    /// active, and an exchange run as the agent is a connect.
+    pub cause: Cause,
 }
 
 /// What a served entry comes to, read under the served lock and acted
 /// on after it.
 enum Next {
-    /// A run this set holds.
-    Run(Arc<ToolRun>),
     /// An attached tool, whose run is the live set's to find.
     Attached(Tool),
     /// An attached connected tool, whose connect is the live set's to
     /// find.
     Connected(ConnectedTool),
-    /// An eager tool, whose run the live set holds.
-    Eager(DependencyToolId),
-    /// A shared lazy dependency tool, whose run is the live set's to
-    /// find.
-    Shared(DependencyToolId),
+    /// A dependency tool, of whichever mode and scope, whose run is
+    /// the live set's to find.
+    Dependency(DependencyToolId),
     /// Nothing is served under the key.
     Missing,
 }
 
-/// The served tool's run: a lazy dependency tool's; an attached
-/// tool's — a standalone tool's run or a connected tool's connect — as
-/// the live set holds it now, started now if it holds none; or a
-/// eager tool's as the live set holds it now, which is an error
-/// while the eager tool's container is not up.
+/// The served tool's run, as the live set holds it now, deployed now
+/// if it holds none: an attached tool's — a standalone tool's run or a
+/// connected tool's connect — or a dependency tool's, as
+/// [`use_dependency`](tools::use_dependency) deploys one. What deploys
+/// it is the context's cause. One case waits first: a dependency
+/// tool asked for by an agent whose own run is not live yet — its
+/// container's exchange, come before its start is over. The rules:
+///
+/// 1. The exchange waits for the agent's start to be over, by its
+///    start lock, and holds nothing once it is: the start waits for
+///    no exchange of the container's, each of which is answered in a
+///    task of its own, so the wait ends.
+/// 2. A start that left the agent's run live: the exchange goes on as
+///    any other, and finds the tool the registration deployed, or
+///    deploys it.
+/// 3. A start that left none: the exchange is answered that the
+///    agent's container did not start. Nothing is started for it — a
+///    container that is gone asks for nothing.
 pub async fn running(context: &Context, key: ToolKey) -> Result<Arc<ToolRun>, String> {
     let next = {
         let served = context.served.lock().await;
         match served.entry(key) {
-            Some(Entry::Lazy(run)) => Next::Run(Arc::clone(run)),
             Some(Entry::Attached { tool }) => Next::Attached(tool.clone()),
             Some(Entry::Connected { tool }) => Next::Connected(tool.clone()),
-            Some(Entry::Eager { id, .. }) => Next::Eager(*id),
-            Some(Entry::Shared { id, .. }) => Next::Shared(*id),
+            Some(Entry::Own { id, .. }) | Some(Entry::Eager { id, .. }) | Some(Entry::Shared { id, .. }) => Next::Dependency(*id),
             None => Next::Missing,
         }
     };
-    if matches!(next, Next::Attached(_) | Next::Connected(_))
-        && let Some(run) = context.daemon.live.tool_run(key).await
-    {
+    if matches!(next, Next::Missing) {
+        return Err("no tool is served under that prefix".to_string());
+    }
+    if let Some(run) = context.daemon.live.tool_run(key).await {
         return Ok(run);
     }
     let run = match next {
-        Next::Run(run) => return Ok(run),
-        Next::Eager(id) => {
-            return context
-                .daemon
-                .live
-                .tool_run(ToolKey::Dependency(id))
-                .await
-                .ok_or_else(|| "the eager tool is not running now".to_string());
-        }
         Next::Missing => return Err("no tool is served under that prefix".to_string()),
-        Next::Shared(id) => tools::use_shared(&context.daemon, id).await.map_err(|error| error.to_string())?,
-        Next::Attached(tool) => tools::use_tool(&context.daemon, &tool).await.map_err(|error| error.to_string())?,
-        Next::Connected(tool) => tools::use_connected(&context.daemon, &tool).await.map_err(|error| error.to_string())?,
+        Next::Dependency(id) => {
+            if let Key::Agent(agent) = context.user
+                && context.daemon.live.agent_run(agent).await.is_none()
+            {
+                // Rule 1.
+                drop(Starting::hold(&context.daemon, Key::Agent(agent)).await);
+                // Rule 3.
+                if context.daemon.live.agent_run(agent).await.is_none() {
+                    return Err("the tool is not up: its agent's container did not start".to_string());
+                }
+            }
+            tools::use_dependency(&context.daemon, id, context.cause).await.map_err(|error| error.to_string())?
+        }
+        Next::Attached(tool) => tools::use_tool(&context.daemon, &tool, context.cause).await.map_err(|error| error.to_string())?,
+        Next::Connected(tool) => tools::use_connected(&context.daemon, &tool, context.cause).await.map_err(|error| error.to_string())?,
     };
     context.served.lock().await.started();
     Ok(run)
 }
 
 /// The served tool's run as the live set holds it now, for the relay
-/// of its notifications: a lazy dependency tool's own, an
-/// attached tool's or an eager tool's by key; `None` while it has none.
+/// of its notifications; `None` while it has none, or is not served.
 async fn relayed(served: &Mutex<Served>, daemon: &Daemon, key: ToolKey) -> Option<Arc<ToolRun>> {
-    let next = {
-        let served = served.lock().await;
-        match served.entry(key) {
-            Some(Entry::Lazy(run)) => return Some(Arc::clone(run)),
-            Some(Entry::Attached { .. }) | Some(Entry::Connected { .. }) | Some(Entry::Shared { .. }) | Some(Entry::Eager { .. }) => true,
-            None => false,
-        }
-    };
-    if !next {
+    if served.lock().await.entry(key).is_none() {
         return None;
     }
     daemon.live.tool_run(key).await
@@ -133,15 +141,6 @@ async fn relayed(served: &Mutex<Served>, daemon: &Daemon, key: ToolKey) -> Optio
 /// served to one, and no session could name it.
 fn no_caller() -> ErrorData {
     ErrorData::invalid_params("a tool container calls no tool", None)
-}
-
-/// Every idle served tool started: what a loop beginning does, so its
-/// calls find their containers up.
-pub async fn start_all(context: &Context) {
-    let keys = context.served.lock().await.keys();
-    for key in keys {
-        let _ = running(context, key).await;
-    }
 }
 
 /// The union of every served tool's tools, each name under its

@@ -23,7 +23,7 @@ export const Listed = z.object({
   id: z.string(),
   /** Whose the tool is, as its image's scope decides: the one agent, or nobody. See `key::Owner`. */
   owner: Owner,
-  /** How the tool is kept running, as its image's `mode` says: lazy, run while used, or eager, kept while any agent is attached. */
+  /** How the tool is kept running, as its image's `mode` says: lazy, run while anything holds it, or eager, held as well by any agent attached to it. */
   mode: Mode,
   /** How far the tool is shared, as its image's `scope` says: one per agent, or one for all. */
   scope: Scope,

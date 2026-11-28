@@ -10,7 +10,14 @@ import { Tool } from "../../../../../../daemon/reference/tool.js";
  * started if it does not run, and held while the scope is. A
  * connected tool is another daemon's, and no request of this family
  * finds one. While the scope is open the tool is in use by it
- * exactly as by an active attached agent.
+ * exactly as by an active attached agent. Any requester the grants
+ * reach may open one: an account, an agent's container or a tool's.
+ * Every exchange is stamped with the `Caller` as the daemon attests
+ * whoever opened the scope: an account as a `client`, an agent's
+ * container as the `agent` it is, a tool's container as a `tool`. A
+ * client's and a tool's scope is one MCP session in the tool, closed
+ * when the scope ends; an agent's is the session its own calls into
+ * the tool ride, which the scope's end does not close.
  */
 export const Frame = z.object({
   /** The tool: by name, by template and index, or another daemon's by the daemon, the account and its reference there. */

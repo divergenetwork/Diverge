@@ -9,6 +9,7 @@ use crate::wire::encode::{Encode, Writer};
 use crate::shared::mcp;
 use crate::shared::mcp::session::Sessioned;
 use crate::shared::containers::exec;
+use crate::shared::containers::api;
 use crate::shared::containers::frontend;
 use crate::shared::containers::terminal;
 use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path};
@@ -44,6 +45,7 @@ use crate::shared::containers::daemon;
 /// | `20` | [`TerminalClose`](Self::TerminalClose) |
 /// | `21` | [`Frontend`](Self::Frontend) |
 /// | `22` | [`McpCloseSession`](Self::McpCloseSession) |
+/// | `23` | [`Api`](Self::Api) |
 ///
 /// The first seven tags are the same in every container scope — the
 /// seventh unused in each, where an image's document was once asked
@@ -211,6 +213,13 @@ pub enum Frame {
     ///
     /// See [`mcp::close_session`](crate::shared::mcp::close_session).
     McpCloseSession(Sessioned<mcp::close_session::request::Request>),
+    /// One HTTP request to the program's API, its body asked for by
+    /// its write id as a write's content is (see
+    /// [`api`](crate::shared::containers::api)). Tag `23`.
+    ///
+    /// A frontend request's twin beneath another prefix: the same
+    /// request, the same answer, the same rules.
+    Api(api::request::Request),
 }
 
 /// Tag for [`Frame::Cancel`].
@@ -275,6 +284,9 @@ const FRONTEND: u8 = 21;
 
 /// Tag for [`Frame::McpCloseSession`].
 const MCP_CLOSE_SESSION: u8 = 22;
+
+/// Tag for [`Frame::Api`].
+const API: u8 = 23;
 
 impl Encode for Frame {
     /// The ordinary JSON failure, from whichever half has one.
@@ -367,6 +379,10 @@ impl Encode for Frame {
                 out.extend_from_slice(&[MCP_CLOSE_SESSION]);
                 request.encode(out)
             }
+            Frame::Api(request) => {
+                out.extend_from_slice(&[API]);
+                serde_json::to_writer(out, request)
+            }
         }
     }
 }
@@ -441,6 +457,9 @@ impl Decode<'_> for Frame {
             MCP_CLOSE_SESSION => Sessioned::<mcp::close_session::request::Request>::decode(rest)
                 .map(Frame::McpCloseSession)
                 .map_err(FrameError::McpParams),
+            API => serde_json::from_slice(rest)
+                .map(Frame::Api)
+                .map_err(FrameError::Api),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -481,6 +500,8 @@ pub enum FrameError {
     TerminalStdin,
     /// The frontend request did not parse.
     Frontend(serde_json::Error),
+    /// The API request did not parse.
+    Api(serde_json::Error),
 }
 
 impl fmt::Display for FrameError {
@@ -519,6 +540,9 @@ impl fmt::Display for FrameError {
             FrameError::Frontend(error) => {
                 write!(f, "frontend request did not parse: {error}")
             }
+            FrameError::Api(error) => {
+                write!(f, "API request did not parse: {error}")
+            }
         }
     }
 }
@@ -533,7 +557,8 @@ impl Error for FrameError {
             | FrameError::FuseMount(error)
             | FrameError::Exec(error)
             | FrameError::Terminal(error)
-            | FrameError::Frontend(error) => Some(error),
+            | FrameError::Frontend(error)
+            | FrameError::Api(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
             FrameError::Daemon(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) | FrameError::TerminalStdin => None,

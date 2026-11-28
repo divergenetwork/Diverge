@@ -1,6 +1,6 @@
-//! The grants a tool's program declares for itself at its
-//! registration, and the actions every grant of the daemon's is made
-//! of.
+//! The grants a container's program — a tool's or an agent's —
+//! declares for itself at its registration, and the actions every
+//! grant of the daemon's is made of.
 //!
 //! A GRANT is one permission over one kind of thing the daemon holds
 //! — agents, agent templates, standalone tools, their templates,
@@ -31,10 +31,19 @@
 //! tool that is to reach these records and also everything tagged so
 //! declares two grants, since grants only add and none takes from
 //! another. A tagging grant's `within` is the same three; its `tags`,
-//! which tags it may touch, is `"any"` or a listed set. Over agents
-//! alone there are two words more, [`agents::Within`]: `"attached"`,
-//! the agents attached to the tool, and `"never_active"`, the agents
-//! that have never run.
+//! which tags it may touch, is `"any"` or a listed set. Four kinds
+//! have one word more, `"attached"`: it reaches the records on the
+//! other side of an attachment from the container that holds the
+//! grant, and nothing on that container's own side. Over agents
+//! ([`agents::Within`]) it is the agents attached to the tool that
+//! asks, and nothing where an agent asks. Over standalone tools,
+//! connected tools and dependency tools
+//! ([`standalone_tools::Within`], [`connected_standalone_tools::Within`],
+//! [`dependency_tools::Within`]) it is the tools attached to the agent
+//! that asks — its dependency tools, and the standalone and connected
+//! tools attached to it or to its template — and nothing where a tool
+//! asks. Over agents alone there is one word besides,
+//! `"never_active"`, the agents that have never run.
 //!
 //! Where the daemon's own `within` is the kind's list filter, which
 //! may narrow a reach further — by creator, by template, by what is
@@ -71,13 +80,13 @@
 //!
 //! # Where it is carried
 //!
-//! A tool's program answers its registration with a list of
+//! A container's program answers its registration with a list of
 //! [`Grant`]s — the `permissions` of the
 //! [`register`](crate::container_proxy::inside::register) answer — at
-//! every start of its container, a standalone tool's and a dependency
-//! tool's alike. The proxy and the provider relay them and read
+//! every start of its container: an agent's, a standalone tool's and
+//! a dependency tool's alike. The proxy and the provider relay them and read
 //! nothing; the daemon holds the run to exactly these and judges
-//! everything the tool asks of it by them, as
+//! everything the container asks of it by them, as
 //! [`daemon::grant`](crate::daemon::grant) states a request is judged.
 //! Every type here derives a JSON Schema, because an image embeds its
 //! declarations in the schema of its own documentation.

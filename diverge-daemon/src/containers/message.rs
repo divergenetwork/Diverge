@@ -15,7 +15,8 @@ use futures_util::stream::FuturesUnordered;
 use rmcp::model::ContentBlock;
 use tokio::sync::oneshot;
 
-use super::{AgentRun, Message, StartError, events, inflight};
+use super::deploy::{self, Causes, Mounted};
+use super::{AgentRun, Message, StartError, events, hold_tools, inflight};
 use crate::daemon::Daemon;
 use crate::serve::reply;
 use crate::store::AgentId;
@@ -143,6 +144,12 @@ async fn watched(daemon: Arc<Daemon>, id: AgentId) {
 /// - **Every request unanswered holds the run.** Each turn's hold of
 ///   `pending` is kept until every request of the turn is answered, so
 ///   the idle clock does not stop a run with a request on its way.
+/// - **A message on its way holds the agent's tools.** `pending` is
+///   one of the three things an agent holds its tools by — see
+///   [`Holding`](super::Holding) — and every message taken counts in
+///   it until it is echoed, as rule 5 of [`Message`] states: from the
+///   moment the pump has the run to the loop the message starts, the
+///   tools are held with no moment between.
 ///
 /// The rules, one turn of the loop each time:
 ///
@@ -164,14 +171,27 @@ async fn watched(daemon: Arc<Daemon>, id: AgentId) {
 ///    and nothing is taken: the hold is let go, the run waited for
 ///    until it is gone — [`AgentRun::gone`](super::AgentRun::gone) —
 ///    and the pump looks again, which gets a fresh run. A message is
-///    never lost to an idle stop.
-/// 4. **Take everything waiting**, only now — as late as there is —
+///    never lost to an idle stop. With `pending` held, the setup's
+///    count of a start made for this message — the run's `arrival` —
+///    is taken and let go: the message's own hold has it from here.
+/// 4. **Bring the tools back.** The agent holds its tools from here
+///    — [`hold_tools`], asked for directly, `pending` being entered —
+///    and every tool it is served that is down is deployed, all at
+///    once and all waited for, before anything is delivered:
+///    [`deploy::served`]. A run started just now has every one up
+///    already, and this does nothing; a run that was up may have had
+///    a tool go down under it while it sat idle. One that cannot be
+///    brought back is the error of every message waiting: they are
+///    taken and answered with it, the hold is let go, and nothing is
+///    delivered. No loop begins with a tool the agent is served down.
+/// 5. **Take everything waiting**, only now — as late as there is —
 ///    in the order it was admitted. Each message is put on
 ///    the graph — one event from its sender to the agent, whatever
 ///    its fate, since the graph records what was sent and not what
 ///    landed — and kept in the run's messages, as rule 1 of
-///    [`Message`] states; then the run is touched.
-/// 5. **Group, and number.** What was taken becomes requests, in
+///    [`Message`] states, each counted into `pending` until it is
+///    echoed, as its rule 5 states; then the run is touched.
+/// 6. **Group, and number.** What was taken becomes requests, in
 ///    order: every run of chat messages with no decision between them
 ///    is one request, a batch; every structured decision is a request
 ///    of its own. Each request takes the run's next `index` —
@@ -180,7 +200,7 @@ async fn watched(daemon: Arc<Daemon>, id: AgentId) {
 ///    container's proxy hands them over in, whatever order they reach
 ///    it in: see
 ///    [`enqueue::request::Request`].
-/// 6. **Send them all, and look again.** Every request goes out at
+/// 7. **Send them all, and look again.** Every request goes out at
 ///    once, each an enqueue of its own, and the turn's requests, with
 ///    its hold, are handed to a task of their own — [`answered`] —
 ///    which outlives the turn, and the pump where it ends. There each
@@ -193,14 +213,14 @@ async fn watched(daemon: Arc<Daemon>, id: AgentId) {
 ///    entries are marked or removed as rules 2 and 3 of [`Message`]
 ///    state, each fate is said as its request is answered, and the
 ///    hold is let go once every request is.
-/// 7. **Look again**, at once.
+/// 8. **Look again**, at once.
 ///
 /// Every message taken is answered by the task its turn made: nothing
 /// is put back. The pump is no task of any run's, so a run's end never
 /// ends it; a pump that dies is [`watched`]'s.
 async fn pump(daemon: Arc<Daemon>, id: AgentId) {
     while let Some(agent) = daemon.live.waiting(id).await {
-        let run = match super::agent(&daemon, &agent).await {
+        let run = match super::agent(&daemon, &agent, diverge_sdk::daemon::lifecycle::Cause::Message).await {
             Ok(run) => run,
             Err(error) => {
                 answer(daemon.live.take_waiting(id).await, &Fate::Error(unstarted(&error)));
@@ -211,17 +231,27 @@ async fn pump(daemon: Arc<Daemon>, id: AgentId) {
         // Rule 3: read apart, so the gate's lock is not held across the
         // wait for the run to be gone.
         let ending = run.gate.lock().await.ending;
+        // Rule 3: the setup's count, where the start was this
+        // message's, let go now that `pending` holds in its place.
+        drop(run.arrival.lock().await.take());
         if ending {
             drop(pending);
             run.gone().await;
             continue;
         }
-        // Rules 4 and 5.
+        // Rule 4.
+        hold_tools(&daemon, &run).await;
+        if let Err((name, reason)) = deploy::served(&daemon, &run.served, &Mounted::of(&run), Causes::MESSAGE).await {
+            answer(daemon.live.take_waiting(id).await, &Fate::Error(unstarted(&StartError::Tool { name, reason })));
+            drop(pending);
+            continue;
+        }
+        // Rules 5 and 6.
         let batch = daemon.live.take_waiting(id).await;
         let mut requests: Vec<(enqueue::request::Item, Sent)> = Vec::new();
         for waiting in batch {
             events::record(&daemon, &waiting.sender, &run.sender).await;
-            run.messages.lock().await.insert(waiting.key.clone(), Message::new(waiting.sender, waiting.echo));
+            run.messages.lock().await.insert(waiting.key.clone(), Message::new(waiting.sender, waiting.echo, run.pending.enter(), *run.inactives.borrow()));
             match waiting.what {
                 What::Chat(content) => {
                     let message = enqueue::request::Message { key: waiting.key.clone(), content };
@@ -244,7 +274,7 @@ async fn pump(daemon: Arc<Daemon>, id: AgentId) {
             }
         }
         run.touch();
-        // Rule 6: every request out at once, each under its index —
+        // Rule 7: every request out at once, each under its index —
         // taken here, by the pump, in order — and answered apart.
         let mut unanswered: HashMap<u64, Sent> = HashMap::new();
         let asking: FuturesUnordered<BoxFuture<'static, (u64, Fate)>> = FuturesUnordered::new();
@@ -271,7 +301,7 @@ async fn pump(daemon: Arc<Daemon>, id: AgentId) {
     }
 }
 
-/// One turn's requests, sent and answered: rule 6 of [`pump`], in a
+/// One turn's requests, sent and answered: rule 7 of [`pump`], in a
 /// task of its own so the pump waits for none of it. `pending` is the
 /// turn's hold of the run, let go once every request is answered.
 ///
@@ -302,7 +332,7 @@ async fn settle(run: &AgentRun, sent: Sent, fate: &Fate) {
         for key in &sent.keys {
             if matches!(fate, Fate::Delivered) {
                 if let Some(message) = kept.get_mut(key) {
-                    message.delivered = true;
+                    message.delivered(*run.inactives.borrow());
                 }
             } else {
                 kept.remove(key);

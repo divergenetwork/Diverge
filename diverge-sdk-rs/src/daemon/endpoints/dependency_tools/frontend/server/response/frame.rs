@@ -28,10 +28,9 @@ pub enum Frame {
         #[schemars(with = "String")]
         Bytes,
     ),
-    /// Tag `2`: nothing is a dependency tool by that reference — or, for a
-    /// dependency tool, none runs.
+    /// Tag `2`: nothing is a dependency tool by that reference.
     NotFound,
-    /// Tag `3`: the account holds no `frontend` grant reaching it.
+    /// Tag `3`: the requester holds no `frontend` grant reaching it.
     Forbidden,
     /// Tag `4`: the tool's image declares no frontend.
     NoFrontend,

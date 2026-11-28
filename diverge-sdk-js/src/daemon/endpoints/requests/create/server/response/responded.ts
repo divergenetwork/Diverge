@@ -8,7 +8,7 @@ import { Creator } from "../../../../../creator/creator.js";
 export const Responded = z.object({
   /** The answer: content blocks, as the listener wrote them. The daemon reads none of it. */
   response: z.array(ContentBlockSchema),
-  /** Who answered: an account, by its identity, or a tool, as the daemon names a party. One of those the request was delivered to. */
+  /** Who answered: an account, by its identity, or an agent or a tool, as the daemon names a party. One of those the request was delivered to. */
   from: Creator,
 });
 export type Responded = z.infer<typeof Responded>;

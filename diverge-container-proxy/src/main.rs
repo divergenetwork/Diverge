@@ -10,22 +10,21 @@
 //! long as the server wants it; on the begin scope the proxy opens
 //! channels of its own for
 //! everything the container asks of the world outside: its database
-//! connections, an agent container's tool calls outward, a tool
-//! container's daemon connections.
+//! connections, its daemon connections, an agent container's tool
+//! calls outward.
 //!
 //! The program beside the proxy sees none of that. On the loopback
 //! at `80` it finds a fully compliant MCP server at `/mcp` — an agent
 //! container's, a tool container's program being answered that it
 //! makes no tool call outward — and the daemon protocol as a
-//! WebSocket at `/daemon`
-//! — a tool container's, an agent container's program having the
-//! socket closed on it, since an agent holds no account; at `81` a
+//! WebSocket at `/daemon`, either kind of container's; at `81` a
 //! pgwire listener that is, to its driver, a database. Each of those
 //! becomes one channel on the begin scope, and nothing the program
 //! dials has to know.
 //!
 //! For either kind of container the proxy registers the arguments,
-//! the id of the template the container is made from and the image
+//! the id of the template the container is made from, which record
+//! of that template it is, and the image
 //! it runs, as the server's begin carried them,
 //! with the program's own server on the loopback when the server
 //! begins, and hands the server the dependencies the program answered
@@ -33,7 +32,7 @@
 //! What the arguments may be is the image's `/.diverge/DIVERGE.md`, which is
 //! read of the image and not of the container: the proxy answers it
 //! to nobody, and reads it only to learn whether the image serves a
-//! frontend. It says on the begin's main stream when the container
+//! frontend or an API. It says on the begin's main stream when the container
 //! goes active and inactive — an agent's loop begun and ended, a
 //! tool's first exchange in and last out. It sets
 //! nothing under `_meta` on any MCP exchange it relays, in either

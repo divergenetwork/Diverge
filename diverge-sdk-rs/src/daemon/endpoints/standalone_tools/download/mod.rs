@@ -7,7 +7,7 @@
 //! finishes; or answers that no tool is the one named or nothing is at
 //! the path, forbidden, or that it failed, and finishes. A created
 //! tool's container that is not running is started for the operation
-//! and stopped when it finishes; one the daemon has running anyway — an
+//! and held up until it finishes, when its idle time begins; one the daemon has running anyway — an
 //! attached agent active — is used as it runs. Nothing else about the
 //! tool changes. A connected tool's files are on the other daemon, and
 //! no request here finds one.

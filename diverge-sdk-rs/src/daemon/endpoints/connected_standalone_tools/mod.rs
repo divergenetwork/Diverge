@@ -13,7 +13,7 @@
 //! runs it, starts it or stops it. Nothing of what the tool is made
 //! from is known here: its image, its limits, its mounts and its mode
 //! are the other daemon's, and so are its files, its commands, its
-//! terminal and its frontend, which no request here reaches.
+//! terminal, its frontend and its API, which no request here reaches.
 //!
 //! What a connected tool is FOR is being attached to agents, exactly as
 //! a standalone tool is: an [`attach_agent_instance`] puts it among the
@@ -35,8 +35,12 @@
 //!
 //! However many agents a connected tool is attached to, the daemon
 //! holds at most one connect on it, as a lazy standalone tool's
-//! container is held: opened for the first use — an agent's call in
-//! flight — and let go `idle_seconds` after the last. An attachment
+//! container is held: opened when an agent it is attached to is
+//! deployed, or for the first use that finds it closed, held while
+//! such an agent is being started, has a message on its way or is
+//! active, and while a call is in flight, and let go `idle_seconds`
+//! after the last of those. A connect that cannot be opened fails the
+//! start of the agent it was opened for. An attachment
 //! alone holds nothing open, and a create connects nothing. Whether
 //! the connect is held is the tool's `deployed` in a [`list`].
 //!

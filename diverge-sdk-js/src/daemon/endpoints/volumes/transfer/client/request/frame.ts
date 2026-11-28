@@ -15,8 +15,8 @@ import { Destination } from "../../../../../../daemon/transfer/destination.js";
  * the client: the daemon copies
  * on its own connections, holding the volume for the length of it;
  * an agent's or a created tool's container the destination names
- * that is not running is started for the operation and stopped when
- * it finishes.
+ * that is not running is started for the operation and held up
+ * until it finishes, when its idle time begins.
  */
 export const Frame = z.object({
   /** The volume: its provider and its name. */

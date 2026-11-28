@@ -10,8 +10,8 @@ import { Tool } from "../../../../../../daemon/reference/tool.js";
  * container. What comes back is addressed relative to the path
  * named: a file's chunks carry the empty path, a directory's each
  * file's path within it — see `daemon.download.Chunk`. A container
- * that is not running is started for the operation and stopped when
- * it finishes.
+ * that is not running is started for the operation and held up
+ * until it finishes, when its idle time begins.
  */
 export const Frame = z.object({
   /** The tool: by name, by template and index, or another daemon's by the daemon, the account and its reference there. */

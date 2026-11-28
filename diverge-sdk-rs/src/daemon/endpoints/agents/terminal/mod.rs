@@ -7,7 +7,7 @@
 //! nothing is the one named, forbidden, or that it failed, and
 //! finishes. The terminal is the scope: while it is open the client
 //! writes the shell's stdin and sets its size on channels, at any time,
-//! and its close — or the client gone — kills the shell. An agent's container that is not running is started for the terminal, and held up while it is open.
+//! and its close — or the client gone — kills the shell. An agent's container that is not running is started for the terminal — with every tool the agent is served, any one of which failing to deploy fails the start and the request with it — and held up while it is open.
 //! Split by who SENDS: the request and the channels are in [`client`],
 //! the output in [`server`].
 

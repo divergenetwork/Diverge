@@ -5,7 +5,7 @@
 //!
 //! The scope a run opens is the container's LIFE. It carries the image
 //! pull, the container's registration — its dependencies
-//! deployed — and the mounts'
+//! deployed, its permissions held — and the mounts'
 //! content on channels the provider opens, then the container's id on
 //! channel `0`, and then the agent's conversation there — every chunk
 //! the agent produces, for as long as the container runs. Holding the scope open is
@@ -20,7 +20,8 @@
 //! its database connections, its daemon connection, its tool
 //! calls outward. The caller opens them to reach into the container:
 //! its files, its tree, one more mount made while it runs, a message
-//! for the agent. Same scope, opposite
+//! for the agent, its half of each database connection and of each
+//! daemon connection. Same scope, opposite
 //! directions, and neither side's channel numbers mean anything to the
 //! other.
 

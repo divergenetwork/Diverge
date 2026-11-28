@@ -5,12 +5,12 @@
 //! every file under a directory — one
 //! [chunk](crate::daemon::download::Chunk) at a time, each a piece of
 //! one file with the file's path relative to what was asked for, and
-//! finishes; or answers that no dependency tool is the one named or
-//! none runs, or that nothing is at the path, forbidden, or that it
-//! failed, and finishes. The tool's container is read as it runs: a
-//! dependency tool that does not run is not started for the
-//! operation, and is `NotFound`; nothing is stopped or released when
-//! the operation ends. Nothing else about the tool changes.
+//! finishes; or answers that no dependency tool is the one named, or that nothing is at the path, forbidden, or that it
+//! failed, and finishes. A dependency tool whose container is not
+//! running is deployed for the operation, and held up while it is
+//! read; a tool that mounts its agent's files brings its agent's
+//! container up with it, and such a tool its agent then no longer declares is
+//! `NotFound`. Nothing else about the tool changes.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the
 //! question is in [`client`] — and the daemon answers, so the answer is

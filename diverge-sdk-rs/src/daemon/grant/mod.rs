@@ -95,7 +95,7 @@
 //!
 //! Every kind's `Make` and `Over`, with [`Tagging`] and [`Within`], are
 //! defined once in [`shared::permission`](crate::shared::permission)
-//! and re-exported here: the grants a dependency tool template carries
+//! and re-exported here: the grants a container's program declares
 //! are made of the same actions, reaching all, the records listed or
 //! by tags, and a grant here reaches by the kind's own filter. The kinds that carry tags —
 //! agents, templates, tools, connected tools, dependency tools,
@@ -104,9 +104,9 @@
 //! identities — have the tagging shape, and all of them but dependency
 //! tools, which a registration makes, the making shape. The database
 //! and the events carry none, and their grants are bare lists of
-//! actions. A grant a tool's program declares becomes one of these by
+//! actions. A grant a container's program declares becomes one of these by
 //! [`From`]: the same actions, reaching by a filter that names the
-//! records it listed, or one of its tags alone, which is how a tool's
+//! records it listed, or one of its tags alone, which is how a container's
 //! requests are judged.
 //!
 //! The providers' grants are the exception: the providers list filter

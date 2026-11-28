@@ -1,12 +1,13 @@
-//! The one key the daemon sets under `_meta`, and as a frontend
-//! request's header: who is on the other side.
+//! The one key the daemon sets under `_meta`, and as the header of a
+//! frontend request and of an API request: who is on the other side.
 //!
 //! One key, [`KEY`], one JSON object — the caller, or the tool — set
 //! by [`attest`] on a `_meta` the daemon forwards or relays. A
 //! request carries the caller: an agent of this daemon's, with its
-//! image, when its container sent the call; the identity this daemon
-//! authorized, and nothing more, when the call came over a connect
-//! from outside. An answer carries the tool, with its image and its
+//! image, whichever way the agent called; the identity this daemon
+//! authorized, and nothing more, when an account called over a connect,
+//! a frontend request or an API request; a tool of this daemon's,
+//! when its container did. An answer carries the tool, with its image and its
 //! template — a tool this daemon runs as the run request made it, a
 //! tool another daemon runs as that daemon told on the connect. An
 //! agent's chunks carry the agent, as the caller it is. The daemon's
@@ -22,8 +23,7 @@ use super::attestation::Attested;
 /// `diverge.network`: the one key, whose value is the
 /// [`Caller`](super::attestation::Caller) on a request and the
 /// [`Tool`](super::attestation::Tool) on an answer —
-/// `{"kind":…,"image":…,…}`, the kind naming which of the four it
-/// is, and the image a member of every kind.
+/// `{"kind":…,…}`, the kind naming which it is.
 pub const KEY: &str = "diverge.network";
 
 /// Set [`KEY`] on `meta` to `attestation` — the caller or the tool,
@@ -37,7 +37,7 @@ pub fn attest<A: Attested>(meta: &mut MetaObject, attestation: &A) {
 }
 
 /// The value of the `diverge.network` header the daemon sets on a
-/// frontend request: the caller as JSON, every character outside ASCII
+/// frontend request and on an API request: the caller as JSON, every character outside ASCII
 /// written as a `\uXXXX` escape (a surrogate pair beyond the basic
 /// plane), so the value is a valid HTTP header value and parses to the
 /// same [`Caller`](super::attestation::Caller) as the `_meta` value

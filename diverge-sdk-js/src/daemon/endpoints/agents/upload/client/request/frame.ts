@@ -15,7 +15,8 @@ import { Agent } from "../../../../../../daemon/reference/agent.js";
  * twice, and at least one; the daemon opens one content channel per
  * path, and each file lands at the destination joined with its
  * path, replaced whole, every parent made. A container that is not
- * running is started for the operation and stopped when it finishes.
+ * running is started for the operation — with every tool the agent is served, any one of which failing to deploy fails the start and the operation with it —
+ * and held up until it finishes, when its idle time begins.
  */
 export const Frame = z.discriminatedUnion("kind", [
   /** One file. */

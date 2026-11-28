@@ -4,8 +4,10 @@
 // A `create` names one by a record of that daemon, a route beyond
 // it, and the tool as that daemon names it; the daemon reaches it
 // over that daemon's `standalone_tools` `connect`, holding at most
-// one connect per tool, opened at an agent's first use and let go
-// when idle, and never runs, starts or stops it. What it is FOR is
+// one connect per tool, opened when an agent it is attached to is
+// deployed, or for the first use that finds it closed, and let go
+// when idle, and never runs, starts or stops it. A connect that
+// cannot be opened fails the start of the agent it was opened for. What it is FOR is
 // being attached to agents, as a standalone tool is. Every request
 // names it by a `reference.ConnectedStandaloneTool`: its name, or the
 // daemon, the tool there and its index. No request of the

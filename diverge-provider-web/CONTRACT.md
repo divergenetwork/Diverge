@@ -201,7 +201,8 @@ between a Client and a Container, without reading it: every channel
 the Proxy opens on a begin Scope and every ask a FUSE Mount makes on
 its Scope, with the Client's answer; the content of a Client's write;
 the bytes of a read; the bytes of a transfer, from one Container into
-another; a filetree; a database connection; the MCP exchanges
+another; a filetree; a database connection; a daemon connection a
+Container's program opens; the MCP exchanges
 into a tool Container; and a daemon connection between a Daemon
 Connector and an Acceptor.
 
@@ -1162,8 +1163,8 @@ Deployment is the run's error.
 (d) **Connect to the Proxy.** The Provider shall open exactly one
 WebSocket connection to TCP port 14979 of the Container and, on it
 before any other Scope, the begin Scope of the Container's family,
-carrying the request's `arguments`, `template` and `image` verbatim,
-and shall await its answer. A Proxy that does not accept the
+carrying the request's `arguments`, `template`, `index` or `owner`,
+and `image` verbatim, and shall await its answer. A Proxy that does not accept the
 connection, or that answers the begin Scope with an error, is a
 Container that did not come up: the Provider shall stop the Container
 and treat the failure as the run's error. The Provider shall open no
@@ -1199,9 +1200,10 @@ sent, in the order the Channels were opened, and shall neither refuse
 nor read such a Channel before the last FUSE Mount is complete.
 
 (g) **Carry the arguments, the template and the image.** The Provider
-shall carry the request's `arguments` and `template` verbatim in the
+shall carry the request's `arguments` and `template`, and the
+request's `index` or `owner`, whichever it has, verbatim in the
 begin Scope's request, and in nothing else, and shall read the
-`template` for nothing. The Provider shall carry the request's `image`
+`template`, the `index` and the `owner` for nothing. The Provider shall carry the request's `image`
 verbatim, its `references` included, in the same begin Scope's
 request, so that the Container's program is told which image it runs
 as. The Provider supplies that value itself, from the request it is
@@ -1231,8 +1233,9 @@ templates and the permissions are both empty. On a
 Container declares no dependencies, and its begin's answer carries
 none — and the `registration` Channel carries the
 permissions the tool Container's program declared, verbatim and
-unread. On a `containers::agents::run` Scope the permissions are always
-empty.
+unread. On a `containers::agents::run` Scope the `registration` Channel
+carries the templates and the permissions the agent Container's
+program declared, verbatim and unread.
 
 (i) **Send the id.** The id the Provider chose in (h) shall be unique
 among the Containers it is running and not derivable from the
@@ -1479,18 +1482,18 @@ Container Proxy Endpoints layers:
 that listens on TCP port 14979 and accepts one WebSocket connection
 there; that speaks the Protocol's own frames on it and sends no auth
 frame; that answers exactly one begin Scope per connection, holding the
-arguments, the template id and the image it carries for the
-Container's life
+arguments, the template id, the `index` or `owner` and the image it
+carries for the Container's life
 and answering, for an agent Container, with the dependency tool
-templates the program declared, unread, and, for a
+templates and the permissions the program declared, unread, and, for a
 tool Container, with the permissions the program declared, unread, and no
 dependencies; that sends no error on the begin Scope after `Begun`;
 that marks an agent Container's loops with `Active` before the first
 chunk of each and `Inactive` after the last; that marks a tool Container's activity with
 `Active` before the first exchange in flight is delivered and
-`Inactive` after the last is answered; that opens no daemon Channel for an agent Container
-and no MCP Channel outward for a tool Container, answering the
-program of either that it has no such thing; that sets nothing under
+`Inactive` after the last is answered; that opens
+no MCP Channel outward for a tool Container, answering its
+program that it has no such thing; that sets nothing under
 `_meta` on any MCP exchange it relays, in either direction, or on
 any chunk of an agent's conversation, and alters nothing of them;
 that makes each

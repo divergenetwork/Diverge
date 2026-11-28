@@ -381,7 +381,7 @@ Consequences:
 
 A connected tool is a standalone tool that **another daemon** holds and runs, held here under a local name
 so this daemon's agents can call it. This daemon never starts, stops, edits or inspects the container: its
-image, limits, files, exec, terminal and frontend all belong to the other daemon. Here it can only be
+image, limits, files, exec, terminal, frontend and API all belong to the other daemon. Here it can only be
 named, attached to agents, tagged, logged and deleted.
 
 ```bash

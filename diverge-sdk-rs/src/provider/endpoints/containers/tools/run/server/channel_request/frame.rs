@@ -133,7 +133,8 @@ pub enum Frame<'a> {
     ///
     /// Opened once, after the proxy's `Begun` carried a non-empty
     /// list of permissions, and before the id; its dependencies are
-    /// empty, since a tool container declares none. Answered once,
+    /// empty, since a tool container declares none, where an agent
+    /// container's registration carries both. Answered once,
     /// deployed or why not, and the id follows a deploy. See
     /// [`registration`](crate::shared::containers::registration).
     Registration(registration::request::Request<'a>),

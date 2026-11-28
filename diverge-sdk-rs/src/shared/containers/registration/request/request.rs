@@ -35,7 +35,7 @@ pub struct Request<'a> {
     pub dependencies: Cow<'a, [Template]>,
     /// What the program may ask of the caller, as grants, in the order
     /// it declared them: the whole of its authority for the run.
-    /// Absent when empty, which an agent container's always is.
+    /// An agent container's or a tool container's. Absent when empty.
     #[serde(default, skip_serializing_if = "no_permissions")]
     pub permissions: Cow<'a, [Grant]>,
 }

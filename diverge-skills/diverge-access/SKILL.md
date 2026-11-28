@@ -94,9 +94,10 @@ Which member names records differs per kind; the table and the narrowing members
 
 `agents`, `agents_templates`, `standalone_tools`, `standalone_tools_templates`, `connected_standalone_tools`,
 `dependency_tools`, `providers`, `providers_daemons`, `daemons`, `accounts`, `roles`, `volumes`,
-`postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `exec` or `terminal`
+`postgres`, `postgres_compartments`, `events`, `images`, `identities`. There is no separate `logs`, `frontend`, `api`, `exec` or `terminal`
 kind: those are *actions* inside the kinds that have them (`logs` over agents, tools and accounts;
-`frontend` and `exec` over agents, standalone tools and dependency tools; a terminal is judged as `exec`).
+`exec` over agents, standalone tools and dependency tools; `frontend` and `api` over standalone tools and
+dependency tools only; a terminal is judged as `exec`).
 
 **Every action of every kind, and which command needs it, is in
 [references/grants.md](references/grants.md).** Read it before writing a role.
@@ -264,6 +265,8 @@ diverge run requests create '{"request":[{"type":"text","text":"Deploy to produc
 diverge run requests create '{"request":[{"type":"text","text":"ready?"}],"to":{"only":{
   "accounts":[{"issuer":"…","subject":"ronald.alice"}],
   "account_tags":["oncall"],
+  "agents":[{"name":"helper"}],
+  "agent_tags":[],
   "standalone_tools":[{"name":"reviewer"}],
   "standalone_tool_tags":[],
   "dependency_tools":[{"template":"<dependency template id>","owner":"template"}],
@@ -287,26 +290,27 @@ diverge run requests listen
 - **Late listeners are sent it.** A party that starts listening while a request is pending is sent it then,
   and the creator gets its `delivered` then. Each listener is sent a request once, and the creator is told
   of each delivery once.
-- **One `listen` per account or tool**, across all its connections. A second answers `"already_open"`.
+- **One `listen` per account, agent or tool**, across all its connections. A second answers `"already_open"`.
 - **`listen` never ends by itself.** Do not run it in the foreground of a task that must return: run it in
   the background and write lines to its standard input. Standard input ending does not end the listen. A
   line that is not `{"id":…,"response":[…]}` ends the command with an error.
 - **Ignore a `withdrawn` for an ID you never saw.**
 - **Who may be asked.** Listening needs no grant. Creating needs the `request` action, which exists in
-  three kinds, each with its own `within` and its own tags: `accounts`, `standalone_tools`,
-  `dependency_tools`. A tag in `account_tags` names accounts only; a tool carrying the same tag is not
-  addressed by it.
-  - A request goes to **everything it names that you may ask**, and silently skips the rest: an account
-    or tool the grant for its kind does not reach, the unreached members of a tag, a name that names
+  four kinds, each with its own `within` and its own tags: `accounts`, `agents`, `standalone_tools`,
+  `dependency_tools`. A tag in `account_tags` names accounts only; an agent or a tool carrying the same
+  tag is not addressed by it.
+  - A request goes to **everything it names that you may ask**, and silently skips the rest: an account,
+    agent or tool the grant for its kind does not reach, the unreached members of a tag, a name that names
     nothing. `"to":"all"` is the same with nothing narrowed. The `delivered` lines say who was sent it.
-  - It is refused only when it would go to nobody: `"no_recipient"` when no existing account or tool is
+  - It is refused only when it would go to nobody: `"no_recipient"` when no existing account, agent or tool is
     both named and reachable (also `{"only":{}}`, and `"all"` with nothing reachable).
   - Recipients that exist but are not listening do not refuse it: the request is created and waits.
-  - No `request` grant of any of the three kinds: `"forbidden"`.
-- **Tools.** A standalone tool and a dependency tool can each listen and create, as itself, with the
-  grants its image declares. A connected standalone tool (another daemon's) does neither.
+  - No `request` grant of any of the four kinds: `"forbidden"`.
+- **Containers.** An agent, a standalone tool and a dependency tool can each listen and create, as
+  itself, with the grants its image declares. A connected standalone tool (another daemon's) does neither.
 - An administrator is addressed like any account: by its identity in `accounts`, or by a tag it carries.
 - `from` and `to` name a party as a creator is named: `{"type":"client","identity":{…}}` for an account,
+  `{"type":"agent","template":…,"index":…,"name":…}` for an agent,
   `{"type":"tool","record":{…}}` or `{"type":"tool","dependency":{…}}` for a tool.
 
 ## The host's identities (`diverge run identities …`)
@@ -408,8 +412,11 @@ For `"forbidden"`, work through this list:
    or from the remote, which judges the request as the account the record names, by *its* roles there. If
    that identity is one of the remote's administrators (and has no stored account there), it is allowed
    everything there.
-8. **Is the requester a tool?** A tool's container holds only what its image declared at registration, and
-   is no account; an agent's container asks the daemon nothing. See `diverge-tools`.
+8. **Is the requester a container?** A tool's container and an agent's container each hold only what
+   their image's program declared at registration, and are no account. No request is closed to a
+   container as such: `frontend`, `api` and `standalone-tools connect` are judged for it as for an
+   account. See
+   "Grants a container's image declares" in the grants reference.
 9. **Read the command log.** The daemon keeps every request a requester put, with whether it was let
    through. As an administrator (or with `logs` over accounts):
 

@@ -22,17 +22,9 @@ pub(crate) enum Own<'a> {
     /// [`prove`](diverge_sdk::shared::containers::oci::prove).
     OciProve(&'a diverge_sdk::shared::containers::oci::prove::request::Request),
     /// A daemon connection the proxy announced, by an id of this
-    /// end's own: the tools family's alone, since an agent container
-    /// asks for none. See
+    /// end's own. See
     /// [`daemon`](diverge_sdk::shared::containers::daemon).
     Daemon(u32),
     /// This end's half of a database connection, by the id it minted.
     Postgres(u32),
 }
-
-/// An ask a family does not have: what a family answers for an
-/// [`Own`] its wire carries no frame for — an agent container's
-/// daemon connection — so that the machinery, which names every ask
-/// once, hears that this one is not to be put.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct Unasked;

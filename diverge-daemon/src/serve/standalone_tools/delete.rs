@@ -28,11 +28,10 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// `Forbidden` with no `delete` grant at all; `NotFound`; `Forbidden`
 /// for a tool the grants do not reach; `Attached` while it is
 /// attached to any agent or any agent template; else the tool gone — its own compartment of the database
-/// dropped with its every table, its template's and its image's left, its name free, and, an eager tool, its
-/// keeping ended: held by no agent, it may still be held by a connect
-/// or be waiting on its clock, and that run is stopped with it. A
-/// lazy tool attached nowhere runs nowhere, so nothing is
-/// stopped.
+/// dropped with its every table, its template's and its image's left, its name free, and its
+/// run, if one is up, stopped with it: attached to no agent, it may
+/// still be held by a connect or a use, or be waiting out its idle
+/// clock, and a delete waits for neither.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {
     let mut tx = daemon.store.begin().await?;
     let Some(standing) = Standing::of(&mut tx, who).await? else {

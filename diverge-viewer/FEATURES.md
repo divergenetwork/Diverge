@@ -19,8 +19,8 @@ is named, so the two can be checked against each other.
   line, with counts. It floats where you drag
   it, folds small, and docks down the window's left.
 - Clicking a node opens a sheet along the bottom: its **logs**, its
-  **filesystem**, a **console** into its container, and — for an agent
-  or a tool that serves one — its **frontend**, its own web page.
+  **filesystem**, a **console** into its container, and — for a tool
+  that serves one — its **frontend**, its own web page.
 - Files can be downloaded (right-click) and uploaded (drag and drop),
   however large.
 - Another daemon our account reaches opens in a **tab** of its own,
@@ -376,7 +376,7 @@ The keys are not printed.
 
 | Kind | Logs | Filesystem | Console | Frontend | Daemon |
 |---|---|---|---|---|---|
-| Agent | yes | yes | yes | when its image declares one | — |
+| Agent | yes | yes | yes | — | — |
 | Standalone tool | yes | yes | yes | when its image declares one | — |
 | Connected standalone tool | yes | — | — | — | — |
 | Dependency tool | yes | yes | yes | when its image declares one | — |
@@ -578,15 +578,16 @@ refused. An administrator's log is the daemon's own admin log.
 
 `sheet/frontend.ts`, `src-tauri/src/frontend.rs`, `src-tauri/src/theme.rs`
 
-- **What it is.** The web page an agent's or a tool's own program
+- **What it is.** The web page a tool's own program
   serves, beneath
   `/frontend`, shown in a frame filling the sheet: every page, form,
   stream and live connection (WebSocket) it uses works as on any
   website.
-- **Which ones.** An agent, a standalone tool or a dependency tool
+- **Which ones.** A standalone tool or a dependency tool
   whose image's `DIVERGE.md` says `"frontend": true`. Others have no
-  frontend tab. The example agent `diverge-examples/agents/human` is one: its
-  frontend is where you play the agent yourself.
+  frontend tab, and an agent never has one. The example agent
+  `diverge-examples/agents/human` declares a dependency tool,
+  `human-desk`, whose frontend is where you play the agent yourself.
 - **How it reaches the program.** The app's Rust serves the frame from
   an address of its own on this machine (`127.0.0.1`, a new port for
   every tab), and sends every request the page makes to the program
@@ -607,14 +608,14 @@ refused. An administrator's log is the daemon's own admin log.
   follows it when it changes). A page that loads them takes the theme's
   colours, sizes and square edges; one that doesn't keeps its own look.
   The frame round a page is the app's; the page is its maker's. The
-  example chat, human agent and identity pages take it.
+  example chat, human-desk and identity pages take it.
 - **Copying.** A frontend may put text on your clipboard, so its copy
   buttons work. It cannot read the clipboard.
 - **Links that open a new window** — a link with a target, or
   `window.open` — open in your own browser when they are `http` or
   `https`, and open nothing otherwise. The app never makes a second
   window.
-- **Starting it.** Opening an agent's or a standalone tool's frontend
+- **Starting it.** Opening a standalone tool's frontend
   starts its container if it is stopped. A dependency tool is never
   started for it; one that is not running says so in the frame.
 - **Keeping it up.** While a request or a live connection of the

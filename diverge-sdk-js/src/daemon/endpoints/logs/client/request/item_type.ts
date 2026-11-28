@@ -6,7 +6,7 @@ import { z } from "zod";
  * One kind of item, by the name its `type` carries: every name an
  * agent's log item or a tool's log item has. A name both books have —
  * `deployed`, `active`, `inactive`, `undeployed`, `error`,
- * `notification` — picks that kind in
+ * `notification`, `command` — picks that kind in
  * whichever book is read; a name the book read does not have matches
  * nothing.
  */

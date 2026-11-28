@@ -24,6 +24,7 @@
 
 mod active;
 mod answer;
+mod command;
 mod deployed;
 mod error;
 mod identity;
@@ -38,6 +39,7 @@ mod user_structured_decisions;
 
 pub use active::*;
 pub use answer::*;
+pub use command::*;
 pub use deployed::*;
 pub use error::*;
 pub use identity::*;

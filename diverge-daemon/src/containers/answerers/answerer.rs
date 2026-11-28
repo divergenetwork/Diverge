@@ -13,9 +13,9 @@ use crate::containers::images::Pulls;
 use crate::containers::mcp::Served;
 use diverge_sdk::shared::mcp::attestation;
 
-use crate::containers::{Inflight, Key};
+use crate::containers::{Holding, Inflight, Key};
 use crate::daemon::Daemon;
-use crate::judge::ToolRef;
+use crate::judge::Container;
 use crate::store::DependencyToolId;
 use diverge_sdk::shared::permission::Grant;
 
@@ -32,16 +32,16 @@ pub struct Answerer {
     pub caller: Option<attestation::Caller>,
     /// The container as a sender.
     pub sender: Creator,
-    /// Which tool the run is, standalone or dependency: whose attached
-    /// agents its `attached` grants reach. None for an agent, which
-    /// asks the daemon nothing, and whose `/daemon` connections are
-    /// declined.
-    pub tool: Option<ToolRef>,
-    /// What the tool's container declared at its registration it may
-    /// ask of the daemon: empty until it registers, and still empty for
-    /// a program that declared none, every request of which is refused.
-    /// What its `/daemon` connections are served under, and what the
-    /// start records on the tool's row once the run is up.
+    /// Which container the run is — an agent's, or a tool's, standalone
+    /// or dependency: whose attachments its `attached` grants reach,
+    /// and whose log keeps its commands.
+    pub container: Container,
+    /// What the container's program declared at its registration it
+    /// may ask of the daemon: empty until it registers, and still empty
+    /// for a program that declared none, every request of which is
+    /// refused. What its `/daemon` connections are served under, and
+    /// what the start records on the container's row once the run is
+    /// up.
     pub permissions: Mutex<Vec<Grant>>,
     /// The provider the run is on: where the container's own paths
     /// are served from, for its dependencies.
@@ -55,13 +55,26 @@ pub struct Answerer {
     pub pulls: Arc<Pulls>,
     /// Where a use is noted.
     pub touched: watch::Sender<Instant>,
-    /// The MCP exchanges in flight: the agent's own, which a lazy
-    /// dependency shares with its agent.
+    /// The MCP exchanges in flight for the run: an agent's own, which
+    /// its run takes when it is made. A tool's answerer counts none.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress: the agent's own, which a dependency
-    /// deployed for it shares, so that a use on the dependency holds
-    /// the agent — with which the dependency stops — up.
+    /// The uses in progress on the run: an agent's own, which its run
+    /// takes when it is made, and which a dependency tool that mounts
+    /// the agent's files is counted in for as long as it is up. A
+    /// tool's answerer counts none.
     pub files: Arc<Inflight>,
+    /// The scopes the container's program has open on its `/daemon`
+    /// connections: counted in for each scope's life, and what the
+    /// run, which takes this when it is made, is held up by — rule 7
+    /// of [`idle_tool`](crate::containers::idle_tool) for a tool's,
+    /// and the same hold of [`idle`](crate::containers::idle) for an
+    /// agent's.
+    pub scopes: Arc<Inflight>,
+    /// An agent's hold on the tools it is served, which its run takes
+    /// when it is made: begun here, at the registration, once what
+    /// the program declared is on record — see [`Holding`]. A tool's
+    /// answerer holds none.
+    pub holding: Arc<Holding>,
     /// The eager tools an agent's registration declared, once its
     /// dependencies were deployed: `None` until then, and still
     /// `None` for a program that declared nothing, which is never

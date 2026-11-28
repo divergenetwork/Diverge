@@ -5,7 +5,7 @@
 //! how it ended, as [`exec`](crate::shared::containers::exec) states it —
 //! and finishes; or answers that nothing is the one named, forbidden, or
 //! that it failed, and finishes. The client's cancel, or the client
-//! gone, kills the command. An agent's container that is not running is started for the command, and held up while it runs.
+//! gone, kills the command. An agent's container that is not running is started for the command — with every tool the agent is served, any one of which failing to deploy fails the start and the request with it — and held up while it runs.
 //! Split by who SENDS: the request and the cancel are in [`client`], the
 //! stream in [`server`].
 

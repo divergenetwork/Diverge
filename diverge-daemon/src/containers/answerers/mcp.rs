@@ -22,6 +22,7 @@ impl Answerer {
             caller: self.caller.clone(),
             sender: self.sender.clone(),
             served: Arc::clone(&self.served),
+            cause: diverge_sdk::daemon::lifecycle::Cause::AgentActive,
         }
     }
 }

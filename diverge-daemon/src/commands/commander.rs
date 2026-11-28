@@ -1,8 +1,8 @@
 //! Whose book a request is kept in.
 
 use crate::containers::ToolKey;
-use crate::judge::{ToolRef, Who};
-use crate::store::AccountId;
+use crate::judge::{Container, Who};
+use crate::store::{AccountId, AgentId};
 use crate::store::hash;
 
 /// An administrator, by its identity's
@@ -20,6 +20,8 @@ pub enum Commander {
     Admin(AdminKey),
     /// A tool's container: its commands go into the tool's own log.
     Tool(ToolKey),
+    /// An agent's container: its commands go into the agent's own log.
+    Agent(AgentId),
 }
 
 impl Commander {
@@ -29,10 +31,10 @@ impl Commander {
         match who {
             Who::Account(id) => Some(Commander::Account(*id)),
             Who::Admin(identity) => hash::identity_key(identity).ok().map(|key| Commander::Admin(AdminKey(key))),
-            Who::Tool(declared) => Some(Commander::Tool(match declared.tool {
-                ToolRef::Standalone(id) => ToolKey::Record(id),
-                ToolRef::Dependency(id) => ToolKey::Dependency(id),
-            })),
+            Who::Container(declared) => Some(match declared.container {
+                Container::Tool(tool) => Commander::Tool(tool.key()),
+                Container::Agent(agent) => Commander::Agent(agent),
+            }),
         }
     }
 }

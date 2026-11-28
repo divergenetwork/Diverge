@@ -1,7 +1,8 @@
-// One item of a log, of nine kinds.
+// One item of a log, of ten kinds.
 
 import { z } from "zod";
 import { AgenticLoopChunk } from "../../provider/endpoints/containers/agents/run/server/response/chunk.js";
+import { Command } from "../command_log/command.js";
 import { Active } from "./active.js";
 import { Deployed } from "./deployed.js";
 import { Error } from "./error.js";
@@ -13,7 +14,9 @@ import { UserStructuredDecisions } from "./user_structured_decisions.js";
 
 /**
  * One item of a log: a user part with its sender, a chunk of the
- * loop, an error, or one step of the run's life — `deployed`,
+ * loop, an error, a request the agent's own container put to the
+ * daemon (`command`, as `command_log` states: it makes the agent
+ * neither active nor inactive), or one step of the run's life — `deployed`,
  * `active`, `inactive`, `undeployed`, as `lifecycle` states. Untagged
  * JSON, told apart by each kind's own `type` and, for a user part,
  * by the presence of `sender`: nothing but a user part has one, so
@@ -27,6 +30,7 @@ export const Item = z.union([
   User,
   AgenticLoopChunk,
   Error,
+  Command,
   Deployed,
   Active,
   Inactive,

@@ -6,12 +6,14 @@ import { Relay } from "../../../../../../shared/relay.js";
 import { Dependency } from "../../../../../../daemon/reference/dependency.js";
 
 /**
- * Ask the daemon for a running dependency tool's container's tree,
+ * Ask the daemon for a dependency tool's container's tree,
  * and every change to it for as long as the scope is open: the
  * container's own filesystem with each FUSE mount's subtree spliced
  * in at its mount point. There is no path to narrow it, since a
- * watch is of the whole container. A tool that does not run is
- * `not_found`; nothing is started.
+ * watch is of the whole container. A tool whose
+ * container is not running is deployed for it, and held up meanwhile;
+ * a tool that mounts its agent's files brings its agent's container up
+ * with it, and such a tool its agent then no longer declares is `not_found`.
  */
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */

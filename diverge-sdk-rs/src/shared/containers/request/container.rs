@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{FuseMount, Image, VolumeMount};
+use super::{FuseMount, Image, VolumeMount, Which};
 
 /// Ask a provider to create a container.
 ///
@@ -35,6 +35,14 @@ pub struct Container {
     /// nothing of it: it is the program's to know which template it
     /// runs as.
     pub template: String,
+    /// Which record of that template the container is: an agent's or
+    /// a standalone tool's `index`, or a dependency tool's `owner`,
+    /// flat beside `template`. See [`Which`]. The provider hands it to
+    /// the container beside the template, at its registration, and
+    /// reads nothing of it: it is the program's to know which record
+    /// it runs as.
+    #[serde(flatten)]
+    pub which: Which,
     /// How much memory the container may have, in BYTES.
     ///
     /// A ceiling, not a hint. A process that exceeds what the

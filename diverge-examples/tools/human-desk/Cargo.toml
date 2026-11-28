@@ -1,0 +1,44 @@
+[package]
+name = "diverge-example-human-desk"
+version = "1.0.0"
+edition = "2024"
+authors = ["Diverge <admin@diverge.network>"]
+description = "An example Diverge dependency tool: the desk a person answers at as the human agent, with its web frontend"
+license = "MIT"
+repository = "https://github.com/divergenetwork/Diverge"
+homepage = "https://diverge.network"
+publish = false
+
+[[bin]]
+name = "human-desk"
+path = "src/main.rs"
+
+[dependencies]
+# The SDK, by path: the container's contract with the proxy beside it
+# (registration, Postgres), the chunks a turn is made of, and the
+# caller the daemon stamps on every frontend and API request.
+diverge-sdk = { path = "../../../diverge-sdk-rs" }
+# The program's door: an HTTP server on the loopback the proxy dials,
+# `/register`, the MCP server at `/mcp`, the frontend beneath
+# `/frontend`, its live sockets included, and the agent's stream
+# beneath `/api`.
+axum = { version = "0.8.9", features = ["ws"] }
+# The agent's stream is an upgraded request: the connection itself,
+# taken from the server once it has answered `101`.
+hyper = { version = "1.12.0", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1.21", default-features = false, features = ["tokio"] }
+# The MCP server, which serves no tool, and the tools and results the
+# two halves name; the same version the tool images use.
+rmcp = { version = "3.11.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
+# `--schema` states the arguments'.
+schemars = { version = "1.2.3" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+# The transcript: the tool's own database, through the proxy's
+# loopback pgwire. `json` binds a chunk as jsonb.
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json"] }
+# A socket's two halves.
+futures-util = { version = "0.3.34", default-features = false, features = ["std", "sink"] }
+# The runtime under the listener, the desk's lock, the turn's channel,
+# the fan-out to open pages, and the lines of the agent's stream.
+tokio = { version = "1.54.1", default-features = false, features = ["net", "rt-multi-thread", "sync", "macros", "io-util"] }

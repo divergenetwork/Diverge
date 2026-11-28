@@ -7,10 +7,9 @@ use std::fmt;
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::containers::exec;
-use crate::shared::containers::frontend;
 use crate::shared::containers::terminal;
 use crate::shared::containers::enqueue;
-use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path};
+use crate::shared::containers::{daemon, fuse_mount, postgres, read, transfer, write_path};
 
 /// What a caller asks a provider for while an agent container runs.
 ///
@@ -36,17 +35,21 @@ use crate::shared::containers::{fuse_mount, postgres, read, transfer, write_path
 /// | `14` | [`TerminalStdin`](Self::TerminalStdin) |
 /// | `15` | [`TerminalResize`](Self::TerminalResize) |
 /// | `16` | [`TerminalClose`](Self::TerminalClose) |
-/// | `17` | [`Frontend`](Self::Frontend) |
+/// | `17` | unused |
+/// | `18` | [`Daemon`](Self::Daemon) |
 ///
 /// The first seven tags are the same in every container scope — the
 /// seventh unused in each, where an image's document was once asked
 /// for and is now read on the image's own scope — in the same
 /// order, so a reader of one is a reader of all; what follows is this
-/// family's own exchange — no daemon connection among them, since an
-/// agent container holds no account and asks the daemon nothing —
+/// family's own exchange,
 /// and then the mount, which every scope has again, under a tag of
-/// its own. Tag `10` is unused: it once carried a feed of values to
-/// the program, and it is never given to another request. All of
+/// its own, and last this end's half of a daemon connection, which a
+/// tool container's scope has under a tag of its own. Tag `10` is unused: it once carried a feed of values to
+/// the program, and it is never given to another request. Tag `17` is
+/// unused: it once carried a request to a frontend of the program's,
+/// which an agent container has none of, and it is never given to
+/// another request. All of
 /// them but the first reach INTO the
 /// container, which is the thing a caller cannot dial: it runs on the
 /// provider. That is the whole reason these channels open outward
@@ -153,10 +156,14 @@ pub enum Frame {
     TerminalResize(terminal::session::Resize),
     /// Kill a held terminal's shell.
     TerminalClose(terminal::session::Id),
-    /// One HTTP request to the program's frontend, its body asked for
-    /// by its write id as a write's content is (see
-    /// [`frontend`](crate::shared::containers::frontend)).
-    Frontend(frontend::request::Request),
+    /// A daemon connection the container's program opened, by the id
+    /// the provider announced: this end's half of it. Tag `18`.
+    ///
+    /// What comes back on it is everything the PROGRAM sends, as
+    /// [`daemon::client::Frame`](crate::shared::containers::daemon::client::Frame)s;
+    /// its finish is the program's socket ended. See
+    /// [`daemon`](crate::shared::containers::daemon) for the pair.
+    Daemon(daemon::request::Daemon),
 }
 
 /// Tag for [`Frame::Cancel`].
@@ -201,8 +208,8 @@ const TERMINAL_RESIZE: u8 = 15;
 /// Tag for [`Frame::TerminalClose`].
 const TERMINAL_CLOSE: u8 = 16;
 
-/// Tag for [`Frame::Frontend`].
-const FRONTEND: u8 = 17;
+/// Tag for [`Frame::Daemon`].
+const DAEMON: u8 = 18;
 
 impl Encode for Frame {
     /// The ordinary JSON failure, from whichever half has one.
@@ -267,9 +274,9 @@ impl Encode for Frame {
                 out.extend_from_slice(&[TERMINAL_CLOSE]);
                 serde_json::to_writer(out, id)
             }
-            Frame::Frontend(request) => {
-                out.extend_from_slice(&[FRONTEND]);
-                serde_json::to_writer(out, request)
+            Frame::Daemon(request) => {
+                out.extend_from_slice(&[DAEMON]);
+                request.encode(out).map_err(|error| match error {})
             }
         }
     }
@@ -320,9 +327,9 @@ impl Decode<'_> for Frame {
             TERMINAL_CLOSE => serde_json::from_slice(rest)
                 .map(Frame::TerminalClose)
                 .map_err(FrameError::Terminal),
-            FRONTEND => serde_json::from_slice(rest)
-                .map(Frame::Frontend)
-                .map_err(FrameError::Frontend),
+            DAEMON => daemon::request::Daemon::decode(rest)
+                .map(Frame::Daemon)
+                .map_err(FrameError::Daemon),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -353,8 +360,8 @@ pub enum FrameError {
     Terminal(serde_json::Error),
     /// A terminal's stdin held no id.
     TerminalStdin,
-    /// The frontend request did not parse.
-    Frontend(serde_json::Error),
+    /// The daemon connection's id was not four bytes.
+    Daemon(daemon::request::DaemonError),
 }
 
 impl fmt::Display for FrameError {
@@ -389,9 +396,7 @@ impl fmt::Display for FrameError {
                 write!(f, "terminal request did not parse: {error}")
             }
             FrameError::TerminalStdin => f.write_str("terminal stdin held no id"),
-            FrameError::Frontend(error) => {
-                write!(f, "frontend request did not parse: {error}")
-            }
+            FrameError::Daemon(error) => write!(f, "{error}"),
         }
     }
 }
@@ -405,9 +410,9 @@ impl Error for FrameError {
             | FrameError::Enqueue(error)
             | FrameError::FuseMount(error)
             | FrameError::Exec(error)
-            | FrameError::Terminal(error)
-            | FrameError::Frontend(error) => Some(error),
+            | FrameError::Terminal(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
+            FrameError::Daemon(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) | FrameError::TerminalStdin => None,
         }
     }

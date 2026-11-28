@@ -18,7 +18,7 @@ import * as filetree from "../../../../../../shared/filetree/response/frame.js";
 export const Frame = z.union([
   /** One frame of the tree: the snapshot, or one change. Tag `0`. */
   z.strictObject({ filetree: filetree.Frame }),
-  /** No dependency tool is the one named, or none runs; nothing was sent. Tag `1`. */
+  /** No dependency tool is the one named; nothing was sent. Tag `1`. */
   z.literal("not_found"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `2`. */
   z.literal("forbidden"),

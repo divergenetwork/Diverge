@@ -1,6 +1,6 @@
 ---
 title: 'Request'
-summary: 'The payload is the tag byte 1 followed by the request as JSON: the arguments, as the image defines them, the id of the template the container is made from, and the image the container runs, which the client supplies from the run request that made the container.'
+summary: 'The payload is the tag byte 1 followed by the request as JSON: the arguments, as the image defines them, the id of the template the container is made from, which record of that template the container is, and the image the container runs, which the client supplies from the run request that made the container.'
 order: 1
 draft: false
 ---
@@ -19,6 +19,12 @@ draft: false
   request that made the container, verbatim: the id of the template
   the container is made from, which the server hands to the
   container's program with the arguments and reads for nothing
+  else.
+- **`index`, `owner`.** Exactly one of the two members, beside
+  `template`: the member of that name of the
+  [containers::tools::run](/endpoints/containers-tools-run/request/)
+  request that made the container, verbatim. The server hands it to
+  the container's program with the template and reads it for nothing
   else.
 - **`image`.** An object of two fields: `{"digest":…,"references":…}`,
   the `image` of the

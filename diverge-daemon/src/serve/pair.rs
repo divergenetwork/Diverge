@@ -12,9 +12,8 @@ use diverge_sdk::wire::encode::{Encode as _, Writer};
 use diverge_sdk::wire::frame::server::ServerFrame;
 use futures_util::{Stream, stream};
 use tokio::sync::mpsc::{self};
-use tokio::sync::watch;
 
-use super::client;
+use super::{Held, client};
 use crate::daemon::Daemon;
 use crate::judge::Who;
 
@@ -27,13 +26,16 @@ pub type PairFrames = Pin<Box<dyn Stream<Item = pair::server::Owned> + Send>>;
 /// program — by the same session and dispatch a socket gets, no token
 /// passing; what
 /// comes back is the session's frames as the daemon's half of the
-/// pair. Every frame received is noted on `touched` when one is given,
-/// since a container's every frame is a use of it. The far side's
+/// pair. Where `held` is given — a container's, by its run's
+/// answerer — every frame received is noted as a use of the
+/// container, and every scope the program opens holds the container
+/// up for the scope's life: see [`Held`]. The far side's
 /// channel closing ends the session, and the session ending ends the
 /// stream.
-pub fn serve_pair(daemon: Arc<Daemon>, who: Who, mut from: mpsc::Receiver<pair::client::Owned>, touched: Option<watch::Sender<Instant>>) -> PairFrames {
+pub fn serve_pair(daemon: Arc<Daemon>, who: Who, mut from: mpsc::Receiver<pair::client::Owned>, held: Option<Held>) -> PairFrames {
     let (to_session, incoming) = mpsc::unbounded_channel::<Bytes>();
     let (outgoing, from_session) = mpsc::unbounded_channel::<Bytes>();
+    let touched = held.as_ref().map(|held| held.touched.clone());
     tokio::spawn(async move {
         while let Some(owned) = from.recv().await {
             let mut bytes = Vec::new();
@@ -49,7 +51,7 @@ pub fn serve_pair(daemon: Arc<Daemon>, who: Who, mut from: mpsc::Receiver<pair::
         }
     });
     tokio::spawn(async move {
-        client(Connection::Local { incoming, outgoing }, who, daemon).await;
+        client(Connection::Local { incoming, outgoing }, who, daemon, held).await;
     });
     Box::pin(stream::unfold(from_session, |mut from_session| async move {
         loop {

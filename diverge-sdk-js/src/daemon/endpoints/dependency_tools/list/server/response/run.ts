@@ -5,8 +5,8 @@ import { Provider } from "../../../../../agent_log/provider.js";
 
 /**
  * The tool's container, while it runs: where, and under what id. A tool
- * has at most one run — a lazy tool's while it is used, an eager
- * tool's for as long as the daemon keeps it up — and none while its
+ * has at most one run — for as long as anything holds it, an eager
+ * tool's attachments among what does — and none while its
  * container is down: a tool between runs has no run until it
  * runs again.
  */

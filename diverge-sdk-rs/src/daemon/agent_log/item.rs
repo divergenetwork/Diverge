@@ -3,17 +3,18 @@
 use crate::provider::endpoints::containers::agents::run::server::response::AgenticLoopChunk;
 use serde::{Deserialize, Serialize};
 
-use super::{Active, Deployed, Error, Inactive, StructuredDecisionsResponse, Undeployed, User, UserStructuredDecisions};
+use super::{Active, Command, Deployed, Error, Inactive, StructuredDecisionsResponse, Undeployed, User, UserStructuredDecisions};
 
 /// What the log kept: one user part of a message with who sent it,
 /// one other chunk of the agent's conversation, one error a run
-/// answered with, or one step of the run's life — see
+/// answered with, one request the agent's container put to the
+/// daemon, or one step of the run's life — see
 /// [`lifecycle`](crate::daemon::lifecycle).
 ///
 /// Flattened into the [`ItemWrapper`](super::ItemWrapper) that holds
 /// it, and every kind carries a `type` that names it — a chunk its
-/// own, the others the strings `error`, `deployed`, `active`,
-/// `inactive` and `undeployed` — so
+/// own, the others the strings `error`, `command`, `deployed`,
+/// `active`, `inactive` and `undeployed` — so
 /// the `type` alone says what an item is, and the request's
 /// [`type`] picks by it. An error's value lands whole under one
 /// member, `error`, because it is an arbitrary JSON value and its
@@ -48,6 +49,8 @@ pub enum Item {
     /// or the message the agent refused, in the words the daemon
     /// received.
     Error(Error),
+    /// One request the agent's own container put to the daemon.
+    Command(Command),
     /// The agent's container came up on a provider, and which.
     Deployed(Deployed),
     /// The agent began working.

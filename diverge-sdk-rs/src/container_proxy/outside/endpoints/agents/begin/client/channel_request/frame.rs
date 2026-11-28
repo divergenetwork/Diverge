@@ -6,7 +6,7 @@ use std::fmt;
 
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
-use crate::shared::containers::{enqueue, postgres};
+use crate::shared::containers::{daemon, enqueue, postgres};
 
 /// What the server asks the proxy for once an agent container has
 /// begun.
@@ -21,12 +21,13 @@ use crate::shared::containers::{enqueue, postgres};
 /// | `2` | [`Enqueue`](Self::Enqueue) |
 /// | `3` | unused |
 /// | `4` | unused |
+/// | `5` | [`Daemon`](Self::Daemon) |
 ///
 /// The first two tags are the same in both begin scopes — the second
 /// unused in each — so a reader of
 /// one is a reader of both; what follows is this family's own
-/// exchange — no daemon connection among them, since an agent
-/// container holds no account and asks the daemon nothing. All of
+/// exchange, and then the server's half of a daemon connection, which
+/// a tool container's begin has under a tag of its own. All of
 /// them reach INTO the container: the last hop of what a
 /// caller opened on the provider. What
 /// comes OUT of the agent — its conversation — is no channel: it
@@ -50,6 +51,14 @@ pub enum Frame {
     /// finish. What the agent says in reply is the begin's main stream.
     /// See [`enqueue`](crate::shared::containers::enqueue).
     Enqueue(enqueue::request::Request),
+    /// A daemon connection the program opened, by the id the proxy
+    /// announced: the server's half of it. Tag `5`.
+    ///
+    /// What comes back on it is everything the PROGRAM sends, as
+    /// [`daemon::client::Frame`](crate::shared::containers::daemon::client::Frame)s;
+    /// its finish is the program's socket ended. See
+    /// [`daemon`](crate::shared::containers::daemon) for the pair.
+    Daemon(daemon::request::Daemon),
 }
 
 /// Tag for [`Frame::Postgres`].
@@ -57,6 +66,9 @@ const POSTGRES: u8 = 0;
 
 /// Tag for [`Frame::Enqueue`].
 const ENQUEUE: u8 = 2;
+
+/// Tag for [`Frame::Daemon`].
+const DAEMON: u8 = 5;
 
 impl Encode for Frame {
     /// The ordinary JSON failure, from whichever ask has one.
@@ -73,6 +85,10 @@ impl Encode for Frame {
             Frame::Enqueue(request) => {
                 out.extend_from_slice(&[ENQUEUE]);
                 request.encode(out)
+            }
+            Frame::Daemon(request) => {
+                out.extend_from_slice(&[DAEMON]);
+                request.encode(out).map_err(|error| match error {})
             }
         }
     }
@@ -91,6 +107,9 @@ impl Decode<'_> for Frame {
             ENQUEUE => enqueue::request::Request::decode(rest)
                 .map(Frame::Enqueue)
                 .map_err(FrameError::Enqueue),
+            DAEMON => daemon::request::Daemon::decode(rest)
+                .map(Frame::Daemon)
+                .map_err(FrameError::Daemon),
             tag => Err(FrameError::UnknownTag(tag)),
         }
     }
@@ -107,6 +126,8 @@ pub enum FrameError {
     Postgres(postgres::request::PostgresError),
     /// The enqueued message did not parse as JSON.
     Enqueue(serde_json::Error),
+    /// The daemon connection's id was not four bytes.
+    Daemon(daemon::request::DaemonError),
 }
 
 impl fmt::Display for FrameError {
@@ -122,6 +143,7 @@ impl fmt::Display for FrameError {
             FrameError::Enqueue(error) => {
                 write!(f, "enqueue request did not parse: {error}")
             }
+            FrameError::Daemon(error) => write!(f, "{error}"),
         }
     }
 }
@@ -131,6 +153,7 @@ impl Error for FrameError {
         match self {
             FrameError::Enqueue(error) => Some(error),
             FrameError::Postgres(error) => Some(error),
+            FrameError::Daemon(error) => Some(error),
             FrameError::Empty | FrameError::UnknownTag(_) => None,
         }
     }

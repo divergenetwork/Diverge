@@ -17,7 +17,7 @@ use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::requests::{Became, Party};
 use crate::serve::reply;
-use crate::store::{self, accounts, dependency_tools as dependencies, tools};
+use crate::store::{self, accounts, agents, dependency_tools as dependencies, tools};
 
 /// Serve the create to its end, and finish the scope.
 pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) {
@@ -30,9 +30,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// The rules:
 ///
 /// 1. `Forbidden` with no `request` grant at all: over accounts, over
-///    standalone tools, or over dependency tools.
+///    agents, over standalone tools, or over dependency tools.
 /// 2. **Made of somebody**, by [`sendable`], before the request
-///    exists: `NoRecipient` where no account and no tool there is is
+///    exists: `NoRecipient` where no account, no agent and no tool there is is
 ///    both addressed and reached. Nothing else about whom it names
 ///    refuses it.
 /// 3. **Created.** An id is drawn at random, the request is put in the
@@ -56,6 +56,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
     };
     // Rule 1.
     let holds = judge::accounts::holds(&standing, grant::accounts::Over::Request)
+        || judge::agents::holds(&standing, grant::agents::Over::Request)
         || judge::standalone_tools::holds(&standing, grant::standalone_tools::Over::Request)
         || judge::dependency_tools::holds(&standing, grant::dependency_tools::Over::Request);
     if !holds {
@@ -128,7 +129,8 @@ async fn send(daemon: Arc<Daemon>, id: RequestId, to: To, standing: Standing, li
 /// of anybody. The rules:
 ///
 /// 1. **Anybody there is.** Every account, every administrator with
-///    no account, every standalone tool and every dependency tool is
+///    no account, every agent, every standalone tool and every
+///    dependency tool is
 ///    asked of [`eligible`], which is the judgement a delivery is
 ///    made by: addressed by `to`, and reached by the `request` grant
 ///    for its kind. So a request passes here exactly where some party
@@ -150,6 +152,11 @@ async fn sendable(conn: &mut PgConnection, daemon: &Arc<Daemon>, standing: &Stan
     let admins: Vec<_> = daemon.authenticator.admins().filter(|admin| !accounts.iter().any(|account| account.identity == **admin)).cloned().collect();
     for admin in admins {
         if eligible(conn, daemon, &Party::Admin(admin), to, standing).await? {
+            return Ok(true);
+        }
+    }
+    for agent in agents::all(conn).await? {
+        if eligible(conn, daemon, &Party::Agent(agent.id), to, standing).await? {
             return Ok(true);
         }
     }

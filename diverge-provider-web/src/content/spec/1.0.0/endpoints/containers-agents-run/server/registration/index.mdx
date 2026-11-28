@@ -1,26 +1,27 @@
 ---
 title: 'Registration'
-summary: 'Tag 3: the server asks the client to register the container, carrying the run’s id and the dependency tool templates the program declared, verbatim; the client answers with exactly one channel response, deployed or an error, and the channel response finish; the server sends the id only after a deploy, and anything but a deploy is the run’s error.'
+summary: 'Tag 3: the server asks the client to register the container, carrying the run’s id and the dependency tool templates and the permissions the program declared, verbatim; the client answers with exactly one channel response, deployed or an error, and the channel response finish; the server sends the id only after a deploy, and anything but a deploy is the run’s error.'
 order: 3
 draft: false
 ---
 
 The server opens this channel when the `Begun` the proxy answered its
-begin with carries one or more dependencies:
+begin with carries one or more dependencies or one or more
+permissions: the dependencies are
 the tool containers the container's program declared when it was
-registered, each as a dependency tool template, which the client
-deploys and serves to the container under the template's id. The client's answer decides whether
-the run goes on.
+registered, each as a dependency tool template, and the permissions are
+the grants it declared. The client's answer decides whether
+the run goes on. What the client does with a template or with a
+permission is not prescribed.
 
 - **When.** After the begin has been answered and before the id is
   sent, beside the FUSE mounts. Exactly once per run, and never on a
   connect scope. The server opens no registration channel when the
-  list of dependencies is empty.
+  list of dependencies and the list of permissions are both empty.
 - **The id.** The server mints the run's id before it opens the
   channel, and enters the container among those it runs before it
   asks: a [containers::fuse_serve](/endpoints/containers-fuse-serve/) naming
-  the id is answered while the channel is open, which is how the
-  client serves the container's paths into the dependencies. The id
+  the id is answered while the channel is open. The id
   the request carries is the id the server sends as the response
   after the channel has ended, and no
   other. The container is listed by nothing and found by no connect
@@ -36,40 +37,3 @@ the run goes on.
   proxy sent it, and reads
   none of it: not the images, not the arguments, not the mounts. The server reads no image's document for
   a template.
-- **Two modes, two scopes.** The [document](/shared/document/) of a
-  template's image states a `mode`, `lazy` or `eager`, and a `scope`,
-  `instance` or `template`. A template states neither. A tool is made
-  once under the scope key that `scope` names: the agent and the
-  template, or the template alone. An agent is
-  attached to a tool by a registration that declares the template
-  and detached by one that no longer does.
-- **A lazy tool.** A lazy tool whose `scope` is `instance` is
-  deployed for the one run of the one agent that declared it and
-  stopped with that run; it alone may name the agent's files and
-  directories as mounts. A lazy tool whose `scope` is `template` is
-  one container for every agent that declares its template: the
-  client starts it for the first exchange an attached agent sends
-  it, stops it after its idle time with no exchange in flight, and
-  starts it again for the next. It names no mount.
-- **An eager tool.** An eager tool is kept by the client from the
-  registration that first declares it, started again whenever its
-  container ends and at every start of the client's, for as long as
-  any agent is attached to it. An eager tool no agent is attached
-  to is retired by the client after its idle time. It names no
-  mount.
-- **What the client does.** The client runs each dependency as a
-  [containers::tools::run](/endpoints/containers-tools-run/) from
-  the template's `image` and `arguments`, with a `memory` that is the
-  `memory` of the image's document and the template's `extra_memory`,
-  summed, a `disk` that is the `disk` of the image's document and the
-  template's `extra_disk`, summed, and the template's id as the run's
-  `template`; serves, for a lazy tool whose `scope` is
-  `instance`,
-  the agent container's paths the template's mounts name into the
-  tool container live, as [containers::fuse_serve](/endpoints/containers-fuse-serve/)
-  serves them and a FUSE mount of the tools run mounts them; holds the tool to the
-  permissions its own program declares at the tool's own
-  registration; and serves the tool to the container under
-  the template's id among the MCP servers the client answers the
-  container's tool calls with. A tool container declares no
-  dependencies of its own, and makes no tool call outward.

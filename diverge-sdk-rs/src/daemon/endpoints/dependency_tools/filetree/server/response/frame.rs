@@ -9,7 +9,7 @@ use crate::shared::error::Error;
 use crate::shared::filetree;
 
 /// A filetree's answer: one change on the container's tree, no
-/// dependency tool is the one named or none runs, forbidden, or a
+/// dependency tool is the one named, forbidden, or a
 /// failure.
 ///
 /// A filetree is a stream: a snapshot of the whole container, then one
@@ -39,7 +39,7 @@ use crate::shared::filetree;
 /// # A failure after frames
 ///
 /// [`NotFound`](Self::NotFound) is an ANSWER: no dependency tool is
-/// the one named, or none runs, and nothing was sent. An [`Error`](Self::Error) is a failure: the
+/// the one named, and nothing was sent. An [`Error`](Self::Error) is a failure: the
 /// daemon could not watch the container, or could no longer, in its own
 /// words. Frames sent before the failure precede the error; none follow
 /// it.
@@ -69,7 +69,7 @@ pub enum Frame {
     /// One change on the container's tree: the snapshot first, then one
     /// per change. Tag `0`.
     Filetree(#[serde(serialize_with = "filetree::response::json::frame")] filetree::response::Frame),
-    /// No dependency tool is the one named, or none runs; nothing was sent. Tag `1`.
+    /// No dependency tool is the one named; nothing was sent. Tag `1`.
     NotFound,
     /// The account the request is served for holds no grant allowing
     /// it; nothing was sent. Tag `2`.

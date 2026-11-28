@@ -7,8 +7,7 @@ use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
 
-/// A transfer's answer: it landed, no dependency tool is the one named
-/// or none runs, no agent, tool, dependency tool or volume is the
+/// A transfer's answer: it landed, no dependency tool is the one named, no agent, tool, dependency tool or volume is the
 /// destination's, a volume held, forbidden, or a failure.
 ///
 /// A transfer is one question and one reply, sent once everything has
@@ -25,7 +24,7 @@ use crate::shared::error::Error;
 ///
 /// [`NotFound`](Self::NotFound), [`NoDestination`](Self::NoDestination)
 /// and [`Held`](Self::Held) are ANSWERS: the daemon looked, and no
-/// dependency tool is the one named or none runs or nothing is at the
+/// dependency tool is the one named or nothing is at the
 /// path, or the destination names an agent, a tool, a dependency tool
 /// or a volume that is none, or a volume at either end
 /// is held — a running container has it, or another download, upload or
@@ -58,7 +57,7 @@ use crate::shared::error::Error;
 pub enum Frame {
     /// Everything landed. Tag `0`.
     Transferred,
-    /// No dependency tool is the one named, or none runs, or nothing is at the path; nothing
+    /// No dependency tool is the one named, or nothing is at the path; nothing
     /// landed. Tag `1`.
     NotFound,
     /// The destination names an agent, a tool, a dependency tool or a volume that is none;

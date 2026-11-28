@@ -1,11 +1,11 @@
 # The human agent image: an agent with no model, whose every word and
-# tool call is a person's, given on its live web frontend, a musl
-# binary on Alpine.
+# tool call is a person's, given at its desk, a tool container of its
+# own (`diverge-examples/tools/human-desk`); a musl binary on Alpine.
 #
 # The container proxy is NOT in this image. The host injects it at
 # runtime, and it may not be up at all until a request comes, which is
-# why the agent touches nothing of the proxy's (the database, the
-# MCP session) until it is first used.
+# why the agent touches nothing of the proxy's (the daemon, the MCP
+# session) until it is first used.
 #
 # Build from the WORKSPACE ROOT, since the crate rides a path
 # dependency on the SDK:
@@ -23,8 +23,8 @@
 # target, so what it builds runs on the Alpine below.
 FROM docker.io/library/rust:1.98.0-alpine3.24@sha256:a10e64dd139b7387337c7fbe8aca31b959b57b2fd4c8ae20a02cf1d6ea424dce AS build
 
-# `ring` (rustls' crypto, under sqlx) compiles C; build-base is the
-# whole musl C toolchain.
+# `ring` (rustls' crypto, under the SDK's connections) compiles C;
+# build-base is the whole musl C toolchain.
 RUN apk add --no-cache build-base
 
 WORKDIR /build
@@ -46,8 +46,8 @@ FROM docker.io/library/alpine@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db8
 
 COPY --from=build /build/diverge-examples/agents/human/target/release/human /usr/local/bin/human
 
-# The image's arguments schema, its frontend, and its description, read
-# by the proxy.
+# The image's arguments schema and its description, read by the
+# proxy.
 COPY diverge-examples/agents/human/.diverge /.diverge
 
 # The agent's own server, on the loopback: 8080, or whatever `PORT`

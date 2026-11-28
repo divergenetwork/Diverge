@@ -1,5 +1,5 @@
-// Every agent, the tool's attached agents, those never active, the
-// agents listed, or only these.
+// Every agent, the agents attached to the tool that asks, those never
+// active, the agents listed, or only these.
 
 import { z } from "zod";
 import { Tags } from "../tags.js";
@@ -12,7 +12,11 @@ import { Listed } from "./listed.js";
  * through. Flat on the wire: the string `"any"`, the string
  * `"attached"`, the string `"never_active"`, the object
  * `{"agents":[…]}`, or the tags object as it is. `"attached"` names
- * nothing and reaches, for a standalone tool, the agents it is
+ * nothing and reaches the records on the other side of an attachment
+ * from the container that holds the grant: held by an agent's
+ * container it reaches nothing, since no agent is attached to an
+ * agent, and the three tool kinds have the same word the other way
+ * (see `standalone_tools.Within`). It reaches, for a standalone tool, the agents it is
  * attached to directly and every agent of every template it is
  * attached to; for a dependency tool, the agents attached to it — for
  * a tool of the `instance` scope the one agent it was deployed for. `"never_active"` reaches every

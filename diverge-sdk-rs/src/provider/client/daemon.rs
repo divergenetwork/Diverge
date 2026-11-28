@@ -31,12 +31,12 @@ use crate::shared::containers::daemon;
 /// # The permissions are the container's
 ///
 /// Nothing here carries a credential, and the connection presents
-/// none: the session is served under the permissions the tool's
+/// none: the session is served under the permissions the container's
 /// program declared at its registration, which the caller holds from
 /// the run's [`Registrar`](super::Registrar) ask.
 /// Two connections of one container are two sessions, with scopes of
-/// their own. A tool container's alone: an agent container asks the
-/// daemon nothing, and its run scope has no such channel.
+/// their own. An agent container's and a tool container's alike:
+/// either run scope carries the connection.
 pub trait Daemon: Send + Sync {
     /// The server frames the daemon sends on one connection, in order,
     /// then the end.

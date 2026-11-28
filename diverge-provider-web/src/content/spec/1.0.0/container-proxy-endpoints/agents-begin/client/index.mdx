@@ -1,6 +1,6 @@
 ---
 title: 'Client Channels'
-summary: 'The channels the client opens on an agent container’s begin scope, by tag: its half of a database connection and the two verbs of the queue; no daemon connection, since an agent container holds no account.'
+summary: 'The channels the client opens on an agent container’s begin scope, by tag: its half of a database connection, the queue, and its half of a daemon connection.'
 order: 3
 draft: false
 ---
@@ -17,6 +17,7 @@ by a channel response finish that no channel response precedes.
 | `2` | [enqueue](/container-proxy-endpoints/agents-begin/client/enqueue/) |
 | `3` | unused |
 | `4` | unused |
+| `5` | [daemon](/container-proxy-endpoints/agents-begin/client/daemon/) |
 
 The channel request is defined by `diverge-sdk-rs/src/container_proxy/outside/endpoints/agents/begin/client/channel_request/frame.rs`:
 

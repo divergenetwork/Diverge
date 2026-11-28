@@ -40,8 +40,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 ///    runs, lazy or eager.
 /// 6. Else the compartment gone: its role, its schema and every table
 ///    in it, and its record. A dependency template's takes with it
-///    every tool of the template — each eager tool among them
-///    retired, each one's own `instance` compartment removed — and
+///    every tool of the template — each one's keeping ended where
+///    it was an eager tool, each one's own `instance` compartment
+///    removed — and
 ///    the template's body, so that a registration declaring it anew
 ///    makes it anew, with new compartments.
 async fn serve(frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<Frame, store::Error> {

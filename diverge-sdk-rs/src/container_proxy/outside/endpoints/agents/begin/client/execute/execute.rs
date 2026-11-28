@@ -7,7 +7,7 @@ use super::super::super::server::{self, response};
 use super::{Chunks, ExecuteError, ExecuteHandle};
 use crate::wire::client::handle::Handle;
 use crate::container_proxy::outside::client::{Ask, Asks};
-use crate::shared::containers::request::Image;
+use crate::shared::containers::request::{Image, Which};
 use crate::wire::decode::Decode as _;
 use crate::wire::encode::{Encode, Writer};
 use crate::wire::frame;
@@ -25,16 +25,18 @@ use crate::wire::frame;
 /// [`Unanswered`](ExecuteError::Unanswered); a chunk or a loop's word
 /// first is a proxy out of order. What comes back is the handle, the
 /// asks the proxy will open, the conversation, and what the
-/// container's program declared — the dependencies, which the
-/// server has the caller register before it sends the run's id.
+/// container's program declared — the dependencies and the
+/// permissions, which the server has the caller register before it
+/// sends the run's id.
 pub async fn execute(
     handle: &Handle,
     arguments: Value,
     template: String,
+    which: Which,
     image: Image,
 ) -> Result<(ExecuteHandle, Asks<Ask>, Chunks, response::Registered), ExecuteError> {
     let mut payload = Vec::new();
-    request::Frame { arguments, template, image }
+    request::Frame { arguments, template, which, image }
         .encode(&mut Writer::new(&mut payload))
         .map_err(ExecuteError::Request)?;
     let mut scope = handle.send_request(&payload).await.map_err(ExecuteError::Send)?;

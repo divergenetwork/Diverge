@@ -10,37 +10,38 @@ use serde::{Deserialize, Serialize};
 /// template and no declaration says another. An agent's document has
 /// none. Snake case on the wire: `"lazy"`, `"eager"`.
 ///
-/// # A lazy tool runs while it is used
+/// # A lazy tool runs while something holds it
 ///
 /// Its container is started for the first thing that uses it and
-/// stopped when the last leaves. What uses a standalone tool is an
-/// agent it is attached to beginning a loop, a connect scope opened on
-/// it, a file operation. A dependency tool's is by its
-/// [`Scope`](super::Scope): of the `instance` scope it is the agent's
-/// run's, deployed when the agent's container starts and stopped with
-/// it; of the `template` scope it is one container for
-/// every agent the scope covers, started for the first exchange an
-/// attached agent sends it and stopped once the caller's idle time has
-/// passed with nothing using it.
+/// stopped once the caller's idle time has passed with nothing
+/// holding it. What holds a tool, of either mode and either kind: an
+/// agent it is served to being started, having a message on its way
+/// or being active, an exchange in flight into
+/// it, a connect scope open on it, a file operation, a command, a
+/// terminal, a frontend request or an API request in progress on it, and any scope
+/// its own program has open on the caller. Every tool an agent is
+/// served, a dependency tool of either scope among them, is deployed,
+/// besides, when the agent's container starts, and is then held and
+/// stopped as any tool is.
 ///
-/// # An eager tool is kept while anything holds it
+/// # An eager tool is held by its attachments as well
 ///
-/// Its container is kept running for as long as any agent is attached
-/// to it, or, of a standalone tool, any connect scope is open on it:
-/// started at the attach or the connect that first holds it, started
+/// Its container is held, besides, for as long as any agent is
+/// attached to it, whether or not that agent runs: started at the
+/// attach that first holds it, started
 /// again whenever its run ends, and started at every start of the
-/// caller's while an agent is attached. Once nothing holds it, it is
-/// retired after the caller's idle time, an attachment within that
-/// time keeping it. It serves no agent's run in particular, so no
-/// run's end is its end.
+/// caller's while an agent is attached. Once no agent is attached it
+/// is held and stopped exactly as a lazy tool is. It serves no
+/// agent's run in particular, so no run's end is its end.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
-    /// Run while used, stopped when the last user leaves.
+    /// Run while anything holds it, stopped the caller's idle time
+    /// after the last hold leaves.
     #[default]
     Lazy,
-    /// Kept running while anything holds it, retired the caller's idle
-    /// time after the last leaves.
+    /// Held as a lazy tool is, and as well by any agent attached to
+    /// it, running or not.
     Eager,
 }

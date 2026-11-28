@@ -25,7 +25,5 @@ half of the connection; the client's half is a
   is client-first, so nothing is expected on this channel before then;
   what arrives all the same is held, and written to the program first,
   in order.
-- **The account.** The daemon serves the connection for the account
-  the container was created under. No credential passes on either
-  half.
+- **No credential.** No credential passes on either half.
 - **The conduit.** The server relays each channel response onto the proxy's daemon channel as one channel response, in order, and finishes it when the channel finishes. The server reads neither a frame nor an answer.

@@ -1,12 +1,12 @@
 ---
 title: 'Response'
-summary: 'The server sends Begun once, carrying the dependencies the container declared, or an error and the finish; after Begun it sends Active before each loop, every chunk of that loop as a response, and Inactive after it, and the finish when the server ends.'
+summary: 'The server sends Begun once, carrying the dependencies and the permissions the container declared, or an error and the finish; after Begun it sends Active before each loop, every chunk of that loop as a response, and Inactive after it, and the finish when the server ends.'
 order: 2
 draft: false
 ---
 
 ```text
-[0][registration JSON …]    begun: the container holds its arguments, and these are its dependencies
+[0][registration JSON …]    begun: the container holds its arguments, and these are its dependencies and its permissions
 [1][error JSON …]           not begun: the connection had begun, or the arguments were refused
 [2][chunk JSON …]           one chunk of the conversation
 [3]                         active: a loop began
@@ -35,13 +35,17 @@ draft: false
   The server sends no byte `3` while a loop is open, and no byte `4`
   while none is.
 - **The registration.** The bytes after the byte `0` are a JSON
-  object of exactly one member, absent when empty: `dependencies`, an
+  object of exactly two members, each absent when empty.
+  `dependencies` is an
   array of the dependency tool templates the container's program
   answered its registration with, each as the
   [registration](/endpoints/containers-agents-run/server/registration/)
   channel of the run defines one, in the order the program declared
-  them. The server sends them exactly as
-  the program produced them and reads none of them.
+  them. `permissions` is an array of grants, in the order the program
+  declared them, in the form the
+  [registration request](/endpoints/containers-tools-run/server/registration/request/)
+  of a tools run states. The server sends both exactly as
+  the program produced them and reads none of either.
 - **The chunk.** The bytes after the byte `2` are one chunk as the
   [containers::agents::run response](/endpoints/containers-agents-run/response/)
   defines it, as JSON, which the server sends as the agent's server

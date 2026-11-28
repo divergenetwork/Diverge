@@ -8,6 +8,7 @@ use clap::Subcommand;
 
 use crate::run::{Emitter, Error, Target};
 
+pub mod api;
 pub mod attach_agent_instance;
 pub mod attach_agent_template;
 pub mod connect;
@@ -61,6 +62,8 @@ pub enum StandaloneTools {
     Exec(exec::Arguments),
     /// One HTTP request to a standalone tool's frontend.
     Frontend(frontend::Arguments),
+    /// One HTTP request to a standalone tool's API.
+    Api(api::Arguments),
     /// An interactive shell in a standalone tool's container, on a terminal.
     Terminal(terminal::Arguments),
     /// Getting one tool.
@@ -108,6 +111,7 @@ pub async fn run(
         StandaloneTools::Edit(arguments) => edit::run(arguments, target, emitter).await,
         StandaloneTools::Exec(arguments) => exec::run(arguments, target, emitter).await,
         StandaloneTools::Frontend(arguments) => frontend::run(arguments, target, emitter).await,
+        StandaloneTools::Api(arguments) => api::run(arguments, target, emitter).await,
         StandaloneTools::Terminal(arguments) => terminal::run(arguments, target, emitter).await,
         StandaloneTools::Filetree(arguments) => filetree::run(arguments, target, emitter).await,
         StandaloneTools::Get(arguments) => get::run(arguments, target, emitter).await,

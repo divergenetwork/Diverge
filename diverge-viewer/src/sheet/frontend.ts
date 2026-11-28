@@ -1,4 +1,4 @@
-// The frontend tab: the page an agent's or a tool's own program serves, in a frame,
+// The frontend tab: the page a tool's own program serves, in a frame,
 // from a server the app's Rust runs for it on the loopback.
 
 import { invoke } from "@tauri-apps/api/core";

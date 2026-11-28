@@ -7,14 +7,14 @@
 //! configuration accepts, an administrator its `admins` names, or the
 //! account that identity is, a [`Who`] — or as nothing, which is the
 //! socket closed. With no account, no administrator and no accepted
-//! provider, nothing is admitted. A tool's `/daemon` connection is
-//! admitted by no token: its [`Who`] is what its container
-//! [`Declared`] at its registration — the grants, and which tool's
-//! attached agents its `attached` reaches. The
+//! provider, nothing is admitted. A container's `/daemon` connection
+//! — an agent's or a tool's — is admitted by no token: its [`Who`] is
+//! what its program [`Declared`] at its registration — the grants,
+//! and which container's attachments its `attached` reaches. The
 //! second is per request: [`Standing`] is who is asking as of THIS
 //! request — an account's identity and the union of the grants of
 //! the roles it holds, read fresh inside the request's own
-//! transaction, or a tool's grants as declared with the agents its
+//! transaction, or a container's grants as declared with what its
 //! `attached` reaches read fresh — and
 //! [`accounts`], [`roles`], [`providers`], [`providers_daemons`],
 //! [`daemons`], [`agents_templates`],

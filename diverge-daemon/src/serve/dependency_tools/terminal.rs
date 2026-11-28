@@ -9,7 +9,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::facts::reaches;
 use super::resolve::resolve;
-use crate::containers::Opened;
+use crate::containers::StartError;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
 use crate::serve::{files, reply};
@@ -24,10 +24,11 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 }
 
 /// `Forbidden` with no `exec` grant at all; `NotFound` for a tool that
-/// is none, or does not run — nothing is started for it; `Forbidden`
-/// for a tool the grants do not reach; else the terminal (see
-/// [`files::terminal`]), the run held up — with the agent it was deployed
-/// for — while it is open.
+/// is none, or gone since; `Forbidden`
+/// for a tool the grants do not reach; else the tool's container
+/// deployed if it was down (see [`files::open_dependency`]), which
+/// failing is the `Error`, and the terminal (see
+/// [`files::terminal`]), the run held up while it is open.
 async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<(), store::Error> {
     let mut conn = daemon.store.acquire().await?;
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -38,7 +39,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         reply::reply(scope, &Frame::Forbidden).await;
         return Ok(());
     }
-    let Some((tool, Some(run))) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
+    let Some((tool, _)) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
         reply::reply(scope, &Frame::NotFound).await;
         return Ok(());
     };
@@ -49,8 +50,17 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         return Ok(());
     }
     scope.allowed().await;
-    let using = run.file_use();
-    let opened = Opened::Tool(run, Some(using));
+    let opened = match files::open_dependency(daemon, tool.id, diverge_sdk::daemon::lifecycle::Cause::Terminal).await {
+        Ok(opened) => opened,
+        Err(StartError::Gone) => {
+            reply::reply(scope, &Frame::NotFound).await;
+            return Ok(());
+        }
+        Err(error) => {
+            reply::reply(scope, &Frame::Error(reply::failure(&error))).await;
+            return Ok(());
+        }
+    };
     opened.touch();
     if let Err(error) = files::terminal::<Frame>(scope, &opened, frame.size).await {
         reply::reply(scope, &Frame::Error(reply::failure(&error))).await;

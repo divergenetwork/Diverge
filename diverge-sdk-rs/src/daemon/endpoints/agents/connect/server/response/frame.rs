@@ -13,19 +13,22 @@ use crate::wire::encode::{Encode, Writer};
 /// A connect is a scope held open. Exactly one response leads it,
 /// [`Connected`](Self::Connected), and nothing follows it on the main
 /// stream for as long as the scope lives: the finish is the client's
-/// disconnect, or the client's connection ending. Or the scope is
+/// disconnect, the client's connection ending, or the agent's
+/// container ending. Or the scope is
 /// exactly one [`NotFound`](Self::NotFound),
 /// [`Forbidden`](Self::Forbidden) or [`Error`](Self::Error), then the
 /// finish. A payload leads with one byte saying which — `0` for
 /// `Connected`, `1` for `NotFound`, `2` for `Forbidden`, `3` for
 /// `Error` — and the error carries JSON after it.
 ///
-/// # Connected starts nothing
+/// # Connected is the agent up, and held
 ///
-/// `Connected` says only that the agent is the one named and that the
-/// grants reach it: the agent's container is started by the first
-/// exchange that needs it, and a container that will not start is
-/// that exchange's error, not this answer's.
+/// `Connected` says that the agent is the one named, that the grants
+/// reach it, and that its container is up — started for the connect
+/// if it was down, with every tool the agent is served — and held up
+/// by the scope from here until the scope ends. A container that will
+/// not start is the [`Error`](Self::Error), in the place of
+/// `Connected`. The scope makes the agent neither active nor busy.
 ///
 /// # A finish with nothing is an answer
 ///
@@ -52,8 +55,8 @@ use crate::wire::encode::{Encode, Writer};
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Frame {
-    /// The agent is the one named, and the grants reach it: its
-    /// channels answer. Tag `0`, once, first, and nothing after it.
+    /// The agent is the one named, the grants reach it, and its
+    /// container is up and held by the scope: its channels answer. Tag `0`, once, first, and nothing after it.
     Connected,
     /// No agent of the caller's is the one named; nothing changed. Tag
     /// `1`.

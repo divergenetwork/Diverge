@@ -3,8 +3,8 @@
 //!
 //! A party [`create`]s a request — content, as a chat message's is:
 //! conversation, not data — and says whom it
-//! is made of: accounts and tools, each by name or by tag, or all the
-//! party may ask. Every one of them that [`listen`]s is sent it, and
+//! is made of: accounts, agents and tools, each by name or by tag, or
+//! all the party may ask. Every one of them that [`listen`]s is sent it, and
 //! any of them may answer. The rules of the whole:
 //!
 //! 1. **One answer.** The first listener whose answer the daemon
@@ -25,15 +25,15 @@
 //!    reaches a party once, and the creator is told of each delivery
 //!    once.
 //! 5. **Who may be asked** is the creator's grants': the `request`
-//!    action over accounts, over standalone tools and over dependency
-//!    tools, each with its own reach. A request is made of those it
+//!    action over accounts, over agents, over standalone tools and
+//!    over dependency tools, each with its own reach. A request is made of those it
 //!    addresses that the grants reach, and is refused only where that
 //!    is nobody. See
 //!    [`grant`](crate::daemon::grant). Listening takes no grant: a
 //!    listener hears only what was made of it.
 //!
-//! An account and a tool — standalone or dependency — each listen and
-//! each create. A connected standalone tool is another daemon's, has
+//! An account, an agent and a tool — standalone or dependency — each
+//! listen and each create. A connected standalone tool is another daemon's, has
 //! no connection of its own to this one, and does neither.
 
 pub mod create;

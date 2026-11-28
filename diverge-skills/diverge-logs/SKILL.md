@@ -9,7 +9,8 @@ The daemon keeps three kinds of record of what happened, all read-only over the 
 
 - **Logs**, one per agent, per tool and per requester. An agent's log is its whole conversation plus its
   container's life. A tool's log is every call and read routed into it. An account's (or administrator's)
-  **command log** is every request it put to the daemon and whether it was let through.
+  **command log** is every request it put to the daemon and whether it was let through; a container's own
+  requests are `command` items in its own log, a tool's in the tool log and an agent's in the agent log.
 - **Events**, one graph: an edge per (sender, receiver) pair with a count. It says that exchanges happened
   and how often, never what they carried or when.
 - **Lists**, which every family has, and which can be kept open (`--watch`) to see records change.
@@ -90,7 +91,7 @@ Every entry has `logs_index`, `created` and `type`. The common ones:
 
 | `type` | Meaning | Members worth reading |
 |---|---|---|
-| `deployed` | The agent's container came up on a provider. First entry of every run. | `identity` (the provider) |
+| `deployed` | The agent's container came up on a provider. First entry of every run. | `identity` (the provider), `cause` (what deployed it: `message`, `connect`, a request's name, …) |
 | `active` / `inactive` | The agent began / ceased working (a loop running or an MCP exchange in flight). Alternate inside a run. The idle clock runs from `inactive`. | |
 | `undeployed` | The container went down. Last entry of a run. | `identity`, `interrupted` (was it working), `reason` only when unexpected |
 | `user_text_content` | One text part of a message that landed. | `text`, `key` (the message's id), `sender` |
@@ -142,7 +143,7 @@ or `{"kind":"client","identity":{…},"scope":…}`. `tools/list` and `resources
 
 One entry type, `command`: `path` (`agents/message`, `roles/create`, `logs`), `request` (the body as
 sent, `relay` included, with the `arguments` of an `agents templates create` or `standalone-tools
-templates create` replaced by `"[redacted]"`), `allowed` (`false` exactly when the answer was `forbidden`; a
+templates create`, and every header's value of a tool's `frontend` or `api` request, replaced by `"[redacted]"`), `allowed` (`false` exactly when the answer was `forbidden`; a
 request that was let through and then failed is still `true`). One entry per request; what the request
 came to is not kept. Requests the daemon could not parse are not kept.
 

@@ -11,11 +11,11 @@
 //! a volume that is none, that a volume at either end is held,
 //! forbidden, or that it failed, and the scope finishes. The bytes never reach the client.
 //! What lands where is the destination's to say. A created tool's container that is not running
-//! is started for the operation and stopped when it finishes; one the
+//! is started for the operation and held up until it finishes, when its idle time begins; one the
 //! daemon has running anyway — an attached agent active — is used as it
 //! runs. Nothing else about the tool changes. An agent or a created
 //! tool the destination names that is not running is started and
-//! stopped the same way. A connected tool's files are on the other
+//! held the same way. A connected tool's files are on the other
 //! daemon, and neither the source nor the destination names one.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the

@@ -14,11 +14,13 @@ use crate::shared::description::Description;
 /// style and so reads as a frontmatter anywhere one is expected. Its
 /// member `type` says which of the three it is, and what else it may
 /// hold follows from that. All three have `name`, `description`,
-/// `schema`, `memory` and `disk`; and `frontend` where the program serves one. An agent's has
+/// `schema`, `memory` and `disk`. An agent's has
 /// `chat` and `structured_decisions` besides, at least one of them an
 /// object. A standalone tool's has `mode` besides. A dependency tool's
-/// has `mode` and `scope` besides. No frontmatter has a member that is
-/// none of its type's. The body is the image's prose — what it runs,
+/// has `mode` and `scope` besides. A tool's of either kind has
+/// `frontend` where its program serves one, and `api` where its
+/// program serves one; an agent's has neither. No frontmatter has a
+/// member that is none of its type's. The body is the image's prose — what it runs,
 /// kept as the author left it — and is the long account of the image,
 /// as `description` is the short one.
 ///
@@ -63,8 +65,6 @@ struct AgentFrontmatter {
     schema: Value,
     memory: u64,
     disk: u64,
-    #[serde(default, skip_serializing_if = "is_false")]
-    frontend: bool,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
     chat: FalseOr<Chat>,
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -84,6 +84,8 @@ struct StandaloneToolFrontmatter {
     mode: Mode,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    api: bool,
 }
 
 /// A dependency tool's frontmatter as written, less its `type`: these
@@ -100,6 +102,8 @@ struct DependencyToolFrontmatter {
     scope: Scope,
     #[serde(default, skip_serializing_if = "is_false")]
     frontend: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    api: bool,
 }
 
 /// A frontmatter as it is written out: `type` first, then its
@@ -161,21 +165,22 @@ impl Document {
     ///      [`DESCRIPTION_CHARACTERS`](crate::shared::description::DESCRIPTION_CHARACTERS)
     ///      characters; `schema`; `memory` and `disk`, each a whole
     ///      number of bytes from 0 to 2 to the power 64 less 1; all
-    ///      five required. And perhaps `frontend`, a
-    ///      boolean, `false` when absent.
+    ///      five required.
     ///    - An agent's has, besides, perhaps `chat` and perhaps
     ///      `structured_decisions`, each `false` or an object as
     ///      [`FalseOr`] reads one, `false` when absent.
     ///    - A standalone tool's has, besides, `mode`, the string `lazy`
-    ///      or the string `eager`, required.
+    ///      or the string `eager`, required; and perhaps `frontend`
+    ///      and perhaps `api`, each a boolean, `false` when absent.
     ///    - A dependency tool's has, besides, `mode`, the same, and
     ///      `scope`, the string `instance` or `template`,
-    ///      both required.
+    ///      both required; and perhaps `frontend` and perhaps `api`,
+    ///      the same.
     ///
     ///    A member of another type's is a member that is none of this
     ///    type's, whatever its value: `chat` or `structured_decisions`
-    ///    in a tool's, `mode` or `scope` in an agent's, `scope` in a
-    ///    standalone tool's. A member missing, a member that is none
+    ///    in a tool's, `mode`, `scope`, `frontend` or `api` in an
+    ///    agent's, `scope` in a standalone tool's. A member missing, a member that is none
     ///    of its type's, a member of the wrong type, or a
     ///    `description` that is no [`Description`], is
     ///    [`ParseError::Json`].
@@ -232,25 +237,25 @@ impl Document {
         // Rules 5 to 8.
         Ok(match kind.as_str() {
             "agent" => {
-                let AgentFrontmatter { name, description, schema, memory, disk, frontend, chat, structured_decisions } =
+                let AgentFrontmatter { name, description, schema, memory, disk, chat, structured_decisions } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
                 held(&name, &schema)?;
                 if chat.is_false() && structured_decisions.is_false() {
                     return Err(ParseError::Neither);
                 }
-                Document::Agent(Agent { name, description, schema, memory, disk, frontend, chat, structured_decisions, body })
+                Document::Agent(Agent { name, description, schema, memory, disk, chat, structured_decisions, body })
             }
             "standalone_tool" => {
-                let StandaloneToolFrontmatter { name, description, schema, memory, disk, mode, frontend } =
+                let StandaloneToolFrontmatter { name, description, schema, memory, disk, mode, frontend, api } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
                 held(&name, &schema)?;
-                Document::StandaloneTool(StandaloneTool { name, description, schema, memory, disk, mode, frontend, body })
+                Document::StandaloneTool(StandaloneTool { name, description, schema, memory, disk, mode, frontend, api, body })
             }
             "dependency_tool" => {
-                let DependencyToolFrontmatter { name, description, schema, memory, disk, mode, scope, frontend } =
+                let DependencyToolFrontmatter { name, description, schema, memory, disk, mode, scope, frontend, api } =
                     serde_json::from_value(members).map_err(ParseError::Json)?;
                 held(&name, &schema)?;
-                Document::DependencyTool(DependencyTool { name, description, schema, memory, disk, mode, scope, frontend, body })
+                Document::DependencyTool(DependencyTool { name, description, schema, memory, disk, mode, scope, frontend, api, body })
             }
             _ => return Err(ParseError::Type),
         })
@@ -259,7 +264,8 @@ impl Document {
     /// Write the document back as its text: `---`, the frontmatter —
     /// `type` first, then the name, the description, the schema, the
     /// memory, the disk, in a tool's
-    /// `mode`, in a dependency tool's `scope`, `frontend` when it is
+    /// `mode`, in a dependency tool's `scope`, in a tool's `frontend`
+    /// and `api`, each when it is
     /// `true`, and, in an agent's, `chat` and `structured_decisions`
     /// when they are not `false` — pretty-printed, `---`, and the
     /// body, each fence on a line of its own. One shape is written and
@@ -280,7 +286,6 @@ impl Document {
                 schema: agent.schema.clone(),
                 memory: agent.memory,
                 disk: agent.disk,
-                frontend: agent.frontend,
                 chat: agent.chat,
                 structured_decisions: agent.structured_decisions,
             }),
@@ -292,6 +297,7 @@ impl Document {
                 disk: tool.disk,
                 mode: tool.mode,
                 frontend: tool.frontend,
+                api: tool.api,
             }),
             Document::DependencyTool(tool) => Frontmatter::DependencyTool(DependencyToolFrontmatter {
                 name: tool.name.clone(),
@@ -302,6 +308,7 @@ impl Document {
                 mode: tool.mode,
                 scope: tool.scope,
                 frontend: tool.frontend,
+                api: tool.api,
             }),
         };
         let frontmatter = serde_json::to_string_pretty(&frontmatter)?;
@@ -375,12 +382,23 @@ impl Document {
         }
     }
 
-    /// Whether the program serves a frontend, whichever type it is.
+    /// Whether the program serves a frontend: a tool's of either
+    /// kind says; an agent's never does.
     pub fn frontend(&self) -> bool {
         match self {
-            Document::Agent(agent) => agent.frontend,
+            Document::Agent(_) => false,
             Document::StandaloneTool(tool) => tool.frontend,
             Document::DependencyTool(tool) => tool.frontend,
+        }
+    }
+
+    /// Whether the program serves an API: a tool's of either kind
+    /// says; an agent's never does.
+    pub fn api(&self) -> bool {
+        match self {
+            Document::Agent(_) => false,
+            Document::StandaloneTool(tool) => tool.api,
+            Document::DependencyTool(tool) => tool.api,
         }
     }
 

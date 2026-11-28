@@ -15,6 +15,7 @@ use crate::wire::encode::{Encode, Writer};
 use crate::provider::endpoints::containers::agents::run::server;
 use crate::provider::endpoints::containers::client::{Ask, Encoders, Scoped, Writes, encoded, serve};
 use crate::wire::frame;
+use crate::shared::containers::daemon;
 use crate::shared::containers::postgres;
 use crate::shared::containers::response::Id;
 use crate::shared::containers::write_bytes;
@@ -37,7 +38,7 @@ use crate::shared::error::Error;
 ///
 /// The provider asks before it answers: the image's manifest and
 /// blobs, the container's registration — its dependencies
-/// deployed — and the FUSE mounts' first reads
+/// deployed, its permissions held — and the FUSE mounts' first reads
 /// are all channels it opens on the scope before it sends the id. A
 /// run that read the id first and served the channels after would
 /// wait for an id the provider is waiting on it to earn, and neither
@@ -173,10 +174,8 @@ const ENCODERS: Encoders = Encoders {
     write_error,
 };
 
-/// An agent container has no daemon connection: this family opens no
-/// half, and a connection its proxy announced would be declined.
-fn daemon_half(_: u32) -> Option<Vec<u8>> {
-    None
+fn daemon_half(connection_id: u32) -> Option<Vec<u8>> {
+    encoded(&channel_request::Frame::Daemon(daemon::request::Daemon { connection_id }))
 }
 
 fn postgres_half(connection_id: u32) -> Option<Vec<u8>> {

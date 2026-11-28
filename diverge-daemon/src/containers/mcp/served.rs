@@ -1,23 +1,23 @@
 //! The tools one run is served.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use tokio::sync::watch;
 
 use super::Registry;
-use crate::containers::{ToolKey, ToolRun};
+use crate::containers::ToolKey;
 use crate::store::DependencyToolId;
 use crate::store::connected_standalone_tools::ConnectedTool;
 use crate::store::tools::Tool;
 
 /// One served tool: an attached record, standalone or connected, whose
 /// run — up or not, and a new one after every end — is the live set's
-/// to find; a lazy dependency tool of the agent's own, which runs for
-/// as long as it is served; a lazy dependency tool shared with other
-/// agents, by its row, whose run is the live set's to find and
-/// started at the first use that finds none; or an eager tool, by its
-/// row, whose run is the live set's and its supervisor's to start.
+/// to find; or a dependency tool, by its row, whose run is the live
+/// set's to find as well: a lazy one of the agent's own, a lazy one
+/// shared with other agents, or an eager one. Whichever it is, it is
+/// deployed with the agent — at the agent's start, and again before a
+/// message is delivered where it has gone down — and an exchange that
+/// finds it down all the same starts it.
 pub enum Entry {
     /// A standalone tool the agent has, directly or through its
     /// template: its record. Its run is looked up at every use and
@@ -33,9 +33,16 @@ pub enum Entry {
         /// The record.
         tool: ConnectedTool,
     },
-    /// A lazy dependency tool deployed for the agent alone, its scope
-    /// `instance`: running for the agent's run.
-    Lazy(Arc<ToolRun>),
+    /// A lazy dependency tool that is the agent's alone, its scope
+    /// `instance`: deployed at the agent's registration, and its run
+    /// looked up at every use and started at the first that finds
+    /// none.
+    Own {
+        /// The row.
+        id: DependencyToolId,
+        /// The template it was made from, by id.
+        template: String,
+    },
     /// A lazy dependency tool the agent shares with others, its scope
     /// `template`: its run looked up at every use and
     /// started at the first that finds none.
@@ -45,8 +52,8 @@ pub enum Entry {
         /// The template it was made from, by id.
         template: String,
     },
-    /// An eager tool the agent is attached to: kept by the daemon, its
-    /// run looked up when it is called.
+    /// An eager tool the agent is attached to: kept by the daemon while
+    /// any agent is, its run looked up when it is called.
     Eager {
         /// The row.
         id: DependencyToolId,
@@ -110,12 +117,18 @@ impl Served {
         prefix
     }
 
-    /// Serve the lazy dependency tool under `serve_name`, its
-    /// template's id short; the prefix it gets.
-    pub fn insert_lazy(&mut self, run: Arc<ToolRun>, serve_name: &str) -> String {
-        let key = run.id;
+    /// Serve the agent's own lazy dependency tool under `serve_name`,
+    /// its template's id short; the prefix it gets.
+    pub fn insert_own(&mut self, id: DependencyToolId, template: &str, serve_name: &str) -> String {
+        let key = ToolKey::Dependency(id);
         let prefix = self.registry.assign(key, serve_name);
-        self.entries.insert(key, Entry::Lazy(run));
+        self.entries.insert(
+            key,
+            Entry::Own {
+                id,
+                template: template.to_string(),
+            },
+        );
         self.changed();
         prefix
     }
@@ -168,16 +181,6 @@ impl Served {
         entry
     }
 
-    /// The lazy dependency tool's run `run` leaves, when it is
-    /// the one served under its key: a late end of an older run never
-    /// takes out the newer one served in its place. Whether it left.
-    pub fn remove_lazy(&mut self, run: &Arc<ToolRun>) -> bool {
-        match self.entries.get(&run.id) {
-            Some(Entry::Lazy(served)) if Arc::ptr_eq(served, run) => self.remove(run.id).is_some(),
-            _ => false,
-        }
-    }
-
     /// The entry for the tool, if served.
     pub fn entry(&self, key: ToolKey) -> Option<&Entry> {
         self.entries.get(&key)
@@ -188,13 +191,14 @@ impl Served {
         self.entries.keys().copied().collect()
     }
 
-    /// Every lazy dependency tool, in no order: what is stopped
-    /// with the agent's run.
-    pub fn lazy(&self) -> Vec<Arc<ToolRun>> {
+    /// Every lazy dependency tool that is the agent's alone, by id,
+    /// in no order: those among them that mount the agent's files go
+    /// down with the agent's container.
+    pub fn own(&self) -> Vec<DependencyToolId> {
         self.entries
             .values()
             .filter_map(|entry| match entry {
-                Entry::Lazy(run) => Some(Arc::clone(run)),
+                Entry::Own { id, .. } => Some(*id),
                 Entry::Attached { .. } | Entry::Connected { .. } | Entry::Shared { .. } | Entry::Eager { .. } => None,
             })
             .collect()
@@ -206,7 +210,7 @@ impl Served {
             .values()
             .filter_map(|entry| match entry {
                 Entry::Eager { id, .. } => Some(*id),
-                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Lazy(_) | Entry::Shared { .. } => None,
+                Entry::Attached { .. } | Entry::Connected { .. } | Entry::Own { .. } | Entry::Shared { .. } => None,
             })
             .collect()
     }

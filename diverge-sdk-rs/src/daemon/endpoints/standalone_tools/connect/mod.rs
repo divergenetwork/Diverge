@@ -2,7 +2,8 @@
 //! daemon's agents reach the tool through, over the daemon connection.
 //!
 //! A client — another daemon, come through a provider as a client of
-//! this one — names a tool of the caller's on record; the daemon
+//! this one, or any other requester the grants reach: an account, an
+//! agent's container or a tool's — names a tool of the caller's on record; the daemon
 //! starts its container if it does not run, holds it while the scope
 //! is open, and answers exactly one response, that it is connected;
 //! then the scope stays open, and the client opens channels on it:
@@ -23,13 +24,26 @@
 //!
 //! # The scope holds the tool
 //!
-//! While the scope is open the tool is in use by it, as it is by an
+//! While the scope is open the tool is held by it, with or without an
+//! exchange in flight, as it is by an
 //! active agent it is attached to: it does not stop while the scope is
 //! open unless it is deleted or its container ends, and a scope opened
-//! on a tool already running is a use of it. What the client sends in
+//! on a tool already running is a use of it. An eager tool is held by
+//! a scope exactly as a lazy one is. What the client sends in
 //! a request's `_meta` reaches the tool as sent; what the tool answers
 //! is attested by this daemon under `_meta`, as every answer of its
 //! own containers is, and the client passes that on.
+//!
+//! # Who the tool is told is calling
+//!
+//! Every exchange is stamped with the
+//! [`Caller`](crate::shared::mcp::attestation::Caller) as this daemon
+//! attests whoever opened the scope: an account as a `client`, an
+//! agent's container as the `agent` it is, a tool's container as a
+//! `tool`. A client's and a tool's scope is one MCP session in the
+//! tool, closed when the scope ends. An agent's is the session its
+//! own calls into the tool ride, which the scope's end does not
+//! close.
 //!
 //! Split by who SENDS, as everywhere else. A client asks — so the
 //! question and the channels are in [`client`] — and the daemon

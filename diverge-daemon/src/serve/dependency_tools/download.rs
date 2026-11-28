@@ -1,5 +1,5 @@
-//! Downloading a file or a directory out of a running dependency
-//! tool's container.
+//! Downloading a file or a directory out of a dependency tool's
+//! container.
 
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use diverge_sdk::daemon::grant::dependency_tools::Over;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 
 use super::{reaches, resolve};
-use crate::containers::Opened;
+use crate::containers::StartError;
 use crate::content;
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
@@ -27,11 +27,12 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 }
 
 /// `Forbidden` with no `download` grant at all; `NotFound` for a
-/// template that is none, an owner it has no tool under, a tool that
-/// does not run, or a path at which nothing is; `Forbidden` for a
-/// tool the grants do not reach; else every file at the path as
-/// chunks, out of the run as it is. Nothing is started, and nothing
-/// is released after.
+/// template that is none, an owner it has no tool under, a tool gone
+/// since, or a path at which nothing is; `Forbidden` for a
+/// tool the grants do not reach; else the tool's container deployed
+/// if it was down (see [`files::open_dependency`]), which failing is
+/// the `Error`, and every file at the path as chunks, the run held up
+/// while they are sent.
 async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<(), store::Error> {
     let mut conn = daemon.store.acquire().await?;
     let Some(standing) = Standing::of(&mut conn, who).await? else {
@@ -42,7 +43,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         reply::reply(scope, &Frame::Forbidden).await;
         return Ok(());
     }
-    let Some((tool, Some(run))) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
+    let Some((tool, _)) = resolve(&mut conn, daemon, &frame.dependency, false).await? else {
         reply::reply(scope, &Frame::NotFound).await;
         return Ok(());
     };
@@ -57,8 +58,17 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         reply::reply(scope, &Frame::NotFound).await;
         return Ok(());
     }
-    let using = run.file_use();
-    let opened = Opened::Tool(run, Some(using));
+    let opened = match files::open_dependency(daemon, tool.id, diverge_sdk::daemon::lifecycle::Cause::Download).await {
+        Ok(opened) => opened,
+        Err(StartError::Gone) => {
+            reply::reply(scope, &Frame::NotFound).await;
+            return Ok(());
+        }
+        Err(error) => {
+            reply::reply(scope, &Frame::Error(reply::failure(&error))).await;
+            return Ok(());
+        }
+    };
     opened.touch();
     let source = Source::Opened(opened);
     let outcome = files::download(scope, daemon, &source, &frame.path, &|scope, path, body| {

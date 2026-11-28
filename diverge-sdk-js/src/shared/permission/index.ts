@@ -1,5 +1,6 @@
-// The grants a tool's program declares for itself at its registration,
-// and the actions every grant of the daemon's is made of.
+// The grants a container's program — a tool's or an agent's — declares
+// for itself at its registration, and the actions every grant of the
+// daemon's is made of.
 //
 // A GRANT is one permission over one kind of thing the daemon holds,
 // and on the wire it is one object with one member, named for the
@@ -8,8 +9,15 @@
 // the one thing. How far a grant over what exists reaches is its
 // `within`, a `Reach`, one of three and never two: `"any"`, every one;
 // the kind's own `Listed`, exactly the records it names; or a `Tags`
-// test. Over agents alone there are the words `"attached"` and
-// `"never_active"` beside. A list is read out of the arguments the
+// test. Four kinds have one word more, `"attached"`: it reaches the
+// records on the other side of an attachment from the container that
+// holds the grant, and nothing on that container's own side. Over
+// agents it is the agents attached to the tool that asks, and nothing
+// where an agent asks. Over standalone tools, connected tools and
+// dependency tools it is the tools attached to the agent that asks —
+// its dependency tools, and the standalone and connected tools attached
+// to it or to its template — and nothing where a tool asks. Over agents
+// alone there is one word besides, `"never_active"`. A list is read out of the arguments the
 // program was registered with, never a constant of the image. Each
 // kind's `Make` and `Over` live here, and the daemon's grants are
 // built of them.

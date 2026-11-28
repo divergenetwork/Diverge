@@ -67,11 +67,6 @@ pub struct Agent {
     /// of the run request. The image's layers are read-only and are
     /// not counted, and no mount is.
     pub disk: u64,
-    /// Whether the program serves a frontend beneath `/frontend` (see
-    /// [`frontend`](crate::shared::containers::frontend)): `true` only
-    /// where the frontmatter says so. Absent, `false`.
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub frontend: bool,
     /// Whether the program chats — takes a message and answers it —
     /// and how: `false`, or a [`Chat`]. Never `true`. Absent, `false`.
     #[serde(default, skip_serializing_if = "FalseOr::is_false")]
@@ -84,9 +79,4 @@ pub struct Agent {
     /// Everything after the closing `---` line, verbatim: leading
     /// blank lines, trailing newline and all.
     pub body: String,
-}
-
-/// Whether a flag is unset, which a frontmatter leaves out.
-fn is_false(flag: &bool) -> bool {
-    !*flag
 }

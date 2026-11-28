@@ -16,8 +16,8 @@ use crate::shared::permission::Grant;
 /// The two families' `server::channel_request::Frame`s carry the same
 /// asks with the same payloads, each family less what its container
 /// never asks — the agents family has the five MCP exchanges outward,
-/// which a tool container never makes, and no daemon connection,
-/// which an agent container never opens; both have the registration,
+/// which a tool container never makes; both have the daemon
+/// connection, and both the registration,
 /// a tool's with no dependencies in it — and borrow from the frame
 /// they were decoded from; this is the one owned form both convert
 /// into, so the answer to each is written once. Which family it came
@@ -44,7 +44,7 @@ pub enum Ask {
         /// empty for a tool container.
         dependencies: Vec<Template>,
         /// The grants the program holds over the caller, in the order
-        /// declared; empty for an agent container.
+        /// declared, an agent container's or a tool container's.
         permissions: Vec<Grant>,
     },
     /// The content of a write this caller started, by its id.
@@ -102,6 +102,7 @@ impl From<agents::run::server::channel_request::Frame<'_>> for Ask {
             },
             Frame::Write(request) => Ask::Write(request.write_id),
             Frame::Postgres(request) => Ask::Postgres(request.connection_id),
+            Frame::Daemon(request) => Ask::Daemon(request.connection_id),
             Frame::McpListTools(request) => Ask::McpListTools(request.0),
             Frame::McpListResources(request) => Ask::McpListResources(request.0),
             Frame::McpCallTool(request) => Ask::McpCallTool(request.0),

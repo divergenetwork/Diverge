@@ -70,8 +70,8 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `transfer` | `agents transfer` (source side) |
 | Over | `filetree` | `agents filetree` |
 | Over | `exec` | `agents exec`, and `agents terminal` (a terminal is judged as `exec`) |
-| Over | `frontend` | `agents frontend` |
-| Over | `connect` | `agents connect …` (MCP exchanges run as the agent) |
+| Over | `connect` | `agents connect …`: MCP exchanges run as the agent, with its tools, logged as its calls. Opening the scope deploys the agent and holds its container up while the scope is open. It does not make the agent active, writes nothing to its log, and does not block its edit or delete |
+| Over | `request` | being asked by `requests create`: a request reaches the agent (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `agents tag`, `agents untag` |
 
 `within` members: `agents` (exact), `names`, `templates`, `creators`, `active` (`true`/`false`, or `"ever"`/`"never"`),
@@ -100,6 +100,7 @@ What names one exact record, per kind. The same in a role's grant and in a tool'
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests; `upload` also covers a transfer landing in the tool |
 | Over | `exec` | `standalone-tools exec` and `terminal` |
 | Over | `frontend` | `standalone-tools frontend` |
+| Over | `api` | `standalone-tools api` |
 | Over | `connect` | `standalone-tools connect …`: serving the tool's MCP exchanges to a client, **including another daemon that holds it as a connected tool** |
 | Over | `logs` | `logs` with `of.type` = `standalone_tool` |
 | Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
@@ -146,6 +147,7 @@ No making shape: a dependency tool is made by an agent's registration, never by 
 | Over | `download`, `upload`, `transfer`, `filetree` | the file requests on a running tool |
 | Over | `exec` | `dependency-tools exec` and `terminal` |
 | Over | `frontend` | `dependency-tools frontend` |
+| Over | `api` | `dependency-tools api` |
 | Over | `logs` | `logs` with `of.type` = `dependency_tool` |
 | Over | `request` | being asked by `requests create`: a request reaches the record (named by itself, by a tag, or through `"all"`) only where this grant reaches it |
 | Tagging | `tag`, `untag` | `dependency-tools tag` / `untag` |
@@ -330,20 +332,30 @@ The identities signed in on the daemon's host.
  {"identities":{"actions":["list"],"within":"any"}}]}
 ```
 
-## Grants a tool's image declares
+## Grants a container's image declares
 
-A tool container is not an account. It holds the grants its program declared at registration, written in
-the same vocabulary. For every kind, `within` is one of the three reaches above and nothing else: `"any"`, the
-kind's naming member from the table (`{"ids":[…]}`, `{"volumes":[…]}`, `{"identities":[…]}`, …), or tags. A
-tool's grant has no narrowing members.
+A container is not an account. A tool's container and an agent's container each hold the grants their
+program declared at registration, declared again at every start, written in the same vocabulary; an agent
+may declare any grant a tool may. For every kind, `within` is one of the three reaches above and nothing
+else: `"any"`, the kind's naming member from the table (`{"ids":[…]}`, `{"volumes":[…]}`,
+`{"identities":[…]}`, …), or tags. A declared grant has no narrowing members.
 
-- A tool's image never fixes a list of records: a record is one daemon's. A tool whose **arguments** name
+- An image never fixes a list of records: a record is one daemon's. A program whose **arguments** name
   records (the agents to message, the daemon to relay to, the volume to read) declares those, so the same
   image declares one list here and another there.
 
-Over agents alone there are two words more:
+Four kinds have one word more, `"attached"`, in the `within` of an Over grant. It reaches the records on
+the other side of an attachment from the container that holds the grant, and nothing on its own side:
 
-- `"attached"`: the agents the tool is attached to.
-- `"never_active"`: agents that have never run.
+| the requester | `"attached"` over `agents` | `"attached"` over `standalone_tools`, `connected_standalone_tools`, `dependency_tools` |
+|---|---|---|
+| a tool | the agents attached to it (for a dependency tool, the agents whose latest registration declared it) | nothing |
+| an agent | nothing | the tools served to it: its dependency tools, and the standalone and connected tools attached to it or to its template |
 
-Neither word is valid in a role's grant. See `diverge-tools` and `diverge-images`.
+- It is judged at every request, whether or not what it reaches is running.
+- An action held only within `"attached"` is held at all only while something of that kind is attached: a
+  tool with no attached agent that lists agents on such a grant alone is answered `"forbidden"`.
+- Over agents alone there is one word besides, `"never_active"`: agents that have never run.
+
+Neither word is valid in a role's grant. A container may use every request its grants reach,
+`frontend`, `api` and `standalone-tools connect` included. See `diverge-tools`, `diverge-agents` and `diverge-images`.

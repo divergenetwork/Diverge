@@ -3,6 +3,8 @@
 
 use std::sync::Arc;
 
+use diverge_sdk::daemon::lifecycle::Cause;
+
 use super::held;
 use crate::containers::ToolKey;
 use crate::daemon::{Daemon, Kind};
@@ -11,7 +13,7 @@ use crate::store::{AgentId, dependency_tools};
 /// The agent's container is up and its registration asked the daemon
 /// for no deploy at all: the agent depends on nothing — detached from
 /// every dependency tool, as a registration that declared none would
-/// detach it — and each left is told its hold changed. A store that
+/// detach it — and each left is told to read its attachments anew. A store that
 /// cannot be written leaves the attachments as they were.
 pub async fn settle(daemon: &Arc<Daemon>, agent: AgentId) {
     let left = {
@@ -30,7 +32,7 @@ pub async fn settle(daemon: &Arc<Daemon>, agent: AgentId) {
         return;
     }
     for id in left {
-        held(daemon, ToolKey::Dependency(id)).await;
+        held(daemon, ToolKey::Dependency(id), Cause::Attachment).await;
     }
     daemon.live.changed(Kind::DependencyTools);
 }

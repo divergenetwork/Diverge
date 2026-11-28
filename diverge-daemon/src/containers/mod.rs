@@ -11,27 +11,32 @@
 //! end it; [`pump`] reads the agent's conversation off the run into
 //! its log and keeps whether a loop runs; [`idle`] is the clock,
 //! running only while the agent is not active — no loop, and nothing
-//! [`Inflight`] — and [`idle_tool`] a lazy tool's, running only
-//! while nothing holds it; [`message`] is the one way into an agent;
-//! [`use_tool`] is "one container per tool", started for the first
-//! thing that uses it and held up by what is in flight into it and
-//! the connect scopes on it — [`connect`] and [`disconnect`] — a
-//! lazy one stopped by its clock `idle_seconds` after the last
-//! use; [`use_connected`] is the same for a connected tool, whose run
-//! is this daemon's connect on another daemon's tool, opened by
-//! [`connected`]; [`attached`], [`attached_connected`] and
+//! [`Inflight`] — and [`idle_tool`] every tool's, running only
+//! while nothing holds the tool, which states every hold there is;
+//! [`message`] is the one way into an agent;
+//! [`use_tool`] is "one container per tool", deployed for the first
+//! thing that uses it and undeployed by its clock `idle_seconds`
+//! after the last hold left it — [`connect`] and [`disconnect`] are a
+//! connect scope's hold; [`use_connected`] is the same for a connected
+//! tool, whose run is this daemon's connect on another daemon's tool,
+//! opened by [`connected`]; [`use_dependency`] is the same for a
+//! dependency tool, of either mode and scope; [`Holds`] are what
+//! holds a tool from outside its run, and [`Holding`] — with
+//! [`hold_tools`] and [`release_tools`] — an agent's hold on every
+//! tool it is served, while it is in setup past its registration,
+//! has a message on its way or is active;
+//! [`attached`], [`attached_connected`] and
 //! [`detached`] keep running agents' served sets in step with the
-//! attachments; [`running_dependency`] is
-//! the dependency tool a reference names, found running or not at
-//! all, since one is started by nobody's request;
+//! attachments;
 //! [`mcp`] is the one tool list an agent sees and the routing of its
 //! calls; [`deploy`] records a container's declared dependencies as
 //! dependency tools under their owners and deploys them then and there
-//! — a lazy tool of the agent's own for the agent's run, a
-//! eager tool kept by [`eager tools`] for as long as any agent is attached
-//! to it and stopped after, as a tool on record whose image's mode
-//! is an eager tool is kept while any agent is attached or any connect
-//! is open;
+//! — a lazy tool of the agent's own, and an eager tool, which
+//! [`eager`] keeps for as long as any agent is attached to it, as it
+//! keeps a tool on record whose image's mode is eager — and deploys
+//! every tool an agent is served, whichever kind, at the agent's
+//! start and before a message is delivered to it, the first that
+//! cannot be deployed failing the start or the message;
 //! [`fuse`] serves the mounts — another provider's volume bridged, or
 //! an agent's path into its dependency; [`images`] answers a
 //! provider's image asks from the other providers connected. [`Key`]
@@ -56,6 +61,8 @@ mod attached;
 mod build;
 mod error;
 pub mod capable;
+mod holding;
+mod holds;
 mod idle;
 mod inflight;
 mod key;
@@ -65,7 +72,6 @@ mod provider;
 mod pump;
 mod pump_tool;
 mod run;
-mod running;
 mod start;
 mod stop;
 mod tools;
@@ -88,6 +94,8 @@ pub use activity::*;
 pub use attached::*;
 pub use build::*;
 pub use error::*;
+pub use holding::*;
+pub use holds::*;
 pub use idle::*;
 pub use inflight::*;
 pub use key::*;
@@ -97,7 +105,6 @@ pub use provider::*;
 pub use pump::*;
 pub use pump_tool::*;
 pub use run::*;
-pub use running::*;
 pub use start::*;
 pub use stop::*;
 pub use tools::*;

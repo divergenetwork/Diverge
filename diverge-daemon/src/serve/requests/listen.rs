@@ -28,8 +28,8 @@ pub async fn handle(scope: ScopeHandle, _frame: request::Frame, who: Who, daemon
 
 /// The rules:
 ///
-/// 1. `Forbidden` for an account that is none there is, and for a tool
-///    whose row is gone: nobody is there to listen as.
+/// 1. `Forbidden` for an account that is none there is, and for an
+///    agent or a tool whose row is gone: nobody is there to listen as.
 /// 2. **One listen for each party.** The party's one slot is claimed,
 ///    or the answer is `AlreadyOpen` and nothing changed: see
 ///    [`Party`], and [`Requests::listen`](crate::requests::Requests::listen).
@@ -37,7 +37,7 @@ pub async fn handle(scope: ScopeHandle, _frame: request::Frame, who: Who, daemon
 /// 3. **Caught up, then kept up.** Every request pending now and made
 ///    of the party is delivered — [`catch_up`] — and each later one
 ///    reaches the party's queue from its creator. The look is made
-///    again whenever accounts, roles or tools change, since a tag or a
+///    again whenever accounts, roles, agents or tools change, since a tag or a
 ///    grant changed then may be what makes a pending request the
 ///    party's.
 /// 4. **Told in order.** Each word on the party's queue is sent as it
@@ -98,7 +98,7 @@ async fn listening(scope: &ScopeHandle, daemon: &Arc<Daemon>, party: &Party, tol
             }
             // Rule 3.
             word = words.recv() => match word {
-                Ok(Kind::Accounts | Kind::Roles | Kind::StandaloneTools | Kind::DependencyTools) | Err(RecvError::Lagged(_)) => catch_up(daemon, party).await?,
+                Ok(Kind::Accounts | Kind::Roles | Kind::Agents | Kind::StandaloneTools | Kind::DependencyTools) | Err(RecvError::Lagged(_)) => catch_up(daemon, party).await?,
                 Ok(_) => {}
                 Err(RecvError::Closed) => return Ok(()),
             },

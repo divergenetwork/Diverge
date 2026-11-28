@@ -69,9 +69,10 @@ pub enum Frame {
     /// Arrives once, when the container's server has taken the
     /// arguments and answered its registration — as JSON, a
     /// [`Registered`]: the dependencies, a list, empty for a program
-    /// that needs none; see
+    /// that needs none, and the permissions it holds, a list, empty
+    /// for a program that asks the daemon nothing; see
     /// [`registration`](crate::shared::containers::registration) for
-    /// what the provider does with it. A channel on this scope is
+    /// what the provider does with both. A channel on this scope is
     /// opened only after it.
     Begun(Registered),
     /// A failure. Tag `1`.

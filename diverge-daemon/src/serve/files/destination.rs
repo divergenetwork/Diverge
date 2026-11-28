@@ -18,8 +18,7 @@ pub enum Judged {
     /// The grants do not reach the destination.
     Forbidden,
     /// The destination names an agent, a tool, a dependency tool or a
-    /// volume that is none — a dependency tool that does not run among
-    /// them.
+    /// volume that is none.
     NoDestination,
     /// The destination's provider could not be asked.
     Error(String),
@@ -48,7 +47,7 @@ pub async fn judged(conn: &mut PgConnection, daemon: &Daemon, standing: &Standin
             }
         }
         Destination::Dependency { dependency, .. } => {
-            let Some((tool, Some(_))) = serve::dependency_tools::resolve(conn, daemon, dependency, false).await? else {
+            let Some((tool, _)) = serve::dependency_tools::resolve(conn, daemon, dependency, false).await? else {
                 return Ok(Judged::NoDestination);
             };
             if serve::dependency_tools::reaches(conn, daemon, standing, dependency_tools::Over::Upload, &tool).await? {

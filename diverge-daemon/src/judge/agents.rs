@@ -6,7 +6,8 @@
 //! `any`, or the agents list filter as [`filter::agents::test`] reads
 //! it, with whether a loop runs in the agent now, which the caller
 //! knows — or, a tool's, by an action held within `attached` where
-//! the agent is attached to the tool, whatever its activity, or by an
+//! the agent is attached to the tool, whatever its activity (an
+//! agent's own `attached` reaches no agent), or by an
 //! action held over a list of agents that lists this one by its
 //! template and index; a
 //! tagging action by a grant that holds it, reaches the agent, and
@@ -31,12 +32,12 @@ pub fn create(standing: &Standing) -> bool {
 }
 
 /// Whether the standing holds `action` over any agent at all: by a
-/// grant, or within `attached`.
+/// grant, or within `attached` where any agent is attached.
 pub fn holds(standing: &Standing, action: Over) -> bool {
     if standing.admin() {
         return true;
     }
-    standing.attached_actions().contains(&action)
+    standing.attached_agents_hold(action)
         || standing
             .agents()
             .any(|permission| matches!(permission, Permission::Over { actions, .. } if actions.contains(&action)))
@@ -50,7 +51,7 @@ pub fn over(standing: &Standing, action: Over, agent: &Agent, state: AgentState)
     if standing.admin() {
         return true;
     }
-    (standing.attached_actions().contains(&action) && standing.is_attached(agent.id))
+    standing.attached_agent(action, agent.id)
         || standing.agents().any(|permission| match permission {
             Permission::Over { actions, within } => actions.contains(&action) && reaches(within, agent, state),
             _ => false,

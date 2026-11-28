@@ -29,17 +29,26 @@
 //!
 //! # One container per tool
 //!
-//! However many agents a tool is attached to, one tool container runs,
-//! and what keeps it running is its image's `mode`. A lazy
-//! tool's container runs while it is used — an agent's call in
-//! flight, a file operation, a connect scope open on it — and is
-//! stopped `idle_seconds` after the last use; an attachment alone
-//! keeps nothing running, and an agent's loop begins by starting the
-//! tools it is served. An eager tool's container is kept running while
-//! the tool is attached to any agent or any template, or any connect
-//! is open on it, and retired `idle_seconds` after the last of those
-//! leaves. A tool attached nowhere and connected to by nobody runs
-//! nowhere. A create runs nothing.
+//! However many agents a tool is attached to, one tool container runs.
+//! It is deployed by the first thing that uses it — the start of an
+//! agent it is attached to among them, which deploys every tool the
+//! agent is served and fails where one cannot be — and undeployed
+//! `idle_seconds` after the last thing that held it let go. What holds
+//! it: an agent it is attached to being started, having a message on
+//! its way or being active; an MCP exchange in
+//! flight into it; a connect scope open on it; a file tree watch, a
+//! download, an upload or a transfer in progress on it; a command
+//! running in it or a terminal open in it; a frontend request or an
+//! API request in
+//! progress; and any scope its own program has open on the daemon. An
+//! attachment alone holds a lazy tool not at all, and a message for
+//! an agent that is up brings back, before it is delivered, any tool
+//! the agent is served that has gone down. An eager tool, its
+//! image's `mode`, is held as well by the attachment itself — to any
+//! agent or any template, whether or not an agent runs — and is
+//! started again while attached whenever its container ends. None of
+//! these makes a tool active: a tool is active only while a call or a
+//! read it was asked is unanswered. A create runs nothing.
 //!
 //! [`templates`] holds what tools are made from; [`create`] makes a
 //! tool under a name from one; [`edit`] changes what one mounts;
@@ -54,7 +63,9 @@
 //! [`filetree`] watches one's container whole; [`download`] sends the
 //! client a file or a directory out of a tool's container, [`upload`]
 //! puts files into it, and [`transfer`] copies out of it into an agent,
-//! another tool or a volume, the bytes never reaching the client.
+//! another tool or a volume, the bytes never reaching the client;
+//! [`frontend`] sends one HTTP request to the pages its program
+//! serves, and [`api`] one to the API it serves.
 //! [`logs`](super::logs) reads what the daemon kept of
 //! every call and read it routed into a tool. A dependency an agent declares at register time
 //! is no tool of this family: the daemon deploys it then and there,
@@ -63,6 +74,7 @@
 //! running tool there, under its template; no request here finds
 //! one. A tool declares no dependencies.
 
+pub mod api;
 pub mod attach_agent_instance;
 pub mod attach_agent_template;
 pub mod connect;

@@ -217,8 +217,8 @@ diverge run volumes transfer '{"volume":{…},"path":["site"],"to":{"volume":{"p
 - **transfer** `to` is exactly one of `{"agent":…,"path":[…]}`, `{"tool":…,"path":[…]}`,
   `{"dependency":{"template":…,"owner":…},"path":[…]}`, `{"volume":…,"path":[…]}`; the destination
   `path` has at least one component. A file lands at `path`; a directory lands *as* `path`, nothing
-  already there removed. An agent or tool that is not running is started for the copy and stopped
-  after; a dependency tool must already be running. Answers `"transferred"`, `"not_found"`,
+  already there removed. An agent, a tool or a dependency tool that is not running is started for the copy and
+  stopped after. Answers `"transferred"`, `"not_found"`,
   `"no_destination"`, `"held"` (either end).
 
 Grants: `filetree`, `download`, `upload`, `transfer` over the source volume; a transfer's
@@ -407,8 +407,8 @@ Answers:
 - `"not_deletable"`: the compartment goes with what it is of, or what keeps it is still there (a
   template that contains the image, an agent that declares the dependency template). Nothing changed.
 - `"in_use"`: a container holds a connection through it, or a dependency tool of its template runs.
-  Nothing changed. Wait for the container to stop and retry. An eager dependency tool stays up until
-  it has been unattached for `idle_seconds`.
+  Nothing changed. Wait for the container to stop and retry. A tool stays up until nothing holds it
+  for `idle_seconds`, and an attachment holds an eager one (see `diverge-tools`).
 - Deleting a dependency template's `template` compartment also removes **every tool of that
   template** (the template-scoped one, and any instance ones no agent declares any more, each with its own
   `instance` compartment) and the stored template. An agent that declares the template again at its

@@ -1,5 +1,5 @@
 //! A provider-held terminal's answers — its id, its output, and done —
-//! and a frontend request's.
+//! and a frontend request's, which is an API request's too.
 
 use bytes::Bytes;
 
@@ -73,3 +73,7 @@ impl Answered for FrontendOutput {
         Ok(Ok(frontend::output::Frame::decode(&payload)?.owned(&payload)))
     }
 }
+
+/// An [API request](crate::shared::containers::api)'s stream: a
+/// frontend request's, since the two answer in one form.
+pub type ApiOutput = FrontendOutput;

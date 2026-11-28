@@ -19,6 +19,7 @@ members = [
     "diverge-examples/tools/taskboard",
     "diverge-examples/tools/alarm",
     "diverge-examples/tools/chat",
+    "diverge-examples/tools/human-desk",
     "diverge-examples/agents/human",
     # The Diverge viewer, the one desktop app. Links diverge-sdk by
     # path, so it lives here until the SDK is published.

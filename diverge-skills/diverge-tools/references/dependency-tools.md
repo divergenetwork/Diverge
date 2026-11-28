@@ -42,7 +42,7 @@ bytes.
 | `fuse_file_mounts`, `fuse_directory_mounts` | optional. Allowed only where the tool image's document says `"mode":"lazy"` and `"scope":"instance"`; a declaration that names a mount of an image of any other mode or scope is refused. Each `{"agent_path":[…],"tool_path":[…]}`: a file or a directory of the **agent's** container served live into the tool's container. Nothing is copied; both containers see the same path while both run. Neither path may be the root. |
 
 There is no name and no description, and there is no `mode` and no `scope`: the tool image's own
-`DIVERGE.md` states those two (`"mode"`: `"lazy"`, runs while it is used, or `"eager"`, kept up while any
+`DIVERGE.md` states those two (`"mode"`: `"lazy"`, or `"eager"`, held up as well while any
 agent is attached; `"scope"`: `"instance"` or `"template"`, how far the tool's container is shared). Read them with `diverge run images read --info`. The **id** is the lowercase hex SHA-256 of the
 template's canonical JSON: compact, keys sorted at every depth, absent members omitted, image references
 dropped, the mounts included. Declaring the same template twice in one list is refused. A
@@ -50,12 +50,12 @@ dependency template cannot name the caller's volumes or a provider.
 
 ## Mode, scope, owner
 
-| the tool image says | one tool per | `owner` in references and list items | container runs |
+| the tool image says | one tool per | `owner` in references and list items | container deployed |
 |---|---|---|---|
-| `lazy` + `instance` | agent | `{"agent":{"template":…,"index":…}}` | from the agent's container start to its stop, every run |
-| `lazy` + `template` | dependency template | `"template"` | from its first use until nothing has used it for `idle_seconds`; one container for every agent that declares it |
-| `eager` + `instance` | agent | `{"agent":{…}}` | while that agent is attached (declares it) |
-| `eager` + `template` | dependency template | `"template"` | while any agent at all is attached |
+| `lazy` + `instance` | agent | `{"agent":{"template":…,"index":…}}` | when the agent's container starts, or by the first thing that uses it |
+| `lazy` + `template` | dependency template | `"template"` | by the first thing that uses it; one container for every agent that declares it |
+| `eager` + `instance` | agent | `{"agent":{…}}` | when that agent declares it; held while it does |
+| `eager` + `template` | dependency template | `"template"` | when the first agent declares it; held while any does |
 
 What a dependency tool keeps in Postgres does not follow its scope. Its program names a database, as
 every container does (see `postgres` in `diverge-storage`):
@@ -69,8 +69,11 @@ every container does (see `postgres` in `diverge-storage`):
 - "Attached" for a dependency means: the agent's **last** registration declared the template. An agent is
   attached by registering (its container starting) with the declaration and detached by registering without
   it. The agent's container stopping does not detach it; an eager tool stays up between its agents' runs.
-- An eager tool with no agent attached goes down after `idle_seconds`. An eager tool whose container ends is started
-  again while any agent is attached, and at every daemon start.
+- Every dependency tool is undeployed `idle_seconds` after nothing holds it, by the one list of holds in
+  the skill's `SKILL.md`. An attachment holds an eager tool and no other. An eager tool whose container ends
+  is started again while any agent is attached, and at every daemon start.
+- An `instance` tool can go down while its agent's container is up and idle; the next message for
+  the agent brings it back before it is delivered. One that mounts its agent's files holds that container up while it is up, and goes down with it.
 - In a request you may name an agent owner either way (`{"agent":{"name":"echo"}}` works); answers always use
   the template-and-index form.
 - The same eager tool template under the same owner is the same eager tool: a second agent declaring it joins it.
@@ -122,7 +125,8 @@ whose last registration declared a template, and each agent's item lists its `de
 
 There is no `dependency-tools delete`.
 
-- An `instance` tool goes with its agent.
+- An `instance` tool goes with its agent. The agent's delete answers `"active"` while one of its dependency
+  tools has a call or a read unanswered.
 - Every tool of a dependency template, the `template` one included, goes when that template's `template`
   compartment is deleted:
   `diverge run postgres compartments delete '{"compartment":{"template":{"kind":"dependency_tool","template":"<dependency template id>"}}}'`.
@@ -131,15 +135,16 @@ There is no `dependency-tools delete`.
 - After it, an agent that declares the template again at its next start gets a new tool with new,
   empty databases.
 
-## Operating on a running dependency tool
+## Operating on a dependency tool
 
-`filetree`, `download`, `upload`, `transfer`, `exec`, `terminal`, `frontend` all take
-`"dependency":{"template":…,"owner":…}` and act only on a container that is **already running**. They never
-start one and never stop one; a tool that is down answers `"not_found"`. While `exec`, `terminal` or
-`frontend` runs, the tool and the agent it was deployed for are held up.
+`filetree`, `download`, `upload`, `transfer`, `exec`, `terminal`, `frontend`, `api` all take
+`"dependency":{"template":…,"owner":…}`. A tool whose container is not running is **deployed** for the
+request and held up while it runs; it is undeployed `idle_seconds` after nothing holds it. None of them
+makes the tool active.
 
-To work on a lazy dependency: message the agent (which starts both), then run the command before the
-agent goes idle, or keep the agent busy.
+A tool that mounts its agent's files brings its agent's container up with it. That start is an ordinary
+start: the agent's program declares its dependencies again, and if it no longer declares this tool the
+request answers `"not_found"`.
 
 ```bash
 ID="$(diverge run dependency-tools list --jq '.added.id // empty' '{"arguments":false,"owners":[{"agent":{"name":"echo"}}]}' | tr -d '"' | head -1)"

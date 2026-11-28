@@ -1,54 +1,79 @@
-//! A tool's declared grants, as grants of the daemon's.
+//! A container's declared grants, as grants of the daemon's.
 
 use super::{Grant, accounts, agents, agents_templates, connected_standalone_tools, daemons, dependency_tools, identities, images, postgres_compartments, providers, providers_daemons, roles, standalone_tools, standalone_tools_templates, volumes};
 use crate::shared::permission::{self, Tags, Within};
 
-/// A tool's grants, as its container declared them at registration and
-/// as the daemon judges them: the daemon's grants, each the same
-/// actions reaching as the tool's reach says — every one, the kind's
-/// own filter naming exactly the records listed, or the filter
-/// carrying the tags alone — and, apart from them, since no grant of
-/// the daemon's own can say it, the actions over agents that reach
-/// `attached`, which the daemon judges by the agents attached to the
-/// tool. `never_active` is a daemon grant of its own, its filter
+/// A container's grants — a tool's or an agent's — as its program
+/// declared them at registration and as the daemon judges them: the
+/// daemon's grants, each the same actions reaching as the declared
+/// reach says — every one, the kind's own filter naming exactly the
+/// records listed, or the filter carrying the tags alone — and, apart
+/// from them, since no grant of the daemon's own can say it, the
+/// actions held within `attached`, kind by kind, which the daemon
+/// judges by what is attached to the container: see [`Attached`].
+/// `never_active` is a daemon grant of its own, its filter
 /// `{"active": "never"}`. Nothing is widened: a filter naming records
 /// reaches those records and nothing else, a filter of tags alone
-/// what the tags test reaches and nothing else, `attached` the tool's
-/// attached agents and nothing else, and `never_active` the agents
-/// that have never run and nothing else.
+/// what the tags test reaches and nothing else, `attached` what is
+/// attached to the container and nothing else, and `never_active` the
+/// agents that have never run and nothing else.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Converted {
     /// The grants a role could hold, judged as a role's are.
     pub grants: Vec<Grant>,
-    /// The actions over agents held within `attached`, judged against
-    /// the agents attached to the tool.
-    pub attached_actions: Vec<agents::Over>,
+    /// The actions held within `attached`, kind by kind.
+    pub attached: Attached,
+}
+
+/// The actions a container's declaration holds within `attached`, one
+/// list for each kind the word is of. The rules:
+///
+/// 1. **The other side of an attachment.** The word reaches the
+///    records attached to the container that holds the grant: a
+///    tool's attached agents; an agent's attached standalone tools,
+///    connected tools and dependency tools.
+/// 2. **Nothing on its own side.** A tool that declares `attached`
+///    over a tool kind, and an agent that declares it over agents,
+///    holds actions that reach nothing: the lists are kept as
+///    declared, and what is attached is the daemon's to read.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Attached {
+    /// Over agents.
+    pub agents: Vec<agents::Over>,
+    /// Over standalone tools.
+    pub standalone_tools: Vec<standalone_tools::Over>,
+    /// Over connected tools.
+    pub connected_standalone_tools: Vec<connected_standalone_tools::Over>,
+    /// Over dependency tools.
+    pub dependency_tools: Vec<dependency_tools::Over>,
 }
 
 impl From<Vec<permission::Grant>> for Converted {
     fn from(grants: Vec<permission::Grant>) -> Self {
         let mut converted = Converted::default();
         for grant in grants {
-            match daemon_grant(grant) {
-                Ok(grant) => converted.grants.push(grant),
-                Err(attached) => converted.attached_actions.extend(attached),
+            if let Some(grant) = daemon_grant(grant, &mut converted.attached) {
+                converted.grants.push(grant);
             }
         }
         converted
     }
 }
 
-/// The daemon's grant a shared grant is, or — for a grant over agents
-/// within `attached`, which no daemon grant can say — the actions it
-/// holds, to be judged apart.
-fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
-    Ok(match grant {
+/// The daemon's grant a shared grant is, or — for a grant within
+/// `attached`, which no daemon grant can say — `None`, the actions it
+/// holds added to `attached` to be judged apart.
+fn daemon_grant(grant: permission::Grant, attached: &mut Attached) -> Option<Grant> {
+    Some(match grant {
         permission::Grant::Agents(permission) => Grant::Agents(match permission {
             permission::agents::Permission::Make(makes) => agents::Permission::Make(makes),
             permission::agents::Permission::Over { actions, within } => {
                 let within = match within {
                     permission::agents::Within::Any => Within::Any,
-                    permission::agents::Within::Attached => return Err(actions),
+                    permission::agents::Within::Attached => {
+                        attached.agents.extend(actions);
+                        return None;
+                    }
                     permission::agents::Within::Agents(agents) => agents_within(permission::Reach::Listed(permission::agents::Listed { agents })),
                     permission::agents::Within::NeverActive => Within::Only(never_active()),
                     permission::agents::Within::Only(tags) => agents_within(permission::Reach::Tags(tags)),
@@ -75,10 +100,18 @@ fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
         }),
         permission::Grant::StandaloneTools(permission) => Grant::StandaloneTools(match permission {
             permission::standalone_tools::Permission::Make(makes) => standalone_tools::Permission::Make(makes),
-            permission::standalone_tools::Permission::Over { actions, within } => standalone_tools::Permission::Over {
-                actions,
-                within: standalone_tools_within(within),
-            },
+            permission::standalone_tools::Permission::Over { actions, within } => {
+                let within = match within {
+                    permission::standalone_tools::Within::Any => Within::Any,
+                    permission::standalone_tools::Within::Attached => {
+                        attached.standalone_tools.extend(actions);
+                        return None;
+                    }
+                    permission::standalone_tools::Within::Tools(tools) => standalone_tools_within(permission::Reach::Listed(permission::standalone_tools::Listed { tools })),
+                    permission::standalone_tools::Within::Only(tags) => standalone_tools_within(permission::Reach::Tags(tags)),
+                };
+                standalone_tools::Permission::Over { actions, within }
+            }
             permission::standalone_tools::Permission::Tags { actions, within, tags } => standalone_tools::Permission::Tags {
                 actions,
                 within: standalone_tools_within(within),
@@ -99,10 +132,18 @@ fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
         }),
         permission::Grant::ConnectedStandaloneTools(permission) => Grant::ConnectedStandaloneTools(match permission {
             permission::connected_standalone_tools::Permission::Make(makes) => connected_standalone_tools::Permission::Make(makes),
-            permission::connected_standalone_tools::Permission::Over { actions, within } => connected_standalone_tools::Permission::Over {
-                actions,
-                within: connected_standalone_tools_within(within),
-            },
+            permission::connected_standalone_tools::Permission::Over { actions, within } => {
+                let within = match within {
+                    permission::connected_standalone_tools::Within::Any => Within::Any,
+                    permission::connected_standalone_tools::Within::Attached => {
+                        attached.connected_standalone_tools.extend(actions);
+                        return None;
+                    }
+                    permission::connected_standalone_tools::Within::Tools(tools) => connected_standalone_tools_within(permission::Reach::Listed(permission::connected_standalone_tools::Listed { tools })),
+                    permission::connected_standalone_tools::Within::Only(tags) => connected_standalone_tools_within(permission::Reach::Tags(tags)),
+                };
+                connected_standalone_tools::Permission::Over { actions, within }
+            }
             permission::connected_standalone_tools::Permission::Tags { actions, within, tags } => connected_standalone_tools::Permission::Tags {
                 actions,
                 within: connected_standalone_tools_within(within),
@@ -121,10 +162,18 @@ fn daemon_grant(grant: permission::Grant) -> Result<Grant, Vec<agents::Over>> {
             },
         }),
         permission::Grant::DependencyTools(permission) => Grant::DependencyTools(match permission {
-            permission::dependency_tools::Permission::Over { actions, within } => dependency_tools::Permission::Over {
-                actions,
-                within: dependency_tools_within(within),
-            },
+            permission::dependency_tools::Permission::Over { actions, within } => {
+                let within = match within {
+                    permission::dependency_tools::Within::Any => Within::Any,
+                    permission::dependency_tools::Within::Attached => {
+                        attached.dependency_tools.extend(actions);
+                        return None;
+                    }
+                    permission::dependency_tools::Within::Tools(tools) => dependency_tools_within(permission::Reach::Listed(permission::dependency_tools::Listed { tools })),
+                    permission::dependency_tools::Within::Only(tags) => dependency_tools_within(permission::Reach::Tags(tags)),
+                };
+                dependency_tools::Permission::Over { actions, within }
+            }
             permission::dependency_tools::Permission::Tags { actions, within, tags } => dependency_tools::Permission::Tags {
                 actions,
                 within: dependency_tools_within(within),
@@ -240,7 +289,7 @@ fn never_active() -> crate::daemon::endpoints::agents::list::client::request::Fi
     }
 }
 
-/// A tool's reach as the daemon's `within`: `"any"` as it is, a list
+/// A declared reach as the daemon's `within`: `"any"` as it is, a list
 /// as the filter `listed` makes of it, and tags as the filter `tags`
 /// makes of them. The two filters are never one: a reach is a list or
 /// tags and not both, so no filter made here names records and tags

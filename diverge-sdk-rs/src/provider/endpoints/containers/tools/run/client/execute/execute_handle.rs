@@ -21,7 +21,8 @@ use crate::provider::endpoints::containers::tools::run::server;
 use crate::shared::containers::fuse::Kind;
 use crate::shared::containers::exec;
 use crate::shared::containers::terminal;
-use crate::provider::endpoints::containers::client::answered::{FrontendOutput, TerminalDone, TerminalOpened, TerminalOutput};
+use crate::provider::endpoints::containers::client::answered::{ApiOutput, FrontendOutput, TerminalDone, TerminalOpened, TerminalOutput};
+use crate::shared::containers::api;
 use crate::shared::containers::frontend;
 use crate::shared::containers::{fuse_mount, read, transfer, write_path};
 use crate::shared::mcp;
@@ -158,6 +159,22 @@ impl ExecuteHandle {
     {
         self.0
             .open_writing::<FrontendOutput, S, E>(move |write_id| payload(&channel_request::Frame::Frontend(frontend::request::Request { write_id, head })), body)
+            .await
+    }
+
+    /// One HTTP request to the program's API: `head`, its body
+    /// `body`'s pieces, which the provider asks for; its answer as a
+    /// stream, and the write id the body is kept under until
+    /// [`forget`](Self::forget) takes it back. Dropping the stream
+    /// abandons the request. A [`frontend`](Self::frontend) request's
+    /// twin, under the channel's other tag.
+    pub async fn api<S, E>(&self, head: api::request::Head, body: S) -> Result<(ChannelStream<ApiOutput>, u32), OpenError>
+    where
+        S: Stream<Item = Result<Bytes, E>> + Send + 'static,
+        E: fmt::Display + Send + 'static,
+    {
+        self.0
+            .open_writing::<ApiOutput, S, E>(move |write_id| payload(&channel_request::Frame::Api(api::request::Request { write_id, head })), body)
             .await
     }
 

@@ -32,7 +32,8 @@ pub enum Read {
 }
 
 /// The image's `/.diverge/DIVERGE.md`, for the daemon's own use: what a create,
-/// a deployment or a frontend asks before it goes on. The rules:
+/// a deployment, or a request to a tool's frontend or its API, asks
+/// before it goes on. The rules:
 ///
 /// 1. **The record first.** A document the daemon has read before is
 ///    on its record by the image's digest — a digest is the image, so

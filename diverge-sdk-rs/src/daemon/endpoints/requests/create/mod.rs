@@ -6,17 +6,17 @@
 //!
 //! 1. **Whom it is made of** is the request's
 //!    [`to`](client::request::To): all the caller may ask, or the
-//!    accounts and tools it names, each by itself or by a tag.
+//!    accounts, agents and tools it names, each by itself or by a tag.
 //! 2. **Made of whom the caller may ask.** A request is made of every
-//!    account and tool that its `to` addresses AND the caller's
+//!    account, agent and tool that its `to` addresses AND the caller's
 //!    `request` grant for its kind reaches, and of no other. One
 //!    addressed and not reached is sent nothing and refuses nothing,
 //!    named by itself or by a tag; so is a name that names nothing.
 //! 3. **Refused only where it is made of nobody.** The caller holds
-//!    `request` over accounts, over standalone tools or over
-//!    dependency tools, or the answer is
+//!    `request` over accounts, over agents, over standalone tools or
+//!    over dependency tools, or the answer is
 //!    [`Forbidden`](server::response::Frame::Forbidden). At least one
-//!    account or tool there is, as of the create, is one the request
+//!    account, agent or tool there is, as of the create, is one the request
 //!    is made of, or the answer is
 //!    [`NoRecipient`](server::response::Frame::NoRecipient): `all`
 //!    with nothing the grants reach, as much as names that name

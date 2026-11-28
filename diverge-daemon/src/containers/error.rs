@@ -19,6 +19,9 @@ pub enum StartError {
     Store(store::Error),
     /// The template the record names is not on record any more.
     NoTemplate(String),
+    /// The dependency tool is not on record any more: its row is gone,
+    /// its agent is, or its agent's program no longer declares it.
+    Gone,
     /// No provider to run on.
     Provider(NoProvider),
     /// The remote daemon's record a connected tool names, by ID, is not
@@ -39,6 +42,16 @@ pub enum StartError {
     Unsupported(String),
     /// The provider did not run it, in its own words or the wire's.
     Run(String),
+    /// A tool the agent is served could not be deployed: the name the
+    /// agent is served it under, and why, in the tool's start's own
+    /// words. An agent is up with every tool it is served up, or it
+    /// is not up.
+    Tool {
+        /// The name the agent is served the tool under.
+        name: String,
+        /// Why it could not be deployed.
+        reason: String,
+    },
     /// The log could not be written.
     Logs(logs::Error),
     /// The start's own task ended without finishing it: it panicked,
@@ -51,6 +64,7 @@ impl fmt::Display for StartError {
         match self {
             StartError::Store(error) => write!(f, "{error}"),
             StartError::NoTemplate(id) => write!(f, "the template {id} is not on record"),
+            StartError::Gone => f.write_str("the dependency tool is not on record any more"),
             StartError::Provider(error) => write!(f, "{error}"),
             StartError::NoDaemon(id) => write!(f, "no remote daemon's record has the ID `{id}`"),
             StartError::Daemon(error) => write!(f, "{error}"),
@@ -58,6 +72,7 @@ impl fmt::Display for StartError {
             StartError::Document(what) => write!(f, "{what}"),
             StartError::Unsupported(what) => write!(f, "a provider's capabilities exclude it: {what}"),
             StartError::Run(error) => write!(f, "the provider did not run the container: {error}"),
+            StartError::Tool { name, reason } => write!(f, "the tool `{name}` the agent is served could not be deployed: {reason}"),
             StartError::Logs(error) => write!(f, "the log: {error}"),
             StartError::Unfinished(error) => write!(f, "the start did not finish: {error}"),
         }

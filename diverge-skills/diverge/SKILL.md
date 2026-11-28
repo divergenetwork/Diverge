@@ -67,8 +67,8 @@ diverge [--config <dir>] run [--daemon <name>] [--account <name>] [--jq <filter>
 - Some requests take flags of their own: `--watch` on every `list` but `identities list`, and on the agent and
   tool `filetree`s (keep the
   stream open and print every change after the first whole answer; without it the command ends there),
-  `--path <local>` on the file `download`/`upload` requests, and typed flags on `connect`, `exec`, `terminal`,
-  `frontend`. Read `<request> --help`.
+  `--path <local>` on the file `download`/`upload` requests, and typed flags on `connect`, `exec` and
+  `terminal`. `frontend` and `api` take none: the method, path and headers are in BODY. Read `<request> --help`.
 
 **Discovering a request.** These dial nothing and are always safe:
 
@@ -152,8 +152,8 @@ Every `diverge run` family and every top-level command belongs to exactly one sk
 | Task | Skill | Commands it owns |
 |---|---|---|
 | The config root; every setting of the daemon, the provider, the viewer and the CLI; signing identities in; the accounts at Diverge's own issuer; starting and stopping a server; ports; what needs a restart; the identities on the daemon's host | `diverge-config` | `diverge daemon start\|stop` and its settings (`port`, `idle_seconds`, `admins`, `identity`, `postgres`), `diverge provider start\|stop` and its settings (`port`, `identity`, `incoming`, `outgoing`, `podman`, `containers`, `volumes`, `images`, `messages`), `diverge viewer start\|stop` and its settings (`port`, `redial`, `daemons`, `default`), `diverge cli daemons …` and `diverge cli default`, `diverge identity.diverge.network accounts\|subjects\|refresh-tokens …` (with `accounts username get\|set`), `diverge identities login\|list\|remove`, `diverge run identities list\|tag\|untag\|login` |
-| Agent templates and agents: create, get, list, edit, delete, tag; sending a message; MCP into an agent; an agent's files, exec, terminal, frontend, mounts | `diverge-agents` | `diverge run agents …` (including `agents templates …` and `agents connect …`) |
-| Standalone tools and their templates; dependency tools; attaching and detaching tools; a tool's files, exec, terminal, frontend; MCP exchanges with a tool | `diverge-tools` | `diverge run standalone-tools …` (including `templates …` and `connect …`), `diverge run dependency-tools …` |
+| Agent templates and agents: create, get, list, edit, delete, tag; sending a message; MCP into an agent; an agent's files, exec, terminal, mounts | `diverge-agents` | `diverge run agents …` (including `agents templates …` and `agents connect …`) |
+| Standalone tools and their templates; dependency tools; attaching and detaching tools; a tool's files, exec, terminal, frontend and API; MCP exchanges with a tool | `diverge-tools` | `diverge run standalone-tools …` (including `templates …` and `connect …`), `diverge run dependency-tools …` |
 | Images: an image's `DIVERGE.md`, digests and references, building images into the provider, what each stock image takes as arguments, credentials included | `diverge-images` | `diverge run images read\|build\|push\|merge\|publish\|list\|get\|delete` |
 | Volumes and their files; the daemon's Postgres and the compartments of it each container reaches | `diverge-storage` | `diverge run volumes …`, `diverge run postgres …` (including `postgres compartments …`) |
 | Accounts, roles, grants, tags and `within`, admins; why something is `forbidden`; asking accounts and tools a question and answering the ones asked of you | `diverge-access` | `diverge run accounts …`, `diverge run roles …`, `diverge run requests create\|listen` |

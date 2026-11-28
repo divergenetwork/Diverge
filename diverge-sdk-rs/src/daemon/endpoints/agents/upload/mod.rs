@@ -9,8 +9,10 @@
 //! Each file lands whole, every parent made, replacing what was at its
 //! path and touching nothing else; a content channel that ends in an
 //! error abandons that file, and the answer is the error. An agent's
-//! container that is not running is started for the operation and
-//! stopped when it finishes; one the daemon has running anyway — a loop
+//! container that is not running is started for the operation — with
+//! every tool the agent is served, any one of which failing to deploy
+//! fails the start, and the operation with it — and
+//! held up until it finishes, when its idle time begins; one the daemon has running anyway — a loop
 //! in it — is used as it runs, and nothing else about the agent
 //! changes.
 //!

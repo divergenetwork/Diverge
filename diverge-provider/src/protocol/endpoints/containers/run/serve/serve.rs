@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::super::family::{Opened, Runs};
 use super::super::run::Run;
-use super::{daemon, exec, filetree, frontend, fuse_mount, postgres, read, terminal, transfer, write};
+use super::{daemon, door, exec, filetree, fuse_mount, postgres, read, terminal, transfer, write};
 use diverge_sdk::wire::decode::Decode as _;
 use diverge_sdk::wire::frame::client::ClientFrame;
 
@@ -66,7 +66,8 @@ pub(crate) async fn serve<F: Runs>(run: &Arc<Run>) -> End {
             Opened::TerminalStdin(id, bytes) => run.spawn(terminal::stdin(Arc::clone(&run), channel, id, bytes)).await,
             Opened::TerminalResize(id, size) => run.spawn(terminal::resize(Arc::clone(&run), channel, id, size)).await,
             Opened::TerminalClose(id) => run.spawn(terminal::close(Arc::clone(&run), channel, id)).await,
-            Opened::Frontend(request) => run.spawn(frontend::frontend::<F>(Arc::clone(&run), channel, request)).await,
+            Opened::Frontend(request) => run.spawn(door::door::<F>(Arc::clone(&run), channel, request, door::Door::Frontend)).await,
+            Opened::Api(request) => run.spawn(door::door::<F>(Arc::clone(&run), channel, request, door::Door::Api)).await,
             Opened::Write { write_id, path } => {
                 run.spawn(write::write::<F>(Arc::clone(&run), channel, write_id, path)).await
             }

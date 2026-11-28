@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// [`tool_log`](crate::daemon::tool_log) or a
 /// [`command_log`](crate::daemon::command_log) item has. A name both books
 /// have — `deployed`, `active`, `inactive`, `undeployed`, `error`,
-/// `notification` — picks that
+/// `notification`, `command` — picks that
 /// kind in whichever book is read; a name the book read does not have
 /// matches nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

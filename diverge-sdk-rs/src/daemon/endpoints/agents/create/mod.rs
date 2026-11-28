@@ -5,8 +5,8 @@
 //! that are the agent's own, and the name it wants the agent held
 //! under; the daemon answers that the agent is created, that the name
 //! is already in use, or that it failed, and the scope finishes. An
-//! agent holds no account and asks the daemon nothing: everything it
-//! reaches, it reaches through the tools it is served. The agent's
+//! agent holds no account: what it may ask of the daemon is what its
+//! program declares at its registration, and no create says. The agent's
 //! life is not this
 //! scope's: it goes on after the finish, reached by its name, until a
 //! [`delete`](super::delete).

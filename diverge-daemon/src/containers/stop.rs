@@ -9,7 +9,7 @@ use futures_util::future;
 use super::lifecycle::{self, End};
 use super::{AgentRun, ToolHandle, ToolKey, ToolRun, eager, tool_log};
 use crate::daemon::{Daemon, Kind};
-use crate::store::{AgentId, agents, connected_standalone_tools as connected_records, tools as tool_records};
+use crate::store::{AgentId, DependencyToolId, agents, connected_standalone_tools as connected_records, tools as tool_records};
 
 /// Stop the agent's run, if one is up, as asked: the container is told
 /// to stop, and the pump hears the end.
@@ -36,11 +36,12 @@ pub fn end_tool(daemon: Arc<Daemon>, run: Arc<ToolRun>) {
 /// The agent's run has ended, however it did: forgotten as live, its
 /// tasks ended — never the task this runs in: see [`end_agent`] — the
 /// log told it went down, with the reason the run's [`End`] gives and
-/// whether it was working, before anything else; its lazy
-/// dependencies stopped as the agent ended — all at once, every
-/// container told at the same time; its attached tools left to their
-/// own use and their idle clocks, its eager tools to their attachments
-/// — its mounts let go, and the provider's capacity asked again,
+/// whether it was working, before anything else; its hold on every
+/// tool it was served let go; the dependency tools of its own that
+/// mount its files stopped as the agent ended — all at once, every
+/// container told at the same time — since what they mount is gone;
+/// every other tool it was served left to its own holds and its idle
+/// clock — its mounts let go, and the provider's capacity asked again,
 /// since the run's reservation is freed. Done once, and only for the
 /// run live under the agent: a second call for one run, or a late one
 /// for a run a newer one replaced, does nothing.
@@ -82,8 +83,12 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     let end = run.end().await;
     lifecycle::undeployed(daemon.logs.clone(), run.id, Arc::clone(&run.log), run.epoch, end.reason()).await;
     run.loop_active.send_replace(false);
-    let dependencies = run.served.lock().await.lazy();
-    stop_dependencies(daemon, dependencies, end).await;
+    // Whatever the run still counted — a setup, a message on its way —
+    // its hold on its tools is over with it.
+    drop(run.arrival.lock().await.take());
+    run.holding.forget(daemon).await;
+    let own = run.served.lock().await.own();
+    stop_mounted(daemon, &own, end).await;
     run.mounts.stop().await;
     if let Ok(mut conn) = daemon.store.acquire().await {
         let _ = agents::set_deployed(&mut conn, run.id, &run.provider, Utc::now()).await;
@@ -93,9 +98,25 @@ async fn down_agent(daemon: &Daemon, run: Arc<AgentRun>) {
     run.ended.send_replace(true);
 }
 
-/// Every lazy dependency tool stopped at once, ending as `end`
-/// says — its agent's end, or a deploy's undoing: each told to stop,
-/// each waited for, each taken down.
+/// Of the dependency tools `own`, an agent's own, every one whose run
+/// is up and mounts its agent's files stopped at once, ending as `end`
+/// says — its agent's end, or a deploy's undoing — since the
+/// container it mounts from is going. One that mounts nothing is left
+/// to its own holds and its idle clock.
+pub async fn stop_mounted(daemon: &Daemon, own: &[DependencyToolId], end: End) {
+    let mut mounted = Vec::new();
+    for id in own {
+        if let Some(run) = daemon.live.tool_run(ToolKey::Dependency(*id)).await
+            && run.agent.lock().await.is_some()
+        {
+            mounted.push(run);
+        }
+    }
+    stop_dependencies(daemon, mounted, end).await;
+}
+
+/// Every one of the dependency tools' runs stopped at once, ending as
+/// `end` says: each told to stop, each waited for, each taken down.
 pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>, end: End) {
     future::join_all(dependencies.iter().map(|run| async move {
         run.end_as(end).await;
@@ -114,11 +135,11 @@ pub async fn stop_dependencies(daemon: &Daemon, dependencies: Vec<Arc<ToolRun>>,
 /// answered interrupted first, and the tool marked not working when it
 /// was; the
 /// word that it ended said — which finishes every connect scope on it
-/// — its mounts let go; a record's told where and when it last ran; a
-/// lazy dependency tool's taken out of its agent's served set,
-/// which tells the agent its tools changed; an
-/// eager tool's place in every served set kept for the
-/// next run, which its supervisor starts while any agent is attached.
+/// — its mounts let go, and the use it held on its agent's run, where
+/// it mounted its agent's files; a record's told where and when it
+/// last ran; its place in every served set kept for the next run,
+/// which the next use deploys, or an eager tool's supervisor while any
+/// agent is attached; its holds forgotten where they hold nothing.
 /// Every session's notifications reader is ended, and the tool marked
 /// working no more, whatever its log said. Done once, and only for the
 /// run live under its key, as [`ended_agent`].
@@ -156,6 +177,7 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
     }
     run.ended.send_replace(true);
     run.mounts.stop().await;
+    drop(run.agent.lock().await.take());
     if let ToolKey::Dependency(id) = run.id
         && let Ok(mut conn) = daemon.store.acquire().await
     {
@@ -172,15 +194,10 @@ async fn down_tool(daemon: &Daemon, run: Arc<ToolRun>) {
                 let _ = connected_records::set_deployed(&mut conn, id, Utc::now()).await;
             }
         }
-        (ToolKey::Dependency(_), Some(tool)) if !tool.is_eager() => {
-            if let Some(agent) = tool.owner_agent {
-                if let Some(agent) = daemon.live.agent_run(agent).await {
-                    agent.served.lock().await.remove_lazy(&run);
-                }
-            }
-        }
+        // A dependency tool's was kept above.
         (ToolKey::Dependency(_), _) => {}
     }
+    daemon.live.release_holds(run.id).await;
     daemon.live.changed(Kind::DependencyTools);
     daemon.live.changed(Kind::StandaloneTools);
     daemon.live.changed(Kind::ConnectedStandaloneTools);

@@ -3,7 +3,7 @@
 use crate::wire::encode::{Encode, Writer};
 use crate::shared::error::Error;
 
-/// Three encoders a scope's `execute` hands the shared serving loop,
+/// Four encoders a scope's `execute` hands the shared serving loop,
 /// because each family's channel frames are a type of its own, byte-
 /// identical to its siblings' but not the same type.
 ///
@@ -12,11 +12,11 @@ use crate::shared::error::Error;
 /// dial declined, a write ended without its content.
 #[derive(Debug, Clone, Copy)]
 pub struct Encoders {
-    /// The caller's half of a database connection: the family's
-    /// `Postgres { connection_id }` channel request.
     /// The caller's half of a daemon connection, by the id the
     /// provider announced: the family's own channel request.
     pub daemon_half: fn(u32) -> Option<Vec<u8>>,
+    /// The caller's half of a database connection: the family's
+    /// `Postgres { connection_id }` channel request.
     pub postgres_half: fn(u32) -> Option<Vec<u8>>,
     /// One piece of a write's content: the family's `write_bytes`
     /// `Body` channel response.

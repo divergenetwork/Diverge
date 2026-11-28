@@ -11,7 +11,6 @@ use futures_util::StreamExt as _;
 use tokio::sync::oneshot;
 
 use super::lifecycle::{self, End};
-use super::mcp;
 use super::{AgentRun, Decisions, Ended, stop};
 use crate::daemon::Daemon;
 use crate::logs;
@@ -20,10 +19,12 @@ use crate::store::AgentId;
 /// Read the run's stream to its end: every chunk kept, the agent
 /// attested under its `_meta` — a user part as its sender's, by the
 /// key the message was enqueued under — the loop's begin and end kept
-/// as whether a loop runs (what that makes of the agent's activity is
-/// [`activity`](super::activity)'s), the served tools started on the begin so
-/// its calls find them up — each held up by its own use from then on,
-/// and the dependencies run on for the agent's life — the container's
+/// as whether a loop runs (what that makes of the agent's activity,
+/// and of its hold on its tools, is
+/// [`activity`](super::activity)'s) — nothing is started here: every
+/// tool the agent is served was deployed before the message that
+/// began the loop was delivered, and this task only reads — the
+/// container's
 /// inactive, the delivered messages swept as rule 3 of
 /// [`Message`](super::Message) states —
 /// and the stream's end or error the run over, told as the end it was
@@ -33,7 +34,6 @@ use crate::store::AgentId;
 /// handed to a task of its own — see
 /// [`end_agent`](stop::end_agent).
 pub async fn pump(daemon: Arc<Daemon>, run: Arc<AgentRun>, mut stream: ExecuteStream) {
-    let context = run.context(&daemon);
     let mut ended = Ended::Finished;
     while let Some(event) = stream.next().await {
         match event {
@@ -74,11 +74,13 @@ pub async fn pump(daemon: Arc<Daemon>, run: Arc<AgentRun>, mut stream: ExecuteSt
             Ok(Event::Active) => {
                 run.loop_active.send_replace(true);
                 run.touch();
-                mcp::start_all(&context).await;
             }
             Ok(Event::Inactive) => {
                 run.loop_active.send_replace(false);
                 run.touch();
+                // Counted before the sweep, which takes the messages'
+                // lock: rule 5 of `Message`.
+                run.inactives.send_modify(|read| *read += 1);
                 run.sweep_messages().await;
             }
             Err(WaitError::Closed) => {
@@ -137,10 +139,15 @@ async fn numbering<'a>(daemon: &Daemon, run: &AgentRun, decisions: &'a mut Optio
 /// Who sent the message enqueued under `key`, and — for the first item
 /// kept under it — where its echo is said: rule 4 of
 /// [`Message`](super::Message). Neither, for a key the run does not
-/// hold.
+/// hold. The message is on its way no more — its rule 5: this is read
+/// on the stream its loop's beginning came on, after it, so the agent
+/// is active by now.
 async fn echoed(run: &AgentRun, key: &str) -> (Option<diverge_sdk::daemon::creator::Creator>, Option<oneshot::Sender<u64>>) {
     match run.messages.lock().await.get_mut(key) {
-        Some(message) => (Some(message.sender.clone()), message.echo.take()),
+        Some(message) => {
+            message.arriving = None;
+            (Some(message.sender.clone()), message.echo.take())
+        }
         None => (None, None),
     }
 }

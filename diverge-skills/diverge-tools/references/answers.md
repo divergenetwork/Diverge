@@ -45,7 +45,8 @@ or `"template"`.
 | `transfer` | | `{"tool":<tool>,"path":[…],"to":<destination>}` | `"transferred"`, `"not_found"`, `"no_destination"`, `"held"` |
 | `exec` | `--raw` | `{"tool":<tool>,"argv":[…],"cwd":[…]?,"env":{…}?}` | `{"stdout":"<base64>"}`, `{"stderr":"<base64>"}`…, then `{"exited":<code>}` or `{"signaled":<n>}`; `"not_found"` |
 | `terminal` | | `{"tool":<tool>,"cols":<n>,"rows":<n>}` | shell output raw on stdout; other answers as a JSON line on stderr |
-| `frontend` | | `{"tool":<tool>,"method":…,"path":"/frontend/…","headers":[[name,value]…]}`, body on stdin | head as a JSON line on stderr, body raw on stdout; `"not_found"`, `"no_frontend"` on stderr |
+| `frontend` | | `{"tool":<tool>,"method":…,"path":"/frontend/…","headers":[[name,value]…]}`, body on stdin | head as a JSON line on stderr, body raw on stdout; `"not_found"`, `"forbidden"`, `"no_frontend"`, `{"error":…}` on stderr |
+| `api` | | `{"tool":<tool>,"method":…,"path":"/api/…","headers":[[name,value]…]}`, body on stdin | as `frontend`, with `"no_api"` where it has `"no_frontend"` |
 
 A standalone tool's list item: `name`, `template`, `index`, `mode` (what the tool's image says), `provider` (where it runs or last ran),
 `id` (container id while running), `creator`, `created`, `active`, `last_active`, `deployed`,
@@ -69,13 +70,14 @@ files already there that the source lacks stay.
 | `list` | `--watch` | filter + `count` | `{"added":<item>}`…, `"listed"`; with `--watch` also `{"changed"}`, `{"removed"}` |
 | `tag` | | `{"dependency":<dep>,"tags":[…]}` | `"tagged"`, `"not_found"` |
 | `untag` | | `{"dependency":<dep>,"tags":[…]}` | `"untagged"`, `"not_found"` |
-| `filetree` | `--watch` | `{"dependency":<dep>}` | as standalone; `"not_found"` also when it does not run |
-| `download` | `--path <LOCAL>` (required) | `{"dependency":<dep>,"path":[…]}` | as standalone; `"not_found"` also when it does not run |
-| `upload` | `--path <LOCAL>` (required) | `{"kind":"file"|"directory","dependency":<dep>,"path":[…],…}` | `"uploaded"`, `"not_found"` (also when it does not run) |
+| `filetree` | `--watch` | `{"dependency":<dep>}` | as standalone |
+| `download` | `--path <LOCAL>` (required) | `{"dependency":<dep>,"path":[…]}` | as standalone |
+| `upload` | `--path <LOCAL>` (required) | `{"kind":"file"|"directory","dependency":<dep>,"path":[…],…}` | `"uploaded"`, `"not_found"` |
 | `transfer` | | `{"dependency":<dep>,"path":[…],"to":<destination>}` | `"transferred"`, `"not_found"`, `"no_destination"`, `"held"` |
-| `exec` | `--raw` | `{"dependency":<dep>,"argv":[…],…}` | as standalone; `"not_found"` when it does not run |
-| `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone; `"not_found"` when it does not run |
-| `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone; `"not_found"` when it does not run |
+| `exec` | `--raw` | `{"dependency":<dep>,"argv":[…],…}` | as standalone |
+| `terminal` | | `{"dependency":<dep>,"cols":<n>,"rows":<n>}` | as standalone |
+| `frontend` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone |
+| `api` | | `{"dependency":<dep>,"method":…,"path":…,"headers":[…]}` | as standalone |
 
 A dependency tool's list item carries `mode` and `scope` as its own members (what the tool's image says),
 beside its `template`. List filter members `modes` and `scopes` match them.
@@ -86,15 +88,23 @@ its agent or with its dependency template's compartment (`postgres compartments 
 
 ## What starts or holds a tool's container
 
-| trigger | standalone, image says `lazy` | standalone, image says `eager` | dependency |
-|---|---|---|---|
-| `create` | nothing | nothing | (no create) |
-| attach to an agent or template | nothing | started and kept up | (declared by registration: deployed at the agent's start) |
-| attached agent begins a loop | started | already up | already up; a shared lazy one (scope `template`) is started |
-| `connect` exchange | started, held while open | held while open | (no connect) |
-| `exec`, `terminal`, `frontend` | started, held while running | already up or started | must already run |
-| `filetree`, `download`, `upload`, `transfer` | started, stopped after | used as it runs, or started and stopped after | must already run |
-| nothing using it for `idle_seconds` | stopped | retired only once nothing is attached and no connect is open | lazy `instance`: stopped with its agent; lazy `template`: stopped; eager: retired once no agent is attached |
+| trigger | what it does to the tool's container |
+|---|---|
+| `create` | nothing |
+| attach to an agent or template | `lazy`: nothing. `eager`: deployed, and held while attached |
+| an agent it is served to starts (attached, or declared by its program) | deployed, with every other tool that agent is served; held while the agent is starting. A tool that cannot be deployed fails that agent's start. `eager`: held as well while attached or declared |
+| a message is on its way into an agent it is served to | brought back if it had gone down (failing the message if it cannot be); held until the agent is active |
+| an agent it is served to is active | held |
+| an MCP exchange into it | deployed; held while in flight |
+| `standalone-tools connect` | deployed; held while the scope is open |
+| `exec`, `terminal`, `frontend`, `api` | deployed; held while it runs |
+| `filetree`, `download`, `upload`, `transfer` | deployed; held while in progress |
+| a scope the tool itself has open on the daemon | held while open |
+| nothing holding it for `idle_seconds` | undeployed |
+
+Every row applies to standalone and dependency tools alike (a dependency tool has no `create`, attach or
+`connect`). A dependency tool that mounts its agent's files brings its agent's container up with it and
+holds it up. None of these makes a tool `active`: only an unanswered call or read does.
 
 ## Grants by leaf
 
@@ -102,12 +112,12 @@ its agent or with its dependency template's compartment (`postgres compartments 
 |---|---|
 | `standalone-tools templates create` / `get` / `list` / `delete` / `tag` / `untag` | the same action over `standalone_tools_templates`; a `get` or `list` with `"arguments": true` also needs `arguments` |
 | `standalone-tools create` | `create` over `standalone_tools`; plus `mount` over each volume named |
-| `get`, `list`, `edit`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `connect` | the same action over `standalone_tools` |
+| `get`, `list`, `edit`, `delete`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `api`, `connect` | the same action over `standalone_tools` |
 | `exec`, `terminal` | `exec` |
 | `attach-agent-instance`, `detach-agent-instance` | `attach` / `detach` over the tool and `edit` over the agent |
 | `attach-agent-template`, `detach-agent-template` | `attach` / `detach` over the tool and `attach` over the agent template |
 | reading a tool's log | `logs` over the tool |
-| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend` | the same action over `dependency_tools` (there is no making action: registrations make them); a `get` or `list` with `"arguments": true` also needs `arguments` |
+| `dependency-tools get`, `list`, `tag`, `untag`, `download`, `upload`, `transfer`, `filetree`, `frontend`, `api` | the same action over `dependency_tools` (there is no making action: registrations make them); a `get` or `list` with `"arguments": true` also needs `arguments` |
 | `dependency-tools exec`, `terminal` | `exec` over `dependency_tools` |
 | a transfer's destination | `upload` over the agent, tool, dependency tool or volume it lands in |
 

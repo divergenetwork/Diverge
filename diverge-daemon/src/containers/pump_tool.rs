@@ -12,8 +12,9 @@ use super::{Ended, ToolRun, stop, tool_log};
 use crate::daemon::Daemon;
 
 /// Read the run's stream to its end: the proxy's `Active`, which
-/// brackets the exchanges in flight there, is a use of the tool — the
-/// daemon's own count of what is in flight is what holds the run up;
+/// brackets the exchanges in flight there, is a use of the tool and
+/// no hold — the daemon's own counts are what hold the run up, as
+/// [`idle_tool`](super::idle_tool) states;
 /// its `Inactive` is a use as well; and the stream's end or error the run over —
 /// [`ended_tool`](stop::ended_tool), in a task of its own, which
 /// releases what it holds — told as the end it was unless whoever

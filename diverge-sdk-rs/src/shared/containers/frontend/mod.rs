@@ -1,9 +1,10 @@
 //! A program's frontend: its own HTTP server, beneath `/frontend`.
 //!
-//! A tool or an agent container's program is one HTTP server on the container's
-//! loopback (see [`port`](crate::container_proxy::inside::port)); an
-//! image whose `/.diverge/DIVERGE.md` declares `frontend` serves pages there
-//! beneath `/frontend`. One exchange is one HTTP request: its
+//! A tool container's program is one HTTP server on the container's
+//! loopback (see [`port`](crate::container_proxy::inside::port)); a
+//! tool's image whose `/.diverge/DIVERGE.md` declares `frontend` serves pages there
+//! beneath `/frontend`. An agent's image declares none, and an agent
+//! container is asked for none. One exchange is one HTTP request: its
 //! [`request::Head`], then its body; the answer is its
 //! [`output`] — the response's head, then its body.
 //!

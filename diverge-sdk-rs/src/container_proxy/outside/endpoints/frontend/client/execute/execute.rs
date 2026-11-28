@@ -14,6 +14,14 @@ pub async fn execute(handle: &Handle, head: frontend::request::Head) -> Result<(
     request::Frame(head)
         .encode(&mut Writer::new(&mut payload))
         .map_err(ExecuteError::Request)?;
-    let scope = handle.send_request(&payload).await.map_err(ExecuteError::Send)?;
+    open(handle, &payload).await
+}
+
+/// Open the scope `payload` opens — a frontend request's, or an
+/// [API request](super::super::super::api)'s, which is one beneath
+/// another prefix and under another tag: the answer as a stream, and
+/// the handle that writes.
+pub(crate) async fn open(handle: &Handle, payload: &[u8]) -> Result<(ExecuteStream, ExecuteHandle), ExecuteError> {
+    let scope = handle.send_request(payload).await.map_err(ExecuteError::Send)?;
     Ok((ExecuteStream::new(scope.response_receiver), ExecuteHandle::new(handle.clone(), scope.scope)))
 }

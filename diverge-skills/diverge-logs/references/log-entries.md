@@ -20,10 +20,26 @@ Only the daemon writes these. A log reads `deployed`, zero or more `active … i
 
 | `type` | When | Members |
 |---|---|---|
-| `deployed` | The container is up on a provider. Before anything the run does. | `identity`: the provider, `{"issuer":…,"subject":…}` |
-| `active` | The run began working. Agent: a loop runs in it, or an MCP exchange is in flight for it (its own, a dependency's, or one run as it through `agents connect`). Tool: an ask came in while none was in flight. Kept only on a change. | none |
-| `inactive` | The run ceased working. Never kept after `undeployed`. The idle clock (`idle_seconds`) runs from here. | none |
+| `deployed` | The container is up on a provider. Before anything the run does. | `identity`: the provider, `{"issuer":…,"subject":…}`; `cause`: what deployed it (below) |
+| `active` | The run began working. Agent: a loop runs in it, or an MCP exchange its own container asked for is in flight. An exchange run as it through `agents connect` is neither. Tool: an ask came in while none was in flight. Kept only on a change. | none |
+| `inactive` | The run ceased working. Never kept after `undeployed`. The idle clock (`idle_seconds`) runs from here, unless something else still holds the container. | none |
 | `undeployed` | The container is down, however it went down. | `identity` (the provider), `interrupted` (true if it was working; an `inactive` then precedes this), `reason` (only when unexpected) |
+
+`deployed.cause`, always present: the one thing that found the container down and started it. What
+uses the container afterwards is not recorded.
+
+| `cause` | Whose | Meaning |
+|---|---|---|
+| `message` | agent | A message for the agent, which starts a loop. |
+| `connect` | agent, tool | A connect scope opening: `agents connect` on an agent, `standalone-tools connect` on a standalone tool. Also, for a tool an agent is served, an exchange run as that agent on an `agents connect` scope that found the tool down. |
+| `registration` | dependency tool | An agent's container started and its program declared the tool, of either scope, lazy or eager. |
+| `agent_deployed` | standalone or connected tool | An agent the tool is attached to was deployed: every tool an agent is served is deployed with it. A dependency tool the agent's program declared says `registration`. |
+| `agent_active` | tool | The tool had gone down while an agent it is served to stayed up, and was brought back for that agent: before a message was delivered to it, or by an exchange of its own container that found the tool down. |
+| `attachment` | eager tool | An agent came to be attached to it. |
+| `restart` | eager tool | Still held, it was started again: after its container ended, or at the daemon's start. |
+| `dependency_tool` | agent | A dependency tool that mounts the agent's files was deployed while the agent's container was down. |
+| `download`, `upload`, `transfer`, `filetree`, `exec`, `terminal` | agent, tool | That request into the container. A transfer's destination says `transfer`. |
+| `frontend`, `api` | tool | That request into the tool's program. |
 
 `undeployed.reason`, present only for an end nobody asked for:
 
@@ -38,8 +54,8 @@ Only the daemon writes these. A log reads `deployed`, zero or more `active … i
 | `exited` | The container exited on its own. |
 | `failed` | The run's stream failed; the `error` entry kept just before says how. |
 
-No `reason` means the run was taken down on purpose: gone idle, its record deleted, or (a dependency
-service) retired. A run that never came up keeps an `error` and no `deployed`. Work cut short because a
+No `reason` means the run was taken down on purpose: gone idle with nothing holding it, or its record
+deleted. A run that never came up keeps an `error` and no `deployed`. Work cut short because a
 connection under it went is not an `inactive`: the run stays `active` until proven alive or until its
 `undeployed` says `interrupted`.
 
@@ -80,6 +96,7 @@ connection):
 | `usage` | Token usage so far. | `prompt_tokens`, `completion_tokens`, `total_tokens` |
 | `notification` | Something about the run itself. | `message`, `is_fatal` |
 | `error` | The run that would not start, or the message the agent refused, in the words the daemon received. | `error`: an arbitrary JSON value |
+| `command` | A request the agent's own container put to the daemon. Makes the agent neither active nor inactive. | `path`, `request`, `allowed` |
 
 - The six assistant types and `tool_response` may carry `parent_tool_call_id`: absent, the main thread;
   present, the `id` of the tool call whose sub-agent produced the entry.
@@ -120,7 +137,7 @@ The daemon's own record of every exchange it routed into the tool; never the too
 
 | `type` | Members |
 |---|---|
-| `command` | `path`: the request as the daemon names it (`agents/message`, `roles/create`, `logs`); `request`: the body as sent, `relay` and all, with what may hold a credential replaced by `"[redacted]"` (the `arguments` of an `agents/templates/create` or `standalone_tools/templates/create`, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
+| `command` | `path`: the request as the daemon names it (`agents/message`, `roles/create`, `logs`); `request`: the body as sent, `relay` and all, with what may hold a credential replaced by `"[redacted]"` (the `arguments` of an `agents/templates/create` or `standalone_tools/templates/create`, every value of an `exec`'s `env`, every header's value of a tool's `frontend` or `api` request, a login's password); `allowed`: `false` exactly when the daemon answered `forbidden` |
 
 - One entry per request. Channels opened inside a request (a cancel, a disconnect, a connect's MCP
   exchanges) are not commands.
@@ -129,7 +146,8 @@ The daemon's own record of every exchange it routed into the tool; never the too
 - A request the daemon could not read is not kept.
 - An account's log is read with the `logs` grant over accounts reaching that account. An administrator
   with no account has its log under `{"type":"admin",…}`, read by administrators only.
-- A tool container's own requests are in that tool's log as `command` entries, not here.
+- A container's own requests are in its own log as `command` entries, not here: a tool's in the tool log,
+  an agent's in the agent log.
 
 ## Type names accepted by the `type` filter
 

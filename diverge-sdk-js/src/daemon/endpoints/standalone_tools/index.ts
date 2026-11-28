@@ -4,7 +4,11 @@
 // template and run as a container. Another daemon's tool, held here,
 // is a `connected_standalone_tools` one. Agents reach it attached — directly, or by their
 // template — and a client reaches it through a connect, a scope
-// held open on which the MCP exchanges ride as channels.
+// held open on which the MCP exchanges ride as channels. It is
+// deployed by the first thing that uses it — the start of an agent it
+// is attached to among them, which deploys every tool the agent is
+// served and fails where one cannot be — and held while such an agent
+// is being started, has a message on its way or is active.
 
 export * as create from "./create/index.js";
 export * as get from "./get/index.js";
@@ -22,6 +26,7 @@ export * as upload from "./upload/index.js";
 export * as transfer from "./transfer/index.js";
 export * as exec from "./exec/index.js";
 export * as frontend from "./frontend/index.js";
+export * as api from "./api/index.js";
 export * as terminal from "./terminal/index.js";
 export * as filetree from "./filetree/index.js";
 export * as connect from "./connect/index.js";

@@ -27,7 +27,7 @@ use tokio::task::AbortHandle;
 use super::fuse::Mounts;
 use super::lifecycle::{End, RunLog};
 use super::mcp::{Context, Served};
-use super::{ConnectionId, Frames, Inflight, Key, ToolKey, Use};
+use super::{ConnectionId, Frames, Guard, Holding, Holds, Inflight, Key, ToolKey, Use};
 use crate::content::Pieces;
 use crate::daemon::Daemon;
 use crate::store::dependency_tools::DependencyTool;
@@ -54,14 +54,29 @@ pub struct AgentRun {
     pub handle: AgentHandle,
     /// Whether a loop runs in it now, as the proxy's two words say.
     pub loop_active: watch::Sender<bool>,
-    /// The MCP exchanges in flight for it: its own, and its
-    /// dependencies'. The other thing that makes it active.
+    /// How many `inactive`s the run's pump has read: one more at each,
+    /// counted before the messages are swept. What tells a message
+    /// marked delivered whether a loop has ended since it was taken:
+    /// rule 5 of [`Message`].
+    pub inactives: watch::Sender<u64>,
+    /// The MCP exchanges in flight for it: those its own container
+    /// asked for, counted by its answerer, and no other — one run as
+    /// it on an `agents connect` scope is not counted here. The other
+    /// thing that makes it active.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress on it — a filetree watch, a download,
-    /// an upload, a transfer — each holding the run up for its length,
-    /// as `inflight` does, but no work: they make it neither active nor
-    /// busy. What the idle clock waits on, beside `inflight`.
+    /// The uses in progress on it — a filetree watch, a download, an
+    /// upload, a transfer, a command, a terminal,
+    /// an `agents connect` scope open on it,
+    /// and a dependency tool of its own that mounts its files, for as
+    /// long as that tool's run is up — each holding the run up for its
+    /// length, as `inflight` does, but no work: they make it neither
+    /// active nor busy. What the idle clock waits on, beside
+    /// `inflight`.
     pub files: Arc<Inflight>,
+    /// The scopes its own program has open on its daemon connections,
+    /// counted by its answerer: each holds the run up for its life,
+    /// as a use does, and makes it neither active nor busy.
+    pub scopes: Arc<Inflight>,
     /// When it was last used; what the idle clock runs from.
     pub touched: watch::Sender<Instant>,
     /// What it mounts, served by the daemon.
@@ -71,15 +86,31 @@ pub struct AgentRun {
     pub volumes: Vec<reference::Volume>,
     /// The tools it is served: attached ones and its dependencies.
     pub served: Arc<Mutex<Served>>,
+    /// The hold it has on every tool it is served, while it is in
+    /// setup past its registration, has a message on its way or is
+    /// active, and its setup's count: made with the start, and shared
+    /// with its answerer, since the hold begins at the registration,
+    /// before the run is made — see [`Holding`].
+    pub holding: Arc<Holding>,
+    /// The setup's count of a start made for a message, from the
+    /// start's end until the agent's outbox pump has entered `pending`
+    /// for the message, which takes it: so the tools the setup
+    /// deployed are held from the registration to the loop with no
+    /// moment between. `None` for a start made for anything else,
+    /// whose setup's count is dropped at the start's end.
+    pub arrival: Mutex<Option<Guard>>,
     /// The messages enqueued and not yet swept, by key, with who sent
     /// each: what a user part is logged as. See [`Message`] for when
     /// one leaves.
     pub messages: Arc<Mutex<HashMap<String, Message>>>,
-    /// The requests on their way to the run: entered by the agent's
+    /// The messages on their way into the run: entered by the agent's
     /// outbox pump each turn, once it has the run and before it
     /// sends to it, and left when every request of that turn is
-    /// answered; several turns may hold it at once — see
-    /// [`message`](super::message). What the idle clock waits on.
+    /// answered; and entered once more for each message taken, until
+    /// the message is echoed — rule 5 of [`Message`]. Several turns
+    /// may hold it at once — see [`message`](super::message). What
+    /// the idle clock waits on, and one of the three things the agent
+    /// holds its tools by.
     pub pending: Arc<Inflight>,
     /// Whether the daemon is ending the run, under one lock for the
     /// idle clock's last look and the outbox pump's: see [`Gate`].
@@ -154,6 +185,22 @@ pub struct Gate {
 ///    run, whose end empties the map — drops it unsaid, and the
 ///    message is echoed no more: an item under a key the map does not
 ///    hold is kept as any other chunk, with no sender.
+/// 5. **It is on its way until it is echoed.** Each entry counts once
+///    in the run's `pending` — `arriving` — from the moment it is
+///    made. A message's fate is said on one stream and its loop's
+///    beginning on another, in no order the daemon can go by, so the
+///    turn's own count may be let go before the daemon has heard the
+///    loop the message started begin; the echo is on the stream the
+///    loop's beginning is on, after it. So the count is let go when
+///    the echo is taken, by which time the agent is active; or, for a
+///    program that echoes nothing, once the message is delivered and
+///    an `inactive` has been read since it was taken — at that
+///    `inactive` where the message was marked delivered first, and at
+///    the mark where the `inactive` was read first, which `inactives`
+///    tells; or with the entry, however it leaves. So an echoed
+///    message holds the agent's tools from the moment it is taken to
+///    its loop with no moment between, and no message holds them past
+///    the end of a loop it could have been taken by.
 #[derive(Debug)]
 pub struct Message {
     /// Who sent it.
@@ -164,12 +211,28 @@ pub struct Message {
     pub swept: bool,
     /// Where its echo is said, until it is: rule 4.
     pub echo: Option<oneshot::Sender<u64>>,
+    /// Its count in the run's `pending`, until it is echoed: rule 5.
+    pub arriving: Option<Guard>,
+    /// The run's `inactives` when the entry was made: rule 5.
+    pub inactives: u64,
 }
 
 impl Message {
-    /// A message just enqueued: rule 1.
-    pub fn new(sender: Creator, echo: oneshot::Sender<u64>) -> Self {
-        Message { sender, delivered: false, swept: false, echo: Some(echo) }
+    /// A message just enqueued — rule 1 — on its way from now:
+    /// `arriving` is its count in the run's `pending`, and `inactives`
+    /// the run's count of them as of now, rule 5.
+    pub fn new(sender: Creator, echo: oneshot::Sender<u64>, arriving: Guard, inactives: u64) -> Self {
+        Message { sender, delivered: false, swept: false, echo: Some(echo), arriving: Some(arriving), inactives }
+    }
+
+    /// The message was delivered: rule 3's mark, and by rule 5 on its
+    /// way no more where an `inactive` has been read since it was
+    /// taken — `inactives` being the run's count now.
+    pub fn delivered(&mut self, inactives: u64) {
+        self.delivered = true;
+        if inactives > self.inactives {
+            self.arriving = None;
+        }
     }
 }
 
@@ -225,15 +288,24 @@ impl AgentRun {
         taken
     }
     /// Rule 3 of [`Message`], at an `inactive`: every delivered entry
-    /// marked at an earlier one removed, and the delivered rest marked.
+    /// marked at an earlier one removed, and the delivered rest marked
+    /// — and, by rule 5, on their way no more.
     pub async fn sweep_messages(&self) {
         let mut messages = self.messages.lock().await;
         messages.retain(|_, message| !(message.delivered && message.swept));
         for message in messages.values_mut() {
             if message.delivered {
                 message.swept = true;
+                message.arriving = None;
             }
         }
+    }
+
+    /// Whether the agent holds the tools it is served now: it is in
+    /// setup past its registration, a message is on its way into it,
+    /// or it is active — rule 1 of [`Holding`]. Exactly those three.
+    pub fn holds_tools(&self) -> bool {
+        self.holding.setup.is_busy() || self.pending.is_busy() || self.is_active()
     }
 
     /// The container was used: the idle clock starts over.
@@ -270,15 +342,19 @@ impl AgentRun {
     }
 
     /// Whether the agent is active now: a loop runs in it, or an MCP
-    /// exchange is in flight for it or for one of its dependencies.
-    /// Exactly those two, and nothing else.
+    /// exchange its own container asked for is in flight. Exactly
+    /// those two, and nothing else: no use of its container, and no
+    /// exchange run as it on an `agents connect` scope.
     pub fn is_active(&self) -> bool {
         *self.loop_active.borrow() || self.inflight.is_busy()
     }
 
     /// The merge's context for the agent: its tools, its caller and
     /// its sender — what its own container's exchanges are answered
-    /// with, and what an exchange run as the agent is answered with.
+    /// with, and what an exchange run as the agent is answered with —
+    /// deploying a served tool that its own exchange finds down as
+    /// the agent active does; an exchange run as the agent sets the
+    /// cause its own.
     pub fn context(&self, daemon: &Arc<Daemon>) -> Context {
         Context {
             daemon: Arc::clone(daemon),
@@ -286,6 +362,7 @@ impl AgentRun {
             caller: Some(self.attestation.clone()),
             sender: self.sender.clone(),
             served: Arc::clone(&self.served),
+            cause: diverge_sdk::daemon::lifecycle::Cause::AgentActive,
         }
     }
 }
@@ -456,16 +533,20 @@ impl ToolHandle {
         }
     }
 
-    /// One HTTP request to the program's frontend; as
-    /// [`Opened::frontend`](super::Opened::frontend). A connected tool's
-    /// is on the other daemon: [`CONNECTED_FILES`].
-    pub async fn frontend<S>(&self, head: diverge_sdk::shared::containers::frontend::request::Head, body: S) -> Result<(super::FrontendFrames, u32), String>
+    /// One HTTP request through `door` to the program — its frontend
+    /// or its API; as [`Opened::door`](super::Opened::door). A
+    /// connected tool's is on the other daemon: [`CONNECTED_FILES`].
+    pub async fn door<S>(&self, door: super::Door, head: diverge_sdk::shared::containers::frontend::request::Head, body: S) -> Result<(super::DoorFrames, u32), String>
     where
         S: Stream<Item = Result<Bytes, std::convert::Infallible>> + Send + 'static,
     {
         match self {
             ToolHandle::Run(handle) => {
-                let (stream, write_id) = handle.frontend(head, body).await.map_err(|error| error.to_string())?;
+                let (stream, write_id) = match door {
+                    super::Door::Frontend => handle.frontend(head, body).await,
+                    super::Door::Api => handle.api(head, body).await,
+                }
+                .map_err(|error| error.to_string())?;
                 let stream = stream.take_while(|frame| std::future::ready(!matches!(frame, Err(diverge_sdk::provider::endpoints::containers::client::ChannelStreamError::Closed))));
                 Ok((Box::pin(stream.map(|frame| frame.map_err(|error| error.to_string()))), write_id))
             }
@@ -473,7 +554,8 @@ impl ToolHandle {
         }
     }
 
-    /// Take back a frontend request's body, asked for or not.
+    /// Take back the body of a request through a door, asked for or
+    /// not.
     pub async fn forget(&self, write_id: u32) {
         if let ToolHandle::Run(handle) = self {
             handle.forget(write_id).await;
@@ -617,11 +699,10 @@ impl std::fmt::Display for AskError {
     }
 }
 
-/// A running tool: the scope held on it, what holds it up — the
-/// connect scopes on it and the exchanges in flight into it — and what
-/// it mounts: a record's container, a connected tool's connection, or
-/// a dependency tool's container, a lazy one's for its agent's
-/// run or one run of an eager tool's.
+/// A running tool: the scope held on it, what holds it up — see
+/// [`idle_tool`](super::idle_tool), which states every hold — and
+/// what it mounts: a record's container, a connected tool's
+/// connection, or a dependency tool's container.
 pub struct ToolRun {
     /// The record, or the dependency tool's row.
     pub id: ToolKey,
@@ -641,25 +722,40 @@ pub struct ToolRun {
     pub handle: ToolHandle,
     /// Whether the tool is an eager tool: a tool on record whose template's
     /// mode is, or a dependency tool whose template is. An eager tool is
-    /// held by its attachments and its connect scopes and retired by
-    /// its clock, never stopped for want of use.
+    /// held, beside everything that holds any tool, by its
+    /// attachments, and started again while they hold it.
     pub eager: bool,
     /// The connect scopes other daemons hold on it now: each a real
     /// connection, holding the run up for the scope's life.
     pub connections: Mutex<HashSet<ConnectionId>>,
     /// Whether a connect scope holds it now: `true` while
-    /// `connections` is not empty, kept in step under their lock. What
-    /// the idle clock waits on, beside what is in flight.
+    /// `connections` is not empty, kept in step under their lock. One
+    /// of the holds the idle clock waits on.
     pub held: watch::Sender<bool>,
-    /// The exchanges in flight into it — an agent's MCP ask, a connect
-    /// scope's, a file operation — each a real use, holding the run up
-    /// until it is answered, however it ends. What a detach mid-call
-    /// leaves standing: the call is answered still.
+    /// What holds it from outside the run: the agents it is served to
+    /// that hold their tools now, and an eager tool's attachments — the tool's one
+    /// [`Holds`], which outlives the run.
+    pub holds: Arc<Holds>,
+    /// The scopes its own program has open on its daemon connections,
+    /// each holding the run up from its opening to its end: counted
+    /// by the run's answerer, which serves those connections — see
+    /// [`client`](crate::serve::client).
+    pub scopes: Arc<Inflight>,
+    /// The use it holds on its agent's run, where it mounts its
+    /// agent's files: taken when the run is made and let go when it is
+    /// down, so the agent's container is up for as long as this one
+    /// is. `None` for a tool that mounts nothing of an agent's.
+    pub agent: Mutex<Option<Use>>,
+    /// The MCP exchanges in flight into it — an agent's ask, a connect
+    /// scope's — each a real use, holding the run up until it is
+    /// answered, however it ends. What a detach mid-call leaves
+    /// standing: the call is answered still.
     pub inflight: Arc<Inflight>,
-    /// The file uses in progress on it — a filetree watch, a download,
-    /// an upload, a transfer — each holding the run up for its length,
-    /// as `inflight` does, but no work: they make it neither active nor
-    /// busy. What the idle clock waits on, beside `inflight`.
+    /// The uses in progress on it — a filetree watch, a download, an
+    /// upload, a transfer, a command, a terminal, a frontend request,
+    /// an API request —
+    /// each holding the run up for its length, as `inflight` does, but
+    /// no work: they make it neither active nor busy.
     pub files: Arc<Inflight>,
     /// When it was last used.
     pub touched: watch::Sender<Instant>,
@@ -675,7 +771,7 @@ pub struct ToolRun {
     /// two editors adding mounts are served one after the other.
     pub edits: Mutex<()>,
     /// The tasks that are the run's: the pump — a connected tool's
-    /// waiter — and a lazy tool's idle clock.
+    /// waiter — and the idle clock.
     pub tasks: Mutex<Vec<AbortHandle>>,
     /// What it is as a dependency tool, when it is one: the row, as
     /// it was when this run started.
@@ -722,16 +818,6 @@ impl ToolRun {
     /// up until the last clone is dropped, which touches it.
     pub fn file_use(&self) -> Arc<Use> {
         Arc::new(self.files.enter_use(self.touched.clone()))
-    }
-
-    /// Whether anything holds the run up: a connect scope another
-    /// daemon holds on it, or an exchange in flight into it. Exactly
-    /// those two — an attachment holds nothing, and an agent merely
-    /// mid-loop nothing — and a lazy tool's idle clock ends the
-    /// run `idle_seconds` after both last became false. Asked under
-    /// the connections lock by whoever lets go of a scope.
-    pub fn held_now(&self, connections: &HashSet<ConnectionId>) -> bool {
-        !connections.is_empty() || self.inflight.is_busy()
     }
 
     /// Attest `meta` as this tool's: the daemon's own word on

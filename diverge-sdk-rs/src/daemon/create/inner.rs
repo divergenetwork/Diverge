@@ -6,9 +6,8 @@ use crate::daemon::endpoints::agents::create::client::request::{FuseMount, Provi
 
 /// Everything a container is made of that its template does not say and
 /// its name is not: the template, the
-/// provider pin and its volumes, the FUSE mounts. The account is a
-/// tool's alone, on its own create:
-/// an agent container holds none and asks the daemon nothing.
+/// provider pin and its volumes, the FUSE mounts. No account is
+/// among them: no container holds one.
 /// Flattened into an
 /// [agent's](crate::daemon::endpoints::agents::create) and a
 /// [tool's](crate::daemon::endpoints::standalone_tools::create) create, so its

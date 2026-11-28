@@ -19,7 +19,7 @@ use diverge_sdk::container_proxy::outside::endpoints::fuse::mount::client::execu
 use diverge_sdk::wire::decode::Decode as _;
 use crate::protocol::endpoints::containers::run::begin::{Begin, Begun};
 use crate::protocol::endpoints::containers::run::family::{Family, Opened, Runs};
-use crate::protocol::endpoints::containers::run::own::{Own, Unasked};
+use crate::protocol::endpoints::containers::run::own::Own;
 use crate::protocol::endpoints::containers::run::run::Run;
 use crate::protocol::endpoints::containers::run::serve::tool;
 use crate::protocol::endpoints::containers::run::setup::registered;
@@ -66,6 +66,7 @@ impl Family for Tools {
             channel_request::Frame::TerminalResize(resize) => Opened::TerminalResize(resize.id, diverge_sdk::shared::containers::terminal::open::Open { cols: resize.cols, rows: resize.rows }),
             channel_request::Frame::TerminalClose(id) => Opened::TerminalClose(id.id),
             channel_request::Frame::Frontend(request) => Opened::Frontend(request),
+            channel_request::Frame::Api(request) => Opened::Api(request),
             channel_request::Frame::McpListTools(request) => Opened::Exchange(tool::Exchange::ListTools(request)),
             channel_request::Frame::McpListResources(request) => {
                 Opened::Exchange(tool::Exchange::ListResources(request))
@@ -137,10 +138,10 @@ impl Family for Tools {
 impl Runs for Tools {
     type Ask<'a> = ask::Frame<'a>;
 
-    fn begin(proxy: &Handle, arguments: Value, template: String, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
+    fn begin(proxy: &Handle, arguments: Value, template: String, which: shared::containers::request::Which, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
         let proxy = proxy.clone();
         async move {
-            match begin::execute(&proxy, arguments, template, image).await {
+            match begin::execute(&proxy, arguments, template, which, image).await {
                 Ok((handle, asks, events, registered)) => Ok(Begun {
                     begin: Begin::Tools(handle),
                     asks,
@@ -259,11 +260,9 @@ fn fuse<'a>(id: &'a str, ask: &'a MountAsk) -> ask::Frame<'a> {
 
 /// Every own ask as this family's frame: a tool container's wire has
 /// a frame for each.
-impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
-    type Error = Unasked;
-
-    fn try_from(own: Own<'a>) -> Result<Self, Unasked> {
-        Ok(match own {
+impl<'a> From<Own<'a>> for ask::Frame<'a> {
+    fn from(own: Own<'a>) -> Self {
+        match own {
             Own::OciManifest(digest) => ask::Frame::OciManifest(oci::manifest::request::Request {
                 digest: digest.to_string(),
             }),
@@ -276,6 +275,6 @@ impl<'a> TryFrom<Own<'a>> for ask::Frame<'a> {
             Own::OciProve(request) => ask::Frame::OciProve(request.clone()),
             Own::Daemon(connection_id) => ask::Frame::Daemon(daemon::request::Daemon { connection_id }),
             Own::Postgres(connection_id) => ask::Frame::Postgres(postgres::request::Postgres { connection_id }),
-        })
+        }
     }
 }

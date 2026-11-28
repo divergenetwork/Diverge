@@ -7,6 +7,7 @@ use crate::shared::listing::Keyed;
 use crate::daemon::creator::Creator;
 use crate::daemon::key;
 use crate::daemon::agent_log::Provider;
+use crate::shared::permission::Grant;
 
 /// One agent of the caller's: what the daemon knows of it without
 /// reading its log.
@@ -87,6 +88,13 @@ pub struct Agent {
     /// registered, or declared nothing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<String>,
+    /// What its container declared it may ask of the daemon, at its
+    /// registration when it last started: see [`Grant`]. Declared anew
+    /// at every start, so it changes as the image does. Absent when
+    /// empty — an agent whose container declared none, or has never
+    /// started.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub permissions: Vec<Grant>,
     /// Its tags, sorted bytewise: what
     /// [`tag`](crate::daemon::endpoints::agents::tag) put on it and
     /// [`untag`](crate::daemon::endpoints::agents::untag) has not taken

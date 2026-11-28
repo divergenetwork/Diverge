@@ -103,8 +103,8 @@ function subline(subject: Subject): string {
  * 3. An entity with a log (`subject`) has the logs tab, one with files
  *    (`files`) the filesystem tab, one with a container (an agent, a
  *    standalone tool, a dependency tool — never a connected tool, whose
- *    container is the other daemon's) the console tab, an agent or a tool whose
- *    image declares a frontend (`frontend`) the frontend tab, a daemon
+ *    container is the other daemon's) the console tab, a standalone or a dependency tool whose
+ *    image declares a frontend (`frontend`) the frontend tab — never an agent, which has none — a daemon
  *    (`daemon`) the daemon tab alone, a provider (`capacity`) the
  *    capacity tab alone (`tabsOf`). It opens on
  *    the tab last chosen (`chosen`) if it has it, else on the first it

@@ -9,7 +9,8 @@
 //! answer compared with the request's own `Forbidden`, or the handler's
 //! word that it let the request through before a slow answer. The book
 //! is the requester's ([`Commander`]): an account's, an
-//! administrator's, or the tool's own log for a tool's container.
+//! administrator's, or the container's own log for a tool's container
+//! and for an agent's.
 //!
 //! Its own files are flattened into it, so everything is named through
 //! this module and not through the file it lives in.

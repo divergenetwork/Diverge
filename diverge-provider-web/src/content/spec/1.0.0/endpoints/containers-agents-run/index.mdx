@@ -101,19 +101,20 @@ about the client, which may open any channel at any time.
    server stops the container, and the failure is the run's error.
    The server opens no second connection to a container.
 5. **The server registers the container.** The `Begun` the proxy
-   answers carries the dependencies the container's program declared. The server
+   answers carries the dependencies and the permissions the container's program declared. The server
    mints the id of step 8 first and enters the container among those
    it runs, so that a
    [containers::fuse_serve](/endpoints/containers-fuse-serve/) naming the id is
-   answered from now on. When the list of dependencies is not empty,
+   answered from now on. When the list of dependencies or the list of
+   permissions is not empty,
    the server opens exactly one
    [registration](/endpoints/containers-agents-run/server/registration/) channel on the scope
-   carrying the id and the list verbatim, and reads
+   carrying the id and both lists verbatim, and reads
    the answer to its finish. A deploy lets the run go on.
    An error on the channel, a channel response finish that no
    channel response precedes on it, and a client that is gone
-   are the run's error, and the server stops the container. When the
-   list is empty the server opens no registration channel.
+   are the run's error, and the server stops the container. When
+   both lists are empty the server opens no registration channel.
 6. **The server makes every FUSE mount.** For each entry of
    `fuse_file_mounts`, and after the last of them for each entry of
    `fuse_directory_mounts`, in the order of the request, the server

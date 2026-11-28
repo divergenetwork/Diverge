@@ -10,7 +10,9 @@ import { Agent } from "../../../../../../daemon/reference/agent.js";
  * to it for as long as the scope is open: the container's own
  * filesystem with each FUSE mount's subtree spliced in at its mount
  * point. There is no path to narrow it, since a watch is of the
- * whole container.
+ * whole container. A container that is not running is started for
+ * the watch — with every tool the agent is served, any one of which failing to deploy fails the start and the request with it —
+ * and held up while the scope is open.
  */
 export const Frame = z.object({
   /** The agent: by name, or by template and index. */

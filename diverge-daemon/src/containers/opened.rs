@@ -28,10 +28,42 @@ pub type ExecFrames = Pin<Box<dyn Stream<Item = Result<diverge_sdk::shared::cont
 /// error last.
 pub type TerminalFrames = Pin<Box<dyn Stream<Item = Result<diverge_sdk::shared::containers::terminal::output::Owned, String>> + Send>>;
 
-/// A frontend request's answer, as a file operation's caller reads it:
-/// its head, then its body, until it ended, the container stopped, or
-/// the stream broke, which is the error last.
-pub type FrontendFrames = Pin<Box<dyn Stream<Item = Result<diverge_sdk::shared::containers::frontend::output::Owned, String>> + Send>>;
+/// The answer to a request through one of a tool program's doors, as
+/// a file operation's caller reads it: its head, then its body, until
+/// it ended, the container stopped, or the stream broke, which is the
+/// error last.
+pub type DoorFrames = Pin<Box<dyn Stream<Item = Result<diverge_sdk::shared::containers::frontend::output::Owned, String>> + Send>>;
+
+/// Which of a tool program's two doors a request comes through: the
+/// two are one exchange beneath two prefixes, each declared by its own
+/// member of the image's document and each logged as a cause of its
+/// own. An agent's program has neither.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Door {
+    /// Its frontend: pages for a person, beneath `/frontend`.
+    Frontend,
+    /// Its API: whatever HTTP the program speaks, beneath `/api`.
+    Api,
+}
+
+impl Door {
+    /// Whether `document` declares the door: `frontend`, or `api`.
+    pub fn declared_by(self, document: &diverge_sdk::shared::containers::info::Document) -> bool {
+        match self {
+            Door::Frontend => document.frontend(),
+            Door::Api => document.api(),
+        }
+    }
+
+    /// What a container a request through the door deployed says
+    /// deployed it.
+    pub fn cause(self) -> diverge_sdk::daemon::lifecycle::Cause {
+        match self {
+            Door::Frontend => diverge_sdk::daemon::lifecycle::Cause::Frontend,
+            Door::Api => diverge_sdk::daemon::lifecycle::Cause::Api,
+        }
+    }
+}
 
 /// A container a file operation works on.
 #[derive(Clone)]
@@ -42,8 +74,8 @@ pub enum Opened {
     /// A tool's run, or the connect scope held on another daemon's
     /// tool, whose every file operation answers an error; and, for a
     /// run here, the file use this is, which holds the run up until
-    /// the last clone is dropped — a dependency tool's on its agent's
-    /// run, with which it stops.
+    /// the last clone is dropped — a dependency tool's on its own
+    /// run, as a standalone tool's is.
     Tool(Arc<ToolRun>, Option<Arc<Use>>),
 }
 
@@ -178,27 +210,25 @@ impl Opened {
         }
     }
 
-    /// One HTTP request to the program's frontend, its body `body`'s
-    /// pieces: its answer, and the write id the body is kept under
-    /// until [`forget`](Self::forget).
-    pub async fn frontend<S>(&self, head: diverge_sdk::shared::containers::frontend::request::Head, body: S) -> Result<(FrontendFrames, u32), String>
+    /// One HTTP request through `door` to a tool's program, its body
+    /// `body`'s pieces: its answer, and the write id the body is kept
+    /// under until [`forget`](Self::forget). An agent's program has no
+    /// door, and its run's scope no channel for one: the reason.
+    pub async fn door<S>(&self, door: Door, head: diverge_sdk::shared::containers::frontend::request::Head, body: S) -> Result<(DoorFrames, u32), String>
     where
         S: Stream<Item = Result<Bytes, std::convert::Infallible>> + Send + 'static,
     {
         match self {
-            Opened::Agent(run, _) => {
-                let (stream, write_id) = run.handle.frontend(head, body).await.map_err(|error| error.to_string())?;
-                let stream = stream.take_while(|frame| std::future::ready(!matches!(frame, Err(diverge_sdk::provider::endpoints::containers::client::ChannelStreamError::Closed))));
-                Ok((Box::pin(stream.map(|frame| frame.map_err(|error| error.to_string()))), write_id))
-            }
-            Opened::Tool(run, _) => run.handle.frontend(head, body).await,
+            Opened::Agent(..) => Err("an agent's program serves no frontend and no API".to_string()),
+            Opened::Tool(run, _) => run.handle.door(door, head, body).await,
         }
     }
 
-    /// Take back a frontend request's body, asked for or not.
+    /// Take back the body of a request through a door, asked for or
+    /// not. An agent's run keeps none.
     pub async fn forget(&self, write_id: u32) {
         match self {
-            Opened::Agent(run, _) => run.handle.forget(write_id).await,
+            Opened::Agent(..) => {}
             Opened::Tool(run, _) => run.handle.forget(write_id).await,
         }
     }

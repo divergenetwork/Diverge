@@ -50,7 +50,7 @@ async fn serve(scope: &ScopeHandle, frame: request::Frame, who: Who, daemon: &Ar
         return Ok(());
     }
     scope.allowed().await;
-    let opened = match files::open_tool(daemon, &tool).await {
+    let opened = match files::open_tool(daemon, &tool, diverge_sdk::daemon::lifecycle::Cause::Filetree).await {
         Ok(opened) => opened,
         Err(error) => {
             reply::reply(scope, &Frame::Error(reply::failure(&error))).await;

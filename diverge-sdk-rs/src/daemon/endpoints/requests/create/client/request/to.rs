@@ -11,22 +11,23 @@ use crate::daemon::reference;
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum To {
-    /// Every account and every tool the caller's `request` grants
-    /// reach, and no other.
+    /// Every account, every agent and every tool the caller's
+    /// `request` grants reach, and no other.
     All,
-    /// The accounts and tools named: see [`Only`].
+    /// The accounts, agents and tools named: see [`Only`].
     Only(Only),
 }
 
-/// The accounts and tools a request is made of, each named by itself
-/// or by a tag. The rules:
+/// The accounts, agents and tools a request is made of, each named by
+/// itself or by a tag. The rules:
 ///
 /// 1. **Any of them.** A party is addressed where any member names
 ///    it: by itself, or by a tag it carries.
 /// 2. **A kind's tags are that kind's.** `account_tags` name accounts
-///    and nothing else, `standalone_tool_tags` standalone tools,
-///    `dependency_tool_tags` dependency tools: a tag an account and a
-///    tool both carry addresses each only through its own member.
+///    and nothing else, `agent_tags` agents, `standalone_tool_tags`
+///    standalone tools, `dependency_tool_tags` dependency tools: a tag
+///    an account and a tool both carry addresses each only through its
+///    own member.
 /// 3. **A tag names every record that carries it**, those that come to
 ///    carry it after the create included, for as long as the request
 ///    is pending.
@@ -47,6 +48,12 @@ pub struct Only {
     /// Every account that carries any of these tags.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub account_tags: Vec<String>,
+    /// Agents, each by its name, or its template and index.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agents: Vec<reference::Agent>,
+    /// Every agent that carries any of these tags.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agent_tags: Vec<String>,
     /// Standalone tools, each by its name, or its template and index.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub standalone_tools: Vec<reference::Tool>,

@@ -2,10 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-/// The agent began working: a loop runs in it, or an MCP exchange is
-/// in flight for it — its container's own, a dependency's, or one run
-/// as it through `agents connect`. `type` is the string `active`, and
-/// nothing lies beside it.
+/// The agent began working: a loop runs in it, or an MCP exchange
+/// its own container asked for is in flight. An exchange run as it
+/// through `agents connect` is neither. `type` is the string
+/// `active`, and nothing lies beside it.
 ///
 /// Kept only between the run's [`Deployed`](super::Deployed) and its
 /// [`Undeployed`](super::Undeployed), and only on a change — see

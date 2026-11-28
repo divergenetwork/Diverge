@@ -20,7 +20,7 @@
 //! declared it, and a tool it declared before and not again is its
 //! dependency no more. A tool outlives the registrations. An instance
 //! tool goes with its agent's delete, its `instance` compartment with
-//! it; no request here deletes a tool, and what removes a template's
+//! it, and the agent's delete is refused while such a tool is active; no request here deletes a tool, and what removes a template's
 //! every tool, the template-scoped one among them, is the delete of the
 //! dependency template's
 //! [compartment](crate::daemon::endpoints::postgres::compartments::delete).
@@ -33,9 +33,12 @@
 //!
 //! # The run
 //!
-//! A tool has at most one run: a lazy tool's container, while it is
-//! used — for the `instance` scope, while its agent's container runs —
-//! and an eager tool's, while the daemon keeps it up.
+//! A tool has at most one run: a lazy tool's container, while
+//! something holds it, and an eager tool's, while the daemon keeps it
+//! up. Every tool an agent's program declares, of either scope, is
+//! deployed when the agent's container starts — one that cannot be
+//! fails the agent's start — and is held while that agent is being
+//! started, has a message on its way or is active.
 //! It is listed on the tool, by where it runs, and nowhere else —
 //! never among the [`standalone_tools`](super::standalone_tools), whose
 //! endpoints find no dependency tool. A tool is named by its template
@@ -45,11 +48,13 @@
 //! [`filetree`] watches one whole; [`download`] sends the client a
 //! file or a directory out of it, [`upload`] puts files into it, and
 //! [`transfer`] copies out of it into an agent, a tool, a dependency
-//! tool or a volume, the bytes never reaching the client. Each finds
-//! the tool running or answers `NotFound`, and starts and stops
-//! nothing. [`logs`](super::logs) reads what the daemon kept of every
+//! tool or a volume, the bytes never reaching the client. Each deploys
+//! a tool that is not running, and holds it up while it runs.
+//! [`frontend`] sends one HTTP request to the pages its program
+//! serves, and [`api`] one to the API it serves. [`logs`](super::logs) reads what the daemon kept of every
 //! call and read it routed into one, running or not.
 
+pub mod api;
 pub mod download;
 pub mod exec;
 pub mod filetree;

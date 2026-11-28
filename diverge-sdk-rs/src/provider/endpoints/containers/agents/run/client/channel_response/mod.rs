@@ -6,11 +6,13 @@
 //! provider takes it from there, and [`oci_prove`] proves the caller
 //! holds it; [`write_bytes`] streams the content of a file being
 //! written. The rest answer the CONTAINER, relayed: [`postgres`]
-//! is what its database said, the five `mcp_*` what the caller's MCP servers answered
+//! is what its database said, [`daemon`] the server frames that
+//! answer a frame of its daemon connection, the five `mcp_*` what the caller's MCP servers answered
 //! its tool calls with, and the nine `fuse_*` what the files and
 //! directories it mounted live hold, what an entry of them is, and
 //! whether a change to one took.
 
+pub mod daemon;
 pub mod fuse_list;
 pub mod fuse_mkdir;
 pub mod fuse_read;

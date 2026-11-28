@@ -15,7 +15,7 @@ import { Error } from "../../../../../../shared/error.js";
 export const Frame = z.union([
   /** Everything landed. Tag `0`. */
   z.literal("transferred"),
-  /** No dependency tool is the one named, none runs, or nothing is at the path; nothing landed. Tag `1`. */
+  /** No dependency tool is the one named, or nothing is at the path; nothing landed. Tag `1`. */
   z.literal("not_found"),
   /** The destination names an agent, a tool, a dependency tool or a volume that is none, or a dependency tool that is not running; nothing landed. Tag `2`. */
   z.literal("no_destination"),

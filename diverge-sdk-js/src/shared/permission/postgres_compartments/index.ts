@@ -1,6 +1,6 @@
 // Grants over the database's compartments.
 //
-// What a dependency tool template may ask over the compartments, in
+// What a container's program may ask over the compartments, in
 // the shapes `permission` states: `Over`, the actions over
 // compartments, reaching all, those listed, or by tags; and
 // `Permission`, one grant's worth of that, or of tagging. Nothing here

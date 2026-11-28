@@ -60,6 +60,11 @@ pub struct DependencyTool {
     /// where the frontmatter says so. Absent, `false`.
     #[serde(default, skip_serializing_if = "is_false")]
     pub frontend: bool,
+    /// Whether the program serves an API beneath `/api` (see
+    /// [`api`](crate::shared::containers::api)): `true` only where the
+    /// frontmatter says so. Absent, `false`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub api: bool,
     /// Everything after the closing `---` line, verbatim: leading
     /// blank lines, trailing newline and all.
     pub body: String,

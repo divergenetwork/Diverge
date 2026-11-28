@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use diverge_sdk::daemon::agent_log;
 use diverge_sdk::daemon::command_log::{self, Command};
 use diverge_sdk::daemon::endpoints::ClientRequest;
 use diverge_sdk::daemon::tool_log;
@@ -9,6 +10,7 @@ use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use diverge_sdk::wire::server::verdict::Verdict;
 
 use super::{Commander, body};
+use crate::containers::lifecycle;
 use crate::containers::tool_log as tool_logs;
 use crate::daemon::Daemon;
 use crate::judge::Who;
@@ -53,7 +55,9 @@ pub async fn record(scope: &ScopeHandle, request: &ClientRequest<'_>, payload: &
 
 /// The command into its book, under the book's live lock, which is let
 /// go after, as rule 2 of [`command_log`](crate::daemon::Live::command_log)
-/// states. A log that cannot be written fails nothing it records.
+/// states. A container's goes into its own log, a tool's or an
+/// agent's, as any item that moves nothing in the run's life does. A
+/// log that cannot be written fails nothing it records.
 async fn keep(daemon: &Daemon, commander: Commander, command: Command) {
     match commander {
         Commander::Account(id) => {
@@ -77,5 +81,10 @@ async fn keep(daemon: &Daemon, commander: Commander, command: Command) {
             daemon.live.release_command_log(commander).await;
         }
         Commander::Tool(key) => tool_logs::note(daemon, key, tool_log::Item::Command(command)).await,
+        Commander::Agent(id) => {
+            let log = daemon.live.log(&daemon.store, id).await;
+            let item = agent_log::Item::Command(agent_log::Command { r#type: Default::default(), command });
+            let _ = lifecycle::note(daemon.logs.clone(), id, log, item).await;
+        }
     }
 }

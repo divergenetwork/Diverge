@@ -12,12 +12,12 @@
 //! image is a dependency tool's, and its own
 //! [document](crate::shared::containers::info::Document) says how it
 //! is kept running, how far it is shared, and the memory and the disk it needs. The proxy carries the list on the agents
-//! begin's `Begun`; the
-//! provider carries it to the caller in one
+//! begin's `Begun`, beside the permissions the program declared; the
+//! provider carries both to the caller in one
 //! [`registration`](super::registration) ask on the run scope, and the
 //! caller deploys each before it answers. The run goes on to its id
 //! on a deploy and ends, the container stopped, on anything else. An
-//! agent that declares no dependency is never asked about.
+//! agent that declares no dependency and no permission is never asked about.
 //!
 //! A TOOL container has no dependencies: its program may answer its
 //! registration with a list, and its proxy ignores it; its begin's

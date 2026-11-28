@@ -1,21 +1,25 @@
-//! The MCP calls in flight on an agent: its own, and its dependency
-//! tools'.
+//! A count of what is in progress on a run, watched: the exchanges
+//! in flight for an agent or into a tool, the uses in progress on a
+//! container, the holds on a tool.
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use tokio::sync::watch;
 
-/// How many MCP exchanges are being answered now for one agent — a
-/// list, a call, a read the agent's container asked for, or one of
-/// its dependency tools did — kept as a watch so the idle clock sees
-/// every change. One per agent run, shared with every dependency
-/// deployed for it.
+/// How many of one thing are in progress now, kept as a watch so an
+/// idle clock sees every change. An agent's run has one for the MCP
+/// exchanges being answered for it — a list, a call, a read its
+/// own container asked for, and no other — and one for the uses in
+/// progress on its container; a tool's run has the same two, into it
+/// and on it; and a tool's [`Holds`](super::Holds) have one for the
+/// agents it is served to that hold their tools now, and its run one
+/// for its own open daemon scopes.
 ///
-/// Why it is one of the two things that make an agent active: a loop
-/// that has said its last chunk may still be waiting on a long tool
-/// call, and a tool answering is a tool in use; the agent is not idle
-/// until nothing is in flight.
+/// Why an agent's exchanges are one of the two things that make it
+/// active: a loop that has said its last chunk may still be waiting
+/// on a long tool call, and a tool answering is a tool in use; the
+/// agent is not idle until nothing is in flight.
 #[derive(Debug)]
 pub struct Inflight {
     count: watch::Sender<usize>,
@@ -45,8 +49,10 @@ impl Inflight {
         }
     }
 
-    /// One file use begins — a watch, a download, an upload, a
-    /// transfer on the container — counted in until the [`Use`] is
+    /// One use begins — a watch, a download, an upload, a transfer,
+    /// a command, a terminal on the container, a frontend request or
+    /// an API request on a tool's, or
+    /// a tool's mount of its agent's files — counted in until the [`Use`] is
     /// dropped, which first touches the run through `touched`, so that
     /// its idle clock counts from the use's end.
     pub fn enter_use(self: &Arc<Self>, touched: watch::Sender<Instant>) -> Use {

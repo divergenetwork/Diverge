@@ -27,6 +27,7 @@ mod stream;
 pub mod exec;
 mod upload;
 
+pub mod api;
 pub mod download;
 pub mod exchange;
 pub mod frontend;

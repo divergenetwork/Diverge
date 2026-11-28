@@ -55,8 +55,10 @@ pub enum Frame {
     /// No agent of the caller's is the one named; nothing was deleted.
     /// Tag `1`.
     NotFound,
-    /// The agent is active — a loop is running in it — and was left
-    /// as it is; nothing was deleted. Tag `2`.
+    /// The agent is active — a loop is running in it, or an exchange
+    /// is in flight for it — or a dependency tool it owns is, a call
+    /// or a read that tool was asked still unanswered; it was left
+    /// as it is, and nothing was deleted. Tag `2`.
     Active,
     /// The account the request is served for holds no grant allowing
     /// it; nothing changed. Tag `3`.

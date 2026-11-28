@@ -34,6 +34,7 @@
 //! something that is not a container scope — the proxy inside the
 //! container, whose own channels carry both.
 
+pub mod api;
 pub mod daemon;
 pub mod enqueue;
 pub mod exec;

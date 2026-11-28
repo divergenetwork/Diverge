@@ -19,9 +19,11 @@ mod fuse_mount;
 mod image;
 mod reference;
 mod volume_mount;
+mod which;
 
 pub use container::*;
 pub use fuse_mount::*;
 pub use image::*;
 pub use reference::*;
 pub use volume_mount::*;
+pub use which::*;

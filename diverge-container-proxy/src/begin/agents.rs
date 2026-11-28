@@ -22,17 +22,15 @@ use crate::{agent, inside, program};
 /// the first goes on. Otherwise the arguments, the template and the
 /// image are registered with the program's server — its refusal is the `Error`,
 /// in its own words, and the connection has not begun — and then
-/// `Begun` goes out carrying the dependencies the program answered
-/// with, the permissions
-/// it answered with dropped, since an agent asks the daemon nothing.
+/// `Begun` goes out carrying the dependencies and the permissions
+/// the program answered with.
 /// The scope is published to
 /// every surface inside the container, the queue's driver and the
 /// resident notifications ask are started, and every channel the
 /// server opens on the scope is served on a task of its own; a
-/// channel this end cannot read is finished with nothing. No daemon
-/// connection is among them: an agent container holds no account and
-/// asks the daemon nothing, so the server never opens one, and
-/// `/daemon` closes on an agent container at once. The
+/// channel this end cannot read is finished with nothing. The
+/// server's half of each daemon connection the program opened is
+/// among them. The
 /// scope is the connection's life.
 ///
 /// Every task it starts is its own — the channels', and for an agent
@@ -46,7 +44,7 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
         refuse(&scope, begun()).await;
         return;
     }
-    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template, frame.image).await {
+    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template, frame.which, frame.image).await {
         Ok(registered) => registered,
         Err(error) => {
             proxy.release_begin().await;
@@ -57,6 +55,7 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
     let scope = Arc::new(scope);
     let begun = response::Registered {
         dependencies: registered.dependencies,
+        permissions: registered.permissions,
     };
     if let Some(payload) = encoded(&response::Frame::Begun(begun)) {
         scope.send_response(&payload).await;
@@ -87,6 +86,9 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
             }
             Ok(channel_request::Frame::Enqueue(request)) => {
                 tasks.spawn(agent::enqueue(proxy, scope, channel, request));
+            }
+            Ok(channel_request::Frame::Daemon(request)) => {
+                tasks.spawn(inside::daemon::attach(proxy, scope, channel, request.connection_id));
             }
             Err(_) => {
                 tasks.spawn(async move { scope.send_channel_response_finish(channel).await });

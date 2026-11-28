@@ -7,6 +7,7 @@ use clap::Subcommand;
 
 use crate::run::{Emitter, Error, Target};
 
+pub mod api;
 pub mod download;
 pub mod exec;
 pub mod filetree;
@@ -30,6 +31,8 @@ pub enum DependencyTools {
     Exec(exec::Arguments),
     /// One HTTP request to a dependency tool's frontend.
     Frontend(frontend::Arguments),
+    /// One HTTP request to a dependency tool's API.
+    Api(api::Arguments),
     /// An interactive shell in a dependency tool's container, on a terminal.
     Terminal(terminal::Arguments),
     /// Getting one dependency tool.
@@ -58,6 +61,7 @@ pub async fn run(
         DependencyTools::Download(arguments) => download::run(arguments, target, emitter).await,
         DependencyTools::Exec(arguments) => exec::run(arguments, target, emitter).await,
         DependencyTools::Frontend(arguments) => frontend::run(arguments, target, emitter).await,
+        DependencyTools::Api(arguments) => api::run(arguments, target, emitter).await,
         DependencyTools::Terminal(arguments) => terminal::run(arguments, target, emitter).await,
         DependencyTools::Filetree(arguments) => filetree::run(arguments, target, emitter).await,
         DependencyTools::Get(arguments) => get::run(arguments, target, emitter).await,
