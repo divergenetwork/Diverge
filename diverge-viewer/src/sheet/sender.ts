@@ -48,7 +48,7 @@ export function sender(creator: Creator, images: Map<string, string>): Sender {
 /**
  * Who asked a tool, as the daemon attests it: an agent is its name,
  * else its template's first eight characters and its index; a client
- * its subject. The key is the caller's identity, as `sender`'s is, so
+ * its subject; a tool its name, or its template's first eight characters. The key is the caller's identity, as `sender`'s is, so
  * an agent asking and the same agent sending read as one.
  */
 export function caller(who: Caller): Sender {
@@ -57,6 +57,13 @@ export function caller(who: Caller): Sender {
       return { key: `agent:${who.template}:${who.index}`, label: who.name ?? short(who.template, who.index), tone: "agent" };
     case "client":
       return { key: `client:${who.identity.issuer}:${who.identity.subject}`, label: who.identity.subject, tone: "account" };
+    case "tool": {
+      const tool = who.tool;
+      if (tool.kind === "dependency") {
+        return { key: `dependency:${tool.template}:${JSON.stringify(tool.owner)}`, label: tool.template.slice(0, 8), tone: "tool" };
+      }
+      return { key: `tool:${tool.template}:${tool.index}`, label: tool.name ?? short(tool.template, tool.index), tone: "tool" };
+    }
   }
 }
 

@@ -114,9 +114,8 @@ type Volume = daemon.endpoints.volumes.list.server.response.Volume;
 
 /** A dependency tool's owner, as a request names it: the list's key, an agent's name left off. */
 function ownerRef(owner: Dependency["owner"]): daemon.reference.Owner {
-  if (owner === "global") return "global";
-  if ("agent" in owner) return { agent: { template: owner.agent.template, index: owner.agent.index } };
-  return { agent_template: { template: owner.agent_template.template } };
+  if (owner === "template") return "template";
+  return { agent: { template: owner.agent.template, index: owner.agent.index } };
 }
 
 /** What a tool is named: its image's name, if the image said one, else the fallback. */

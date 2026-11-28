@@ -10,9 +10,8 @@ type Listed = daemon.endpoints.dependency_tools.list.server.response.Listed;
 
 /** An owner as one string, an agent's name left off: how a dependency tool's owner is matched across lists. */
 function ownerId(owner: Owner | Listed["owner"]): string {
-  if (owner === "global") return "global";
-  if ("agent" in owner) return `agent:${owner.agent.template}:${owner.agent.index}`;
-  return `template:${owner.agent_template.template}`;
+  if (owner === "template") return "template";
+  return `agent:${owner.agent.template}:${owner.agent.index}`;
 }
 
 /**

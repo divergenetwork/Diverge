@@ -115,7 +115,7 @@ export function watch(told: Told, volume: (item: Volume, gone: boolean) => void)
   tell({ open: () => e.standalone_tools.list.client.execute(handle, {}), change: e.standalone_tools.list.server.response.change, key: toolKey, live: activeLive, deployed }, told, k);
   // A connected tool is deployed while the daemon holds the other daemon's connect on it.
   tell({ open: () => e.connected_standalone_tools.list.client.execute(handle, {}), change: e.connected_standalone_tools.list.server.response.change, key: connectedKey, live: activeLive, deployed }, told, k);
-  tell({ open: () => e.dependency_tools.list.client.execute(handle, {}), change: e.dependency_tools.list.server.response.change, key: dependencyKey, live: activeLive, deployed }, told, k);
+  tell({ open: () => e.dependency_tools.list.client.execute(handle, { arguments: false }), change: e.dependency_tools.list.server.response.change, key: dependencyKey, live: activeLive, deployed }, told, k);
   // A provider is lit while the daemon holds a connection it uses: `connected`, and nothing else.
   tell({ open: () => e.providers.list.client.execute(handle, {}), change: e.providers.list.server.response.change, key: providerKey, live: providerLive, deployed: (p) => providerLive(p).on }, told, k);
   // A daemon is lit while the daemon holds a connection to it.

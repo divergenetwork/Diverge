@@ -23,11 +23,10 @@ type ToolRef = daemon.key.Tool;
 /** An agent's key, by its template and index, as `model` makes it. */
 const agentAt = (agent: { template: string; index: number }) => `agent:${agent.template}:${agent.index}`;
 
-/** An owner as one string: the agent, the agent template, or `global`; an agent's name left off. */
+/** An owner as one string: the agent, or `template`; an agent's name left off. */
 function ownerId(owner: Owner): string {
-  if (owner === "global") return "global";
-  if ("agent" in owner) return agentAt(owner.agent);
-  return `template:${owner.agent_template.template}`;
+  if (owner === "template") return "template";
+  return agentAt(owner.agent);
 }
 
 /** Two keys in the pair's order. */

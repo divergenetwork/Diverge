@@ -200,7 +200,7 @@ export function follow(route: Route, changed: (world: Snapshot) => void, event: 
   keep({ name: "accounts", open: () => e.accounts.list.client.execute(handle, { ...relayed(route) }), key: e.accounts.list.server.response.key, change: e.accounts.list.server.response.change }, accounts);
   keep({ name: "agents", open: () => e.agents.list.client.execute(handle, { ...relayed(route) }), key: e.agents.list.server.response.key, change: e.agents.list.server.response.change }, agents);
   keep(
-    { name: "agent templates", open: () => e.agents.templates.list.client.execute(handle, { ...relayed(route) }), key: e.agents.templates.list.server.response.key, change: e.agents.templates.list.server.response.change },
+    { name: "agent templates", open: () => e.agents.templates.list.client.execute(handle, { arguments: false, ...relayed(route) }), key: e.agents.templates.list.server.response.key, change: e.agents.templates.list.server.response.change },
     agentTemplates,
   );
   keep({ name: "standalone tools", open: () => e.standalone_tools.list.client.execute(handle, { ...relayed(route) }), key: e.standalone_tools.list.server.response.key, change: e.standalone_tools.list.server.response.change }, tools);
@@ -209,10 +209,10 @@ export function follow(route: Route, changed: (world: Snapshot) => void, event: 
     connectedTools,
   );
   keep(
-    { name: "standalone tool templates", open: () => e.standalone_tools.templates.list.client.execute(handle, { ...relayed(route) }), key: e.standalone_tools.templates.list.server.response.key, change: e.standalone_tools.templates.list.server.response.change },
+    { name: "standalone tool templates", open: () => e.standalone_tools.templates.list.client.execute(handle, { arguments: false, ...relayed(route) }), key: e.standalone_tools.templates.list.server.response.key, change: e.standalone_tools.templates.list.server.response.change },
     templates,
   );
-  keep({ name: "dependency tools", open: () => e.dependency_tools.list.client.execute(handle, { ...relayed(route) }), key: e.dependency_tools.list.server.response.key, change: e.dependency_tools.list.server.response.change }, dependencies);
+  keep({ name: "dependency tools", open: () => e.dependency_tools.list.client.execute(handle, { arguments: false, ...relayed(route) }), key: e.dependency_tools.list.server.response.key, change: e.dependency_tools.list.server.response.change }, dependencies);
   keep({ name: "events", open: () => e.events.list.client.execute(handle, { ...relayed(route) }), key: e.events.key, change: e.events.list.server.response.change }, events, (change) => {
     // Rule 6, once the list was whole: what it told before is the baseline, not a pulse.
     if (events.listed) waiting.push(change);

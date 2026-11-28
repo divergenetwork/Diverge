@@ -76,7 +76,7 @@ function subline(subject: Subject): string {
       return subject.name;
     case "dependency_tool": {
       const owner = subject.owner;
-      const whose = owner === "global" ? "global" : "agent" in owner ? ("template" in owner.agent ? short(owner.agent.template, owner.agent.index) : owner.agent.name) : `template ${owner.agent_template.template.slice(0, 8)}`;
+      const whose = owner === "template" ? "template" : "template" in owner.agent ? short(owner.agent.template, owner.agent.index) : owner.agent.name;
       return `${subject.template.slice(0, 8)} · ${whose}`;
     }
   }
