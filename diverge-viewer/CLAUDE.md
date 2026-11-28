@@ -41,7 +41,7 @@ Diverge Viewer: the one Tauri desktop app, empty up-front. It was `diverge-world
   tool's or dependency tool's container (`<family> terminal`), drawn by xterm (`@xterm/xterm`, `@xterm/addon-fit`):
   keys go to its stdin one write in flight, the rest held and sent as one; the pane's size, settled, is its size;
   closing or swapping the sheet closes it, which kills the shell. A fourth tab, `frontend` (`sheet/frontend.ts`), shows
-  an agent's or a tool's own web frontend (its image's DIVERGE.md says `frontend: true`; `Entity.frontend`, from `world/names.ts`'s
+  a tool's own web frontend (a standalone or a dependency tool's, never an agent's; its image's DIVERGE.md says `frontend: true`; `Entity.frontend`, from `world/names.ts`'s
   `imageInfo`) in an `<iframe>`: the app's Rust (`src-tauri/src/frontend.rs`, commands `frontend_open`/`frontend_close`)
   serves it from `127.0.0.1:<fresh port>` (axum), each request one daemon `<family> frontend` scope over the page's
   connection, bodies streamed, a `101` piped both ways; gated by Host, `Sec-Fetch-Site` and a key on the first load;

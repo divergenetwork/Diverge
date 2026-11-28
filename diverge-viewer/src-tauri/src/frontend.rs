@@ -1,16 +1,17 @@
-//! An agent's or a tool's frontend, served to the page's frame from a
+//! A tool's frontend, served to the page's frame from a
 //! web server of the app's own on the loopback: every request the frame
-//! makes is one daemon frontend request (`agents frontend`,
-//! `standalone_tools frontend`, `dependency_tools frontend`), over the page's connection, and its
+//! makes is one daemon frontend request (`standalone_tools frontend`,
+//! `dependency_tools frontend`), over the page's connection, and its
 //! answer comes back as it streams — a WebSocket's bytes both ways
-//! included. Nothing passes through the page.
+//! included. Nothing passes through the page. An agent has no
+//! frontend, and none is served for one.
 //!
 //! The rules:
 //!
-//! 1. `frontend_open` serves one agent's or tool's frontend on a port of
+//! 1. `frontend_open` serves one tool's frontend on a port of
 //!    its own, so every one is an origin of its own, and answers the address
 //!    the frame loads: `http://127.0.0.1:<port>/frontend/?__diverge=<key>`.
-//!    Its `relay` — the route to the daemon the agent or tool is on, absent
+//!    Its `relay` — the route to the daemon the tool is on, absent
 //!    for our own — is on every request the frontend sends.
 //! 2. Every request is checked before it is sent on:
 //!    a. its `Host` is `127.0.0.1:<port>`, so a name made to point at
@@ -52,7 +53,7 @@ use axum::extract::{Request, State};
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use bytes::Bytes;
-use diverge_sdk::daemon::endpoints::{agents, dependency_tools, standalone_tools};
+use diverge_sdk::daemon::endpoints::{dependency_tools, standalone_tools};
 use diverge_sdk::daemon::reference;
 use diverge_sdk::shared::containers::frontend::output::Head as Answered;
 use diverge_sdk::shared::containers::frontend::request::Head;
@@ -71,12 +72,11 @@ const KEY: &str = "__diverge";
 /// The headers that belong to one hop and are never sent on.
 const HOP: [&str; 8] = ["connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade", "proxy-connection", "proxy-authenticate"];
 
-/// Whose frontend: an agent's, a standalone tool's or a dependency
-/// tool's, as the page's `Files` names it.
+/// Whose frontend: a standalone tool's or a dependency tool's, as the
+/// page's `Frontend` names it.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Target {
-    Agent(reference::Agent),
     Tool(reference::Tool),
     Dependency(reference::Dependency),
 }
@@ -180,7 +180,6 @@ enum Said {
 /// The way into one request, whichever family's it is.
 #[derive(Clone)]
 enum Writer {
-    Agent(agents::frontend::client::execute::Frontend),
     Tool(standalone_tools::frontend::client::execute::Frontend),
     Dependency(dependency_tools::frontend::client::execute::Frontend),
 }
@@ -188,7 +187,6 @@ enum Writer {
 impl Writer {
     async fn body(&self, bytes: &[u8]) -> bool {
         match self {
-            Writer::Agent(w) => w.body(bytes).await.is_ok(),
             Writer::Tool(w) => w.body(bytes).await.is_ok(),
             Writer::Dependency(w) => w.body(bytes).await.is_ok(),
         }
@@ -196,9 +194,6 @@ impl Writer {
 
     async fn end(&self) {
         match self {
-            Writer::Agent(w) => {
-                let _ = w.end().await;
-            }
             Writer::Tool(w) => {
                 let _ = w.end().await;
             }
@@ -216,21 +211,6 @@ type Answers = std::pin::Pin<Box<dyn Stream<Item = Said> + Send>>;
 async fn send(app: &AppHandle, target: &Target, relay: &Option<Relay>, head: Head) -> Result<(Answers, Writer), String> {
     let handle = app.state::<TauriProxy>().link().handle().await.map_err(|refusal| format!("{refusal:?}"))?;
     match target {
-        Target::Agent(agent) => {
-            use agents::frontend::{client::execute, client::request, server::response::Frame};
-            let request = request::Frame { agent: agent.clone(), head, relay: relay.clone() };
-            let (stream, writer) = execute::execute(&handle, &request).await.map_err(|error| error.to_string())?;
-            let said = stream.map(|item| match item {
-                Ok(Frame::Head(head)) => Said::Head(head),
-                Ok(Frame::Body(bytes)) => Said::Body(bytes),
-                Ok(Frame::NotFound) => Said::NotFound,
-                Ok(Frame::Forbidden) => Said::Forbidden,
-                Ok(Frame::NoFrontend) => Said::NoFrontend,
-                Ok(Frame::Error(error)) => Said::Error(error.0.to_string()),
-                Err(error) => Said::Error(error.to_string()),
-            });
-            Ok((Box::pin(said), Writer::Agent(writer)))
-        }
         Target::Tool(tool) => {
             use standalone_tools::frontend::{client::execute, client::request, server::response::Frame};
             let request = request::Frame { tool: tool.clone(), head, relay: relay.clone() };

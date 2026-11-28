@@ -33,7 +33,7 @@ export async function imageNames(images: Image[], route: Route): Promise<Map<str
   return new Map([...found].map(([digest, info]) => [digest, info.name]));
 }
 
-/** An image as the world names it: its document's `name`, and whether its program serves a frontend. */
+/** An image as the world names it: its document's `name`, and whether its program serves a frontend, which only a tool's may. */
 export type ImageInfo = { name: string; frontend: boolean };
 
 /** Every image's name and frontend, by digest, by the rules of `imageNames`. */
@@ -50,7 +50,7 @@ export async function imageInfo(images: Image[], route: Route): Promise<Map<stri
         try {
           const info = await held.info();
           // Rule 2; rule 3 for an image that ships none.
-          return info === undefined ? null : [image.digest, { name: info.name, frontend: info.frontend === true }];
+          return info === undefined ? null : [image.digest, { name: info.name, frontend: info.type !== "agent" && info.frontend === true }];
         } finally {
           await held.cancel().catch(() => undefined);
         }
