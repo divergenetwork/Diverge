@@ -19,14 +19,14 @@ dependency entry says another.
 | `memory` | dependency tool | lazy, `instance` | none | yes |
 | `alarm` | dependency tool | eager, `template` | `message` over agents `attached` | yes |
 | `chat` | standalone tool, frontend | eager | `get`, `list`, `message` over agents `attached`; `get` over agent templates (any); `info` over images | yes |
-| `human` | agent, frontend | — | — (an agent asks the daemon nothing) | yes |
+| `human` | agent, frontend | — | none | yes |
 
 Each tool image states `"memory":268435456,"disk":268435456`; `human` states
 `"memory":536870912,"disk":1073741824`. Every body below gives `"extra_memory":0,"extra_disk":0`: what
 the image needs and no more.
 
-A tool's permissions are declared by its own program each time it starts; neither a template nor an
-agent states them. "Database" means the program keeps its state in Postgres, reached through the proxy,
+A container's permissions are declared by its own program each time it starts, a tool's and an agent's
+alike; neither a template nor a create states them. "Database" means the program keeps its state in Postgres, reached through the proxy,
 in one of its three databases (see `postgres` in `diverge-storage`): `courier`, `taskboard` and `alarm`
 in `template`, the rest in `instance`.
 

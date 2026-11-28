@@ -141,7 +141,8 @@ Mount shapes, rules and edit patches are in [references/mounts.md](references/mo
 environment, entrypoint or port to set: the mounts and the template's arguments are the only provisioning.
 
 Answers: `"created"`, `"in_use"`, `"forbidden"`, `{"error":…}`. **A create starts nothing.** The agent has no
-account and asks the daemon nothing itself; everything it reaches, it reaches through the tools it is served.
+account. Its program may still put requests to the daemon over its own daemon connection, as a tool's may,
+within the permissions the program declares each time its container starts: see "An agent's permissions".
 
 ## Getting and listing
 
@@ -155,7 +156,8 @@ diverge run agents list --watch '{"templates":["<id>"]}'       # stays open: add
 A list prints `{"added":{…}}` per agent, oldest first, then `"listed"`, and ends there unless `--watch`.
 An item carries `name`, `template`, `index`, `creator`, `created`, `active`, `last_active`, `deployed`,
 `last_deployed`, `provider`, `logs_index` (length of its log), `tools` (attached standalone and connected
-tools), `dependencies` (dependency template ids its last registration declared) and `tags`.
+tools), `dependencies` (dependency template ids its last registration declared), `permissions` (the grants
+its program declared at its last start; absent when none or never started) and `tags`.
 
 Filter members (all optional; lists match any one of, except `all_tags`): `names`, `templates`, `creators`,
 `active` (`true`, `false`, `"ever"`, `"never"`), `deployed`, `dependency_tool_templates`, `all_tags`,
@@ -240,7 +242,8 @@ Rules:
 - **Joining**: messages that are waiting while the agent starts are joined, in order, into its first turn as
   one user message. Text parts stay separate blocks.
 - **Idle stop**: once the agent is inactive and unused for the daemon's `idle_seconds` (default 10), its
-  container is stopped. The record, the conversation and anything on mounted volumes persist; the next
+  container is stopped. A scope the agent's own program has open on its daemon connection counts as use:
+  it holds the container up without making the agent active, an endless stream included. The record, the conversation and anything on mounted volumes persist; the next
   message starts it again. Files written only to the container's own disk are gone with the container.
 - **What the agent takes**: the daemon holds the message to the `chat` of the agent's image's `DIVERGE.md`
   before sending anything. `"no_chat"`: the image does not chat, and no message is taken.
@@ -373,6 +376,8 @@ undeployed          container is down: {"interrupted":false} and no "reason" whe
   `dependency_tool` means a dependency tool that mounts this agent's files was deployed while the agent was
   down; that tool holds the agent's container up for as long as the tool is up.
 - A run that never came up keeps an `error` item and no `deployed`.
+- A `command` item (`path`, `request`, `allowed`) is one request the agent's own container put to the
+  daemon. It makes the agent neither active nor inactive.
 - Each user part carries `sender` (who sent the message) and `key` (which message it belongs to).
 
 `diverge-logs` covers the log read in full (spans, `type`, `count`, `watch`).
@@ -462,6 +467,30 @@ diverge run agents frontend '{"agent":{"name":"me"},"method":"GET","path":"/fron
   response. `"no_frontend"` means the image declares none (its `DIVERGE.md` has no `"frontend": true`).
 - All three start a stopped container and hold it up while they run.
 - `exec` and `terminal` both need the `exec` grant; `frontend` needs `frontend`.
+
+## An agent's permissions
+
+An agent's program may put requests to the daemon over its own daemon connection, as a tool's may. Each time
+its container starts, the program declares what it may ask: a list of grants, in the vocabulary of the
+`diverge-access` grants reference. An agent may declare any grant a tool may. For every kind a grant reaches
+`"any"`, exactly the records it lists, or by tags, and never two of those in one grant.
+
+Over the three tool kinds (`standalone_tools`, `connected_standalone_tools`, `dependency_tools`) there is
+one word more, `"attached"`: the tools served to this agent, which are its dependency tools and the
+standalone and connected tools attached to it or to its template. `"attached"` over agents reaches nothing
+for an agent: that direction is a tool's (see `diverge-tools`).
+
+- You do not set these; the image does. They are reported as `permissions` on the agent's list item after
+  its first start (absent before, or when it declares none).
+- The daemon holds the agent to exactly those. An action held only within `"attached"` is held at all only
+  while a tool of that kind is attached.
+- An agent has no account, so `frontend` and `standalone-tools connect` refuse it whatever it declares.
+- A scope the program has open on its daemon connection holds the container up, without making the agent
+  active. A program that wants its container to go idle closes its streams.
+- Every request the agent's container puts to the daemon is kept in the agent's own log as a `command`
+  item: the request's path and body and `allowed` (`false` exactly when the daemon answered `forbidden`).
+- An agent can also be asked: a request's `to` may name agents, and an agent's program listens for the
+  requests addressed to it. See `diverge-access`.
 
 ## Grants
 

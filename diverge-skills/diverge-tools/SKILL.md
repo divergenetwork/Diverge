@@ -312,7 +312,8 @@ records the caller the daemon attested. A dependency tool's log is readable whet
 A tool's program declares, each time its container starts, what it may ask of the daemon: a list of grants.
 For every kind a grant reaches `"any"`, exactly the records it lists, or by tags, and never two of those in
 one grant. Over agents there are two words more: `"attached"` (the agents attached to this tool, or for a
-dependency the agents that declare it) and `"never_active"` (agents that have never run).
+dependency the agents that declare it) and `"never_active"` (agents that have never run). `"attached"` over
+a tool kind reaches nothing for a tool: that direction is an agent's (see `diverge-agents`).
 Example, the alarm tool: `[{"agents":{"actions":["message"],"within":"attached"}}]`.
 
 - A list names records by what names each once and for all: `{"agents":[{"template":"<id>","index":<n>}, …]}`,
@@ -325,7 +326,8 @@ Example, the alarm tool: `[{"agents":{"actions":["message"],"within":"attached"}
 - You do not set these; the image does. They are reported as `permissions` on the tool's list item after its
   first start (absent before, or when it declares none).
 - The daemon holds the tool to exactly those. A tool that messages an agent it is not attached to is
-  refused.
+  refused. An action held only within `"attached"` is held at all only while an agent is attached.
+- A tool has no account, so `frontend` and `standalone-tools connect` refuse it whatever it declares.
 - There is no permission named `self` in the current source: the closest is `"attached"`.
 - Every request a tool puts to the daemon is kept in the tool's own log as a `command` item: the request's
   path and body and `allowed` (`false` exactly when the daemon answered `forbidden`). Read these to see why a

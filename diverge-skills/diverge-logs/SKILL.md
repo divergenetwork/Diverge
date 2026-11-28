@@ -9,7 +9,8 @@ The daemon keeps three kinds of record of what happened, all read-only over the 
 
 - **Logs**, one per agent, per tool and per requester. An agent's log is its whole conversation plus its
   container's life. A tool's log is every call and read routed into it. An account's (or administrator's)
-  **command log** is every request it put to the daemon and whether it was let through.
+  **command log** is every request it put to the daemon and whether it was let through; a container's own
+  requests are `command` items in its own log, a tool's in the tool log and an agent's in the agent log.
 - **Events**, one graph: an edge per (sender, receiver) pair with a count. It says that exchanges happened
   and how often, never what they carried or when.
 - **Lists**, which every family has, and which can be kept open (`--watch`) to see records change.

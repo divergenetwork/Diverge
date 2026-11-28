@@ -61,6 +61,7 @@ A listed agent:
 | `logs_index` | index of its latest log item as of its last change of state; `0` for an empty log |
 | `tools` | attached standalone tools (`{"record":{template,index,name}}`) and connected tools (`{"connected_standalone":{…}}`), direct attachments first, then its template's |
 | `dependencies` | dependency template ids its last registration declared; absent when none or never run |
+| `permissions` | the grants its program declared at its last start; absent when none or never started |
 | `tags` | sorted; absent when empty |
 
 Agent list filter: `names`, `templates`, `creators`, `active` (`true` | `false` | `"ever"` | `"never"`),

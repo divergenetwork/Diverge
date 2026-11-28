@@ -94,6 +94,7 @@ connection):
 | `usage` | Token usage so far. | `prompt_tokens`, `completion_tokens`, `total_tokens` |
 | `notification` | Something about the run itself. | `message`, `is_fatal` |
 | `error` | The run that would not start, or the message the agent refused, in the words the daemon received. | `error`: an arbitrary JSON value |
+| `command` | A request the agent's own container put to the daemon. Makes the agent neither active nor inactive. | `path`, `request`, `allowed` |
 
 - The six assistant types and `tool_response` may carry `parent_tool_call_id`: absent, the main thread;
   present, the `id` of the tool call whose sub-agent produced the entry.
@@ -143,7 +144,8 @@ The daemon's own record of every exchange it routed into the tool; never the too
 - A request the daemon could not read is not kept.
 - An account's log is read with the `logs` grant over accounts reaching that account. An administrator
   with no account has its log under `{"type":"admin",…}`, read by administrators only.
-- A tool container's own requests are in that tool's log as `command` entries, not here.
+- A container's own requests are in its own log as `command` entries, not here: a tool's in the tool log,
+  an agent's in the agent log.
 
 ## Type names accepted by the `type` filter
 
