@@ -48,11 +48,13 @@
 //! [`filetree`] watches one whole; [`download`] sends the client a
 //! file or a directory out of it, [`upload`] puts files into it, and
 //! [`transfer`] copies out of it into an agent, a tool, a dependency
-//! tool or a volume, the bytes never reaching the client. Each finds
-//! the tool running or answers `NotFound`, and starts and stops
-//! nothing. [`logs`](super::logs) reads what the daemon kept of every
+//! tool or a volume, the bytes never reaching the client. Each deploys
+//! a tool that is not running, and holds it up while it runs.
+//! [`frontend`] sends one HTTP request to the pages its program
+//! serves, and [`api`] one to the API it serves. [`logs`](super::logs) reads what the daemon kept of every
 //! call and read it routed into one, running or not.
 
+pub mod api;
 pub mod download;
 pub mod exec;
 pub mod filetree;

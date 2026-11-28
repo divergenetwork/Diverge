@@ -21,8 +21,7 @@
 //! [`filetree`] watches one's container whole; [`download`] sends the
 //! client a file or a directory out of one's container, [`upload`] puts
 //! files into it, and [`transfer`] copies out of it into another agent,
-//! a tool or a volume, the bytes never reaching the client; [`frontend`]
-//! sends one HTTP request to the web frontend its program serves; [`connect`] runs MCP
+//! a tool or a volume, the bytes never reaching the client; [`connect`] runs MCP
 //! exchanges as one, as its own container would. The MCP servers an agent calls are [`standalone_tools`](super::standalone_tools),
 //! attached to it by name, or to its template by the template's id.
 
@@ -33,7 +32,6 @@ pub mod download;
 pub mod edit;
 pub mod exec;
 pub mod filetree;
-pub mod frontend;
 pub mod get;
 pub mod list;
 pub mod message;

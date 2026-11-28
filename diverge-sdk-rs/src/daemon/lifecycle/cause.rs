@@ -9,13 +9,15 @@ use serde::{Deserialize, Serialize};
 ///
 /// An agent's run is deployed by a [`Message`](Self::Message), a
 /// [`Connect`](Self::Connect), a [`DependencyTool`](Self::DependencyTool)
-/// or one of the seven requests into its container. A tool's run is
+/// or one of the six requests into its container: a download, an
+/// upload, a transfer, a file tree, a command, a terminal. A tool's run is
 /// deployed by a [`Registration`](Self::Registration), an
 /// [`AgentDeployed`](Self::AgentDeployed), an
 /// [`AgentActive`](Self::AgentActive), an
 /// [`Attachment`](Self::Attachment), a [`Restart`](Self::Restart), a
-/// [`Connect`](Self::Connect) or one of the seven requests into its
-/// container.
+/// [`Connect`](Self::Connect) or one of the eight requests into its
+/// container: those six, a [`Frontend`](Self::Frontend) request and
+/// an [`Api`](Self::Api) request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -61,6 +63,9 @@ pub enum Cause {
     Exec,
     /// A terminal opened in the container.
     Terminal,
-    /// A request to the frontend the container's program serves.
+    /// A request to the frontend the tool's program serves. A tool's
+    /// alone: an agent's program serves none.
     Frontend,
+    /// A request to the API the tool's program serves. A tool's alone.
+    Api,
 }

@@ -23,7 +23,8 @@
 //! dials has to know.
 //!
 //! For either kind of container the proxy registers the arguments,
-//! the id of the template the container is made from and the image
+//! the id of the template the container is made from, which record
+//! of that template it is, and the image
 //! it runs, as the server's begin carried them,
 //! with the program's own server on the loopback when the server
 //! begins, and hands the server the dependencies the program answered
@@ -31,7 +32,7 @@
 //! What the arguments may be is the image's `/.diverge/DIVERGE.md`, which is
 //! read of the image and not of the container: the proxy answers it
 //! to nobody, and reads it only to learn whether the image serves a
-//! frontend. It says on the begin's main stream when the container
+//! frontend or an API. It says on the begin's main stream when the container
 //! goes active and inactive — an agent's loop begun and ended, a
 //! tool's first exchange in and last out. It sets
 //! nothing under `_meta` on any MCP exchange it relays, in either

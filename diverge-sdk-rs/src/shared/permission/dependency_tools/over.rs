@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// reaches as far as its `within` says: each tool is judged on its
 /// own, by the tools list filter.
 /// Snake case on the wire: `"get"`, `"list"`, `"arguments"`,
-/// `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"logs"`.
+/// `"download"`, `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"api"`, `"logs"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -50,6 +50,9 @@ pub enum Over {
     /// Send HTTP requests to the frontend its program serves, as
     /// [`dependency_tools::frontend`](crate::daemon::endpoints::dependency_tools::frontend) does.
     Frontend,
+    /// Send HTTP requests to the API its program serves, as
+    /// [`dependency_tools::api`](crate::daemon::endpoints::dependency_tools::api) does.
+    Api,
     /// Read one's log, running or not, as
     /// [`logs`](crate::daemon::endpoints::logs)
     /// does.

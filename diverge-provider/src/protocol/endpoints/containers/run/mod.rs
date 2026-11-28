@@ -22,7 +22,7 @@
 //!   serve the caller's manifests and blobs; the deploy, with the
 //!   caller's help at hand and the source the deployer's; the one
 //!   connection to the proxy, and on it the family's `begin` —
-//!   carrying the arguments, the template and the image, answered with what the container
+//!   carrying the arguments, the template, which record of it the container is and the image, answered with what the container
 //!   declared: its dependencies and its permissions — and then,
 //!   beside each other, the container registered with the caller —
 //!   those dependencies deployed, those permissions held — and one `fuse::mount` scope

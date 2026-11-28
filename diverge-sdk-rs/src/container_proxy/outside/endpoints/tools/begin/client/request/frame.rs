@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::shared::containers::request::Image;
+use crate::shared::containers::request::{Image, Which};
 use crate::wire::decode::Decode;
 use crate::wire::encode::{Encode, Writer};
 
@@ -23,7 +23,9 @@ use crate::wire::encode::{Encode, Writer};
 ///
 /// The template rides beside them: the id of the template the
 /// container is made from, as the run request named it, handed to
-/// the program with them and read by nothing else.
+/// the program with them and read by nothing else. Which record of
+/// that template the container is rides with it, by the same way and
+/// for the same reader.
 ///
 /// The image rides beside them too: the
 /// [`image`](crate::shared::containers::request::Container::image) of
@@ -52,6 +54,12 @@ pub struct Frame {
     /// [`template`](crate::shared::containers::request::Container::template)
     /// of the request that made the container names it.
     pub template: String,
+    /// Which record of that template the container is, as the
+    /// [`which`](crate::shared::containers::request::Container::which)
+    /// of the request that made the container names it: `index` or
+    /// `owner`, flat beside `template`.
+    #[serde(flatten)]
+    pub which: Which,
     /// The image the container runs, as the
     /// [`image`](crate::shared::containers::request::Container::image)
     /// of the request that made the container names it: the digest,

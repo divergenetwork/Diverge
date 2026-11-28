@@ -31,7 +31,7 @@ pub enum Frame {
     /// Tag `2`: nothing is a standalone tool by that reference — or, for a
     /// dependency tool, none runs.
     NotFound,
-    /// Tag `3`: the account holds no `frontend` grant reaching it.
+    /// Tag `3`: the requester holds no `frontend` grant reaching it.
     Forbidden,
     /// Tag `4`: the tool's image declares no frontend.
     NoFrontend,

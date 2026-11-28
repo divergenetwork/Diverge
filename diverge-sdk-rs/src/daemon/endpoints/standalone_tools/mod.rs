@@ -38,7 +38,8 @@
 //! its way or being active; an MCP exchange in
 //! flight into it; a connect scope open on it; a file tree watch, a
 //! download, an upload or a transfer in progress on it; a command
-//! running in it or a terminal open in it; a frontend request in
+//! running in it or a terminal open in it; a frontend request or an
+//! API request in
 //! progress; and any scope its own program has open on the daemon. An
 //! attachment alone holds a lazy tool not at all, and a message for
 //! an agent that is up brings back, before it is delivered, any tool
@@ -62,7 +63,9 @@
 //! [`filetree`] watches one's container whole; [`download`] sends the
 //! client a file or a directory out of a tool's container, [`upload`]
 //! puts files into it, and [`transfer`] copies out of it into an agent,
-//! another tool or a volume, the bytes never reaching the client.
+//! another tool or a volume, the bytes never reaching the client;
+//! [`frontend`] sends one HTTP request to the pages its program
+//! serves, and [`api`] one to the API it serves.
 //! [`logs`](super::logs) reads what the daemon kept of
 //! every call and read it routed into a tool. A dependency an agent declares at register time
 //! is no tool of this family: the daemon deploys it then and there,
@@ -71,6 +74,7 @@
 //! running tool there, under its template; no request here finds
 //! one. A tool declares no dependencies.
 
+pub mod api;
 pub mod attach_agent_instance;
 pub mod attach_agent_template;
 pub mod connect;

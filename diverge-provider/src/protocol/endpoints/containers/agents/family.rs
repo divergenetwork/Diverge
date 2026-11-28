@@ -65,7 +65,6 @@ impl Family for Agents {
             channel_request::Frame::TerminalStdin { id, bytes } => Opened::TerminalStdin(id, bytes),
             channel_request::Frame::TerminalResize(resize) => Opened::TerminalResize(resize.id, diverge_sdk::shared::containers::terminal::open::Open { cols: resize.cols, rows: resize.rows }),
             channel_request::Frame::TerminalClose(id) => Opened::TerminalClose(id.id),
-            channel_request::Frame::Frontend(request) => Opened::Frontend(request),
             channel_request::Frame::Enqueue(request) => Opened::Exchange(agent::Exchange::Enqueue(request)),
         }
     }
@@ -130,10 +129,10 @@ impl Family for Agents {
 impl Runs for Agents {
     type Ask<'a> = ask::Frame<'a>;
 
-    fn begin(proxy: &Handle, arguments: Value, template: String, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
+    fn begin(proxy: &Handle, arguments: Value, template: String, which: shared::containers::request::Which, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
         let proxy = proxy.clone();
         async move {
-            match begin::execute(&proxy, arguments, template, image).await {
+            match begin::execute(&proxy, arguments, template, which, image).await {
                 Ok((handle, asks, chunks, registered)) => Ok(Begun {
                     begin: Begin::Agents(handle),
                     asks,

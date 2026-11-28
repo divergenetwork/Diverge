@@ -1,0 +1,304 @@
+//! One HTTP request to the program's server through one of its two
+//! doors — its frontend, beneath `/frontend`, or its API, beneath
+//! `/api` — its answer streamed and its body taken. The two are one
+//! exchange beneath two prefixes, each declared by its own member of
+//! the image's document, so they are served by one function told
+//! which door it is.
+
+use std::sync::Arc;
+
+use bytes::Bytes;
+use diverge_sdk::CHUNK_SIZE;
+use diverge_sdk::container_proxy::inside::port;
+use diverge_sdk::container_proxy::outside::endpoints::frontend::client::channel_request;
+use diverge_sdk::container_proxy::outside::endpoints::frontend::server::response::Frame;
+use diverge_sdk::shared::containers::frontend::output::Head;
+use diverge_sdk::shared::containers::{api, frontend};
+use diverge_sdk::shared::containers::info::{Document, MAX_BYTES};
+use diverge_sdk::shared::error::Error;
+use diverge_sdk::wire::decode::Decode as _;
+use diverge_sdk::wire::frame::client::ClientFrame;
+use diverge_sdk::wire::server::scope_handle::ScopeHandle;
+use futures_util::StreamExt as _;
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+use tokio::sync::{Notify, mpsc};
+
+use crate::encode::encoded;
+use crate::info::PATH;
+
+/// What the client put in after the head: a piece of the body, or its
+/// end.
+enum Piece {
+    Body(Bytes),
+    End,
+}
+
+/// Which of the program's two doors a request comes through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Door {
+    /// Its frontend: `frontend` in the image's document, paths beneath
+    /// `/frontend`.
+    Frontend,
+    /// Its API: `api` in the image's document, paths beneath `/api`.
+    Api,
+}
+
+impl Door {
+    /// The prefix every path through the door begins with.
+    fn prefix(self) -> &'static str {
+        match self {
+            Door::Frontend => frontend::request::PREFIX,
+            Door::Api => api::request::PREFIX,
+        }
+    }
+
+    /// The door's member of the image's document, which is also the
+    /// kind of the error an image that declares none is answered with.
+    fn member(self) -> &'static str {
+        match self {
+            Door::Frontend => "frontend",
+            Door::Api => "api",
+        }
+    }
+
+    /// Whether `document` declares the door.
+    fn declared_by(self, document: &Document) -> bool {
+        match self {
+            Door::Frontend => document.frontend(),
+            Door::Api => document.api(),
+        }
+    }
+}
+
+/// Serve one request through `door`, as
+/// [`frontend`](diverge_sdk::shared::containers::frontend) and
+/// [`api`](diverge_sdk::shared::containers::api) state.
+///
+/// The rules:
+///
+/// 1. The image's [`PATH`] declares the door — `frontend: true` or
+///    `api: true` — and the path is
+///    [`beneath`](diverge_sdk::shared::containers::frontend::request::Head::beneath)
+///    the door's prefix; otherwise one `Error`, and the finish. An
+///    agent's document declares neither, so an agent container is
+///    answered so through either.
+/// 2. The request goes to the program's server on the loopback at
+///    [`port`], with the head's method, path and headers, its `Host`
+///    the server's own. It follows no redirect and goes through no
+///    proxy. A request whose head carries `Content-Length` or
+///    `Transfer-Encoding` has a body: the client's `Body` channels,
+///    in their order, up to `End`. Any other has none.
+/// 3. Each channel is finished once its piece is taken; a `Cancel`, the
+///    client gone, or the responses abandoned drops the request, and
+///    only the finish follows.
+/// 4. The answer is one `Head`, its status and its headers as the
+///    program sent them, then its body in `Body` frames of at most
+///    [`CHUNK_SIZE`], and the finish. A body broken off is one `Error`
+///    after what was sent. A program not reached is one `Error`.
+/// 5. A `101` to a request with no body is an upgrade: what the program
+///    sends goes out as `Body` frames, and the client's `Body` pieces
+///    are written to it, `End` closing this side, until the program
+///    closes its side.
+pub async fn door(scope: ScopeHandle, head: frontend::request::Head, door: Door) {
+    let scope = Arc::new(scope);
+    // Rule 1.
+    if !declared(door).await {
+        return error(&scope, door.member(), &format!("the image declares no {}", door.member())).await;
+    }
+    if !head.beneath(door.prefix()) {
+        return error(&scope, "path", &format!("the path is not beneath {}", door.prefix())).await;
+    }
+    let method = match reqwest::Method::from_bytes(head.method.as_bytes()) {
+        Ok(method) => method,
+        Err(_) => return error(&scope, "method", "the method is not a method").await,
+    };
+    let mut headers = reqwest::header::HeaderMap::new();
+    for (name, value) in &head.headers {
+        let (Ok(name), Ok(value)) = (reqwest::header::HeaderName::from_bytes(name.as_bytes()), reqwest::header::HeaderValue::from_str(value)) else {
+            return error(&scope, "header", &format!("the header {name} is not a header")).await;
+        };
+        if name != reqwest::header::HOST {
+            headers.append(name, value);
+        }
+    }
+    let has_body = headers.contains_key(reqwest::header::CONTENT_LENGTH) || headers.contains_key(reqwest::header::TRANSFER_ENCODING);
+
+    // Rule 3, on its own task.
+    let (pieces, taken) = mpsc::channel::<Piece>(1);
+    let stopped = Arc::new(Notify::new());
+    let input = tokio::spawn(take_input(Arc::clone(&scope), pieces, Arc::clone(&stopped)));
+
+    // Rule 2.
+    let client = match reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).no_proxy().build() {
+        Ok(client) => client,
+        Err(reason) => {
+            input.abort();
+            return error(&scope, "client", &reason.to_string()).await;
+        }
+    };
+    let mut builder = client.request(method, format!("http://127.0.0.1:{}{}", port(), head.path)).headers(headers);
+    let mut kept = None;
+    if has_body {
+        let body = futures_util::stream::unfold(taken, |mut taken| async move {
+            match taken.recv().await {
+                Some(Piece::Body(bytes)) => Some((Ok::<Bytes, std::io::Error>(bytes), taken)),
+                Some(Piece::End) | None => None,
+            }
+        });
+        builder = builder.body(reqwest::Body::wrap_stream(body));
+    } else {
+        kept = Some(taken);
+    }
+    let response = tokio::select! {
+        response = builder.send() => response,
+        () = stopped.notified() => return end(&scope, input).await,
+        () = scope.responses_gone() => return end(&scope, input).await,
+    };
+    let response = match response {
+        Ok(response) => response,
+        Err(reason) => {
+            input.abort();
+            return error(&scope, "unreached", &reason.to_string()).await;
+        }
+    };
+
+    // Rule 4.
+    let status = response.status().as_u16();
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(name, value)| (name.as_str().to_owned(), String::from_utf8_lossy(value.as_bytes()).into_owned()))
+        .collect();
+    send(&scope, &Frame::Head(Head { status, headers })).await;
+
+    // Rule 5.
+    if status == 101
+        && let Some(taken) = kept.take()
+    {
+        let upgraded = match response.upgrade().await {
+            Ok(upgraded) => upgraded,
+            Err(reason) => {
+                send(&scope, &Frame::Error(failure("upgrade", &reason.to_string()))).await;
+                return end(&scope, input).await;
+            }
+        };
+        return upgrade(&scope, upgraded, taken, &stopped, input).await;
+    }
+    // A request with no body takes no pieces: what comes is let go.
+    drop(kept);
+    let mut body = response.bytes_stream();
+    loop {
+        tokio::select! {
+            piece = body.next() => match piece {
+                Some(Ok(bytes)) => {
+                    for chunk in bytes.chunks(CHUNK_SIZE) {
+                        send(&scope, &Frame::Body(chunk)).await;
+                    }
+                }
+                Some(Err(reason)) => {
+                    send(&scope, &Frame::Error(failure("body", &reason.to_string()))).await;
+                    break;
+                }
+                None => break,
+            },
+            () = stopped.notified() => break,
+            () = scope.responses_gone() => break,
+        }
+    }
+    end(&scope, input).await;
+}
+
+/// Rule 5: both ways at once, until the program closes its side, a
+/// cancel, or the client gone.
+async fn upgrade(scope: &ScopeHandle, upgraded: reqwest::Upgraded, mut taken: mpsc::Receiver<Piece>, stopped: &Notify, input: tokio::task::JoinHandle<()>) {
+    let (mut reading, mut writing) = tokio::io::split(upgraded);
+    let mut buffer = vec![0u8; CHUNK_SIZE];
+    let mut open = true;
+    loop {
+        tokio::select! {
+            read = reading.read(&mut buffer) => match read {
+                Ok(n) if n > 0 => send(scope, &Frame::Body(&buffer[..n])).await,
+                _ => break,
+            },
+            piece = taken.recv(), if open => match piece {
+                Some(Piece::Body(bytes)) => {
+                    if writing.write_all(&bytes).await.is_err() {
+                        open = false;
+                    }
+                }
+                Some(Piece::End) | None => {
+                    let _ = writing.shutdown().await;
+                    open = false;
+                }
+            },
+            () = stopped.notified() => break,
+            () = scope.responses_gone() => break,
+        }
+    }
+    end(scope, input).await;
+}
+
+/// Rule 3: every channel request in order, each finished once its
+/// piece is taken, until a cancel or the client is gone, either of which
+/// tells `stopped`.
+async fn take_input(scope: Arc<ScopeHandle>, pieces: mpsc::Sender<Piece>, stopped: Arc<Notify>) {
+    while let Some(bytes) = scope.recv_channel_request().await {
+        let Ok(ClientFrame::ChannelRequest { channel, payload, .. }) = ClientFrame::decode(&bytes) else {
+            continue;
+        };
+        match channel_request::Frame::decode(payload) {
+            Ok(channel_request::Frame::Body(bytes)) => {
+                // A piece nobody takes — a request with no body — is let go.
+                let _ = pieces.send(Piece::Body(Bytes::copy_from_slice(bytes))).await;
+            }
+            Ok(channel_request::Frame::End) => {
+                let _ = pieces.send(Piece::End).await;
+            }
+            Ok(channel_request::Frame::Cancel) => {
+                scope.send_channel_response_finish(channel).await;
+                break;
+            }
+            Err(_) => {}
+        }
+        scope.send_channel_response_finish(channel).await;
+    }
+    stopped.notify_one();
+}
+
+/// Whether the image's document declares `door`. No document, one
+/// larger than [`MAX_BYTES`] — measured, and not read — or one that
+/// does not parse, declares none.
+async fn declared(door: Door) -> bool {
+    match tokio::fs::metadata(PATH).await {
+        Ok(metadata) if metadata.is_file() && metadata.len() <= MAX_BYTES => {}
+        _ => return false,
+    }
+    match tokio::fs::read_to_string(PATH).await {
+        Ok(text) => Document::parse(&text).is_ok_and(|document| door.declared_by(&document)),
+        Err(_) => false,
+    }
+}
+
+/// The input let go, and the finish.
+async fn end(scope: &ScopeHandle, input: tokio::task::JoinHandle<()>) {
+    input.abort();
+    scope.send_response_finish().await;
+}
+
+/// One frame, as the scope's response.
+async fn send(scope: &ScopeHandle, frame: &Frame<'_>) {
+    if let Some(payload) = encoded(frame) {
+        scope.send_response(&payload).await;
+    }
+}
+
+/// An error in the proxy's words.
+fn failure(kind: &str, reason: &str) -> Error {
+    Error(serde_json::json!({ "kind": kind, "error": reason }))
+}
+
+/// Rules 1 and 4: the error, then the finish.
+async fn error(scope: &ScopeHandle, kind: &str, reason: &str) {
+    send(scope, &Frame::Error(failure(kind, reason))).await;
+    scope.send_response_finish().await;
+}

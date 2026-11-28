@@ -213,7 +213,7 @@ async fn start_agent(daemon: &Arc<Daemon>, agent: &Agent, cause: Cause) -> Resul
             .await
             .map_err(StartError::mounts)?,
     );
-    let container = build::container(&agent.template, &template.template, limits, volumes, &mounts).await;
+    let container = build::container(&agent.template, agent.index, &template.template, limits, volumes, &mounts).await;
     let image = container.image.clone();
     let served = Arc::new(Mutex::new(Served::new()));
     {
@@ -423,7 +423,7 @@ async fn start_tool(daemon: &Arc<Daemon>, tool: &Tool, cause: Cause) -> Result<A
                 .await
                 .map_err(StartError::mounts)?,
         );
-        let container = build::container(template, &record.template, limits, volumes, &mounts).await;
+        let container = build::container(template, tool.index, &record.template, limits, volumes, &mounts).await;
         let image = container.image.clone();
         let mut last = String::new();
         let mut opened = None;

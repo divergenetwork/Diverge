@@ -44,7 +44,7 @@ pub async fn agents(proxy: Arc<Proxy>, scope: ScopeHandle, frame: request::Frame
         refuse(&scope, begun()).await;
         return;
     }
-    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template, frame.image).await {
+    let registered = match program::register(&proxy.upstream, frame.arguments, frame.template, frame.which, frame.image).await {
         Ok(registered) => registered,
         Err(error) => {
             proxy.release_begin().await;

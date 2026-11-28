@@ -7,7 +7,7 @@ use super::super::super::server::{self, response};
 use super::{Events, ExecuteError, ExecuteHandle};
 use crate::wire::client::handle::Handle;
 use crate::container_proxy::outside::client::{Ask, Asks};
-use crate::shared::containers::request::Image;
+use crate::shared::containers::request::{Image, Which};
 use crate::wire::decode::Decode as _;
 use crate::wire::encode::{Encode, Writer};
 use crate::wire::frame;
@@ -34,10 +34,11 @@ pub async fn execute(
     handle: &Handle,
     arguments: Value,
     template: String,
+    which: Which,
     image: Image,
 ) -> Result<(ExecuteHandle, Asks<Ask>, Events, response::Registered), ExecuteError> {
     let mut payload = Vec::new();
-    request::Frame { arguments, template, image }
+    request::Frame { arguments, template, which, image }
         .encode(&mut Writer::new(&mut payload))
         .map_err(ExecuteError::Request)?;
     let mut scope = handle.send_request(&payload).await.map_err(ExecuteError::Send)?;

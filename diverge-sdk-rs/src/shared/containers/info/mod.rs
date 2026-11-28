@@ -15,12 +15,12 @@
 //! `schema`, the JSON Schema of the
 //! [`arguments`](crate::shared::containers::request::Container::arguments)
 //! the image's program accepts; `memory` and `disk`, what a container
-//! of the image needs, in bytes; all six required; `frontend`
-//! where the program serves one; in an agent's and in no tool's,
+//! of the image needs, in bytes; all six required; in an agent's and in no tool's,
 //! `chat` and `structured_decisions`, each `false` or what the agent
 //! says of itself ([`Chat`], [`StructuredDecisions`]), at least one of
 //! them said; in a tool's of either kind and in no agent's, `mode`,
-//! how its tools are kept running ([`Mode`]); in a dependency tool's
+//! how its tools are kept running ([`Mode`]), `frontend` where the
+//! program serves one and `api` where the program serves one; in a dependency tool's
 //! alone, `scope`, how far its tools are shared ([`Scope`]); and no
 //! member besides — and then a markdown body: what the image runs.
 //! The description and the body are the short and the long account of

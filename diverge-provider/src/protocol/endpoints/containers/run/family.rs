@@ -24,7 +24,7 @@ use diverge_sdk::shared::containers::response::{
 };
 use diverge_sdk::shared::containers::dependencies::Template;
 use diverge_sdk::shared::containers::fuse_mount;
-use diverge_sdk::shared::containers::request::Image;
+use diverge_sdk::shared::containers::request::{Image, Which};
 use diverge_sdk::shared::permission::Grant;
 use diverge_sdk::wire::server::scope_handle::ScopeHandle;
 use diverge_sdk::shared::error::Error;
@@ -84,12 +84,13 @@ pub(crate) trait Runs: Family {
 
     /// Begin the container's proxy: the family's begin scope on the
     /// connection `proxy`, carrying the container's `arguments`,
-    /// its `template`, the id of the template it is made from, and
-    /// its `image`, the image of the run request, verbatim. What
+    /// its `template`, the id of the template it is made from,
+    /// `which`, the record of that template it is, and
+    /// its `image`, the image of the run request, each verbatim. What
     /// comes back is the scope and what rides it, with what the
     /// container declared; an error is the run's, in the proxy's
     /// words where it refused.
-    fn begin(proxy: &Handle, arguments: Value, template: String, image: Image) -> impl Future<Output = Result<Begun, Error>> + Send;
+    fn begin(proxy: &Handle, arguments: Value, template: String, which: Which, image: Image) -> impl Future<Output = Result<Begun, Error>> + Send;
 
     /// What the container declared, registered with the caller before
     /// the id goes out but with the id minted and told: the
@@ -182,8 +183,12 @@ pub(crate) enum Opened<E> {
     TerminalResize(u32, diverge_sdk::shared::containers::terminal::open::Open),
     /// Kill a held terminal's shell.
     TerminalClose(u32),
-    /// One HTTP request to the program's frontend.
+    /// One HTTP request to the program's frontend. A tool container's
+    /// alone: an agent container's scope has no such channel.
     Frontend(diverge_sdk::shared::containers::frontend::request::Request),
+    /// One HTTP request to the program's API. A tool container's
+    /// alone.
+    Api(diverge_sdk::shared::containers::api::request::Request),
     /// The family's own.
     Exchange(E),
 }

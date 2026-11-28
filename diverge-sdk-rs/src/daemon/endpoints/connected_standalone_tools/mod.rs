@@ -13,7 +13,7 @@
 //! runs it, starts it or stops it. Nothing of what the tool is made
 //! from is known here: its image, its limits, its mounts and its mode
 //! are the other daemon's, and so are its files, its commands, its
-//! terminal and its frontend, which no request here reaches.
+//! terminal, its frontend and its API, which no request here reaches.
 //!
 //! What a connected tool is FOR is being attached to agents, exactly as
 //! a standalone tool is: an [`attach_agent_instance`] puts it among the

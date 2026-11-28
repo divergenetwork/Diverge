@@ -21,7 +21,7 @@ use crate::daemon::Daemon;
 ///      it is echoed, as rule 5 of [`Message`](super::Message)
 ///      states);
 ///    - a use is in progress on it — a filetree watch, a download, an
-///      upload, a transfer, a command, a terminal, a frontend request,
+///      upload, a transfer, a command, a terminal,
 ///      an `agents connect` scope open on it, with or without an
 ///      exchange in flight
 ///      — or a dependency tool of its own that mounts its files is up;
@@ -162,7 +162,8 @@ pub async fn idle(daemon: Arc<Daemon>, run: Arc<AgentRun>) {
 ///    progress** on it. Each deploys the tool.
 /// 5. **A command in progress in it, or a terminal open in it.** Each
 ///    deploys the tool.
-/// 6. **A frontend request in progress** to it. It deploys the tool.
+/// 6. **A frontend request or an API request in progress** to it.
+///    Each deploys the tool.
 /// 7. **A scope the tool's own program has open on its daemon
 ///    connection**, whatever the request, an endless stream included.
 ///    It deploys nothing: the tool is up to open it.

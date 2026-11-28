@@ -1,11 +1,12 @@
-//! The arguments, the template and the image, told to the program's
+//! The arguments, the template, which record of it the container is,
+//! and the image, told to the program's
 //! server once: `POST /register`, answered with the dependencies the program
 //! declares and the permissions it holds.
 
 use diverge_sdk::container_proxy::inside::register::request::Request;
 use diverge_sdk::container_proxy::inside::register::response::Response;
 use diverge_sdk::shared::containers::dependencies::Template;
-use diverge_sdk::shared::containers::request::Image;
+use diverge_sdk::shared::containers::request::{Image, Which};
 use diverge_sdk::shared::error::Error;
 use diverge_sdk::shared::permission::Grant;
 use reqwest::header::CONTENT_TYPE;
@@ -25,9 +26,10 @@ pub struct Registered {
 }
 
 /// Register `arguments`, `template`, the id of the template the
-/// container is made from, and `image`, the image it runs as the
+/// container is made from, `which`, the record of that template the
+/// container is, and `image`, the image it runs as the
 /// server's begin carried it, with the program's server. A `2xx` is
-/// the three held for the container's life, and its body the dependencies
+/// the four held for the container's life, and its body the dependencies
 /// the program declares and the permissions it
 /// holds; a non-`2xx` is the
 /// image refusing them, in its own words, and a server that cannot be
@@ -36,8 +38,8 @@ pub struct Registered {
 /// part of
 /// registration, and a registration the proxy cannot read has not
 /// happened.
-pub async fn register(upstream: &Upstream, arguments: Value, template: String, image: Image) -> Result<Registered, Error> {
-    let body = serde_json::to_vec(&Request { arguments, template, image }).map_err(|error| {
+pub async fn register(upstream: &Upstream, arguments: Value, template: String, which: Which, image: Image) -> Result<Registered, Error> {
+    let body = serde_json::to_vec(&Request { arguments, template, which, image }).map_err(|error| {
         Error(serde_json::json!({
             "kind": "program",
             "error": format!("the arguments did not serialize: {error}"),

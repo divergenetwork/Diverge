@@ -30,6 +30,7 @@ pub fn caller(meta: &MetaObject) -> Result<Participant, Failure> {
     match attestation::request(meta) {
         Ok(Caller::Agent(agent)) => Ok(Participant { template: agent.key.template, index: agent.key.index as i64, name: agent.key.name }),
         Ok(Caller::Client { identity, .. }) => Err(Failure::Caller(format!("{identity} is a client over a connect, not an agent"))),
+        Ok(Caller::Tool { .. }) => Err(Failure::Caller("a tool over a connect, not an agent".to_string())),
         Err(error) => Err(Failure::Caller(error.to_string())),
     }
 }

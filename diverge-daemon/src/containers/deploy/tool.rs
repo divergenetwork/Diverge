@@ -139,8 +139,8 @@ async fn start(daemon: &Arc<Daemon>, tool: &DependencyTool, mounted: Option<Moun
         None => Mounts::empty(),
     });
     let container = match &mounted {
-        Some(_) => build::dependency(&tool.template, &tool.declared, limits, &mounts).await,
-        None => build::alone(&tool.template, &tool.declared, limits),
+        Some(_) => build::dependency(&tool.template, owner.clone(), &tool.declared, limits, &mounts).await,
+        None => build::alone(&tool.template, owner.clone(), &tool.declared, limits),
     };
     let attestation = attestation::Tool::Dependency {
         image: container.image.clone(),

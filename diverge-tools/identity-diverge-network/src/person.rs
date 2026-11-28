@@ -19,6 +19,7 @@ pub fn person(headers: &HeaderMap) -> Result<(), Failure> {
     match serde_json::from_str::<Caller>(text) {
         Ok(Caller::Client { .. }) => Ok(()),
         Ok(Caller::Agent(_)) => Err(Failure::Person("an agent, not a person".to_string())),
+        Ok(Caller::Tool { .. }) => Err(Failure::Person("a tool, not a person".to_string())),
         Err(error) => Err(Failure::Person(error.to_string())),
     }
 }

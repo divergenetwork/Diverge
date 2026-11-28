@@ -66,6 +66,7 @@ impl Family for Tools {
             channel_request::Frame::TerminalResize(resize) => Opened::TerminalResize(resize.id, diverge_sdk::shared::containers::terminal::open::Open { cols: resize.cols, rows: resize.rows }),
             channel_request::Frame::TerminalClose(id) => Opened::TerminalClose(id.id),
             channel_request::Frame::Frontend(request) => Opened::Frontend(request),
+            channel_request::Frame::Api(request) => Opened::Api(request),
             channel_request::Frame::McpListTools(request) => Opened::Exchange(tool::Exchange::ListTools(request)),
             channel_request::Frame::McpListResources(request) => {
                 Opened::Exchange(tool::Exchange::ListResources(request))
@@ -137,10 +138,10 @@ impl Family for Tools {
 impl Runs for Tools {
     type Ask<'a> = ask::Frame<'a>;
 
-    fn begin(proxy: &Handle, arguments: Value, template: String, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
+    fn begin(proxy: &Handle, arguments: Value, template: String, which: shared::containers::request::Which, image: shared::containers::request::Image) -> impl Future<Output = Result<Begun, Error>> + Send {
         let proxy = proxy.clone();
         async move {
-            match begin::execute(&proxy, arguments, template, image).await {
+            match begin::execute(&proxy, arguments, template, which, image).await {
                 Ok((handle, asks, events, registered)) => Ok(Begun {
                     begin: Begin::Tools(handle),
                     asks,

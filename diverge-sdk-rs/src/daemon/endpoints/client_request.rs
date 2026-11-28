@@ -214,8 +214,6 @@ pub enum ClientRequest<'a> {
     StandaloneToolsFrontend(standalone_tools::frontend::client::request::Frame),
     /// Tag `122`. One HTTP request to a dependency tool's frontend.
     DependencyToolsFrontend(dependency_tools::frontend::client::request::Frame),
-    /// Tag `123`. One HTTP request to an agent's frontend.
-    AgentsFrontend(agents::frontend::client::request::Frame),
     /// Tag `124`. MCP exchanges as an agent's own.
     AgentsConnect(agents::connect::client::request::Frame),
     /// Tag `125`. Every identity announced on the connected
@@ -319,6 +317,10 @@ pub enum ClientRequest<'a> {
     PostgresCompartmentsUntag(postgres::compartments::untag::client::request::Frame),
     /// Tag `172`. Delete a compartment.
     PostgresCompartmentsDelete(postgres::compartments::delete::client::request::Frame),
+    /// Tag `173`. One HTTP request to a standalone tool's API.
+    StandaloneToolsApi(standalone_tools::api::client::request::Frame),
+    /// Tag `174`. One HTTP request to a dependency tool's API.
+    DependencyToolsApi(dependency_tools::api::client::request::Frame),
     /// No tag of its own. It is not a request a client sends — it is
     /// what a request BECOMES when the daemon cannot make one of the
     /// others out of it, so it carries the payload verbatim and
@@ -428,7 +430,6 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::DependencyToolsTerminal(frame) => frame.encode(out),
             ClientRequest::StandaloneToolsFrontend(frame) => frame.encode(out),
             ClientRequest::DependencyToolsFrontend(frame) => frame.encode(out),
-            ClientRequest::AgentsFrontend(frame) => frame.encode(out),
             ClientRequest::AgentsConnect(frame) => frame.encode(out),
             ClientRequest::ProvidersDaemonsList(frame) => frame.encode(out),
             ClientRequest::IdentitiesList(frame) => frame.encode(out),
@@ -478,6 +479,8 @@ impl Encode for ClientRequest<'_> {
             ClientRequest::PostgresCompartmentsTag(frame) => frame.encode(out),
             ClientRequest::PostgresCompartmentsUntag(frame) => frame.encode(out),
             ClientRequest::PostgresCompartmentsDelete(frame) => frame.encode(out),
+            ClientRequest::StandaloneToolsApi(frame) => frame.encode(out),
+            ClientRequest::DependencyToolsApi(frame) => frame.encode(out),
             ClientRequest::Invalid(bytes) => {
                 out.extend_from_slice(bytes);
                 Ok(())
@@ -775,9 +778,6 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             122 => dependency_tools::frontend::client::request::Frame::decode(bytes)
                 .map(ClientRequest::DependencyToolsFrontend)
                 .ok(),
-            123 => agents::frontend::client::request::Frame::decode(bytes)
-                .map(ClientRequest::AgentsFrontend)
-                .ok(),
             124 => agents::connect::client::request::Frame::decode(bytes)
                 .map(ClientRequest::AgentsConnect)
                 .ok(),
@@ -925,6 +925,12 @@ impl<'a> Decode<'a> for ClientRequest<'a> {
             172 => postgres::compartments::delete::client::request::Frame::decode(bytes)
                 .map(ClientRequest::PostgresCompartmentsDelete)
                 .ok(),
+            173 => standalone_tools::api::client::request::Frame::decode(bytes)
+                .map(ClientRequest::StandaloneToolsApi)
+                .ok(),
+            174 => dependency_tools::api::client::request::Frame::decode(bytes)
+                .map(ClientRequest::DependencyToolsApi)
+                .ok(),
             _ => None,
         };
         Ok(request.unwrap_or(ClientRequest::Invalid(bytes)))
@@ -1025,7 +1031,6 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::DependencyToolsTerminal(_) => f.write_str("dependency tools terminal"),
             ClientRequest::StandaloneToolsFrontend(_) => f.write_str("standalone tools frontend"),
             ClientRequest::DependencyToolsFrontend(_) => f.write_str("dependency tools frontend"),
-            ClientRequest::AgentsFrontend(_) => f.write_str("agents frontend"),
             ClientRequest::AgentsConnect(_) => f.write_str("agents connect"),
             ClientRequest::ProvidersDaemonsList(_) => f.write_str("providers daemons list"),
             ClientRequest::IdentitiesList(_) => f.write_str("identities list"),
@@ -1075,6 +1080,8 @@ impl fmt::Display for ClientRequest<'_> {
             ClientRequest::PostgresCompartmentsTag(_) => f.write_str("postgres compartments tag"),
             ClientRequest::PostgresCompartmentsUntag(_) => f.write_str("postgres compartments untag"),
             ClientRequest::PostgresCompartmentsDelete(_) => f.write_str("postgres compartments delete"),
+            ClientRequest::StandaloneToolsApi(_) => f.write_str("standalone tools api"),
+            ClientRequest::DependencyToolsApi(_) => f.write_str("dependency tools api"),
             ClientRequest::Invalid(_) => f.write_str("an invalid request"),
         }
     }
@@ -1178,7 +1185,6 @@ pub fn tag(path: &str) -> Option<u8> {
         "dependency_tools/terminal" => Some(120),
         "standalone_tools/frontend" => Some(121),
         "dependency_tools/frontend" => Some(122),
-        "agents/frontend" => Some(123),
         "agents/connect" => Some(124),
         "providers/daemons/list" => Some(125),
         "identities/list" => Some(126),
@@ -1228,6 +1234,8 @@ pub fn tag(path: &str) -> Option<u8> {
         "postgres/compartments/tag" => Some(170),
         "postgres/compartments/untag" => Some(171),
         "postgres/compartments/delete" => Some(172),
+        "standalone_tools/api" => Some(173),
+        "dependency_tools/api" => Some(174),
         _ => None,
     }
 }
@@ -1328,7 +1336,6 @@ impl ClientRequest<'_> {
             ClientRequest::DependencyToolsTerminal(_) => "dependency_tools/terminal",
             ClientRequest::StandaloneToolsFrontend(_) => "standalone_tools/frontend",
             ClientRequest::DependencyToolsFrontend(_) => "dependency_tools/frontend",
-            ClientRequest::AgentsFrontend(_) => "agents/frontend",
             ClientRequest::AgentsConnect(_) => "agents/connect",
             ClientRequest::ProvidersDaemonsList(_) => "providers/daemons/list",
             ClientRequest::IdentitiesList(_) => "identities/list",
@@ -1378,6 +1385,8 @@ impl ClientRequest<'_> {
             ClientRequest::PostgresCompartmentsTag(_) => "postgres/compartments/tag",
             ClientRequest::PostgresCompartmentsUntag(_) => "postgres/compartments/untag",
             ClientRequest::PostgresCompartmentsDelete(_) => "postgres/compartments/delete",
+            ClientRequest::StandaloneToolsApi(_) => "standalone_tools/api",
+            ClientRequest::DependencyToolsApi(_) => "dependency_tools/api",
             ClientRequest::Invalid(_) => "",
         }
     }

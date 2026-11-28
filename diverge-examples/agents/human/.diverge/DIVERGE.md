@@ -12,7 +12,6 @@
   },
   "memory": 536870912,
   "disk": 1073741824,
-  "frontend": true,
   "chat": {
     "prompt_modalities": {
       "image": false,

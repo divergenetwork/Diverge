@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// The actions over tools that exist, which a grant reaches as far as
 /// its `within` says. Snake case on the wire: `"get"`, `"edit"`,
 /// `"attach"`, `"detach"`, `"delete"`, `"list"`, `"download"`,
-/// `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"connect"`, `"logs"`.
+/// `"upload"`, `"transfer"`, `"filetree"`, `"exec"`, `"frontend"`, `"api"`, `"connect"`, `"logs"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -62,6 +62,9 @@ pub enum Over {
     /// Send HTTP requests to the frontend its program serves, as
     /// [`standalone_tools::frontend`](crate::daemon::endpoints::standalone_tools::frontend) does.
     Frontend,
+    /// Send HTTP requests to the API its program serves, as
+    /// [`standalone_tools::api`](crate::daemon::endpoints::standalone_tools::api) does.
+    Api,
     /// Serve one to another daemon, as
     /// [`tools::connect`](crate::daemon::endpoints::standalone_tools::connect) does.
     Connect,

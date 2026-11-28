@@ -152,7 +152,7 @@
 //! | `120` | [`dependency_tools::terminal`] |
 //! | `121` | [`standalone_tools::frontend`] |
 //! | `122` | [`dependency_tools::frontend`] |
-//! | `123` | [`agents::frontend`] |
+//! | `123` | unused |
 //! | `124` | [`agents::connect`] |
 //! | `125` | [`providers::daemons::list`] |
 //! | `126` | [`identities::list`] |
@@ -202,11 +202,14 @@
 //! | `170` | [`postgres::compartments::tag`] |
 //! | `171` | [`postgres::compartments::untag`] |
 //! | `172` | [`postgres::compartments::delete`] |
+//! | `173` | [`standalone_tools::api`] |
+//! | `174` | [`dependency_tools::api`] |
 //!
-//! One hundred and seventy-two, so far, the value `110` standing empty
+//! One hundred and seventy-four, so far, the value `110` standing empty
 //! where an image's document was once its own request, `91` where a
 //! dependency template's tools were once deleted by a request of their
-//! own, and `103` to `108` where a vault's keys were once kept. Every one of them carries the optional
+//! own, `103` to `108` where a vault's keys were once kept, and `123`
+//! where an agent once had a frontend. Every one of them carries the optional
 //! member `relay` — see [`Relay`](crate::shared::relay::Relay) — by
 //! which a daemon serves it on another daemon, as an account it holds
 //! there, as a conduit; the member is taken out before the request

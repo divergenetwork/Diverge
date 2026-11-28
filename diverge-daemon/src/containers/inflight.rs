@@ -50,7 +50,8 @@ impl Inflight {
     }
 
     /// One use begins — a watch, a download, an upload, a transfer,
-    /// a command, a terminal, a frontend request on the container, or
+    /// a command, a terminal on the container, a frontend request or
+    /// an API request on a tool's, or
     /// a tool's mount of its agent's files — counted in until the [`Use`] is
     /// dropped, which first touches the run through `touched`, so that
     /// its idle clock counts from the use's end.

@@ -37,18 +37,27 @@ pub struct Request {
 }
 
 impl Head {
-    /// Whether the path is one a frontend request may reach.
+    /// Whether the path is one a frontend request may reach: one
+    /// [`beneath`](Self::beneath) [`PREFIX`].
+    pub fn reachable(&self) -> bool {
+        self.beneath(PREFIX)
+    }
+
+    /// Whether the path is one beneath `prefix`, which is what a
+    /// request through one of a program's doors may reach: `/frontend`
+    /// for a frontend request, `/api` for an
+    /// [API request](crate::shared::containers::api).
     ///
     /// The rules:
     ///
-    /// 1. It is [`PREFIX`] itself, or begins with [`PREFIX`] followed
+    /// 1. It is `prefix` itself, or begins with `prefix` followed
     ///    by `/` or `?`.
     /// 2. No segment of it before the query is `.` or `..`.
     /// 3. It holds no `\`, and no `%2e`, `%2f` or `%5c`, in either case.
-    pub fn reachable(&self) -> bool {
+    pub fn beneath(&self, prefix: &str) -> bool {
         let path = self.path.as_str();
         // Rule 1.
-        let Some(after) = path.strip_prefix(PREFIX) else {
+        let Some(after) = path.strip_prefix(prefix) else {
             return false;
         };
         if !(after.is_empty() || after.starts_with('/') || after.starts_with('?')) {

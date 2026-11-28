@@ -105,7 +105,7 @@ impl From<Error> for Failed {
 /// 3. The proxy is dialled: one WebSocket, for the container's life,
 ///    its router's task kept to abort once the container is stopped.
 /// 4. The family's `begin` is opened on it — carrying the arguments,
-///    the template and the image of the request — and its `Begun` awaited, with what the
+///    the template, which record of it the container is and the image of the request — and its `Begun` awaited, with what the
 ///    container declared: the dependencies and the permissions, for
 ///    an agent container, and the permissions, for a tool container.
 /// 5. The id is minted and the container entered in the directory
@@ -175,7 +175,7 @@ where
         }
     };
 
-    let begun = match R::begin(&proxy, arguments, request.template.clone(), request.image.clone()).await {
+    let begun = match R::begin(&proxy, arguments, request.template.clone(), request.which.clone(), request.image.clone()).await {
         Ok(begun) => begun,
         Err(error) => {
             stop.now().await;

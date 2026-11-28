@@ -24,7 +24,7 @@ use crate::containers::lifecycle::{Answer, Ask, End};
 use crate::containers::{self, AskError, ToolRun, tool_log};
 use crate::daemon::Daemon;
 use crate::judge::{self, Standing, Who};
-use crate::serve::reply;
+use crate::serve::{files, reply};
 use crate::store;
 
 /// Answer the connect, serve its channels until the client disconnects
@@ -50,8 +50,9 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// daemon to attest with, and then the scope held until the run ends
 /// or the client disconnects: every channel the client opens is one
 /// of the five MCP exchanges, put to the tool stamped with the caller
-/// as this daemon authorized the connection — the identity its
-/// handshake established, and nothing the client said of itself, in
+/// as this daemon authorized the connection — an account by the identity its
+/// handshake established, an agent's container or a tool's by what
+/// its run attests, and nothing the client said of itself, in
 /// place of
 /// anything the client stamped — and answered by the tool's
 /// server on a task of its own, each answer attested as this daemon's
@@ -61,20 +62,14 @@ pub async fn handle(scope: ScopeHandle, frame: request::Frame, who: Who, daemon:
 /// either end the tasks are ended and the scope lets the tool go.
 async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon: &Arc<Daemon>) -> Result<(), store::Error> {
     let mut conn = daemon.store.acquire().await?;
-    let Some(standing) = Standing::of(&mut conn, who).await? else {
+    let Some(standing) = Standing::of(&mut conn, who.clone()).await? else {
         reply::reply(scope, &Frame::Forbidden).await;
         return Ok(());
     };
-    // A dependency tool is no account, and a connect is attested as
-    // the account the client is: a standing with no account is
-    // refused.
-    let (Some(identity), true) = (standing.identity.clone(), judge::standalone_tools::holds(&standing, Over::Connect)) else {
+    if !judge::standalone_tools::holds(&standing, Over::Connect) {
         reply::reply(scope, &Frame::Forbidden).await;
         return Ok(());
-    };
-    // The scope's own id, minted fresh: one connect scope, one MCP
-    // session in the tool.
-    let caller = Arc::new(Caller::Client { identity, scope: uuid::Uuid::new_v4().to_string() });
+    }
     let sender = Arc::new(standing.creator.clone());
     let Some(tool) = resolve(&mut conn, &frame.tool, false).await? else {
         reply::reply(scope, &Frame::NotFound).await;
@@ -87,6 +82,18 @@ async fn serve(scope: &Arc<ScopeHandle>, frame: request::Frame, who: Who, daemon
         return Ok(());
     }
     scope.allowed().await;
+    // Whoever asks is attested as what it is — an account, an agent's
+    // container or a tool's: see [`files::caller`]. A client's and a
+    // tool's carry a scope id minted fresh, so one connect scope is
+    // one MCP session in the tool; an agent's is the agent's own
+    // caller, and so its own session with the tool.
+    let caller = match files::caller(daemon, &who, &standing).await {
+        Ok(caller) => Arc::new(caller),
+        Err(error) => {
+            reply::reply(scope, &Frame::Error(reply::failure(&error))).await;
+            return Ok(());
+        }
+    };
     let template = tool.template.clone();
     let connection = daemon.live.mint_connection().await;
     let run = match containers::use_tool(daemon, &tool, diverge_sdk::daemon::lifecycle::Cause::Connect).await {
@@ -184,10 +191,16 @@ impl Drop for Scoped {
 /// on the run — its key out of the run's sessions, its notifications
 /// reader ended — and its hold on the run let go. The close is sent
 /// whether or not the key was there, since a close of a session not
-/// open is answered `Closed` all the same.
+/// open is answered `Closed` all the same. An agent's session is not
+/// the scope's: it is the one the agent's own calls into the tool
+/// ride, which ends with the agent and not with a connect of its, so
+/// a scope an agent's container opened closes no session and lets
+/// only its hold go.
 async fn closed(run: Arc<ToolRun>, caller: Arc<Caller>, hold: containers::Hold) {
-    tool_log::close_session(&run, &caller);
-    tool_log::end_session(&run, &caller).await;
+    if !matches!(*caller, Caller::Agent(_)) {
+        tool_log::close_session(&run, &caller);
+        tool_log::end_session(&run, &caller).await;
+    }
     hold.disconnect().await;
 }
 
