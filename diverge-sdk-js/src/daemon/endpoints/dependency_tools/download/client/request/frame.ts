@@ -6,12 +6,14 @@ import { Relay } from "../../../../../../shared/relay.js";
 import { Dependency } from "../../../../../../daemon/reference/dependency.js";
 
 /**
- * Ask the daemon to send a file or a directory out of a running
+ * Ask the daemon to send a file or a directory out of a
  * dependency tool's container. What comes back is addressed
  * relative to the path named: a file's chunks carry the empty path,
  * a directory's each file's path within it — see
- * `daemon.download.Chunk`. A tool that does not run is `not_found`;
- * nothing is started.
+ * `daemon.download.Chunk`. A tool whose
+ * container is not running is deployed for it, and held up meanwhile;
+ * a tool that mounts its agent's files brings its agent's container up
+ * with it, and one its agent no longer declares is `not_found`.
  */
 export const Frame = z.object({
   /** The tool: its template by id, and whose it is. */

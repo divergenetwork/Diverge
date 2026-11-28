@@ -6,14 +6,15 @@ import { Error } from "../../../../../../shared/error.js";
 
 /**
  * A delete's answer: the agent is gone, no agent is the one named,
- * a loop is running in it, forbidden, or a failure.
+ * the agent is active or a dependency tool it owns is, forbidden, or
+ * a failure.
  */
 export const Frame = z.union([
   /** The agent is gone, and its name may be given again. Tag `0`. */
   z.literal("deleted"),
   /** No agent is the one named; nothing changed. Tag `1`. */
   z.literal("not_found"),
-  /** A loop is running in the agent; nothing changed. Tag `2`. */
+  /** The agent is active, or a dependency tool it owns is; nothing changed. Tag `2`. */
   z.literal("active"),
   /** The account the request is served for holds no grant allowing it; nothing changed. Tag `3`. */
   z.literal("forbidden"),

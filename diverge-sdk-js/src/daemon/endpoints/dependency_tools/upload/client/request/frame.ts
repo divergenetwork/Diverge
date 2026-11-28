@@ -6,7 +6,7 @@ import { Relay } from "../../../../../../shared/relay.js";
 import { Dependency } from "../../../../../../daemon/reference/dependency.js";
 
 /**
- * Ask the daemon to put files into a running dependency tool's
+ * Ask the daemon to put files into a dependency tool's
  * container: one file at a path, or a directory of files at a path.
  * JSON-tagged by `kind`. A `file` names the file's destination, and
  * the daemon opens one content channel for it. A `directory` names
@@ -14,8 +14,10 @@ import { Dependency } from "../../../../../../daemon/reference/dependency.js";
  * the directory's root, `/`-separated, no component empty, `.` or
  * `..`, no path twice, and at least one; the daemon opens one
  * content channel per path, and each file lands at the destination
- * joined with its path, replaced whole, every parent made. A tool
- * that does not run is `not_found`; nothing is started.
+ * joined with its path, replaced whole, every parent made. A tool whose
+ * container is not running is deployed for it, and held up meanwhile;
+ * a tool that mounts its agent's files brings its agent's container up
+ * with it, and one its agent no longer declares is `not_found`.
  */
 export const Frame = z.discriminatedUnion("kind", [
   /** One file. */
